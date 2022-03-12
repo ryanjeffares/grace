@@ -1,0 +1,27 @@
+class Person:
+  func init(name, age):
+    this.name = name;
+    this.age = age;
+  end
+
+  func say_hello():
+    print("My name is {name} and I am {age} years old.");
+  end
+end
+
+func main():
+  var some_integer = 69;
+  var some_other_int = 0;
+
+  final some_bool = some_integer == (some_other_int);
+
+  if some_bool:
+    some_function();
+  end
+
+  var p1 = Person("Ryan", 22);
+  p1.say_hello();
+
+  final p2 = Person("Catherine", 51);
+  p2 = Person("Dermot", 63); // error - p2 is final
+end
