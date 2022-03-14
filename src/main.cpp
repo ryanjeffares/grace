@@ -1,5 +1,7 @@
 #include <vector>
 #include <filesystem>
+#include <fstream>
+#include <sstream>
 
 #include <fmt/core.h> 
 #include <fmt/color.h>
@@ -26,7 +28,7 @@ int main(int argc, const char* argv[])
   }
   
   bool verbose = false;
-  switch (args.size()) {
+  switch (argc) {
     case 1:
       usage();
       return 1;
@@ -38,12 +40,21 @@ int main(int argc, const char* argv[])
         return 1;
       } 
     case 2:
-      std::filesystem::path inFile(args[1]);
-      if (inFile.extension() != ".gr") {
+      std::filesystem::path inPath(args[1]);
+      if (inPath.extension() != ".gr") {
         error("provided file was not a `.gr` file.");
         return 1;
       }
-      Grace::Compiler::Compile(args[1], verbose);
+
+      std::stringstream inStream;
+      try {
+        std::ifstream inFile(args[1]);
+        inStream << inFile.rdbuf();
+      } catch (const std::exception& e) {
+        fmt::print(stderr, "{}\n", e.what());
+      }
+      Grace::Compiler::Compile(std::move(inStream.str()), verbose);
       break;
   }
 }
+

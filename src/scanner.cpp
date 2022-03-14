@@ -58,13 +58,8 @@ std::string Token::ToString() const
   return fmt::format("Token [ type: {}, start: {}, length: {}, line: {}, text: '{}' ]", m_Type, m_Start, m_Length, m_Line, m_Text);
 }
 
-TokenType Token::GetType() const
-{
-  return m_Type;
-}
-
-Scanner::Scanner(std::stringstream&& code) 
-  : m_CodeStream(std::move(code)), m_CodeString(m_CodeStream.str())
+Scanner::Scanner(std::string&& code) 
+  : m_CodeString(std::move(code))
 {
 
 }
@@ -146,12 +141,12 @@ char Scanner::Advance()
   }
 
   m_Current++;
-  return m_CodeStream.get();
+  return m_CodeString[m_Current - 1];
 }
 
 bool Scanner::IsAtEnd() const
 {
-  return m_CodeStream.eof();
+  return m_Current >= m_CodeString.length();
 }
 
 bool Scanner::MatchChar(char toMatch)
@@ -165,19 +160,16 @@ bool Scanner::MatchChar(char toMatch)
 
 char Scanner::Peek()
 {
-  return m_CodeStream.peek();
+  return m_CodeString[m_Current];
 }
 
 char Scanner::PeekNext()
 {
-  if (IsAtEnd()) {
+  if (IsAtEnd() || m_Current == m_CodeString.length() - 1) {
     return '\0';
   }
 
-  m_CodeStream.get();
-  char c = m_CodeStream.peek();
-  m_CodeStream.unget();
-  return c;
+  return m_CodeString[m_Current + 1];
 }
 
 Token Scanner::ErrorToken(const std::string& message)
@@ -239,3 +231,4 @@ Token Scanner::MakeString()
   Advance();
   return MakeToken(TokenType::String);
 }
+

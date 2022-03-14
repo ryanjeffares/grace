@@ -1,0 +1,21 @@
+statement     -> exprStmt
+               | forStmt
+               | ifStmt
+               | printStmt
+               | returnStmt
+               | whileStmt 
+               | block ; 
+
+exprStmt      -> expression ";" ;
+forStmt       -> "for" "(" ( varDecl | exprStmt | ";" )
+                           expression? ";"
+                           expression? ")"
+                           ":" statement "end" ;
+ifStmt        -> "if" "(" expression ")" ":" 
+                 statement
+                 "else" ":" statement "end" 
+                 | "end" ;
+printStmt     -> "print" "(" expression ")" ";" ;
+returnStmt    -> "return" expression? ";" ;
+whileStmt     -> "while" "(" expression ")" statement ;
+block         -> declaration* ;

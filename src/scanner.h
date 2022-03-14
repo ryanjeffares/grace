@@ -52,12 +52,13 @@ namespace Grace
       If,
       While,
       Print,
+      Return,
       This,
       True,
       Var,
     };
 
-        class Token
+    class Token
     {
       public:
         
@@ -69,7 +70,9 @@ namespace Grace
         );
 
         std::string ToString() const;
-        TokenType GetType() const;
+        constexpr inline TokenType GetType() const { return m_Type; }
+        constexpr inline std::size_t GetLine() const { return m_Line; }
+        inline const std::string_view& GetText() const { return m_Text; }
 
       private:
 
@@ -82,7 +85,7 @@ namespace Grace
     {
       public:
 
-        Scanner(std::stringstream&& code);
+        Scanner(std::string&& code);
 
         Token ScanToken();
 
@@ -104,7 +107,6 @@ namespace Grace
 
       private:
 
-        std::stringstream m_CodeStream;
         std::string m_CodeString;
         std::size_t m_Start = 0, m_Current = 0;
         int m_Line = 1;
@@ -154,6 +156,7 @@ struct fmt::formatter<Grace::Scanner::TokenType> : fmt::formatter<std::string_vi
         case Grace::Scanner::TokenType::If: name = "If"; break;
         case Grace::Scanner::TokenType::While: name = "While"; break;
         case Grace::Scanner::TokenType::Print: name = "Print"; break;
+        case Grace::Scanner::TokenType::Return: name = "Return"; break;
         case Grace::Scanner::TokenType::This: name = "This"; break;
         case Grace::Scanner::TokenType::True: name = "True"; break;
         case Grace::Scanner::TokenType::Var: name = "Var"; break;
@@ -161,5 +164,4 @@ struct fmt::formatter<Grace::Scanner::TokenType> : fmt::formatter<std::string_vi
     return fmt::formatter<std::string_view>::format(name, context);
   }
 };
-
 
