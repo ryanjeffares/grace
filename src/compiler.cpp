@@ -40,7 +40,7 @@ Compiler::Compiler(std::string&& code)
 
 void Compiler::Finalise()
 {
-  m_Vm.PrintOps();
+//  m_Vm.PrintOps();
   m_Vm.Run();
 }
 
@@ -197,8 +197,9 @@ void Compiler::PrintStatement()
 {
   Consume(TokenType::LeftParen, "Expected '(' after 'print'");
   Expression();
-  m_Vm.PushOp(Ops::Print);
-  m_Vm.PushOp(Ops::Pop);
+  m_Vm.PushOp(Ops::Print, m_Current.value().GetLine());
+  m_Vm.PushOp(Ops::Pop, m_Current.value().GetLine());
+//  fmt::print("{}\n", m_Current.value().ToString());
   Consume(TokenType::RightParen, "Expected ')' after expression");
   Consume(TokenType::Semicolon, "Expected ';'");
 }
@@ -223,6 +224,7 @@ void Compiler::And()
   Equality();
   while (Match(TokenType::And)) {
     Equality();
+    m_Vm.PushOp(Ops::And, m_Current.value().GetLine());
   }
 }
 
@@ -231,23 +233,37 @@ void Compiler::Or()
   And();
   while (Match(TokenType::Or)) {
     And();
+    m_Vm.PushOp(Ops::Or, m_Current.value().GetLine());
   }
 }
 
 void Compiler::Equality()
 {
   Comparison();
-  while (Match(TokenType::BangEqual) || Match(TokenType::EqualEqual)) {
+  if (Match(TokenType::EqualEqual)) {
     Comparison();
+    m_Vm.PushOp(Ops::Equal, m_Current.value().GetLine());
+  } else if (Match(TokenType::BangEqual)) {
+    Comparison();
+    m_Vm.PushOp(Ops::NotEqual, m_Current.value().GetLine());
   }
 }
 
 void Compiler::Comparison()
 {
   Term();
-  while (Match(TokenType::GreaterThan) || Match(TokenType::GreaterEqual)
-      || Match(TokenType::LessThan) || Match(TokenType::LessEqual)) {
+  if (Match(TokenType::GreaterThan)) {
     Term();
+    m_Vm.PushOp(Ops::Greater, m_Current.value().GetLine());
+  } else if (Match(TokenType::GreaterEqual)) {
+    Term();
+    m_Vm.PushOp(Ops::GreaterEqual, m_Current.value().GetLine());
+  } else if (Match(TokenType::LessThan)) {
+    Term();
+    m_Vm.PushOp(Ops::Less, m_Current.value().GetLine());
+  } else if (Match(TokenType::LessEqual)) {
+    Term();
+    m_Vm.PushOp(Ops::LessEqual, m_Current.value().GetLine());
   }
 }
 
@@ -257,10 +273,10 @@ void Compiler::Term()
   while (true) {
     if (Match(TokenType::Minus)) {
       Factor();
-      m_Vm.PushOp(Ops::Subtract);
+      m_Vm.PushOp(Ops::Subtract, m_Current.value().GetLine());
     } else if (Match(TokenType::Plus)) {
       Factor();
-      m_Vm.PushOp(Ops::Add);
+      m_Vm.PushOp(Ops::Add, m_Current.value().GetLine());
     } else {
       break;
     }
@@ -273,10 +289,10 @@ void Compiler::Factor()
   while (true) {
     if (Match(TokenType::Slash)) {
       Unary();
-      m_Vm.PushOp(Ops::Divide);
+      m_Vm.PushOp(Ops::Divide, m_Current.value().GetLine());
     } else if (Match(TokenType::Star)) {
       Unary();
-      m_Vm.PushOp(Ops::Multiply);
+      m_Vm.PushOp(Ops::Multiply, m_Current.value().GetLine());
     } else {
       break;
     }
@@ -303,10 +319,10 @@ void Compiler::Call()
 void Compiler::Primary()
 {
   if (Match(TokenType::True)) {
-    m_Vm.PushOp(Ops::LoadBool);
+    m_Vm.PushOp(Ops::LoadConstant, m_Current.value().GetLine());
     m_Vm.PushConstant(true);
   } else if (Match(TokenType::False)) {
-    m_Vm.PushOp(Ops::LoadBool);
+    m_Vm.PushOp(Ops::LoadConstant, m_Current.value().GetLine());
     m_Vm.PushConstant(false);
   } else if (Match(TokenType::This)) {
     
@@ -316,7 +332,7 @@ void Compiler::Primary()
     auto length = m_Previous.value().GetLength();
     auto [ptr, ec] { std::from_chars(data, data + length, value) };
     if (ec == std::errc()) {
-      m_Vm.PushOp(Ops::LoadInteger);
+      m_Vm.PushOp(Ops::LoadConstant, m_Current.value().GetLine());
       m_Vm.PushConstant(value);
     } else {
       switch (ec) {
@@ -335,7 +351,7 @@ void Compiler::Primary()
     try {
       std::string str(m_Previous.value().GetText());
       auto value = std::stof(str);
-      m_Vm.PushOp(Ops::LoadFloat);
+      m_Vm.PushOp(Ops::LoadConstant, m_Current.value().GetLine());
       m_Vm.PushConstant(value);
     } catch (const std::invalid_argument& e) {
       ErrorAtPrevious(fmt::format("Token could not be parsed as an float: {}", e.what()));
