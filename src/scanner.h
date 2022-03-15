@@ -42,7 +42,8 @@ namespace Grace
       GreaterEqual,
 
       // Keywords
-      As, 
+      And,
+      As,
       Class, 
       End, 
       False,
@@ -50,12 +51,13 @@ namespace Grace
       For,
       Func,
       If,
-      While,
+      Or,
       Print,
       Return,
       This,
       True,
       Var,
+      While,
     };
 
     class Token
@@ -72,7 +74,9 @@ namespace Grace
         std::string ToString() const;
         constexpr inline TokenType GetType() const { return m_Type; }
         constexpr inline std::size_t GetLine() const { return m_Line; }
+        constexpr inline std::size_t GetLength() const { return m_Length; }
         inline const std::string_view& GetText() const { return m_Text; }
+        constexpr const char* GetData() const { return m_Text.data(); }
 
       private:
 
@@ -120,46 +124,50 @@ struct fmt::formatter<Grace::Scanner::TokenType> : fmt::formatter<std::string_vi
     template<typename FormatContext>
     auto format(Grace::Scanner::TokenType type, FormatContext& context) -> decltype(context.out())
     {
+      using namespace Grace::Scanner;
+
       std::string_view name = "unknown";
       switch (type) {
-        case Grace::Scanner::TokenType::EndOfFile: name = "EndOfFile"; break;
-        case Grace::Scanner::TokenType::Error: name = "Error"; break;
-        case Grace::Scanner::TokenType::Float: name = "Float"; break;
-        case Grace::Scanner::TokenType::Identifier: name = "Identifier"; break;
-        case Grace::Scanner::TokenType::Integer: name = "Integer"; break;
-        case Grace::Scanner::TokenType::String: name = "String"; break;
-        case Grace::Scanner::TokenType::Colon: name = "Colon"; break;
-        case Grace::Scanner::TokenType::Semicolon: name = "Semicolon"; break;
-        case Grace::Scanner::TokenType::LeftParen: name = "LeftParen"; break;
-        case Grace::Scanner::TokenType::RightParen: name = "RightParen"; break;
-        case Grace::Scanner::TokenType::Comma: name = "Comma"; break;
-        case Grace::Scanner::TokenType::Dot: name = "Dot"; break;
-        case Grace::Scanner::TokenType::Minus: name = "Minus"; break;
-        case Grace::Scanner::TokenType::Plus: name = "Plus"; break;
-        case Grace::Scanner::TokenType::Slash: name = "Slash"; break;
-        case Grace::Scanner::TokenType::Star: name = "Star"; break;
-        case Grace::Scanner::TokenType::Bang: name = "Bang"; break;
-        case Grace::Scanner::TokenType::BangEqual: name = "BangEqual"; break;
-        case Grace::Scanner::TokenType::Equal: name = "Equal"; break;
-        case Grace::Scanner::TokenType::EqualEqual: name = "EqualEqual"; break;
-        case Grace::Scanner::TokenType::LessThan: name = "LessThan"; break;
-        case Grace::Scanner::TokenType::GreaterThan: name = "GreaterThan"; break;
-        case Grace::Scanner::TokenType::LessEqual: name = "LessEqual"; break;
-        case Grace::Scanner::TokenType::GreaterEqual: name = "GreaterEqual"; break;
-        case Grace::Scanner::TokenType::As: name = "As"; break;
-        case Grace::Scanner::TokenType::Class: name = "Class"; break;
-        case Grace::Scanner::TokenType::End: name = "End"; break;
-        case Grace::Scanner::TokenType::False: name = "False"; break;
-        case Grace::Scanner::TokenType::Final: name = "Final"; break;
-        case Grace::Scanner::TokenType::For: name = "For"; break;
-        case Grace::Scanner::TokenType::Func: name = "Func"; break;
-        case Grace::Scanner::TokenType::If: name = "If"; break;
-        case Grace::Scanner::TokenType::While: name = "While"; break;
-        case Grace::Scanner::TokenType::Print: name = "Print"; break;
-        case Grace::Scanner::TokenType::Return: name = "Return"; break;
-        case Grace::Scanner::TokenType::This: name = "This"; break;
-        case Grace::Scanner::TokenType::True: name = "True"; break;
-        case Grace::Scanner::TokenType::Var: name = "Var"; break;
+        case TokenType::EndOfFile: name = "TokenType::EndOfFile"; break;
+        case TokenType::Error: name = "TokenType::Error"; break;
+        case TokenType::Float: name = "TokenType::Float"; break;
+        case TokenType::Identifier: name = "TokenType::Identifier"; break;
+        case TokenType::Integer: name = "TokenType::Integer"; break;
+        case TokenType::String: name = "TokenType::String"; break;
+        case TokenType::Colon: name = "TokenType::Colon"; break;
+        case TokenType::Semicolon: name = "TokenType::Semicolon"; break;
+        case TokenType::LeftParen: name = "TokenType::LeftParen"; break;
+        case TokenType::RightParen: name = "TokenType::RightParen"; break;
+        case TokenType::Comma: name = "TokenType::Comma"; break;
+        case TokenType::Dot: name = "TokenType::Dot"; break;
+        case TokenType::Minus: name = "TokenType::Minus"; break;
+        case TokenType::Plus: name = "TokenType::Plus"; break;
+        case TokenType::Slash: name = "TokenType::Slash"; break;
+        case TokenType::Star: name = "TokenType::Star"; break;
+        case TokenType::Bang: name = "TokenType::Bang"; break;
+        case TokenType::BangEqual: name = "TokenType::BangEqual"; break;
+        case TokenType::Equal: name = "TokenType::Equal"; break;
+        case TokenType::EqualEqual: name = "TokenType::EqualEqual"; break;
+        case TokenType::LessThan: name = "TokenType::LessThan"; break;
+        case TokenType::GreaterThan: name = "TokenType::GreaterThan"; break;
+        case TokenType::LessEqual: name = "TokenType::LessEqual"; break;
+        case TokenType::GreaterEqual: name = "TokenType::GreaterEqual"; break;
+        case TokenType::As: name = "TokenType::As"; break;
+        case TokenType::Class: name = "TokenType::Class"; break;
+        case TokenType::End: name = "TokenType::End"; break;
+        case TokenType::False: name = "TokenType::False"; break;
+        case TokenType::Final: name = "TokenType::Final"; break;
+        case TokenType::For: name = "TokenType::For"; break;
+        case TokenType::Func: name = "TokenType::Func"; break;
+        case TokenType::If: name = "TokenType::If"; break;
+        case TokenType::While: name = "TokenType::While"; break;
+        case TokenType::Print: name = "TokenType::Print"; break;
+        case TokenType::Return: name = "TokenType::Return"; break;
+        case TokenType::This: name = "TokenType::This"; break;
+        case TokenType::True: name = "TokenType::True"; break;
+        case TokenType::Var: name = "TokenType::Var"; break;
+        case TokenType::Or: name = "TokenType::Or"; break;
+        case TokenType::And: name = "TokenType::And"; break;
       }
     return fmt::formatter<std::string_view>::format(name, context);
   }

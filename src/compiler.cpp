@@ -1,8 +1,10 @@
-#include <limits>
+#include <charconv>
+#include <chrono>
 
 #include "compiler.h"
 
 using namespace Grace::Scanner;
+using namespace Grace::VM;
 
 void Grace::Compiler::Compile(std::string&& code, bool verbose)
 {
@@ -17,40 +19,36 @@ void Grace::Compiler::Compile(std::string&& code, bool verbose)
     compiler.Declaration();
   }
 
-  auto end = steady_clock::now();
-  auto duration = duration_cast<microseconds>(end - start).count();
+  if (compiler.HadError()) {
+    fmt::print(stderr, "Terminating process due to compilation errors.\n");
+  } else {
   if (verbose) {
+    auto end = steady_clock::now();
+    auto duration = duration_cast<microseconds>(end - start).count();
     fmt::print("Compilation succeeded in {} μs.\n", duration);
   }
+  compiler.Finalise();
+}
 }
 
 using namespace Grace::Compiler::Detail;
 
 Compiler::Compiler(std::string&& code) 
-  : m_Scanner(std::move(code)),
-  m_ParseRules({
-    std::make_pair(TokenType::LeftParen, ParseRule{&Compiler::Grouping, &Compiler::Call, Precedence::Call}),
-    std::make_pair(TokenType::RightParen, ParseRule{{}, {}, Precedence::None}),
-    std::make_pair(TokenType::Comma, ParseRule{{}, {}, Precedence::None}),
-    std::make_pair(TokenType::Dot, ParseRule{{}, &Compiler::Dot, Precedence::Call}),
-    std::make_pair(TokenType::Minus, ParseRule{&Compiler::Unary, &Compiler::Binary, Precedence::Term}),
-    std::make_pair(TokenType::Plus, ParseRule{{}, &Compiler::Binary, Precedence::Term}),
-    std::make_pair(TokenType::Semicolon, ParseRule{{}, {}, Precedence::None}),
-    std::make_pair(TokenType::Slash, ParseRule{{}, &Compiler::Binary, Precedence::Factor}),
-    std::make_pair(TokenType::Star, ParseRule{{}, &Compiler::Binary, Precedence::Factor}),
-    std::make_pair(TokenType::Bang, ParseRule{&Compiler::Unary, {}, Precedence::None}),
-    std::make_pair(TokenType::BangEqual, ParseRule{{}, &Compiler::Binary, Precedence::None}),
-    std::make_pair(TokenType::Equal, ParseRule{{}, {}, Precedence::Equality}),
-    std::make_pair(TokenType::EqualEqual, ParseRule{{}, &Compiler::Binary, Precedence::Comparison}),
-  })
+  : m_Scanner(std::move(code))
 {
+}
+
+void Compiler::Finalise()
+{
+  m_Vm.PrintOps();
+  m_Vm.Run();
 }
 
 void Compiler::Advance()
 {
   m_Previous = m_Current;
   m_Current = m_Scanner.ScanToken();
-  fmt::print("{}\n", m_Current.value().ToString());
+//  fmt::print("{}\n", m_Current.value().ToString());
 
   if (m_Current.value().GetType() == TokenType::Error) {
     ErrorAtCurrent("Unexpected token");
@@ -167,7 +165,16 @@ void Compiler::FinalDeclaration()
 
 void Compiler::Expression()
 {
-  
+  if (Match(TokenType::Identifier)) {
+    Consume(TokenType::Equal, "Expected '=' after identifier");
+    if (Match(TokenType::Identifier)) {
+      Expression();
+    } else {
+      Or();
+    }
+  } else {
+    Or();
+  }
 }
 
 void Compiler::ExpressionStatement() 
@@ -190,6 +197,8 @@ void Compiler::PrintStatement()
 {
   Consume(TokenType::LeftParen, "Expected '(' after 'print'");
   Expression();
+  m_Vm.PushOp(Ops::Print);
+  m_Vm.PushOp(Ops::Pop);
   Consume(TokenType::RightParen, "Expected ')' after expression");
   Consume(TokenType::Semicolon, "Expected ';'");
 }
@@ -209,59 +218,145 @@ void Compiler::Block()
   
 }
 
-void Compiler::Grouping(bool canAssign)
+void Compiler::And()
 {
-  
+  Equality();
+  while (Match(TokenType::And)) {
+    Equality();
+  }
 }
 
-void Compiler::Call(bool canAssign)
+void Compiler::Or()
 {
-  
+  And();
+  while (Match(TokenType::Or)) {
+    And();
+  }
 }
 
-void Compiler::Dot(bool canAssign)
+void Compiler::Equality()
 {
-  
+  Comparison();
+  while (Match(TokenType::BangEqual) || Match(TokenType::EqualEqual)) {
+    Comparison();
+  }
 }
 
-void Compiler::Unary(bool canAssign)
+void Compiler::Comparison()
 {
-  
+  Term();
+  while (Match(TokenType::GreaterThan) || Match(TokenType::GreaterEqual)
+      || Match(TokenType::LessThan) || Match(TokenType::LessEqual)) {
+    Term();
+  }
 }
 
-void Compiler::Binary(bool canAssign)
+void Compiler::Term()
 {
-  
+  Factor();
+  while (true) {
+    if (Match(TokenType::Minus)) {
+      Factor();
+      m_Vm.PushOp(Ops::Subtract);
+    } else if (Match(TokenType::Plus)) {
+      Factor();
+      m_Vm.PushOp(Ops::Add);
+    } else {
+      break;
+    }
+  }
 }
 
-void Compiler::Variable(bool canAssign)
+void Compiler::Factor()
 {
-  
+  Unary();
+  while (true) {
+    if (Match(TokenType::Slash)) {
+      Unary();
+      m_Vm.PushOp(Ops::Divide);
+    } else if (Match(TokenType::Star)) {
+      Unary();
+      m_Vm.PushOp(Ops::Multiply);
+    } else {
+      break;
+    }
+  }
 }
 
-void Compiler::String(bool canAssign)
+void Compiler::Unary()
 {
-  
+  if (Match(TokenType::Bang) || Match(TokenType::Minus)) {
+
+  }
+  if (IsPrimaryToken()) {
+    Call();
+  } else {
+    Unary();
+  }
 }
 
-void Compiler::Number(bool canAssign)
+void Compiler::Call()
 {
-  
+  Primary();
 }
 
-void Compiler::And(bool canAssign)
+void Compiler::Primary()
 {
-  
+  if (Match(TokenType::True)) {
+    m_Vm.PushOp(Ops::LoadBool);
+    m_Vm.PushConstant(true);
+  } else if (Match(TokenType::False)) {
+    m_Vm.PushOp(Ops::LoadBool);
+    m_Vm.PushConstant(false);
+  } else if (Match(TokenType::This)) {
+    
+  } else if (Match(TokenType::Integer)) {
+    int value;
+    const char* data = m_Previous.value().GetData();
+    auto length = m_Previous.value().GetLength();
+    auto [ptr, ec] { std::from_chars(data, data + length, value) };
+    if (ec == std::errc()) {
+      m_Vm.PushOp(Ops::LoadInteger);
+      m_Vm.PushConstant(value);
+    } else {
+      switch (ec) {
+        case std::errc::invalid_argument:
+          ErrorAtPrevious(fmt::format("Token could not be parsed as an integer, failed at {}", *ptr));
+          break;
+        case std::errc::result_out_of_range:
+          ErrorAtPrevious("Integer out of range.");
+          break;
+        default:
+          ErrorAtPrevious(fmt::format("Unexpected error occurred at {}", *ptr));
+          break;
+      }
+    }
+  } else if (Match(TokenType::Float)) {
+    try {
+      std::string str(m_Previous.value().GetText());
+      auto value = std::stof(str);
+      m_Vm.PushOp(Ops::LoadFloat);
+      m_Vm.PushConstant(value);
+    } catch (const std::invalid_argument& e) {
+      ErrorAtPrevious(fmt::format("Token could not be parsed as an float: {}", e.what()));
+    } catch (const std::out_of_range&) {
+      ErrorAtPrevious("Float out of range.");
+    }
+  } else if (Match(TokenType::String)) {
+
+  } else if (Match(TokenType::Identifier)) {
+
+  } else {
+    Expression();
+  }
 }
 
-void Compiler::Or(bool canAssign)
+bool Compiler::IsPrimaryToken()
 {
-  
-}
-
-void Compiler::Literal(bool canAssign)
-{
-  
+  auto t = m_Current.value().GetType();
+  return t == TokenType::True || t == TokenType::False || t == TokenType::This
+    || t == TokenType::Integer || t == TokenType::Float || t == TokenType::String
+    || t == TokenType::Identifier || t == TokenType::LeftParen;
 }
 
 void Compiler::ErrorAtCurrent(const std::string& message)

@@ -1,17 +1,13 @@
 #pragma once
 
-#include <chrono>
 #include <string>
-#include <fstream>
-#include <functional>
-#include <sstream>
-#include <optional>
 #include <unordered_map>
 
 #include <fmt/core.h>
 #include <fmt/color.h>
 
 #include "scanner.h"
+#include "vm.h"
 
 namespace Grace
 {
@@ -66,6 +62,9 @@ namespace Grace
            */
           bool Match(Scanner::TokenType expected);
 
+          inline bool HadError() const { return m_HadError; }
+          void Finalise();
+
         private:
 
           enum class Precedence 
@@ -82,13 +81,7 @@ namespace Grace
             Call,
             Primary,
           };
-
-          struct ParseRule
-          {
-            std::function<void(Compiler*, bool)> m_Prefix, m_Infix;
-            Precedence m_Precedence;
-          };
-          
+         
           /*
            *  Returns true if the current token matches the given type.
            *  No side effects, does not advance the scanner or compiler.
@@ -130,17 +123,17 @@ namespace Grace
           void WhileStatement();
           void Block();
 
-          void Grouping(bool canAssign);
-          void Call(bool canAssign);
-          void Dot(bool canAssign);
-          void Unary(bool canAssign);
-          void Binary(bool canAssign);
-          void Variable(bool canAssign);
-          void String(bool canAssign);
-          void Number(bool canAssign);
-          void And(bool canAssign);
-          void Or(bool canAssign);
-          void Literal(bool canAssign);
+          void And();
+          void Or();
+          void Equality();
+          void Comparison();
+          void Term();
+          void Factor();
+          void Unary();
+          void Call();
+          void Primary();
+
+          bool IsPrimaryToken();
 
           void ErrorAtCurrent(const std::string& message);
           void ErrorAtPrevious(const std::string& message);
@@ -149,9 +142,9 @@ namespace Grace
         private:
 
           Scanner::Scanner m_Scanner;
-          std::optional<Scanner::Token> m_Current, m_Previous;
+          VM::VM m_Vm;
 
-          std::unordered_map<Scanner::TokenType, ParseRule> m_ParseRules;
+          std::optional<Scanner::Token> m_Current, m_Previous;
 
           bool m_PanicMode = false, m_HadError = false;
       };
