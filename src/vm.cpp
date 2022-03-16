@@ -1,3 +1,5 @@
+#include "grace.hpp"
+
 #include "vm.hpp"
 #include "vm_binary_op_handlers.hpp"
 
@@ -141,13 +143,28 @@ InterpretResult VM::Run()
       case Ops::Print:
         constantsStack.back().Print();
         break;
+      case Ops::PrintEmptyLine:
+        fmt::print("\n");
+        break;
+      case Ops::PrintLn:
+        constantsStack.back().PrintLn();
+        break;
+      case Ops::PrintTab:
+        fmt::print("\t");
+        break;
+      default:
+        GRACE_UNREACHABLE();
+        break;
     }
   }
 
+#ifdef GRACE_DEBUG
   fmt::print("STACK:\n");
   for (const auto& c : constantsStack) {
-    c.Print();
+    fmt::print("\t");
+    c.PrintLn();
   }
+#endif
 
   return InterpretResult::RuntimeOk;
 }

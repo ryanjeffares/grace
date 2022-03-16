@@ -29,6 +29,7 @@ static std::unordered_map<std::string, TokenType> s_KeywordLookup =
   std::make_pair("func", TokenType::Func),
   std::make_pair("if", TokenType::If),
   std::make_pair("print", TokenType::Print),
+  std::make_pair("println", TokenType::PrintLn),
   std::make_pair("while", TokenType::While),
   std::make_pair("this", TokenType::This),
   std::make_pair("true", TokenType::True),

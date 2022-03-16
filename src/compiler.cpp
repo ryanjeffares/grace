@@ -12,7 +12,7 @@ void Grace::Compiler::Compile(std::string&& code, bool verbose)
 
   auto start = steady_clock::now();
  
-  Detail::Compiler compiler(std::move(code));
+  Compiler compiler(std::move(code));
   compiler.Advance();
   
   while (!compiler.Match(TokenType::EndOfFile)) {
@@ -31,7 +31,7 @@ void Grace::Compiler::Compile(std::string&& code, bool verbose)
   }
 }
 
-using namespace Grace::Compiler::Detail;
+using namespace Grace::Compiler;
 
 Compiler::Compiler(std::string&& code) 
   : m_Scanner(std::move(code))
@@ -97,6 +97,7 @@ void Compiler::Synchronize()
       case TokenType::If:
       case TokenType::While:
       case TokenType::Print:
+      case TokenType::PrintLn:
       case TokenType::Return:
         return;
       default:
@@ -134,6 +135,8 @@ void Compiler::Statement()
     IfStatement();
   } else if (Match(TokenType::Print)) {
     PrintStatement();
+  } else if (Match(TokenType::PrintLn)) {
+    PrintLnStatement();
   } else if (Match(TokenType::Return)) {
     ReturnStatement();
   } else if (Match(TokenType::While)) {
@@ -196,11 +199,28 @@ void Compiler::IfStatement()
 void Compiler::PrintStatement() 
 {
   Consume(TokenType::LeftParen, "Expected '(' after 'print'");
-  Expression();
-  m_Vm.PushOp(Ops::Print, m_Current.value().GetLine());
-  m_Vm.PushOp(Ops::Pop, m_Current.value().GetLine());
-//  fmt::print("{}\n", m_Current.value().ToString());
-  Consume(TokenType::RightParen, "Expected ')' after expression");
+  if (Match(TokenType::RightParen)) {
+    m_Vm.PushOp(Ops::PrintTab, m_Current.value().GetLine());
+  } else {
+    Expression();
+    m_Vm.PushOp(Ops::Print, m_Current.value().GetLine());
+    m_Vm.PushOp(Ops::Pop, m_Current.value().GetLine());
+    Consume(TokenType::RightParen, "Expected ')' after expression");
+  }
+  Consume(TokenType::Semicolon, "Expected ';'");
+}
+
+void Compiler::PrintLnStatement() 
+{
+  Consume(TokenType::LeftParen, "Expected '(' after 'println'");
+  if (Match(TokenType::RightParen)) {
+    m_Vm.PushOp(Ops::PrintEmptyLine, m_Current.value().GetLine());
+  } else {
+    Expression();
+    m_Vm.PushOp(Ops::PrintLn, m_Current.value().GetLine());
+    m_Vm.PushOp(Ops::Pop, m_Current.value().GetLine());
+    Consume(TokenType::RightParen, "Expected ')' after expression");
+  }
   Consume(TokenType::Semicolon, "Expected ';'");
 }
 
@@ -302,12 +322,10 @@ void Compiler::Factor()
 void Compiler::Unary()
 {
   if (Match(TokenType::Bang) || Match(TokenType::Minus)) {
-
-  }
-  if (IsPrimaryToken()) {
-    Call();
-  } else {
+    // do something
     Unary();
+  } else if (IsPrimaryToken()) {
+    Call();
   }
 }
 
@@ -375,6 +393,7 @@ static bool IsEscapeChar(char c, char& result)
 {
   for (auto i = 0; i < sizeof(s_EscapeChars) / sizeof(char); i++) {
     if (c == s_EscapeChars[i]) {
+      result = s_EscapeCharsLookup[s_EscapeChars[i]];
       return true;
     }
   }
@@ -408,6 +427,10 @@ void Compiler::Char()
       }
       break;
     case 1:
+      if (trimmed[0] == '\\') {
+        ErrorAtPrevious("Expected escape character after backslash");
+        return;
+      }
       m_Vm.PushOp(Ops::LoadConstant, m_Previous.value().GetLine());
       m_Vm.PushConstant(static_cast<char>(trimmed[0]));
       break;

@@ -1,14 +1,11 @@
-print(true and true);
-print(true or false);
-print(false and false);
-print(1 == 2);
-print(10 >= 10);
-print(10.0 / 3.0);
-print(1 / 2.0);
-print(1.0 / 2);
-
-print('a');
-print('a' + 'b' - 'b');
-print('0' < '9');
-print('\'');
-print(1 + 'x');
+println(true and true);
+println(true or false);
+println(false and false);
+println(1 == 2);
+println(10 >= 10);
+println(10.0 / 3.0);
+println(1 / 2.0);
+println(1.0 / 2);
+println('a');
+println('a' + 'b' - 'b');
+println);

@@ -3,8 +3,10 @@
 #include <fstream>
 #include <sstream>
 
-#include <fmt/core.h> 
-#include <fmt/color.h>
+#include "grace.hpp"
+
+#include "../include/fmt/core.h" 
+#include "../include/fmt/color.h"
 
 #include "compiler.hpp"
 

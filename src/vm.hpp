@@ -6,9 +6,9 @@
 #include <typeinfo>
 #include <type_traits>
 
-#include <fmt/color.h>
-#include <fmt/core.h>
-#include <fmt/format.h>
+#include "../include/fmt/color.h"
+#include "../include/fmt/core.h"
+#include "../include/fmt/format.h"
 
 namespace Grace
 {
@@ -30,6 +30,9 @@ namespace Grace
       Or,
       Pop,
       Print,
+      PrintEmptyLine,
+      PrintLn,
+      PrintTab,
       Subtract,
     };
 
@@ -137,7 +140,7 @@ namespace Grace
             return *this;
           }
 
-          void Print() const
+          void PrintLn() const
           {
             switch (m_Type) {
               case Type::Bool:
@@ -151,6 +154,24 @@ namespace Grace
                 break;
               case Type::Int:
                 fmt::print("{}\n", m_Data.m_Int);
+                break;
+            }
+          }
+
+          void Print() const
+          {
+            switch (m_Type) {
+              case Type::Bool:
+                fmt::print("{}", m_Data.m_Bool);
+                break;
+              case Type::Char:
+                fmt::print("{}", m_Data.m_Char);
+                break;
+              case Type::Float:
+                fmt::print("{}", m_Data.m_Float);
+                break;
+              case Type::Int:
+                fmt::print("{}", m_Data.m_Int);
                 break;
             }
           }
@@ -247,6 +268,9 @@ struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
       case Ops::Or: name = "Ops::Or"; break;
       case Ops::Pop: name = "Ops::Pop"; break;
       case Ops::Print: name = "Ops::Print"; break;
+      case Ops::PrintEmptyLine: name = "Ops::PrintEmptyLine"; break;
+      case Ops::PrintLn: name = "Ops::PrintLn"; break;
+      case Ops::PrintTab: name = "Ops::PrintTab"; break;
       case Ops::Subtract: name = "Ops::Subtract"; break;
     }
     return fmt::formatter<std::string_view>::format(name, context);

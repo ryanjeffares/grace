@@ -5,7 +5,7 @@
 #include <sstream>
 #include <string_view>
 
-#include <fmt/format.h>
+#include "../include/fmt/format.h"
 
 namespace Grace
 {
@@ -54,6 +54,7 @@ namespace Grace
       If,
       Or,
       Print,
+      PrintLn,
       Return,
       This,
       True,
@@ -165,6 +166,7 @@ struct fmt::formatter<Grace::Scanner::TokenType> : fmt::formatter<std::string_vi
         case TokenType::If: name = "TokenType::If"; break;
         case TokenType::While: name = "TokenType::While"; break;
         case TokenType::Print: name = "TokenType::Print"; break;
+        case TokenType::PrintLn: name = "TokenType::PrintLn"; break;
         case TokenType::Return: name = "TokenType::Return"; break;
         case TokenType::This: name = "TokenType::This"; break;
         case TokenType::True: name = "TokenType::True"; break;
