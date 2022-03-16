@@ -1,7 +1,7 @@
 #include <charconv>
 #include <chrono>
 
-#include "compiler.h"
+#include "compiler.hpp"
 
 using namespace Grace::Scanner;
 using namespace Grace::VM;
@@ -22,13 +22,13 @@ void Grace::Compiler::Compile(std::string&& code, bool verbose)
   if (compiler.HadError()) {
     fmt::print(stderr, "Terminating process due to compilation errors.\n");
   } else {
-  if (verbose) {
-    auto end = steady_clock::now();
-    auto duration = duration_cast<microseconds>(end - start).count();
-    fmt::print("Compilation succeeded in {} μs.\n", duration);
+    if (verbose) {
+      auto end = steady_clock::now();
+      auto duration = duration_cast<microseconds>(end - start).count();
+      fmt::print("Compilation succeeded in {} μs.\n", duration);
+    }
+    compiler.Finalise();
   }
-  compiler.Finalise();
-}
 }
 
 using namespace Grace::Compiler::Detail;
@@ -319,39 +319,29 @@ void Compiler::Call()
 void Compiler::Primary()
 {
   if (Match(TokenType::True)) {
-    m_Vm.PushOp(Ops::LoadConstant, m_Current.value().GetLine());
+    m_Vm.PushOp(Ops::LoadConstant, m_Previous.value().GetLine());
     m_Vm.PushConstant(true);
   } else if (Match(TokenType::False)) {
-    m_Vm.PushOp(Ops::LoadConstant, m_Current.value().GetLine());
+    m_Vm.PushOp(Ops::LoadConstant, m_Previous.value().GetLine());
     m_Vm.PushConstant(false);
   } else if (Match(TokenType::This)) {
     
   } else if (Match(TokenType::Integer)) {
-    int value;
-    const char* data = m_Previous.value().GetData();
-    auto length = m_Previous.value().GetLength();
-    auto [ptr, ec] { std::from_chars(data, data + length, value) };
-    if (ec == std::errc()) {
-      m_Vm.PushOp(Ops::LoadConstant, m_Current.value().GetLine());
+    try {
+      std::string str(m_Previous.value().GetText());
+      auto value = std::stoi(str);
+      m_Vm.PushOp(Ops::LoadConstant, m_Previous.value().GetLine());
       m_Vm.PushConstant(value);
-    } else {
-      switch (ec) {
-        case std::errc::invalid_argument:
-          ErrorAtPrevious(fmt::format("Token could not be parsed as an integer, failed at {}", *ptr));
-          break;
-        case std::errc::result_out_of_range:
-          ErrorAtPrevious("Integer out of range.");
-          break;
-        default:
-          ErrorAtPrevious(fmt::format("Unexpected error occurred at {}", *ptr));
-          break;
-      }
+    } catch (const std::invalid_argument& e) {
+      ErrorAtPrevious(fmt::format("Token could not be parsed as an int: {}", e.what()));
+    } catch (const std::out_of_range&) {
+      ErrorAtPrevious("Int out of range.");
     }
   } else if (Match(TokenType::Float)) {
     try {
       std::string str(m_Previous.value().GetText());
       auto value = std::stof(str);
-      m_Vm.PushOp(Ops::LoadConstant, m_Current.value().GetLine());
+      m_Vm.PushOp(Ops::LoadConstant, m_Previous.value().GetLine());
       m_Vm.PushConstant(value);
     } catch (const std::invalid_argument& e) {
       ErrorAtPrevious(fmt::format("Token could not be parsed as an float: {}", e.what()));
@@ -360,6 +350,8 @@ void Compiler::Primary()
     }
   } else if (Match(TokenType::String)) {
 
+  } else if (Match(TokenType::Char)) {
+    Char();
   } else if (Match(TokenType::Identifier)) {
 
   } else {
@@ -367,12 +359,62 @@ void Compiler::Primary()
   }
 }
 
+static char s_EscapeChars[] = {'t', 'b', 'n', 'r', 'f', '\'', '"', '\\'};
+static std::unordered_map<char, char> s_EscapeCharsLookup = {
+  std::make_pair('t', '\t'),
+  std::make_pair('b', '\b'),
+  std::make_pair('r', '\r'),
+  std::make_pair('n', '\n'),
+  std::make_pair('f', '\f'),
+  std::make_pair('\'', '\''),
+  std::make_pair('"', '\"'),
+  std::make_pair('\\', '\\'),
+};
+
+static bool IsEscapeChar(char c, char& result) 
+{
+  for (auto i = 0; i < sizeof(s_EscapeChars) / sizeof(char); i++) {
+    if (c == s_EscapeChars[i]) {
+      return true;
+    }
+  }
+  return false;
+}
+
 bool Compiler::IsPrimaryToken()
 {
   auto t = m_Current.value().GetType();
   return t == TokenType::True || t == TokenType::False || t == TokenType::This
     || t == TokenType::Integer || t == TokenType::Float || t == TokenType::String
-    || t == TokenType::Identifier || t == TokenType::LeftParen;
+    || t == TokenType::Char || t == TokenType::Identifier || t == TokenType::LeftParen;
+}
+
+void Compiler::Char()
+{
+  auto text = m_Previous.value().GetText();
+  auto trimmed = text.substr(1, text.length() - 2);
+  switch (trimmed.length()) {
+    case 2:
+      if (trimmed[0] != '\\') {
+        ErrorAtPrevious("`char` must contain a single character or escape character");
+        return;
+      }
+      char c;
+      if (IsEscapeChar(trimmed[1], c)) {
+        m_Vm.PushOp(Ops::LoadConstant, m_Previous.value().GetLine());
+        m_Vm.PushConstant(c);
+      } else {
+        ErrorAtPrevious("Unrecognised escape character");
+      }
+      break;
+    case 1:
+      m_Vm.PushOp(Ops::LoadConstant, m_Previous.value().GetLine());
+      m_Vm.PushConstant(static_cast<char>(trimmed[0]));
+      break;
+    default:
+      ErrorAtPrevious("`char` must contain a single character or escape character");
+      break;
+  }
 }
 
 void Compiler::ErrorAtCurrent(const std::string& message)

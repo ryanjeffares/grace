@@ -1,7 +1,21 @@
-#include "vm.h"
-#include "vm_binary_op_handlers.h"
+#include "vm.hpp"
+#include "vm_binary_op_handlers.hpp"
 
 using namespace Grace::VM;
+
+struct Result 
+{
+  VM::Constant c1, c2;
+};
+
+static inline Result PopLastTwo(std::vector<VM::Constant>& stack)
+{
+  auto c1 = stack[stack.size() - 2];
+  auto c2 = stack[stack.size() - 1];
+  stack.pop_back();
+  stack.pop_back();
+  return {c1, c2};
+}
 
 InterpretResult VM::Run()
 {
@@ -11,149 +25,108 @@ InterpretResult VM::Run()
     auto [op, line] = m_OpList[m_OpCurrent++];
     switch (op) {
       case Ops::Add: {
-        auto c1 = constantsStack[constantsStack.size() - 2];
-        auto c2 = constantsStack[constantsStack.size() - 1];
-        constantsStack.pop_back();
-        constantsStack.pop_back();
-        if (c1.m_Type == Constant::Type::Bool || c2.m_Type == Constant::Type::Bool) {
-          RuntimeError("Cannot use type `bool` in binary expression", InterpretError::InvalidOperand, line);
-          return InterpretResult::RuntimeError; 
+        auto [c1, c2] = PopLastTwo(constantsStack);
+        if (!HandleAddition(c1, c2, constantsStack)) {
+          RuntimeError(fmt::format("cannot compare `{}` with `{}`", c1.GetType(), c2.GetType()), 
+              InterpretError::InvalidOperand, line);
+          return InterpretResult::RuntimeError;
         }
-        HandleAddition(c1, c2, constantsStack);
         break;
       }
       case Ops::Subtract: {
-        auto c1 = constantsStack[constantsStack.size() - 2];
-        auto c2 = constantsStack[constantsStack.size() - 1];
-        constantsStack.pop_back();
-        constantsStack.pop_back();
-        if (c1.m_Type == Constant::Type::Bool || c2.m_Type == Constant::Type::Bool) {
-          RuntimeError("Cannot use type `bool` in binary expression", InterpretError::InvalidOperand, line);
-          return InterpretResult::RuntimeError; 
+        auto [c1, c2] = PopLastTwo(constantsStack);
+        if (!HandleSubtraction(c1, c2, constantsStack)) {
+          RuntimeError(fmt::format("cannot compare `{}` with `{}`", c1.GetType(), c2.GetType()), 
+              InterpretError::InvalidOperand, line);
+          return InterpretResult::RuntimeError;
         }
-        HandleSubtraction(c1, c2, constantsStack);
         break;
       }
-
       case Ops::Multiply: {
-        auto c1 = constantsStack[constantsStack.size() - 2];
-        auto c2 = constantsStack[constantsStack.size() - 1];
-        constantsStack.pop_back();
-        constantsStack.pop_back();
-        if (c1.m_Type == Constant::Type::Bool || c2.m_Type == Constant::Type::Bool) {
-          RuntimeError("Cannot use type `bool` in binary expression", InterpretError::InvalidOperand, line);
-          return InterpretResult::RuntimeError; 
+        auto [c1, c2] = PopLastTwo(constantsStack);
+        if (!HandleMultiplication(c1, c2, constantsStack)) {
+          RuntimeError(fmt::format("cannot compare `{}` with `{}`", c1.GetType(), c2.GetType()), 
+              InterpretError::InvalidOperand, line);
+          return InterpretResult::RuntimeError;
         }
-        HandleMultiplication(c1, c2, constantsStack);
         break;
       }
       case Ops::Divide: {
-        auto c1 = constantsStack[constantsStack.size() - 2];
-        auto c2 = constantsStack[constantsStack.size() - 1];
-        constantsStack.pop_back();
-        constantsStack.pop_back();
-        if (c1.m_Type == Constant::Type::Bool || c2.m_Type == Constant::Type::Bool) {
-          RuntimeError("Cannot use type `bool` in binary expression", InterpretError::InvalidOperand, line);
-          return InterpretResult::RuntimeError; 
+        auto [c1, c2] = PopLastTwo(constantsStack);
+        if (!HandleDivision(c1, c2, constantsStack)) {
+          RuntimeError(fmt::format("cannot compare `{}` with `{}`", c1.GetType(), c2.GetType()), 
+              InterpretError::InvalidOperand, line);
+          return InterpretResult::RuntimeError;
         }
-        HandleDivision(c1, c2, constantsStack);
         break;
       }
       case Ops::And: {
-        auto c1 = constantsStack[constantsStack.size() - 2];
-        auto c2 = constantsStack[constantsStack.size() - 1];
-        constantsStack.pop_back();
-        constantsStack.pop_back();
-        if (c1.m_Type != Constant::Type::Bool || c2.m_Type != Constant::Type::Bool) {
+        auto [c1, c2] = PopLastTwo(constantsStack);
+        if (c1.GetType() != Constant::Type::Bool || c2.GetType() != Constant::Type::Bool) {
           RuntimeError("`and` can only be used with boolean operands", InterpretError::InvalidOperand, line);
           return InterpretResult::RuntimeError; 
         }
-        Constant c(Constant::Type::Bool);
-        c.as.m_Bool = c1.as.m_Bool && c2.as.m_Bool;
-        constantsStack.push_back(c);
+        constantsStack.emplace_back(c1.Get<bool>() == c2.Get<bool>());
         break;
       }
       case Ops::Or: {
-        auto c1 = constantsStack[constantsStack.size() - 2];
-        auto c2 = constantsStack[constantsStack.size() - 1];
-        constantsStack.pop_back();
-        constantsStack.pop_back();
-        if (c1.m_Type != Constant::Type::Bool || c2.m_Type != Constant::Type::Bool) {
+        auto [c1, c2] = PopLastTwo(constantsStack);
+        if (c1.GetType() != Constant::Type::Bool || c2.GetType() != Constant::Type::Bool) {
           RuntimeError("`or` can only be used with boolean operands", InterpretError::InvalidOperand, line);
           return InterpretResult::RuntimeError; 
         }
-        Constant c(Constant::Type::Bool);
-        c.as.m_Bool = c1.as.m_Bool || c2.as.m_Bool;
-        constantsStack.push_back(c);
+        constantsStack.emplace_back(c1.Get<bool>() || c2.Get<bool>());
         break;
       }
       case Ops::Equal: {
-        auto c1 = constantsStack[constantsStack.size() - 2];
-        auto c2 = constantsStack[constantsStack.size() - 1];
-        constantsStack.pop_back();
-        constantsStack.pop_back();
+        auto [c1, c2] = PopLastTwo(constantsStack);
         if (!HandleEquality(c1, c2, constantsStack, true)) {
-          RuntimeError(fmt::format("Invalid operands: cannot compare `{}` with `{}`", c1.m_Type, c2.m_Type), 
+          RuntimeError(fmt::format("cannot compare `{}` with `{}`", c1.GetType(), c2.GetType()), 
               InterpretError::InvalidOperand, line);
           return InterpretResult::RuntimeError;
         }
         break;
       }
       case Ops::NotEqual: {
-        auto c1 = constantsStack[constantsStack.size() - 2];
-        auto c2 = constantsStack[constantsStack.size() - 1];
-        constantsStack.pop_back();
-        constantsStack.pop_back();
+        auto [c1, c2] = PopLastTwo(constantsStack);
         if (!HandleEquality(c1, c2, constantsStack, false)) {
-          RuntimeError(fmt::format("Invalid operands: cannot compare `{}` with `{}`", c1.m_Type, c2.m_Type), 
+          RuntimeError(fmt::format("cannot compare `{}` with `{}`", c1.GetType(), c2.GetType()), 
               InterpretError::InvalidOperand, line);
           return InterpretResult::RuntimeError;
         }
         break;
       }
       case Ops::Greater: {
-        auto c1 = constantsStack[constantsStack.size() - 2];
-        auto c2 = constantsStack[constantsStack.size() - 1];
-        constantsStack.pop_back();
-        constantsStack.pop_back();
+        auto [c1, c2] = PopLastTwo(constantsStack);
         if (!HandleGreaterThan(c1, c2, constantsStack)) {
-          RuntimeError(fmt::format("Invalid operands: cannot compare `{}` with `{}`", c1.m_Type, c2.m_Type), 
+          RuntimeError(fmt::format("cannot compare `{}` with `{}`", c1.GetType(), c2.GetType()), 
               InterpretError::InvalidOperand, line);
           return InterpretResult::RuntimeError;
         }
         break;
       }
       case Ops::GreaterEqual: {
-        auto c1 = constantsStack[constantsStack.size() - 2];
-        auto c2 = constantsStack[constantsStack.size() - 1];
-        constantsStack.pop_back();
-        constantsStack.pop_back();
-        if (!HandleLessThan(c2, c1, constantsStack)) {
-          RuntimeError(fmt::format("Invalid operands: cannot compare `{}` with `{}`", c1.m_Type, c2.m_Type), 
+        auto [c1, c2] = PopLastTwo(constantsStack);
+        if (!HandleGreaterEqual(c1, c2, constantsStack)) {
+          RuntimeError(fmt::format("cannot compare `{}` with `{}`", c1.GetType(), c2.GetType()), 
               InterpretError::InvalidOperand, line);
           return InterpretResult::RuntimeError;
         }
         break;
       }
       case Ops::Less: {
-        auto c1 = constantsStack[constantsStack.size() - 2];
-        auto c2 = constantsStack[constantsStack.size() - 1];
-        constantsStack.pop_back();
-        constantsStack.pop_back();
+        auto [c1, c2] = PopLastTwo(constantsStack);
         if (!HandleLessThan(c1, c2, constantsStack)) {
-          RuntimeError(fmt::format("Invalid operands: cannot compare `{}` with `{}`", c1.m_Type, c2.m_Type), 
+          RuntimeError(fmt::format("cannot compare `{}` with `{}`", c1.GetType(), c2.GetType()), 
               InterpretError::InvalidOperand, line);
           return InterpretResult::RuntimeError;
         }
         break;
       }
       case Ops::LessEqual: {
-        auto c1 = constantsStack[constantsStack.size() - 2];
-        auto c2 = constantsStack[constantsStack.size() - 1];
-        constantsStack.pop_back();
-        constantsStack.pop_back();
-        if (!HandleGreaterThan(c2, c1, constantsStack)) {
-          RuntimeError(fmt::format("Invalid operands: cannot compare `{}` with `{}`", c1.m_Type, c2.m_Type), 
+        auto [c1, c2] = PopLastTwo(constantsStack);
+        if (!HandleLessEqual(c1, c2, constantsStack)) {
+          RuntimeError(fmt::format("cannot compare `{}` with `{}`", c1.GetType(), c2.GetType()), 
               InterpretError::InvalidOperand, line);
           return InterpretResult::RuntimeError;
         }

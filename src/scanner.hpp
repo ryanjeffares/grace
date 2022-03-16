@@ -14,6 +14,7 @@ namespace Grace
     enum class TokenType
     {
       // Lexical tokens
+      Char,
       EndOfFile,
       Error,
       Float,
@@ -108,6 +109,7 @@ namespace Grace
         Token Number();
         Token MakeToken(TokenType) const;
         Token MakeString();
+        Token MakeChar();
 
       private:
 
@@ -128,6 +130,7 @@ struct fmt::formatter<Grace::Scanner::TokenType> : fmt::formatter<std::string_vi
 
       std::string_view name = "unknown";
       switch (type) {
+        case TokenType::Char: name = "TokenType::Char"; break;
         case TokenType::EndOfFile: name = "TokenType::EndOfFile"; break;
         case TokenType::Error: name = "TokenType::Error"; break;
         case TokenType::Float: name = "TokenType::Float"; break;

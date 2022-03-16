@@ -1,7 +1,14 @@
-print(10 != 1 and false);        // true 
-print(1 < 2.5);         // true
-print(true != true);    // false 
-print(true != false);   // true
-print(false == false);  // true
-print(2 > 5);           // false
-print(1 <= 21);         // true
+print(true and true);
+print(true or false);
+print(false and false);
+print(1 == 2);
+print(10 >= 10);
+print(10.0 / 3.0);
+print(1 / 2.0);
+print(1.0 / 2);
+
+print('a');
+print('a' + 'b' - 'b');
+print('0' < '9');
+print('\'');
+print(1 + 'x');

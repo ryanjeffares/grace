@@ -1,4 +1,4 @@
-#include "scanner.h"
+#include "scanner.hpp"
 
 using namespace Grace::Scanner;
 
@@ -98,6 +98,8 @@ Token Scanner::ScanToken()
       return MakeToken(MatchChar('=') ? TokenType::GreaterEqual : TokenType::GreaterThan);
     case '"':
       return MakeString();
+    case '\'':
+      return MakeChar();
     default:
       return ErrorToken(fmt::format("Unexpected character: {}", c));
   }
@@ -234,3 +236,25 @@ Token Scanner::MakeString()
   return MakeToken(TokenType::String);
 }
 
+// not doing error checking here to do better error reporting in the compiler
+Token Scanner::MakeChar()
+{
+  while (!IsAtEnd()) {
+    if (Peek() == '\'') {
+      if (PeekNext() != '\'') {
+        break;
+      }
+    }
+    if (Peek() == '\n') {
+      m_Line++;
+    }
+    Advance();
+  }
+
+  if (IsAtEnd()) {
+    return ErrorToken("Unterminated char");
+  }
+
+  Advance();
+  return MakeToken(TokenType::Char);
+}

@@ -1,7 +1,10 @@
 #pragma once
 
 #include <cstdint>
+#include <exception>
 #include <vector>
+#include <typeinfo>
+#include <type_traits>
 
 #include <fmt/color.h>
 #include <fmt/core.h>
@@ -64,25 +67,10 @@ namespace Grace
           }
         }
 
-        inline void PushConstant(int value)
+        template<typename T>
+        constexpr inline void PushConstant(T value)
         {
-          Constant c(Constant::Type::Int);
-          c.as.m_Int = value;
-          m_ConstantList.push_back(c);
-        }
-
-        inline void PushConstant(float value)
-        {
-          Constant c(Constant::Type::Float);
-          c.as.m_Float = value;
-          m_ConstantList.push_back(c);
-        }
-
-        inline void PushConstant(bool value)
-        {
-          Constant c(Constant::Type::Bool);
-          c.as.m_Bool = value;
-          m_ConstantList.push_back(c);
+          m_ConstantList.emplace_back(value);
         }
 
         InterpretResult Run();
@@ -91,37 +79,78 @@ namespace Grace
         {
           enum class Type 
           {
-            Int,
-            Float,
             Bool,
+            Char,
+            Float,
+            Int,
           };
 
-          union Data
+          union 
           {
-            int m_Int;
-            float m_Float;
             bool m_Bool;
-          } as;
+            char m_Char;
+            float m_Float;
+            int m_Int;
+          } m_Data;
 
-          Type m_Type;
 
-          explicit Constant(Type type) : m_Type(type)
+          template<typename T>
+          explicit constexpr Constant(T value)
           {
-
+            static_assert(std::is_same<T, int>::value || std::is_same<T, float>::value
+                || std::is_same<T, bool>::value || std::is_same<T, char>::value,
+                "Invalid type for Constant<T>");
+            if constexpr (std::is_same<T, int>::value) {
+              m_Type = Type::Int;
+              m_Data.m_Int = value;
+            } else if constexpr (std::is_same<T, float>::value) {
+              m_Type = Type::Float;
+              m_Data.m_Float = value;
+            } else if constexpr (std::is_same<T, bool>::value) {
+              m_Type = Type::Bool;
+              m_Data.m_Bool = value;
+            } else if constexpr (std::is_same<T, char>::value) {
+              m_Type = Type::Char;
+              m_Data.m_Char = value;
+            }
+          }
+          
+          template<typename T>
+          constexpr Constant& operator=(const T& value)
+          {
+            static_assert(std::is_same<T, int>::value || std::is_same<T, float>::value
+                || std::is_same<T, bool>::value || std::is_same<T, char>::value,
+                "Invalid type for Constant<T>::operator=");
+            if constexpr (std::is_same<T, int>::value) {
+              m_Type = Type::Int;
+              m_Data.m_Int = value;
+            } else if constexpr (std::is_same<T, float>::value) {
+              m_Type = Type::Float;
+              m_Data.m_Float = value;
+            } else if constexpr (std::is_same<T, bool>::value) {
+              m_Type = Type::Bool;
+              m_Data.m_Bool = value;
+            } else if constexpr (std::is_same<T, char>::value) {
+              m_Type = Type::Char;
+              m_Data.m_Char = value;
+            }
+            return *this;
           }
 
           void Print() const
           {
-            switch (m_Type)
-            {
-              case Type::Int:
-                fmt::print("{}\n", as.m_Int);
+            switch (m_Type) {
+              case Type::Bool:
+                fmt::print("{}\n", m_Data.m_Bool);
+                break;
+              case Type::Char:
+                fmt::print("{}\n", m_Data.m_Char);
                 break;
               case Type::Float:
-                fmt::print("{}\n", as.m_Float);
+                fmt::print("{}\n", m_Data.m_Float);
                 break;
-              case Type::Bool:
-                fmt::print("{}\n", as.m_Bool);
+              case Type::Int:
+                fmt::print("{}\n", m_Data.m_Int);
                 break;
             }
           }
@@ -130,16 +159,44 @@ namespace Grace
           {
             switch (m_Type)
             {
-              case Type::Int:
-                return fmt::format("{}", as.m_Int);
-              case Type::Float:
-                return fmt::format("{}", as.m_Float);
               case Type::Bool:
-                return fmt::format("{}", as.m_Bool);
+                return fmt::format("{}", m_Data.m_Bool);
+              case Type::Char:
+                return fmt::format("{}", m_Data.m_Char);
+              case Type::Float:
+                return fmt::format("{}", m_Data.m_Float);
+              case Type::Int:
+                return fmt::format("{}", m_Data.m_Int);
               default:
                 return "Invalid type";
             }
           }
+
+          template<typename T> 
+          constexpr inline T Get() const
+          {
+            static_assert(std::is_same<T, int>::value || std::is_same<T, float>::value
+                || std::is_same<T, bool>::value || std::is_same<T, char>::value,
+                "Invalid type for Constant<T>::Get<T>()");
+            if constexpr (std::is_same<T, int>::value) {
+              return m_Data.m_Int;
+            } else if constexpr (std::is_same<T, float>::value) {
+              return m_Data.m_Float;
+            } else if constexpr (std::is_same<T, bool>::value) {
+              return m_Data.m_Bool;
+            } else if constexpr (std::is_same<T, char>::value) {
+              return m_Data.m_Char;
+            }
+          }
+
+          constexpr inline Type GetType() const
+          {
+            return m_Type;
+          }
+
+          private:
+
+            Type m_Type;
         };
 
       private:
@@ -223,6 +280,7 @@ struct fmt::formatter<Grace::VM::VM::Constant::Type> : fmt::formatter<std::strin
     std::string_view name = "unknown";
     switch (type) {
       case VM::Constant::Type::Bool: name = "Type::Bool"; break;
+      case VM::Constant::Type::Char: name = "Type::Char"; break;
       case VM::Constant::Type::Float: name = "Type::Float"; break;
       case VM::Constant::Type::Int: name = "Type::Int"; break;
     }

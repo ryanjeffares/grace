@@ -6,7 +6,7 @@
 #include <fmt/core.h> 
 #include <fmt/color.h>
 
-#include "compiler.h"
+#include "compiler.hpp"
 
 static void error(const std::string& message)
 {

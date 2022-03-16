@@ -6,8 +6,8 @@
 #include <fmt/core.h>
 #include <fmt/color.h>
 
-#include "scanner.h"
-#include "vm.h"
+#include "scanner.hpp"
+#include "vm.hpp"
 
 namespace Grace
 {
@@ -134,6 +134,8 @@ namespace Grace
           void Primary();
 
           bool IsPrimaryToken();
+
+          void Char();
 
           void ErrorAtCurrent(const std::string& message);
           void ErrorAtPrevious(const std::string& message);
