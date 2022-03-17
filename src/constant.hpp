@@ -9,8 +9,9 @@ namespace Grace
 {
   namespace VM
   {
-    struct Constant 
+    class Constant final 
     {
+    public:
       enum class Type : std::uint8_t 
       {
         Bool,
@@ -148,9 +149,9 @@ namespace Grace
         return m_Type;
       }
 
-      private:
+    private:
 
-        Type m_Type;
+      Type m_Type;
     };
   }
 }

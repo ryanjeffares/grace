@@ -2,12 +2,12 @@
 #include <filesystem>
 #include <fstream>
 #include <sstream>
-
-#include "grace.hpp"
+#include <iostream>
 
 #include "../include/fmt/core.h" 
 #include "../include/fmt/color.h"
 
+#include "grace.hpp"
 #include "compiler.hpp"
 
 static void error(const std::string& message)
@@ -44,17 +44,22 @@ int main(int argc, const char* argv[])
     case 2:
       std::filesystem::path inPath(args[1]);
       if (inPath.extension() != ".gr") {
-        error("provided file was not a `.gr` file.");
+        error(fmt::format("provided file `{}` was not a `.gr` file.", inPath.string()));
         return 1;
       }
+      if (!std::filesystem::exists(inPath)) {
+        error(fmt::format("provided file `{}` does not exist", inPath.string()));
+        return 1; 
+      }
 
-      std::stringstream inStream;
       try {
         std::ifstream inFile(args[1]);
+        std::stringstream inStream;
         inStream << inFile.rdbuf();
         Grace::Compiler::Compile(std::move(inPath.filename()), std::move(inStream.str()), verbose);
       } catch (const std::exception& e) {
-        fmt::print(stderr, "{}\n", e.what());
+        error(e.what());
+        return 1;
       }
       break;
   }

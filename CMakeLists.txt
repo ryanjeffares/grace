@@ -6,4 +6,4 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 add_compile_definitions(FMT_HEADER_ONLY)
 
-add_executable(grace src/main.cpp src/compiler.cpp src/scanner.cpp src/vm.cpp src/constant.cpp)
+add_executable(grace src/main.cpp src/compiler.cpp src/scanner.cpp src/vm.cpp src/constant.cpp src/objects/grace_string.cpp)
