@@ -17,7 +17,7 @@ namespace Grace
       Char,
       EndOfFile,
       Error,
-      Float,
+      Double,
       Identifier,
       Integer,
       String,
@@ -33,6 +33,7 @@ namespace Grace
       Plus,
       Slash,
       Star,
+      StarStar,
       Bang,
       BangEqual,
       Equal,
@@ -69,13 +70,18 @@ namespace Grace
         Token(TokenType, 
             std::size_t start, 
             std::size_t length, 
-            std::size_t line, 
+            int line, 
+            int column,
             const std::string& code
         );
 
+        Token(TokenType, int line, int column, const std::string& errorMessage);
+
         std::string ToString() const;
         constexpr inline TokenType GetType() const { return m_Type; }
-        constexpr inline std::size_t GetLine() const { return m_Line; }
+        constexpr inline int GetLine() const { return m_Line; }
+        constexpr inline int GetColumn() const { return m_Column; }
+        inline const std::string& GetErrorMessage() const { return m_ErrorMessage; }
         constexpr inline std::size_t GetLength() const { return m_Length; }
         inline const std::string_view& GetText() const { return m_Text; }
         constexpr const char* GetData() const { return m_Text.data(); }
@@ -83,8 +89,10 @@ namespace Grace
       private:
 
         TokenType m_Type;
-        std::size_t m_Start, m_Length, m_Line;
+        std::size_t m_Start, m_Length;
+        int m_Line, m_Column;
         std::string_view m_Text;
+        std::string m_ErrorMessage;
     };
 
     class Scanner 
@@ -94,6 +102,7 @@ namespace Grace
         Scanner(std::string&& code);
 
         Token ScanToken();
+        std::string GetCodeAtLine(int line) const;
 
       private:
 
@@ -116,7 +125,7 @@ namespace Grace
 
         std::string m_CodeString;
         std::size_t m_Start = 0, m_Current = 0;
-        int m_Line = 1;
+        int m_Line = 1, m_Column = 1;
     };
   } // namespace scanner
 } // namespace Grace
@@ -134,7 +143,7 @@ struct fmt::formatter<Grace::Scanner::TokenType> : fmt::formatter<std::string_vi
         case TokenType::Char: name = "TokenType::Char"; break;
         case TokenType::EndOfFile: name = "TokenType::EndOfFile"; break;
         case TokenType::Error: name = "TokenType::Error"; break;
-        case TokenType::Float: name = "TokenType::Float"; break;
+        case TokenType::Double: name = "TokenType::Float"; break;
         case TokenType::Identifier: name = "TokenType::Identifier"; break;
         case TokenType::Integer: name = "TokenType::Integer"; break;
         case TokenType::String: name = "TokenType::String"; break;
@@ -148,6 +157,7 @@ struct fmt::formatter<Grace::Scanner::TokenType> : fmt::formatter<std::string_vi
         case TokenType::Plus: name = "TokenType::Plus"; break;
         case TokenType::Slash: name = "TokenType::Slash"; break;
         case TokenType::Star: name = "TokenType::Star"; break;
+        case TokenType::StarStar: name = "TokenType::StarStar"; break;
         case TokenType::Bang: name = "TokenType::Bang"; break;
         case TokenType::BangEqual: name = "TokenType::BangEqual"; break;
         case TokenType::Equal: name = "TokenType::Equal"; break;

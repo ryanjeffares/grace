@@ -7,10 +7,10 @@ using namespace Grace::VM;
 
 struct Result 
 {
-  VM::Constant c1, c2;
+  Constant c1, c2;
 };
 
-static inline Result PopLastTwo(std::vector<VM::Constant>& stack)
+static inline Result PopLastTwo(std::vector<Constant>& stack)
 {
   auto c1 = stack[stack.size() - 2];
   auto c2 = stack[stack.size() - 1];
@@ -29,7 +29,7 @@ InterpretResult VM::Run()
       case Ops::Add: {
         auto [c1, c2] = PopLastTwo(constantsStack);
         if (!HandleAddition(c1, c2, constantsStack)) {
-          RuntimeError(fmt::format("cannot compare `{}` with `{}`", c1.GetType(), c2.GetType()), 
+          RuntimeError(fmt::format("cannot add `{}` to `{}`", c2.GetType(), c1.GetType()), 
               InterpretError::InvalidOperand, line);
           return InterpretResult::RuntimeError;
         }
@@ -38,7 +38,7 @@ InterpretResult VM::Run()
       case Ops::Subtract: {
         auto [c1, c2] = PopLastTwo(constantsStack);
         if (!HandleSubtraction(c1, c2, constantsStack)) {
-          RuntimeError(fmt::format("cannot compare `{}` with `{}`", c1.GetType(), c2.GetType()), 
+          RuntimeError(fmt::format("cannot subtract `{}` from `{}`", c2.GetType(), c1.GetType()), 
               InterpretError::InvalidOperand, line);
           return InterpretResult::RuntimeError;
         }
@@ -47,7 +47,7 @@ InterpretResult VM::Run()
       case Ops::Multiply: {
         auto [c1, c2] = PopLastTwo(constantsStack);
         if (!HandleMultiplication(c1, c2, constantsStack)) {
-          RuntimeError(fmt::format("cannot compare `{}` with `{}`", c1.GetType(), c2.GetType()), 
+          RuntimeError(fmt::format("cannot multiply `{}` by `{}`", c1.GetType(), c2.GetType()), 
               InterpretError::InvalidOperand, line);
           return InterpretResult::RuntimeError;
         }
@@ -56,7 +56,7 @@ InterpretResult VM::Run()
       case Ops::Divide: {
         auto [c1, c2] = PopLastTwo(constantsStack);
         if (!HandleDivision(c1, c2, constantsStack)) {
-          RuntimeError(fmt::format("cannot compare `{}` with `{}`", c1.GetType(), c2.GetType()), 
+          RuntimeError(fmt::format("cannot divide `{}` by `{}`", c1.GetType(), c2.GetType()), 
               InterpretError::InvalidOperand, line);
           return InterpretResult::RuntimeError;
         }
@@ -140,6 +140,15 @@ InterpretResult VM::Run()
       case Ops::Pop:
         constantsStack.pop_back();
         break;
+      case Ops::Pow: {
+        auto [c1, c2] = PopLastTwo(constantsStack);
+        if (!HandlePower(c1, c2, constantsStack)) {
+          RuntimeError(fmt::format("cannot power `{}` with `{}`", c1.GetType(), c2.GetType()),
+            InterpretError::InvalidOperand, line);
+          return InterpretResult::RuntimeError;
+        }
+        break;
+      }
       case Ops::Print:
         constantsStack.back().Print();
         break;
@@ -172,5 +181,5 @@ InterpretResult VM::Run()
 void VM::RuntimeError(const std::string& message, InterpretError errorType, int line)
 {
   fmt::print(stderr, fmt::fg(fmt::color::red) | fmt::emphasis::bold, "ERROR: ");
-  fmt::print(stderr, "[line {}] {}: {}. Stopping execution\n", line, errorType, message);
+  fmt::print(stderr, "[line {}] {}: {}. Stopping execution.\n", line, errorType, message);
 }

@@ -20,7 +20,7 @@ namespace Grace
      *  @param code      The code to be compiled.
      *  @param verbose   Verbose mode (display compilation time).
      */
-    void Compile(std::string&& code, bool verbose);
+    void Compile(std::string&& fileName, std::string&& code, bool verbose);
 
     /*
      *  The main Compiler class.   
@@ -35,7 +35,7 @@ namespace Grace
          *
          *  @param code   The code to be compiled.
          */
-        explicit Compiler(std::string&& code);
+        explicit Compiler(std::string&& fileName, std::string&& code);
         ~Compiler() = default;
 
         Compiler(const Compiler&) = delete;
@@ -135,6 +135,7 @@ namespace Grace
         bool IsPrimaryToken();
 
         void Char();
+        void String();
 
         void ErrorAtCurrent(const std::string& message);
         void ErrorAtPrevious(const std::string& message);
@@ -146,6 +147,7 @@ namespace Grace
         VM::VM m_Vm;
 
         std::optional<Scanner::Token> m_Current, m_Previous;
+        std::string m_CurrentFileName;
 
         bool m_PanicMode = false, m_HadError = false;
     };

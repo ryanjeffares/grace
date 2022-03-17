@@ -52,10 +52,10 @@ int main(int argc, const char* argv[])
       try {
         std::ifstream inFile(args[1]);
         inStream << inFile.rdbuf();
+        Grace::Compiler::Compile(std::move(inPath.filename()), std::move(inStream.str()), verbose);
       } catch (const std::exception& e) {
         fmt::print(stderr, "{}\n", e.what());
       }
-      Grace::Compiler::Compile(std::move(inStream.str()), verbose);
       break;
   }
 }

@@ -13,7 +13,6 @@ static std::unordered_map<char, TokenType> s_SymbolLookup =
   std::make_pair('-', TokenType::Minus),
   std::make_pair('+', TokenType::Plus),
   std::make_pair('/', TokenType::Slash),
-  std::make_pair('*', TokenType::Star),
 };
 
 static std::unordered_map<std::string, TokenType> s_KeywordLookup = 
@@ -38,7 +37,7 @@ static std::unordered_map<std::string, TokenType> s_KeywordLookup =
 
 static Token EndOfFileToken()
 {
-  return Token(TokenType::EndOfFile, 0, 0, 0, "");
+  return Token(TokenType::EndOfFile, 0, 0, 0, 0, "");
 }
 
 static bool IsIdentifierChar(char c)
@@ -49,11 +48,18 @@ static bool IsIdentifierChar(char c)
 Token::Token(TokenType type,
   std::size_t start, 
   std::size_t length, 
-  std::size_t line, 
+  int line, 
+  int column,
   const std::string& code
 ) : m_Type(type), m_Start(start), m_Length(length), m_Line(line), 
-  m_Text(code.c_str() + start, length)
+  m_Column(column), m_Text(code.c_str() + start, length)
 {
+}
+
+Token::Token(TokenType type, int line, int column, const std::string& errorMessage)
+  : m_Type(type), m_Start(0), m_Length(1), m_Line(line), m_Column(column), m_ErrorMessage(errorMessage)
+{
+
 }
 
 std::string Token::ToString() const
@@ -97,6 +103,8 @@ Token Scanner::ScanToken()
       return MakeToken(MatchChar('=') ? TokenType::LessEqual : TokenType::LessThan);
     case '>':
       return MakeToken(MatchChar('=') ? TokenType::GreaterEqual : TokenType::GreaterThan);
+    case '*':
+      return MakeToken(MatchChar('*') ? TokenType::StarStar: TokenType::Star);
     case '"':
       return MakeString();
     case '\'':
@@ -104,6 +112,21 @@ Token Scanner::ScanToken()
     default:
       return ErrorToken(fmt::format("Unexpected character: {}", c));
   }
+}
+
+std::string Scanner::GetCodeAtLine(int line) const
+{
+  int curr = 1;
+  int strIndex = 0;
+  while (curr < line) {
+    if (m_CodeString[strIndex++] == '\n') {
+      curr++;
+    }
+  }
+
+  std::string codeSubStr = m_CodeString.substr(strIndex, m_CodeString.length() - strIndex);
+  codeSubStr = codeSubStr.substr(0, codeSubStr.find_first_of('\n'));
+  return codeSubStr;
 }
 
 void Scanner::SkipWhitespace()
@@ -114,13 +137,15 @@ void Scanner::SkipWhitespace()
     }
 
     switch (Peek()) {
+      case '\t':
+        m_Column += 8;
       case ' ':
       case '\r':
-      case '\t':
         Advance();
         break;
       case '\n':
         m_Line++;
+        m_Column = 0;
         Advance();
         break;
       case '/': {
@@ -146,6 +171,7 @@ char Scanner::Advance()
   }
 
   m_Current++;
+  m_Column++;
   return m_CodeString[m_Current - 1];
 }
 
@@ -179,7 +205,7 @@ char Scanner::PeekNext()
 
 Token Scanner::ErrorToken(const std::string& message)
 {
-  return Token(TokenType::Error, m_Start, message.length(), m_Line, message);
+  return Token(TokenType::Error, m_Line, m_Column, message);
 }
 
 Token Scanner::Identifier()
@@ -208,7 +234,7 @@ Token Scanner::Number()
       Advance();
     }
 
-    return MakeToken(TokenType::Float);
+    return MakeToken(TokenType::Double);
   } else {
     return MakeToken(TokenType::Integer);
   }
@@ -217,7 +243,7 @@ Token Scanner::Number()
 Token Scanner::MakeToken(TokenType type) const
 {
   auto length = m_Current - m_Start;
-  return Token(type, m_Start, length, m_Line, m_CodeString);
+  return Token(type, m_Start, length, m_Line, m_Column - 1, m_CodeString);
 }
 
 Token Scanner::MakeString()
@@ -230,7 +256,7 @@ Token Scanner::MakeString()
   }
 
   if (IsAtEnd()) {
-    return ErrorToken("Unterminated string.");
+    return ErrorToken("Unterminated string");
   }
 
   Advance();

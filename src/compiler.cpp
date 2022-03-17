@@ -6,13 +6,13 @@
 using namespace Grace::Scanner;
 using namespace Grace::VM;
 
-void Grace::Compiler::Compile(std::string&& code, bool verbose)
+void Grace::Compiler::Compile(std::string&& fileName, std::string&& code, bool verbose)
 {
   using namespace std::chrono;
 
   auto start = steady_clock::now();
  
-  Compiler compiler(std::move(code));
+  Compiler compiler(std::move(fileName), std::move(code));
   compiler.Advance();
   
   while (!compiler.Match(TokenType::EndOfFile)) {
@@ -33,8 +33,8 @@ void Grace::Compiler::Compile(std::string&& code, bool verbose)
 
 using namespace Grace::Compiler;
 
-Compiler::Compiler(std::string&& code) 
-  : m_Scanner(std::move(code))
+Compiler::Compiler(std::string&& fileName, std::string&& code) 
+  : m_Scanner(std::move(code)), m_CurrentFileName(std::move(fileName))
 {
 }
 
@@ -307,12 +307,15 @@ void Compiler::Factor()
 {
   Unary();
   while (true) {
-    if (Match(TokenType::Slash)) {
+    if (Match(TokenType::StarStar)) {
       Unary();
-      m_Vm.PushOp(Ops::Divide, m_Current.value().GetLine());
+      m_Vm.PushOp(Ops::Pow, m_Current.value().GetLine());
     } else if (Match(TokenType::Star)) {
       Unary();
       m_Vm.PushOp(Ops::Multiply, m_Current.value().GetLine());
+    } else if (Match(TokenType::Slash)) {
+      Unary();
+      m_Vm.PushOp(Ops::Divide, m_Current.value().GetLine());
     } else {
       break;
     }
@@ -347,7 +350,7 @@ void Compiler::Primary()
   } else if (Match(TokenType::Integer)) {
     try {
       std::string str(m_Previous.value().GetText());
-      auto value = std::stoi(str);
+      std::int64_t value = std::stoll(str);
       m_Vm.PushOp(Ops::LoadConstant, m_Previous.value().GetLine());
       m_Vm.PushConstant(value);
     } catch (const std::invalid_argument& e) {
@@ -355,10 +358,10 @@ void Compiler::Primary()
     } catch (const std::out_of_range&) {
       ErrorAtPrevious("Int out of range.");
     }
-  } else if (Match(TokenType::Float)) {
+  } else if (Match(TokenType::Double)) {
     try {
       std::string str(m_Previous.value().GetText());
-      auto value = std::stof(str);
+      auto value = std::stod(str);
       m_Vm.PushOp(Ops::LoadConstant, m_Previous.value().GetLine());
       m_Vm.PushConstant(value);
     } catch (const std::invalid_argument& e) {
@@ -367,7 +370,7 @@ void Compiler::Primary()
       ErrorAtPrevious("Float out of range.");
     }
   } else if (Match(TokenType::String)) {
-
+    String();
   } else if (Match(TokenType::Char)) {
     Char();
   } else if (Match(TokenType::Identifier)) {
@@ -404,7 +407,7 @@ bool Compiler::IsPrimaryToken()
 {
   auto t = m_Current.value().GetType();
   return t == TokenType::True || t == TokenType::False || t == TokenType::This
-    || t == TokenType::Integer || t == TokenType::Float || t == TokenType::String
+    || t == TokenType::Integer || t == TokenType::Double || t == TokenType::String
     || t == TokenType::Char || t == TokenType::Identifier || t == TokenType::LeftParen;
 }
 
@@ -440,6 +443,14 @@ void Compiler::Char()
   }
 }
 
+void Compiler::String()
+{
+  auto text = m_Previous.value().GetText();
+  std::string trimmed(text.substr(1, text.length() - 2));
+  m_Vm.PushOp(Ops::LoadConstant, m_Previous.value().GetLine());
+  m_Vm.PushConstant(trimmed);
+}
+
 void Compiler::ErrorAtCurrent(const std::string& message)
 {
   Error(m_Current, message);
@@ -458,18 +469,35 @@ void Compiler::Error(const std::optional<Token>& token, const std::string& messa
   fmt::print(stderr, "[line {}] ", token.value().GetLine());
   fmt::print(stderr, fmt::fg(fmt::color::red) | fmt::emphasis::bold, "ERROR: ");
   
-  switch (token.value().GetType()) {
+  auto type = token.value().GetType();
+  switch (type) {
     case TokenType::EndOfFile:
       fmt::print(stderr, "at end: ");
+      fmt::print(stderr, "{}\n", message);
       break;
     case TokenType::Error:
+      fmt::print(stderr, "{}\n", token.value().GetErrorMessage());
       break;
     default:
-      fmt::print(stderr, "at `{}`: ", token.value().GetText());
+      fmt::print(stderr, "at '{}': ", token.value().GetText());
+      fmt::print(stderr, "{}\n", message);
       break;
   }
 
-  fmt::print(stderr, "{}\n", message);
+  auto lineNo = token.value().GetLine();
+  auto column = token.value().GetColumn() - token.value().GetLength();  // need the START of the token
+  fmt::print(stderr, "       --> {}:{}:{}\n", m_CurrentFileName, lineNo, column + 1); 
+  fmt::print(stderr, "        |\n");
+  fmt::print(stderr, "{:>7} | {}\n", lineNo, m_Scanner.GetCodeAtLine(lineNo));
+  fmt::print(stderr, "        | ");
+  for (auto i = 0; i < column; i++) {
+    fmt::print(stderr, " ");
+  }
+  for (auto i = 0; i < token.value().GetLength(); i++) {
+    fmt::print(stderr, fmt::fg(fmt::color::red), "^");
+  }
+  fmt::print("\n\n");
+
   m_HadError = true;
 }
 
