@@ -203,6 +203,11 @@ char Scanner::PeekNext()
   return m_CodeString[m_Current + 1];
 }
 
+char Scanner::PeekPrevious()
+{
+  return m_Current == 0 ? '\0' : m_CodeString[m_Current - 1];
+}
+
 Token Scanner::ErrorToken(const std::string& message)
 {
   return Token(TokenType::Error, m_Line, m_Column, message);
@@ -248,7 +253,12 @@ Token Scanner::MakeToken(TokenType type) const
 
 Token Scanner::MakeString()
 {
-  while (!IsAtEnd() && Peek() != '"') {
+  while (!IsAtEnd()) {
+    if (Peek() == '"') {
+      if (PeekPrevious() != '\\') {
+        break;
+      }
+    }
     if (Peek() == '\n') {
       m_Line++;
     }

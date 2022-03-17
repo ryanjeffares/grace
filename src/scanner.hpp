@@ -113,6 +113,7 @@ namespace Grace
         bool MatchChar(char);
         char Peek();
         char PeekNext();
+        char PeekPrevious();
 
         Token ErrorToken(const std::string& message);
         Token Identifier();

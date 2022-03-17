@@ -446,9 +446,27 @@ void Compiler::Char()
 void Compiler::String()
 {
   auto text = m_Previous.value().GetText();
-  std::string trimmed(text.substr(1, text.length() - 2));
+  std::string res;
+  for (auto i = 1; i < text.length() - 1; i++) {
+    if (text[i] == '\\') {
+      i++;
+      if (i == text.length() - 2) {
+        ErrorAtPrevious("Expected escape character");
+        return;
+      }
+      char c;
+      if (IsEscapeChar(text[i], c)) {
+        res.push_back(c);
+      } else {
+        ErrorAtPrevious("Unrecognised escape character");
+        return;
+      }
+    } else {
+      res.push_back(text[i]);
+    }
+  }
   m_Vm.PushOp(Ops::LoadConstant, m_Previous.value().GetLine());
-  m_Vm.PushConstant(trimmed);
+  m_Vm.PushConstant(res);
 }
 
 void Compiler::ErrorAtCurrent(const std::string& message)
