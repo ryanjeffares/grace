@@ -8,6 +8,7 @@
 
 #include "scanner.hpp"
 #include "vm.hpp"
+#include "objects/grace_string.hpp"
 
 namespace Grace
 {
@@ -103,6 +104,14 @@ namespace Grace
          */
         void Synchronize();
 
+        void EmitOp(VM::Ops, int line);
+
+        template<typename T>
+        void EmitConstant(const T& value)
+        {
+          m_Vm.PushConstant(value);
+        }
+
         void ParsePrecedence(Precedence);
 
         void Statement();
@@ -113,6 +122,7 @@ namespace Grace
         void FinalDeclaration();
 
         void Expression();
+        void Assignment();
         void ExpressionStatement();
         void ForStatement();
         void IfStatement();
@@ -120,7 +130,6 @@ namespace Grace
         void PrintLnStatement();
         void ReturnStatement();
         void WhileStatement();
-        void Block();
 
         void And();
         void Or();
@@ -142,6 +151,12 @@ namespace Grace
         void Error(const std::optional<Scanner::Token>& token, const std::string& message);
 
       private:
+
+        enum class Context 
+        {
+          TopLevel,
+          Function,
+        } m_CurrentContext;
 
         Scanner::Scanner m_Scanner;
         VM::VM m_Vm;

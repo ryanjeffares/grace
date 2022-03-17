@@ -4,7 +4,7 @@
 
 using namespace Grace::VM;
 
-void Constant::PrintLn() const
+void Value::PrintLn() const
 {
   switch (m_Type) {
     case Type::Bool:
@@ -25,7 +25,7 @@ void Constant::PrintLn() const
   }
 }
 
-void Constant::Print() const
+void Value::Print() const
 {
   switch (m_Type) {
     case Type::Bool:
@@ -46,7 +46,7 @@ void Constant::Print() const
   }
 }
 
-std::string Constant::ToString() const
+std::string Value::ToString() const
 {
   switch (m_Type)
   {

@@ -5,11 +5,13 @@
 #include "../include/fmt/core.h"
 #include "../include/fmt/format.h"
 
+#include "objects/grace_string.hpp"
+
 namespace Grace
 {
   namespace VM
   {
-    class Constant final 
+    class Value final 
     {
     public:
       enum class Type : std::uint8_t 
@@ -31,7 +33,7 @@ namespace Grace
       } m_Data;
 
       template<typename T>
-      constexpr Constant(const T& value)
+      constexpr Value(const T& value) : m_Name("<anonymous>")
       {
         static_assert(std::is_same<T, std::int64_t>::value || std::is_same<T, double>::value
             || std::is_same<T, bool>::value || std::is_same<T, char>::value
@@ -55,8 +57,9 @@ namespace Grace
         }
       }
 
-      Constant(const Constant& other)
+      Value(const Value& other)
       {
+        m_Name = other.m_Name;
         m_Type = other.m_Type;
         if (other.m_Type == Type::String) {
           m_Data.m_Str = new std::string(*other.m_Data.m_Str);
@@ -65,14 +68,14 @@ namespace Grace
         }
       }
 
-      ~Constant()
+      ~Value()
       {
         if (m_Type == Type::String && m_Data.m_Str != nullptr) {
           delete m_Data.m_Str;
         }
       }
 
-      constexpr Constant& operator=(const Constant& other)
+      constexpr Value& operator=(const Value& other)
       {
         if (this != &other)
         {
@@ -90,7 +93,7 @@ namespace Grace
       }
 
       template<typename T>
-      constexpr Constant& operator=(const T& value)
+      constexpr Value& operator=(const T& value)
       {
         static_assert(std::is_same<T, std::int64_t>::value || std::is_same<T, double>::value
             || std::is_same<T, bool>::value || std::is_same<T, char>::value
@@ -149,28 +152,34 @@ namespace Grace
         return m_Type;
       }
 
+      constexpr inline const String& GetName() const
+      {
+        return m_Name;
+      }
+
     private:
 
+      String m_Name;
       Type m_Type;
     };
   }
 }
 
 template<>
-struct fmt::formatter<Grace::VM::Constant::Type> : fmt::formatter<std::string_view>
+struct fmt::formatter<Grace::VM::Value::Type> : fmt::formatter<std::string_view>
 {
   template<typename FormatContext>
-  auto format(Grace::VM::Constant::Type type, FormatContext& context) -> decltype(context.out())
+  auto format(Grace::VM::Value::Type type, FormatContext& context) -> decltype(context.out())
   {
     using namespace Grace::VM;
 
     std::string_view name = "unknown";
     switch (type) {
-      case Constant::Type::Bool: name = "Type::Bool"; break;
-      case Constant::Type::Char: name = "Type::Char"; break;
-      case Constant::Type::Double: name = "Type::Float"; break;
-      case Constant::Type::Int: name = "Type::Int"; break;
-      case Constant::Type::String: name = "Type::String"; break;
+      case Value::Type::Bool: name = "Type::Bool"; break;
+      case Value::Type::Char: name = "Type::Char"; break;
+      case Value::Type::Double: name = "Type::Float"; break;
+      case Value::Type::Int: name = "Type::Int"; break;
+      case Value::Type::String: name = "Type::String"; break;
     }
     return fmt::formatter<std::string_view>::format(name, context);
   }

@@ -1,7 +1,11 @@
+#pragma once
+
 #include <cstring>
+#include <functional>
 #include <iostream>
 #include <exception>
 #include <string>
+#include <string_view>
 
 #include "../../include/fmt/core.h"
 #include "../../include/fmt/format.h"
@@ -52,7 +56,6 @@ namespace Grace
       String(String&&);
 
       String(const std::string&);
-
       String(const char*);
       String(const char*, const char*);
       String(char);
@@ -200,6 +203,23 @@ namespace Grace
     private:
       
       char* m_Data;
+  };
+}
+
+namespace std 
+{
+  template<>
+  struct std::hash<Grace::String>
+  {
+    std::size_t operator()(const Grace::String& s) const
+    {
+      std::size_t hash = 2166136261;
+      for (auto i = 0; i < s.Length(); i++) {
+        hash ^= static_cast<std::uint8_t>(s[i]);
+        hash *= 16777619;
+      }
+      return hash;
+    }
   };
 }
 

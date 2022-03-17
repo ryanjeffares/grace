@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <exception>
+#include <unordered_map>
 #include <vector>
 #include <type_traits>
 
@@ -19,6 +20,7 @@ namespace Grace
     {
       Add,
       And,
+      Call,
       Divide,
       Equal,
       Greater,
@@ -46,41 +48,13 @@ namespace Grace
 
     enum class InterpretError
     {
+      FunctionNotFound,
       InvalidOperand,
     };
 
     class VM
     {
       public:
-
-        VM() = default;
-        ~VM() = default;
-
-        VM(const VM&) = delete;
-        VM(VM&&) = delete;
-
-        inline void PushOp(Ops op, int line)
-        {
-          m_OpList.emplace_back(op, line);
-        }
-
-        void PrintOps() const
-        {
-          for (const auto o : m_OpList)
-          {
-            fmt::print("{}\n", o.m_Op);
-          }
-        }
-
-        template<typename T>
-        constexpr inline void PushConstant(T value)
-        {
-          m_ConstantList.emplace_back(value);
-        }
-
-        InterpretResult Run();
-
-      private:
 
         struct OpLine
         {
@@ -93,13 +67,54 @@ namespace Grace
 
           }
         };
+
+        struct Function 
+        {
+          String m_Name;
+          std::vector<OpLine> m_OpList; 
+          std::vector<Value> m_ConstantList;
+
+          Function(const String& name)
+            : m_Name(name)
+          {
+
+          }
+        };
         
+        VM() = default;
+        VM(const VM&) = delete;
+        VM(VM&&) = delete;
+
+        inline void PushOp(Ops op, int line)
+        {
+          m_FunctionList.at(m_LastFunction).m_OpList.emplace_back(op, line);
+        }
+
+        void PrintOps() const
+        {
+          for (const auto& [name, func] : m_FunctionList) {
+            fmt::print("<function `{}`>\n", name);
+            for (const auto o : func.m_OpList) {
+              fmt::print("\t{}\n", o.m_Op);
+            }
+          }
+        }
+
+        template<typename T>
+        constexpr inline void PushConstant(T value)
+        {
+          m_FunctionList.at(m_LastFunction).m_ConstantList.emplace_back(value);
+        }
+
+        bool AddFunction(const String& name);
+        InterpretResult Run(const String& funcName, int startLine);
+
+      private:
+
         void RuntimeError(const std::string& message, InterpretError errorType, int line);
 
-        std::vector<OpLine> m_OpList;
-        std::vector<Constant> m_ConstantList;
-
-        std::size_t m_OpCurrent = 0, m_ConstantCurrent = 0;
+        std::unordered_map<String, Function> m_FunctionList;
+        String m_LastFunction;
     };
   }
 }
@@ -116,6 +131,7 @@ struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
     switch (type) {
       case Ops::Add: name = "Ops::Add"; break;
       case Ops::And: name = "Ops::And"; break;
+      case Ops::Call: name = "Ops::Call"; break;
       case Ops::Divide: name = "Ops::Divide"; break;
       case Ops::Equal: name = "Ops::Equal"; break;
       case Ops::Greater: name = "Ops::Greater"; break;
@@ -148,6 +164,7 @@ struct fmt::formatter<Grace::VM::InterpretError> : fmt::formatter<std::string_vi
 
     std::string_view name = "unknown";
     switch (type) {
+      case InterpretError::FunctionNotFound: name = "FunctionNotFound"; break;
       case InterpretError::InvalidOperand: name = "InvalidOperand"; break;
     }
     return fmt::formatter<std::string_view>::format(name, context);

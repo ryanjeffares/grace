@@ -1,0 +1,12 @@
+func f():
+  println(2 ** 32);
+  println("I'm not the entry point");
+end
+
+func main():
+  println("Hello world");
+  println(1 == 1 and true);
+  println("Calling f()");
+  f();
+  println("Returned to main()");
+end 

@@ -9,6 +9,6 @@
 #define GRACE_UNREACHABLE()                     \
   do {                                          \
     assert(false &&                             \
-        "Unreachable code detected");  \
+        "Unreachable code detected");           \
   } while (false)                               \
 

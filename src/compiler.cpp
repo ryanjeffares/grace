@@ -17,6 +17,9 @@ void Grace::Compiler::Compile(std::string&& fileName, std::string&& code, bool v
   
   while (!compiler.Match(TokenType::EndOfFile)) {
     compiler.Declaration();
+    if (compiler.HadError()) {
+      break;
+    }
   }
 
   if (compiler.HadError()) {
@@ -34,14 +37,18 @@ void Grace::Compiler::Compile(std::string&& fileName, std::string&& code, bool v
 using namespace Grace::Compiler;
 
 Compiler::Compiler(std::string&& fileName, std::string&& code) 
-  : m_Scanner(std::move(code)), m_CurrentFileName(std::move(fileName))
+  : m_Scanner(std::move(code)), 
+  m_CurrentFileName(std::move(fileName)),
+  m_CurrentContext(Context::TopLevel)
 {
 }
 
 void Compiler::Finalise()
 {
-//  m_Vm.PrintOps();
-  m_Vm.Run();
+#ifdef GRACE_DEBUG
+  m_Vm.PrintOps();
+#endif
+  m_Vm.Run("main", 1);
 }
 
 void Compiler::Advance()
@@ -108,6 +115,11 @@ void Compiler::Synchronize()
   }
 }
 
+void Compiler::EmitOp(VM::Ops op, int line)
+{
+  m_Vm.PushOp(op, line);
+}
+
 void Compiler::Declaration()
 {
   if (Match(TokenType::Class)) {
@@ -129,6 +141,11 @@ void Compiler::Declaration()
 
 void Compiler::Statement()
 {
+  if (m_CurrentContext == Context::TopLevel) {
+    ErrorAtCurrent("Only functions and classes are allowed at top level");
+    return;
+  }
+
   if (Match(TokenType::For)) {
     ForStatement();
   } else if (Match(TokenType::If)) {
@@ -153,27 +170,65 @@ void Compiler::ClassDeclaration()
 
 void Compiler::FuncDeclaration() 
 {
-  
+  auto previous = m_CurrentContext;
+  m_CurrentContext = Context::Function;  
+
+  Consume(TokenType::Identifier, "Expected function name");
+  Grace::String name = std::string(m_Previous.value().GetText());
+  if (!m_Vm.AddFunction(name)) {
+    ErrorAtPrevious("Duplicate function definitions");
+    return;
+  }
+
+  Consume(TokenType::LeftParen, "Expected '(' after function name");
+  Consume(TokenType::RightParen, "Expected ')'");
+  Consume(TokenType::Colon, "Expected ':' after function signature");
+
+  while (!Match(TokenType::End)) {
+    Declaration();
+    if (m_Current.value().GetType() == TokenType::EndOfFile) {
+      ErrorAtCurrent("Expected `end` after function");
+      return;
+    }
+  }
+
+  m_CurrentContext = previous;
 }
 
 void Compiler::VarDeclaration() 
 {
-  
+  if (m_CurrentContext == Context::TopLevel) {
+    ErrorAtPrevious("Only functions and classes are allowed at top level");
+    return;
+  }
 }
 
 void Compiler::FinalDeclaration() 
 {
-  
+  if (m_CurrentContext == Context::TopLevel) {
+    ErrorAtPrevious("Only functions and classes are allowed at top level");
+    return;
+  } 
 }
 
 void Compiler::Expression()
 {
-  if (Match(TokenType::Identifier)) {
-    Consume(TokenType::Equal, "Expected '=' after identifier");
-    if (Match(TokenType::Identifier)) {
-      Expression();
-    } else {
-      Or();
+  Assignment();
+}
+
+void Compiler::Assignment()
+{
+  if (Check(TokenType::Identifier)) {
+    if (IsPrimaryToken()) {
+      Call();
+    }
+
+    if (Match(TokenType::Equal)) {
+      if (Match(TokenType::Identifier)) {
+        Expression();
+      } else {
+        Or();
+      }
     }
   } else {
     Or();
@@ -200,11 +255,11 @@ void Compiler::PrintStatement()
 {
   Consume(TokenType::LeftParen, "Expected '(' after 'print'");
   if (Match(TokenType::RightParen)) {
-    m_Vm.PushOp(Ops::PrintTab, m_Current.value().GetLine());
+    EmitOp(Ops::PrintTab, m_Current.value().GetLine());
   } else {
     Expression();
-    m_Vm.PushOp(Ops::Print, m_Current.value().GetLine());
-    m_Vm.PushOp(Ops::Pop, m_Current.value().GetLine());
+    EmitOp(Ops::Print, m_Current.value().GetLine());
+    EmitOp(Ops::Pop, m_Current.value().GetLine());
     Consume(TokenType::RightParen, "Expected ')' after expression");
   }
   Consume(TokenType::Semicolon, "Expected ';'");
@@ -214,11 +269,11 @@ void Compiler::PrintLnStatement()
 {
   Consume(TokenType::LeftParen, "Expected '(' after 'println'");
   if (Match(TokenType::RightParen)) {
-    m_Vm.PushOp(Ops::PrintEmptyLine, m_Current.value().GetLine());
+    EmitOp(Ops::PrintEmptyLine, m_Current.value().GetLine());
   } else {
     Expression();
-    m_Vm.PushOp(Ops::PrintLn, m_Current.value().GetLine());
-    m_Vm.PushOp(Ops::Pop, m_Current.value().GetLine());
+    EmitOp(Ops::PrintLn, m_Current.value().GetLine());
+    EmitOp(Ops::Pop, m_Current.value().GetLine());
     Consume(TokenType::RightParen, "Expected ')' after expression");
   }
   Consume(TokenType::Semicolon, "Expected ';'");
@@ -234,17 +289,12 @@ void Compiler::WhileStatement()
   
 }
 
-void Compiler::Block() 
-{
-  
-}
-
 void Compiler::And()
 {
   Equality();
   while (Match(TokenType::And)) {
     Equality();
-    m_Vm.PushOp(Ops::And, m_Current.value().GetLine());
+    EmitOp(Ops::And, m_Current.value().GetLine());
   }
 }
 
@@ -253,7 +303,7 @@ void Compiler::Or()
   And();
   while (Match(TokenType::Or)) {
     And();
-    m_Vm.PushOp(Ops::Or, m_Current.value().GetLine());
+    EmitOp(Ops::Or, m_Current.value().GetLine());
   }
 }
 
@@ -262,10 +312,10 @@ void Compiler::Equality()
   Comparison();
   if (Match(TokenType::EqualEqual)) {
     Comparison();
-    m_Vm.PushOp(Ops::Equal, m_Current.value().GetLine());
+    EmitOp(Ops::Equal, m_Current.value().GetLine());
   } else if (Match(TokenType::BangEqual)) {
     Comparison();
-    m_Vm.PushOp(Ops::NotEqual, m_Current.value().GetLine());
+    EmitOp(Ops::NotEqual, m_Current.value().GetLine());
   }
 }
 
@@ -274,16 +324,16 @@ void Compiler::Comparison()
   Term();
   if (Match(TokenType::GreaterThan)) {
     Term();
-    m_Vm.PushOp(Ops::Greater, m_Current.value().GetLine());
+    EmitOp(Ops::Greater, m_Current.value().GetLine());
   } else if (Match(TokenType::GreaterEqual)) {
     Term();
-    m_Vm.PushOp(Ops::GreaterEqual, m_Current.value().GetLine());
+    EmitOp(Ops::GreaterEqual, m_Current.value().GetLine());
   } else if (Match(TokenType::LessThan)) {
     Term();
-    m_Vm.PushOp(Ops::Less, m_Current.value().GetLine());
+    EmitOp(Ops::Less, m_Current.value().GetLine());
   } else if (Match(TokenType::LessEqual)) {
     Term();
-    m_Vm.PushOp(Ops::LessEqual, m_Current.value().GetLine());
+    EmitOp(Ops::LessEqual, m_Current.value().GetLine());
   }
 }
 
@@ -293,10 +343,10 @@ void Compiler::Term()
   while (true) {
     if (Match(TokenType::Minus)) {
       Factor();
-      m_Vm.PushOp(Ops::Subtract, m_Current.value().GetLine());
+      EmitOp(Ops::Subtract, m_Current.value().GetLine());
     } else if (Match(TokenType::Plus)) {
       Factor();
-      m_Vm.PushOp(Ops::Add, m_Current.value().GetLine());
+      EmitOp(Ops::Add, m_Current.value().GetLine());
     } else {
       break;
     }
@@ -309,13 +359,13 @@ void Compiler::Factor()
   while (true) {
     if (Match(TokenType::StarStar)) {
       Unary();
-      m_Vm.PushOp(Ops::Pow, m_Current.value().GetLine());
+      EmitOp(Ops::Pow, m_Current.value().GetLine());
     } else if (Match(TokenType::Star)) {
       Unary();
-      m_Vm.PushOp(Ops::Multiply, m_Current.value().GetLine());
+      EmitOp(Ops::Multiply, m_Current.value().GetLine());
     } else if (Match(TokenType::Slash)) {
       Unary();
-      m_Vm.PushOp(Ops::Divide, m_Current.value().GetLine());
+      EmitOp(Ops::Divide, m_Current.value().GetLine());
     } else {
       break;
     }
@@ -327,7 +377,7 @@ void Compiler::Unary()
   if (Match(TokenType::Bang) || Match(TokenType::Minus)) {
     // do something
     Unary();
-  } else if (IsPrimaryToken()) {
+  } else {
     Call();
   }
 }
@@ -335,24 +385,39 @@ void Compiler::Unary()
 void Compiler::Call()
 {
   Primary();
+  auto prev = m_Previous.value();
+  if (prev.GetType() != TokenType::Identifier && Check(TokenType::LeftParen)) {
+    ErrorAtCurrent("'(' only allowed after functions and classes");
+    return;
+  }
+  if (prev.GetType() == TokenType::Identifier) {
+    if (Match(TokenType::LeftParen)) {
+      // parsing the identifier puts the identifier name at the top of the stack
+      // so we just need to validate the call syntax here
+      // TODO: account for function args
+      Consume(TokenType::RightParen, "Expected ')'");
+      EmitOp(Ops::Call, m_Previous.value().GetLine());
+    }
+    // TODO: account for dot
+  }
 }
 
 void Compiler::Primary()
 {
   if (Match(TokenType::True)) {
-    m_Vm.PushOp(Ops::LoadConstant, m_Previous.value().GetLine());
-    m_Vm.PushConstant(true);
+    EmitOp(Ops::LoadConstant, m_Previous.value().GetLine());
+    EmitConstant(true);
   } else if (Match(TokenType::False)) {
-    m_Vm.PushOp(Ops::LoadConstant, m_Previous.value().GetLine());
-    m_Vm.PushConstant(false);
+    EmitOp(Ops::LoadConstant, m_Previous.value().GetLine());
+    EmitConstant(false);
   } else if (Match(TokenType::This)) {
     
   } else if (Match(TokenType::Integer)) {
     try {
       std::string str(m_Previous.value().GetText());
       std::int64_t value = std::stoll(str);
-      m_Vm.PushOp(Ops::LoadConstant, m_Previous.value().GetLine());
-      m_Vm.PushConstant(value);
+      EmitOp(Ops::LoadConstant, m_Previous.value().GetLine());
+      EmitConstant(value);
     } catch (const std::invalid_argument& e) {
       ErrorAtPrevious(fmt::format("Token could not be parsed as an int: {}", e.what()));
     } catch (const std::out_of_range&) {
@@ -362,8 +427,8 @@ void Compiler::Primary()
     try {
       std::string str(m_Previous.value().GetText());
       auto value = std::stod(str);
-      m_Vm.PushOp(Ops::LoadConstant, m_Previous.value().GetLine());
-      m_Vm.PushConstant(value);
+      EmitOp(Ops::LoadConstant, m_Previous.value().GetLine());
+      EmitConstant(value);
     } catch (const std::invalid_argument& e) {
       ErrorAtPrevious(fmt::format("Token could not be parsed as an float: {}", e.what()));
     } catch (const std::out_of_range&) {
@@ -374,7 +439,8 @@ void Compiler::Primary()
   } else if (Match(TokenType::Char)) {
     Char();
   } else if (Match(TokenType::Identifier)) {
-
+    EmitConstant(std::string(m_Previous.value().GetText()));
+    EmitOp(Ops::LoadConstant, m_Previous.value().GetLine());
   } else {
     Expression();
   }
@@ -423,8 +489,8 @@ void Compiler::Char()
       }
       char c;
       if (IsEscapeChar(trimmed[1], c)) {
-        m_Vm.PushOp(Ops::LoadConstant, m_Previous.value().GetLine());
-        m_Vm.PushConstant(c);
+        EmitOp(Ops::LoadConstant, m_Previous.value().GetLine());
+        EmitConstant(c);
       } else {
         ErrorAtPrevious("Unrecognised escape character");
       }
@@ -434,8 +500,8 @@ void Compiler::Char()
         ErrorAtPrevious("Expected escape character after backslash");
         return;
       }
-      m_Vm.PushOp(Ops::LoadConstant, m_Previous.value().GetLine());
-      m_Vm.PushConstant(static_cast<char>(trimmed[0]));
+      EmitOp(Ops::LoadConstant, m_Previous.value().GetLine());
+      EmitConstant(static_cast<char>(trimmed[0]));
       break;
     default:
       ErrorAtPrevious("`char` must contain a single character or escape character");
@@ -465,8 +531,8 @@ void Compiler::String()
       res.push_back(text[i]);
     }
   }
-  m_Vm.PushOp(Ops::LoadConstant, m_Previous.value().GetLine());
-  m_Vm.PushConstant(res);
+  EmitOp(Ops::LoadConstant, m_Previous.value().GetLine());
+  EmitConstant(res);
 }
 
 void Compiler::ErrorAtCurrent(const std::string& message)
