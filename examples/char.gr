@@ -1,3 +1,4 @@
-'a';
-'ab';
-'\n';
+func main():
+  println('a');
+  print('\n');
+end

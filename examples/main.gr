@@ -1,23 +1,23 @@
-func h():
+func print_numbers():
   var n = 3.14 ** 2.5;
   print("3.14 ** 2.5 = ");
   println(n);
 
   var aBigNumber = 2 ** 64;
   println(aBigNumber);
-  println("h is returning");
+  println("print_numbers is returning");
 end 
 
-func g():
-  println("this" + " is " + "function" + " g!");
+func hey_there():
+  println("this" + " is " + "function" + " hey_there!");
   print();
   print();
   print();
-  println("hey there");
+  println("...hey there");
 end 
 
-func f():
-  println("This is function" + " " + "f");
+func function_f():
+  println("This is function" + " " + "function_f");
 end 
 
 func main():
@@ -27,11 +27,14 @@ func main():
   b = 3.0;
   println(b);
 
-  f();
-  g();
-  h();
+  function_f();
+  hey_there();
+  print_numbers();
 
-  b = "hello world";
+  b = "b is a string now";
   println(b);
+
+  n = b > 10;
+  println(n);
 end
  

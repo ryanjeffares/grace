@@ -88,6 +88,7 @@ namespace Grace
          *  Will advance the compiler until a semicolon or keyword is found.
          */
         void Synchronize();
+        bool IsKeyword(std::string& outKeyword);
 
         void EmitOp(VM::Ops, int line);
 
@@ -104,8 +105,7 @@ namespace Grace
         void VarDeclaration();
         void FinalDeclaration();
 
-        void Expression();
-        void Assignment();
+        void Expression(bool canAssign);
         void ExpressionStatement();
         void ForStatement();
         void IfStatement();
@@ -114,15 +114,15 @@ namespace Grace
         void ReturnStatement();
         void WhileStatement();
 
-        void And();
-        void Or();
-        void Equality();
-        void Comparison();
-        void Term();
-        void Factor();
-        void Unary();
-        void Call();
-        void Primary();
+        void And(bool canAssign);
+        void Or(bool canAssign);
+        void Equality(bool canAssign);
+        void Comparison(bool canAssign);
+        void Term(bool canAssign);
+        void Factor(bool canAssign);
+        void Unary(bool canAssign);
+        void Call(bool canAssign);
+        void Primary(bool canAssign);
 
         bool IsPrimaryToken();
 

@@ -108,12 +108,38 @@ void Compiler::Synchronize()
       case TokenType::Print:
       case TokenType::PrintLn:
       case TokenType::Return:
+      case TokenType::Var:
         return;
       default:
         break;
     }
 
     Advance();
+  }
+}
+
+bool Compiler::IsKeyword(std::string& outKeyword)
+{
+  switch (m_Current.value().GetType()) {
+    case TokenType::And: outKeyword = "and"; return true;
+    case TokenType::As: outKeyword = "as"; return true;
+    case TokenType::Class: outKeyword = "class"; return true;
+    case TokenType::End: outKeyword = "end"; return true;
+    case TokenType::False: outKeyword = "false"; return true;
+    case TokenType::Final: outKeyword = "final"; return true;
+    case TokenType::For: outKeyword = "for"; return true;
+    case TokenType::Func: outKeyword = "func"; return true;
+    case TokenType::If: outKeyword = "if"; return true;
+    case TokenType::Or: outKeyword = "or"; return true;
+    case TokenType::Print: outKeyword = "print"; return true;
+    case TokenType::PrintLn: outKeyword = "println"; return true;
+    case TokenType::Return: outKeyword = "return"; return true;
+    case TokenType::This: outKeyword = "this"; return true;
+    case TokenType::True: outKeyword = "true"; return true;
+    case TokenType::Var: outKeyword = "var"; return true;
+    case TokenType::While: outKeyword = "while"; return true;
+    default:
+      return false;
   }
 }
 
@@ -224,7 +250,7 @@ void Compiler::VarDeclaration()
   if (Match(TokenType::Equal)) {
     EmitConstant(localName);
     EmitOp(Ops::LoadConstant, line);
-    Expression(); 
+    Expression(true); 
     line = m_Previous.value().GetLine();
     EmitOp(Ops::AssignLocal, line);
   }
@@ -239,16 +265,17 @@ void Compiler::FinalDeclaration()
   } 
 }
 
-void Compiler::Expression()
+void Compiler::Expression(bool canAssign)
 {
-  Assignment();
-}
-
-void Compiler::Assignment()
-{
+  std::string kw;
+  if (IsKeyword(kw)) {
+    ErrorAtCurrent(fmt::format("'{}' is a keyword and not valid in this context.", kw));
+    Advance();  //consume the illegal identifier
+    return;
+  }
   if (Check(TokenType::Identifier)) {
     if (IsPrimaryToken()) {
-      Call();
+      Call(canAssign);
     }
 
     if (Check(TokenType::Equal)) {
@@ -256,25 +283,27 @@ void Compiler::Assignment()
         ErrorAtCurrent("Only identifiers can be assigned to");
         return;
       }
+
       Advance();  // consume the equals
 
-      if (Match(TokenType::Identifier)) {
-        Assignment();
-      } else {
-        Or();
+      if (!canAssign) {
+        ErrorAtCurrent("Assignment is not valid in the current context");
+        return;
       }
+
+      Expression(false); // disallow x = y = z...
 
       int line = m_Previous.value().GetLine();
       EmitOp(Ops::AssignLocal, line);
     }
   } else {
-    Or();
+    Or(canAssign);
   }
 }
 
 void Compiler::ExpressionStatement() 
 {
-  Expression();
+  Expression(true);
   Consume(TokenType::Semicolon, "Expected ';' after expression");
 }
 
@@ -294,7 +323,7 @@ void Compiler::PrintStatement()
   if (Match(TokenType::RightParen)) {
     EmitOp(Ops::PrintTab, m_Current.value().GetLine());
   } else {
-    Expression();
+    Expression(false);
     EmitOp(Ops::Print, m_Current.value().GetLine());
     EmitOp(Ops::Pop, m_Current.value().GetLine());
     Consume(TokenType::RightParen, "Expected ')' after expression");
@@ -308,7 +337,7 @@ void Compiler::PrintLnStatement()
   if (Match(TokenType::RightParen)) {
     EmitOp(Ops::PrintEmptyLine, m_Current.value().GetLine());
   } else {
-    Expression();
+    Expression(false);
     EmitOp(Ops::PrintLn, m_Current.value().GetLine());
     EmitOp(Ops::Pop, m_Current.value().GetLine());
     Consume(TokenType::RightParen, "Expected ')' after expression");
@@ -326,63 +355,63 @@ void Compiler::WhileStatement()
   
 }
 
-void Compiler::And()
+void Compiler::And(bool canAssign)
 {
-  Equality();
+  Equality(canAssign);
   while (Match(TokenType::And)) {
-    Equality();
+    Equality(canAssign);
     EmitOp(Ops::And, m_Current.value().GetLine());
   }
 }
 
-void Compiler::Or()
+void Compiler::Or(bool canAssign)
 {
-  And();
+  And(canAssign);
   while (Match(TokenType::Or)) {
-    And();
+    And(canAssign);
     EmitOp(Ops::Or, m_Current.value().GetLine());
   }
 }
 
-void Compiler::Equality()
+void Compiler::Equality(bool canAssign)
 {
-  Comparison();
+  Comparison(canAssign);
   if (Match(TokenType::EqualEqual)) {
-    Comparison();
+    Comparison(canAssign);
     EmitOp(Ops::Equal, m_Current.value().GetLine());
   } else if (Match(TokenType::BangEqual)) {
-    Comparison();
+    Comparison(canAssign);
     EmitOp(Ops::NotEqual, m_Current.value().GetLine());
   }
 }
 
-void Compiler::Comparison()
+void Compiler::Comparison(bool canAssign)
 {
-  Term();
+  Term(canAssign);
   if (Match(TokenType::GreaterThan)) {
-    Term();
+    Term(canAssign);
     EmitOp(Ops::Greater, m_Current.value().GetLine());
   } else if (Match(TokenType::GreaterEqual)) {
-    Term();
+    Term(canAssign);
     EmitOp(Ops::GreaterEqual, m_Current.value().GetLine());
   } else if (Match(TokenType::LessThan)) {
-    Term();
+    Term(canAssign);
     EmitOp(Ops::Less, m_Current.value().GetLine());
   } else if (Match(TokenType::LessEqual)) {
-    Term();
+    Term(canAssign);
     EmitOp(Ops::LessEqual, m_Current.value().GetLine());
   }
 }
 
-void Compiler::Term()
+void Compiler::Term(bool canAssign)
 {
-  Factor();
+  Factor(canAssign);
   while (true) {
     if (Match(TokenType::Minus)) {
-      Factor();
+      Factor(canAssign);
       EmitOp(Ops::Subtract, m_Current.value().GetLine());
     } else if (Match(TokenType::Plus)) {
-      Factor();
+      Factor(canAssign);
       EmitOp(Ops::Add, m_Current.value().GetLine());
     } else {
       break;
@@ -390,18 +419,18 @@ void Compiler::Term()
   }
 }
 
-void Compiler::Factor()
+void Compiler::Factor(bool canAssign)
 {
-  Unary();
+  Unary(canAssign);
   while (true) {
     if (Match(TokenType::StarStar)) {
-      Unary();
+      Unary(canAssign);
       EmitOp(Ops::Pow, m_Current.value().GetLine());
     } else if (Match(TokenType::Star)) {
-      Unary();
+      Unary(canAssign);
       EmitOp(Ops::Multiply, m_Current.value().GetLine());
     } else if (Match(TokenType::Slash)) {
-      Unary();
+      Unary(canAssign);
       EmitOp(Ops::Divide, m_Current.value().GetLine());
     } else {
       break;
@@ -409,19 +438,19 @@ void Compiler::Factor()
   }
 }
 
-void Compiler::Unary()
+void Compiler::Unary(bool canAssign)
 {
   if (Match(TokenType::Bang) || Match(TokenType::Minus)) {
     // do something
-    Unary();
+    Unary(canAssign);
   } else {
-    Call();
+    Call(canAssign);
   }
 }
 
-void Compiler::Call()
+void Compiler::Call(bool canAssign)
 {
-  Primary();
+  Primary(canAssign);
   auto prev = m_Previous.value();
   if (prev.GetType() != TokenType::Identifier && Check(TokenType::LeftParen)) {
     ErrorAtCurrent("'(' only allowed after functions and classes");
@@ -452,7 +481,7 @@ void Compiler::Call()
   }
 }
 
-void Compiler::Primary()
+void Compiler::Primary(bool canAssign)
 {
   if (Match(TokenType::True)) {
     EmitOp(Ops::LoadConstant, m_Previous.value().GetLine());
@@ -492,7 +521,7 @@ void Compiler::Primary()
     EmitConstant(std::string(m_Previous.value().GetText()));
     EmitOp(Ops::LoadConstant, m_Previous.value().GetLine());
   } else {
-    Expression();
+    Expression(canAssign);
   }
 }
 

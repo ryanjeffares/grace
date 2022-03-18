@@ -1,10 +1,12 @@
-println(2 ** 3.14);
-println(1 / 3.0);
-println(31.4 * 100.1);
-println("hello\nworld");
-println("Hello" + " " + "world!");
-println("hello" * 2);
-println('a' * 5);
-println("hello" == "hello");
-println('a' + 'a');
-println('b' == "b");
+func main():
+  println(2 ** 3.14);
+  println(1 / 3.0);
+  println(31.4 * 100.1);
+  println("hello\nworld");
+  println("Hello" + " " + "world!");
+  println("hello" * 2);
+  println('a' * 5);
+  println("hello" == "hello");
+  println('a' + 'a');
+  println('b' == "b");
+end
