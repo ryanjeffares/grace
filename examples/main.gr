@@ -1,12 +1,37 @@
+func h():
+  var n = 3.14 ** 2.5;
+  print("3.14 ** 2.5 = ");
+  println(n);
+
+  var aBigNumber = 2 ** 64;
+  println(aBigNumber);
+  println("h is returning");
+end 
+
+func g():
+  println("this" + " is " + "function" + " g!");
+  print();
+  print();
+  print();
+  println("hey there");
+end 
+
 func f():
-  println(2 ** 32);
-  println("I'm not the entry point");
-end
+  println("This is function" + " " + "f");
+end 
 
 func main():
-  println("Hello world");
-  println(1 == 1 and true);
-  println("Calling f()");
+  var n = 2 ** 32;
+  println(n);
+  var b;
+  b = 3.0;
+  println(b);
+
   f();
-  println("Returned to main()");
-end 
+  g();
+  h();
+
+  b = "hello world";
+  println(b);
+end
+ 

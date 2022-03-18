@@ -62,25 +62,10 @@ namespace Grace
         bool Match(Scanner::TokenType expected);
 
         inline bool HadError() const { return m_HadError; }
-        void Finalise();
+        void Finalise(bool verbose);
 
       private:
-
-        enum class Precedence 
-        {
-          None,
-          Assignment,
-          Or,
-          And,
-          Equality,
-          Comparison,
-          Term,
-          Factor,
-          Unary,
-          Call,
-          Primary,
-        };
-       
+      
         /*
          *  Returns true if the current token matches the given type.
          *  No side effects, does not advance the scanner or compiler.
@@ -111,8 +96,6 @@ namespace Grace
         {
           m_Vm.PushConstant(value);
         }
-
-        void ParsePrecedence(Precedence);
 
         void Statement();
 
@@ -163,6 +146,7 @@ namespace Grace
 
         std::optional<Scanner::Token> m_Current, m_Previous;
         std::string m_CurrentFileName;
+        std::vector<std::string> m_Locals;
 
         bool m_PanicMode = false, m_HadError = false;
     };

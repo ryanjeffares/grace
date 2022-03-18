@@ -14,12 +14,15 @@ namespace Grace
     class Value final 
     {
     public:
+      typedef void* NullValue;
+
       enum class Type : std::uint8_t 
       {
         Bool,
         Char,
         Double,
         Int,
+        Null,
         String,
       };
 
@@ -30,10 +33,11 @@ namespace Grace
         double m_Double;
         std::int64_t m_Int;
         std::string* m_Str;
+        NullValue m_Null;
       } m_Data;
 
       template<typename T>
-      constexpr Value(const T& value) : m_Name("<anonymous>")
+      constexpr Value(const T& value)
       {
         static_assert(std::is_same<T, std::int64_t>::value || std::is_same<T, double>::value
             || std::is_same<T, bool>::value || std::is_same<T, char>::value
@@ -57,9 +61,14 @@ namespace Grace
         }
       }
 
+      Value()
+      {
+        m_Type = Type::Null;
+        m_Data.m_Null = nullptr;
+      }
+
       Value(const Value& other)
       {
-        m_Name = other.m_Name;
         m_Type = other.m_Type;
         if (other.m_Type == Type::String) {
           m_Data.m_Str = new std::string(*other.m_Data.m_Str);
@@ -97,7 +106,7 @@ namespace Grace
       {
         static_assert(std::is_same<T, std::int64_t>::value || std::is_same<T, double>::value
             || std::is_same<T, bool>::value || std::is_same<T, char>::value
-            || std::is_same<T, std::string>::value,
+            || std::is_same<T, std::string>::value || std::is_same<T, NullValue>::value,
             "Invalid type for Constant<T>::operator=");
 
         if (m_Type == Type::String && m_Data.m_Str != nullptr) {
@@ -119,12 +128,16 @@ namespace Grace
         } else if constexpr (std::is_same<T, std::string>::value) {
           m_Type = Type::String;
           m_Data.m_Str = new std::string(value);
+        } else if constexpr (std::is_same<T, NullValue>::value) {
+          m_Type = Type::Null;
+          m_Data.m_Null = nullptr;
         }
         return *this;
       }
 
       void PrintLn() const;
       void Print() const;
+      void DebugPrint() const;
       std::string ToString() const;
 
       template<typename T> 
@@ -132,7 +145,7 @@ namespace Grace
       {
         static_assert(std::is_same<T, std::int64_t>::value || std::is_same<T, double>::value
             || std::is_same<T, bool>::value || std::is_same<T, char>::value
-            || std::is_same<T, std::string>::value,
+            || std::is_same<T, std::string>::value || std::is_same<T, NullValue>::value,
             "Invalid type for Constant<T>::Get<T>()");
         if constexpr (std::is_same<T, std::int64_t>::value) {
           return m_Data.m_Int;
@@ -144,6 +157,8 @@ namespace Grace
           return m_Data.m_Char;
         } else if constexpr (std::is_same<T, std::string>::value) {
           return *m_Data.m_Str;
+        } else if constexpr (std::is_same<T, NullValue>::value) {
+          return nullptr;
         }
       }
 
@@ -152,14 +167,8 @@ namespace Grace
         return m_Type;
       }
 
-      constexpr inline const String& GetName() const
-      {
-        return m_Name;
-      }
-
     private:
 
-      String m_Name;
       Type m_Type;
     };
   }
@@ -179,6 +188,7 @@ struct fmt::formatter<Grace::VM::Value::Type> : fmt::formatter<std::string_view>
       case Value::Type::Char: name = "Type::Char"; break;
       case Value::Type::Double: name = "Type::Float"; break;
       case Value::Type::Int: name = "Type::Int"; break;
+      case Value::Type::Null: name = "Type::Null"; break;
       case Value::Type::String: name = "Type::String"; break;
     }
     return fmt::formatter<std::string_view>::format(name, context);

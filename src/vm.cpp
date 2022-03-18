@@ -25,7 +25,25 @@ static inline Result PopLastTwo(std::vector<Value>& stack)
   return Result(std::move(c1), std::move(c2));
 }
 
-InterpretResult VM::Run(const String& funcName, int startLine)
+static void PrintStack(std::vector<Value>& stack, const Grace::String& funcName)
+{
+  fmt::print("{} STACK:\n", funcName);
+  for (const auto& c : stack) {
+    fmt::print("\t");
+    c.DebugPrint();
+  }
+}
+
+static void PrintLocals(const std::unordered_map<Grace::String, Value>& locals, const Grace::String& funcName)
+{
+  fmt::print("{} LOCALS:\n", funcName);
+  for (const auto& [name, value] : locals) {
+    fmt::print("\t");
+    value.DebugPrint();
+  }
+}
+
+InterpretResult VM::Run(const String& funcName, int startLine, bool verbose)
 {
   if (m_FunctionList.find(funcName) == m_FunctionList.end()) {
     RuntimeError(fmt::format("Could not find function {}", funcName), InterpretError::FunctionNotFound, startLine);
@@ -36,6 +54,7 @@ InterpretResult VM::Run(const String& funcName, int startLine)
   auto& function = m_FunctionList.at(funcName);
   auto& opList = function.m_OpList;
   auto& constantList = function.m_ConstantList;
+  auto& localsList = function.m_Locals;
   std::size_t opCurrent = 0, constantCurrent = 0;
 
   while (opCurrent < opList.size()) {
@@ -149,12 +168,6 @@ InterpretResult VM::Run(const String& funcName, int startLine)
         }
         break;
       }
-      case Ops::LoadConstant:
-        valueStack.push_back(constantList[constantCurrent++]);
-        break;
-      case Ops::Pop:
-        valueStack.pop_back();
-        break;
       case Ops::Pow: {
         auto [c1, c2] = PopLastTwo(valueStack);
         if (!HandlePower(c1, c2, valueStack)) {
@@ -164,6 +177,19 @@ InterpretResult VM::Run(const String& funcName, int startLine)
         }
         break;
       }
+      case Ops::LoadConstant:
+        valueStack.push_back(constantList[constantCurrent++]);
+        break;
+      case Ops::LoadLocal: {
+        auto name = valueStack.back().Get<std::string>();
+        valueStack.pop_back();
+        auto value = localsList[name];
+        valueStack.push_back(value);
+        break;
+      }
+      case Ops::Pop:
+        valueStack.pop_back();
+        break;
       case Ops::Print:
         valueStack.back().Print();
         break;
@@ -179,10 +205,22 @@ InterpretResult VM::Run(const String& funcName, int startLine)
       case Ops::Call: {
         auto funcName = valueStack.back().Get<std::string>();
         valueStack.pop_back();
-        auto res = Run(funcName, line);
+        auto res = Run(funcName, line, verbose);
         if (res != InterpretResult::RuntimeOk) {
           return res;
         }
+        break;
+      }
+      case Ops::AssignLocal: {
+        auto value = valueStack.back();
+        valueStack.pop_back();
+        localsList[valueStack.back().Get<std::string>()] = value;
+        valueStack.pop_back();
+        break;
+      }
+      case Ops::DeclareLocal: {
+        auto name = valueStack.back().Get<std::string>();
+        localsList.insert(std::make_pair(name, Value()));
         break;
       }
       default:
@@ -192,13 +230,16 @@ InterpretResult VM::Run(const String& funcName, int startLine)
   }
 
 #ifdef GRACE_DEBUG
-  fmt::print("STACK:\n");
-  for (const auto& c : valueStack) {
-    fmt::print("\t");
-    c.PrintLn();
+  if (verbose) {
+    PrintStack(valueStack, funcName);
+    PrintLocals(localsList, funcName);
   }
 #endif
 
+  // clearing the locals here because that memory is no longer necessary
+  // not clearning the value stack, because that shouldnt have anything on it 
+  // so printing above while still in debug will show any problems
+  localsList.clear();
   return InterpretResult::RuntimeOk;
 }
 

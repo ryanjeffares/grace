@@ -20,7 +20,9 @@ namespace Grace
     {
       Add,
       And,
+      AssignLocal,
       Call,
+      DeclareLocal,
       Divide,
       Equal,
       Greater,
@@ -28,6 +30,7 @@ namespace Grace
       Less,
       LessEqual,
       LoadConstant,
+      LoadLocal,
       Multiply,
       NotEqual,
       Or,
@@ -73,6 +76,7 @@ namespace Grace
           String m_Name;
           std::vector<OpLine> m_OpList; 
           std::vector<Value> m_ConstantList;
+          std::unordered_map<String, Value> m_Locals;
 
           Function(const String& name)
             : m_Name(name)
@@ -107,7 +111,7 @@ namespace Grace
         }
 
         bool AddFunction(const String& name);
-        InterpretResult Run(const String& funcName, int startLine);
+        InterpretResult Run(const String& funcName, int startLine, bool verbose);
 
       private:
 
@@ -131,7 +135,9 @@ struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
     switch (type) {
       case Ops::Add: name = "Ops::Add"; break;
       case Ops::And: name = "Ops::And"; break;
+      case Ops::AssignLocal: name = "Ops::AssignLocal"; break;
       case Ops::Call: name = "Ops::Call"; break;
+      case Ops::DeclareLocal: name = "Ops::DeclareLocal"; break;
       case Ops::Divide: name = "Ops::Divide"; break;
       case Ops::Equal: name = "Ops::Equal"; break;
       case Ops::Greater: name = "Ops::Greater"; break;
@@ -139,6 +145,7 @@ struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
       case Ops::Less: name = "Ops::Less"; break;
       case Ops::LessEqual: name = "Ops::LessEqual"; break;
       case Ops::LoadConstant: name = "Ops::LoadConstant"; break;
+      case Ops::LoadLocal: name = "Ops::LoadLocal"; break;
       case Ops::Multiply: name = "Ops::Multiply"; break;
       case Ops::NotEqual: name = "Ops::NotEqual"; break;
       case Ops::Or: name = "Ops::Or"; break;

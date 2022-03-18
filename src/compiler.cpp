@@ -30,7 +30,7 @@ void Grace::Compiler::Compile(std::string&& fileName, std::string&& code, bool v
       auto duration = duration_cast<microseconds>(end - start).count();
       fmt::print("Compilation succeeded in {} μs.\n", duration);
     }
-    compiler.Finalise();
+    compiler.Finalise(verbose);
   }
 }
 
@@ -43,12 +43,14 @@ Compiler::Compiler(std::string&& fileName, std::string&& code)
 {
 }
 
-void Compiler::Finalise()
+void Compiler::Finalise(bool verbose)
 {
 #ifdef GRACE_DEBUG
-  m_Vm.PrintOps();
+  if (verbose) {
+    m_Vm.PrintOps();
+  }
 #endif
-  m_Vm.Run("main", 1);
+  m_Vm.Run("main", 1, verbose);
 }
 
 void Compiler::Advance()
@@ -191,7 +193,8 @@ void Compiler::FuncDeclaration()
       return;
     }
   }
-
+  
+  m_Locals.clear();
   m_CurrentContext = previous;
 }
 
@@ -201,6 +204,31 @@ void Compiler::VarDeclaration()
     ErrorAtPrevious("Only functions and classes are allowed at top level");
     return;
   }
+
+  Consume(TokenType::Identifier, "Expected identifier after `var`");
+  if (std::find(m_Locals.begin(), m_Locals.end(), m_Previous.value().GetText()) 
+      != m_Locals.end()) {
+    ErrorAtPrevious("A local variable with the same name already exists");
+    return;
+  }
+
+  std::string localName(m_Previous.value().GetText());
+  int line = m_Previous.value().GetLine();
+
+  m_Locals.push_back(localName);
+  EmitConstant(localName);
+  EmitOp(Ops::LoadConstant, line);
+  EmitOp(Ops::DeclareLocal, line);
+  EmitOp(Ops::Pop, line);
+
+  if (Match(TokenType::Equal)) {
+    EmitConstant(localName);
+    EmitOp(Ops::LoadConstant, line);
+    Expression(); 
+    line = m_Previous.value().GetLine();
+    EmitOp(Ops::AssignLocal, line);
+  }
+  Consume(TokenType::Semicolon, "Expected ';' after `var` declaration");
 }
 
 void Compiler::FinalDeclaration() 
@@ -223,12 +251,21 @@ void Compiler::Assignment()
       Call();
     }
 
-    if (Match(TokenType::Equal)) {
+    if (Check(TokenType::Equal)) {
+      if (m_Previous.value().GetType() != TokenType::Identifier) {
+        ErrorAtCurrent("Only identifiers can be assigned to");
+        return;
+      }
+      Advance();  // consume the equals
+
       if (Match(TokenType::Identifier)) {
-        Expression();
+        Assignment();
       } else {
         Or();
       }
+
+      int line = m_Previous.value().GetLine();
+      EmitOp(Ops::AssignLocal, line);
     }
   } else {
     Or();
@@ -397,8 +434,21 @@ void Compiler::Call()
       // TODO: account for function args
       Consume(TokenType::RightParen, "Expected ')'");
       EmitOp(Ops::Call, m_Previous.value().GetLine());
+    } else if (Match(TokenType::Dot)) {
+      // TODO: account for dot
+    } else {
+      if (std::find(m_Locals.begin(), m_Locals.end(), prev.GetText()) == m_Locals.end()) {
+        ErrorAtPrevious(fmt::format("Cannot find variable '{}' in this scope.", prev.GetText()));
+        return;
+      }
+      // not a call or member access, so we are just trying to call on the value of the local
+      // or reassign it 
+      // if its not a reassignment, we are trying to load its value 
+      // Primary() has already but the variable's name on the stack
+      if (!Check(TokenType::Equal)) {
+        EmitOp(Ops::LoadLocal, prev.GetLine());
+      }
     }
-    // TODO: account for dot
   }
 }
 
