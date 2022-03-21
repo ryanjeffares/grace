@@ -274,10 +274,7 @@ void Compiler::Expression(bool canAssign)
     return;
   }
   if (Check(TokenType::Identifier)) {
-    if (IsPrimaryToken()) {
-      Call(canAssign);
-    }
-
+    Call(canAssign);
     if (Check(TokenType::Equal)) {
       if (m_Previous.value().GetType() != TokenType::Identifier) {
         ErrorAtCurrent("Only identifiers can be assigned to");
@@ -355,21 +352,21 @@ void Compiler::WhileStatement()
   
 }
 
-void Compiler::And(bool canAssign)
-{
-  Equality(canAssign);
-  while (Match(TokenType::And)) {
-    Equality(canAssign);
-    EmitOp(Ops::And, m_Current.value().GetLine());
-  }
-}
-
 void Compiler::Or(bool canAssign)
 {
   And(canAssign);
   while (Match(TokenType::Or)) {
     And(canAssign);
     EmitOp(Ops::Or, m_Current.value().GetLine());
+  }
+}
+
+void Compiler::And(bool canAssign)
+{
+  Equality(canAssign);
+  while (Match(TokenType::And)) {
+    Equality(canAssign);
+    EmitOp(Ops::And, m_Current.value().GetLine());
   }
 }
 
