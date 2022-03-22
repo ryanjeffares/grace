@@ -143,12 +143,10 @@ namespace Grace
 
         Scanner::Scanner m_Scanner;
         VM::VM m_Vm;
-        std::vector<Scanner::Token> m_Tokens;
-        std::size_t m_CurrentTokenIndex = 0;
 
         std::optional<Scanner::Token> m_Current, m_Previous;
         std::string m_CurrentFileName;
-        std::vector<std::string> m_Locals;
+        std::unordered_map<std::string, bool> m_Locals;
 
         bool m_PanicMode = false, m_HadError = false;
     };

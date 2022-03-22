@@ -11,7 +11,7 @@
 #include "../include/fmt/core.h"
 #include "../include/fmt/format.h"
 
-#include "constant.hpp"
+#include "value.hpp"
 
 namespace Grace
 {
@@ -46,6 +46,7 @@ namespace Grace
       PrintEmptyLine,
       PrintLn,
       PrintTab,
+      Return,
       Subtract,
     };
 
@@ -58,6 +59,7 @@ namespace Grace
     enum class InterpretError
     {
       FunctionNotFound,
+      IncorrectArgCount,
       InvalidOperand,
     };
 
@@ -85,11 +87,13 @@ namespace Grace
           String m_Name;
           std::vector<OpLine> m_OpList; 
           std::vector<Value> m_ConstantList;
+          std::vector<std::string> m_Parameters;
           std::unordered_map<String, Value> m_Locals;
-          int m_Line;
+          int m_Line, m_Arity;
 
-          Function(const String& name, int line)
-            : m_Name(name), m_Line(line)
+          Function(const String& name, std::vector<std::string>&& params, int line)
+            : m_Name(name), m_Parameters(std::move(params)), 
+            m_Line(line), m_Arity(m_Parameters.size())
           {
 
           }
@@ -124,12 +128,12 @@ namespace Grace
           m_FunctionList.at(m_LastFunction).m_ConstantList.emplace_back(value);
         }
 
-        bool AddFunction(const String& name, int line);
+        bool AddFunction(const String& name, int line, std::vector<std::string>&& parmeters);
         void Start(bool verbose);
 
       private:
 
-        InterpretResult Run(const String& funcName, int startLine, bool verbose, CallStack& cs);
+        std::pair<InterpretResult, Value> Run(const String& funcName, int startLine, bool verbose, CallStack& cs, const std::vector<Value>& args);
         void RuntimeError(const std::string& message, InterpretError errorType, int line, const CallStack& callStack);
 
         std::unordered_map<String, Function> m_FunctionList;
@@ -171,6 +175,7 @@ struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
       case Ops::PrintEmptyLine: name = "Ops::PrintEmptyLine"; break;
       case Ops::PrintLn: name = "Ops::PrintLn"; break;
       case Ops::PrintTab: name = "Ops::PrintTab"; break;
+      case Ops::Return: name = "Ops::Return"; break;
       case Ops::Subtract: name = "Ops::Subtract"; break;
     }
     return fmt::formatter<std::string_view>::format(name, context);
@@ -188,6 +193,7 @@ struct fmt::formatter<Grace::VM::InterpretError> : fmt::formatter<std::string_vi
     std::string_view name = "unknown";
     switch (type) {
       case InterpretError::FunctionNotFound: name = "FunctionNotFound"; break;
+      case InterpretError::IncorrectArgCount: name = "IncorrectArgCount"; break;
       case InterpretError::InvalidOperand: name = "InvalidOperand"; break;
     }
     return fmt::formatter<std::string_view>::format(name, context);

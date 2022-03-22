@@ -1,17 +1,15 @@
-func inner():
-  println(true and 5);
+func square(number):
+  return number ** 2;
 end
 
-func middle():
-  inner();
-end 
-
-func outer():
-  middle();
-end 
+func say_hello(name):
+  return "Hello " + name + "!";
+end
 
 func main():
-  var a = 5;
-  println(a == null);
-  outer();
+  var a = square(2);
+  println(a);
+  final b = square(32);
+  println(b);
+  println(say_hello("Ryan"));
 end

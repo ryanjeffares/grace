@@ -38,7 +38,6 @@ using namespace Grace::Compiler;
 
 Compiler::Compiler(std::string&& fileName, std::string&& code) 
   : m_Scanner(std::move(code)), 
-  m_Tokens(m_Scanner.GetTokens()),
   m_CurrentFileName(std::move(fileName)),
   m_CurrentContext(Context::TopLevel),
   m_Vm(*this)
@@ -59,7 +58,7 @@ void Compiler::Finalise(bool verbose)
 void Compiler::Advance()
 {
   m_Previous = m_Current;
-  m_Current = m_Tokens[m_CurrentTokenIndex++];
+  m_Current = m_Scanner.ScanToken();
 //  fmt::print("{}\n", m_Current.value().ToString());
 
   if (m_Current.value().GetType() == TokenType::Error) {
@@ -132,7 +131,6 @@ static bool IsKeyword(TokenType type, std::string& outKeyword)
     case TokenType::For: outKeyword = "for"; return true;
     case TokenType::Func: outKeyword = "func"; return true;
     case TokenType::If: outKeyword = "if"; return true;
-    case TokenType::Null: outKeyword = "null"; return true;
     case TokenType::Or: outKeyword = "or"; return true;
     case TokenType::Print: outKeyword = "print"; return true;
     case TokenType::PrintLn: outKeyword = "println"; return true;
@@ -232,15 +230,32 @@ void Compiler::FuncDeclaration()
 
   Consume(TokenType::Identifier, "Expected function name");
   Grace::String name = std::string(m_Previous.value().GetText());
-  if (!m_Vm.AddFunction(name, m_Previous.value().GetLine())) {
+
+  Consume(TokenType::LeftParen, "Expected '(' after function name");
+
+  std::vector<std::string> parameters;
+  while (true) {
+    if (Match(TokenType::Identifier)) {
+      auto p = std::string(m_Previous.value().GetText());
+      if (std::find(parameters.begin(), parameters.end(), p) != parameters.end()) {
+        ErrorAtPrevious("Function parameters with the same name already defined");
+        return;
+      }
+      m_Locals.insert(std::make_pair(p, false));
+      parameters.push_back(p);
+    }
+    if (Match(TokenType::RightParen)) {
+      break;
+    }
+    Consume(TokenType::Comma, "Expected ',' after function parameter");
+  }
+
+  Consume(TokenType::Colon, "Expected ':' after function signature");
+
+  if (!m_Vm.AddFunction(name, m_Previous.value().GetLine(), std::move(parameters))) {
     ErrorAtPrevious("Duplicate function definitions");
     return;
   }
-
-  Consume(TokenType::LeftParen, "Expected '(' after function name");
-  // TODO: arguments
-  Consume(TokenType::RightParen, "Expected ')'");
-  Consume(TokenType::Colon, "Expected ':' after function signature");
 
   while (!Match(TokenType::End)) {
     Declaration();
@@ -262,8 +277,7 @@ void Compiler::VarDeclaration()
   }
 
   Consume(TokenType::Identifier, "Expected identifier after `var`");
-  if (std::find(m_Locals.begin(), m_Locals.end(), m_Previous.value().GetText()) 
-      != m_Locals.end()) {
+  if (m_Locals.find(std::string(m_Previous.value().GetText())) != m_Locals.end()) {
     ErrorAtPrevious("A local variable with the same name already exists");
     return;
   }
@@ -271,7 +285,7 @@ void Compiler::VarDeclaration()
   std::string localName(m_Previous.value().GetText());
   int line = m_Previous.value().GetLine();
 
-  m_Locals.push_back(localName);
+  m_Locals.insert(std::make_pair(localName, false));
   EmitConstant(localName);
   EmitOp(Ops::LoadConstant, line);
   EmitOp(Ops::DeclareLocal, line);
@@ -280,7 +294,7 @@ void Compiler::VarDeclaration()
   if (Match(TokenType::Equal)) {
     EmitConstant(localName);
     EmitOp(Ops::LoadConstant, line);
-    Expression(true); 
+    Expression(false);
     line = m_Previous.value().GetLine();
     EmitOp(Ops::AssignLocal, line);
   }
@@ -293,6 +307,31 @@ void Compiler::FinalDeclaration()
     ErrorAtPrevious("Only functions and classes are allowed at top level");
     return;
   } 
+
+  Consume(TokenType::Identifier, "Expected identifier after `final`");
+
+  if (m_Locals.find(std::string(m_Previous.value().GetText())) != m_Locals.end()) {
+    ErrorAtPrevious("A local variable with the same name already exists");
+    return;
+  }
+
+  std::string localName(m_Previous.value().GetText());
+  int line = m_Previous.value().GetLine();
+
+  m_Locals.insert(std::make_pair(localName, true));
+  EmitConstant(localName);
+  EmitOp(Ops::LoadConstant, line);
+  EmitOp(Ops::DeclareLocal, line);
+  EmitOp(Ops::Pop, line);
+
+  Consume(TokenType::Equal, "Must assign to `final` upon declaration");
+  EmitConstant(localName);
+  EmitOp(Ops::LoadConstant, line);
+  Expression(false);
+  line = m_Previous.value().GetLine();
+  EmitOp(Ops::AssignLocal, line);
+
+  Consume(TokenType::Semicolon, "Expected ';' after `final` declaration");
 }
 
 void Compiler::Expression(bool canAssign)
@@ -315,6 +354,11 @@ void Compiler::Expression(bool canAssign)
     if (Check(TokenType::Equal)) {
       if (m_Previous.value().GetType() != TokenType::Identifier) {
         ErrorAtCurrent("Only identifiers can be assigned to");
+        return;
+      }
+
+      if (m_Locals.at(std::string(m_Previous.value().GetText()))) {
+        ErrorAtPrevious(fmt::format("Cannot reassign to final '{}'", m_Previous.value().GetText()));
         return;
       }
 
@@ -401,7 +445,7 @@ void Compiler::PrintStatement()
     EmitOp(Ops::Pop, m_Current.value().GetLine());
     Consume(TokenType::RightParen, "Expected ')' after expression");
   }
-  Consume(TokenType::Semicolon, "Expected ';'");
+  Consume(TokenType::Semicolon, "Expected ';' after expression");
 }
 
 void Compiler::PrintLnStatement() 
@@ -415,12 +459,26 @@ void Compiler::PrintLnStatement()
     EmitOp(Ops::Pop, m_Current.value().GetLine());
     Consume(TokenType::RightParen, "Expected ')' after expression");
   }
-  Consume(TokenType::Semicolon, "Expected ';'");
+  Consume(TokenType::Semicolon, "Expected ';' after expression");
 }
 
 void Compiler::ReturnStatement() 
 {
-  
+  if (m_CurrentContext != Context::Function) {
+    ErrorAtPrevious("`return` only allowed inside functions");
+    return;
+  }
+
+  if (Match(TokenType::Semicolon)) {
+    EmitConstant((void*)nullptr);
+    EmitOp(Ops::LoadConstant, m_Previous.value().GetLine());
+    EmitOp(Ops::Return, m_Previous.value().GetLine());
+    return;
+  }
+
+  Expression(false);
+  EmitOp(Ops::Return, m_Previous.value().GetLine());
+  Consume(TokenType::Semicolon, "Expected ';' after expression");
 }
 
 void Compiler::WhileStatement() 
@@ -537,24 +595,49 @@ void Compiler::Call(bool canAssign)
 {
   Primary(canAssign);
   auto prev = m_Previous.value();
+  auto prevText = std::string(m_Previous.value().GetText());
+
   if (prev.GetType() != TokenType::Identifier && Check(TokenType::LeftParen)) {
     ErrorAtCurrent("'(' only allowed after functions and classes");
     return;
   }
+
   if (prev.GetType() == TokenType::Identifier) {
     if (Match(TokenType::LeftParen)) {
       // parsing the identifier puts the identifier name at the top of the stack
       // so we just need to validate the call syntax here
-      // TODO: account for function args
-      Consume(TokenType::RightParen, "Expected ')'");
+      // Primary() put the function name on the top of the stack 
+      // pretty jank, but we need to pop that then put it back on top when we have the args 
+
+      EmitOp(Ops::Pop, m_Previous.value().GetLine());
+
+      std::int64_t numArgs = 0;
+      if (!Match(TokenType::RightParen)) {
+        while (true) {        
+          Expression(false);
+          numArgs++;
+          if (Match(TokenType::RightParen)) {
+            break;
+          }
+          Consume(TokenType::Comma, "Expected ',' after funcion call argument");
+        }
+      }
+      
+      // values for function arguments (if any) will be on top of the value stack
+      // get the function name on the very top
+      EmitConstant(numArgs);
+      EmitOp(Ops::LoadConstant, m_Previous.value().GetLine());
+      EmitConstant(prevText);
+      EmitOp(Ops::LoadConstant, m_Previous.value().GetLine());
       EmitOp(Ops::Call, m_Previous.value().GetLine());
     } else if (Match(TokenType::Dot)) {
       // TODO: account for dot
     } else {
-      if (std::find(m_Locals.begin(), m_Locals.end(), prev.GetText()) == m_Locals.end()) {
+      if (m_Locals.find(std::string(prev.GetText())) == m_Locals.end()) {
         ErrorAtPrevious(fmt::format("Cannot find variable '{}' in this scope.", prev.GetText()));
         return;
       }
+
       // not a call or member access, so we are just trying to call on the value of the local
       // or reassign it 
       // if its not a reassignment, we are trying to load its value 

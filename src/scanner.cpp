@@ -30,6 +30,7 @@ static std::unordered_map<std::string, TokenType> s_KeywordLookup =
   std::make_pair("null", TokenType::Null),
   std::make_pair("print", TokenType::Print),
   std::make_pair("println", TokenType::PrintLn),
+  std::make_pair("return", TokenType::Return),
   std::make_pair("while", TokenType::While),
   std::make_pair("this", TokenType::This),
   std::make_pair("true", TokenType::True),
@@ -72,19 +73,6 @@ Scanner::Scanner(std::string&& code)
   : m_CodeString(std::move(code))
 {
 
-}
-
-std::vector<Token> Scanner::GetTokens()
-{
-  std::vector<Token> tokens;
-  while (true) {
-    auto tok = ScanToken();
-    tokens.push_back(tok);
-    if (tok.GetType() == TokenType::EndOfFile) {
-      break;
-    }
-  }
-  return tokens;
 }
 
 Token Scanner::ScanToken()

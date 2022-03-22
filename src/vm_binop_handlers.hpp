@@ -192,8 +192,7 @@ static bool HandleMultiplication(const Value& c1, const Value& c2, std::vector<V
   }
 }
 
-[[nodiscard]]
-static bool HandleEquality(const Value& c1, const Value& c2, std::vector<Value>& stack, bool equal)
+static void HandleEquality(const Value& c1, const Value& c2, std::vector<Value>& stack, bool equal)
 {
   switch (c1.GetType()) {
     case Value::Type::Int: {
@@ -202,21 +201,20 @@ static bool HandleEquality(const Value& c1, const Value& c2, std::vector<Value>&
           stack.emplace_back(equal 
               ? static_cast<double>(c1.Get<std::int64_t>()) == c2.Get<double>()
               : static_cast<double>(c1.Get<std::int64_t>()) != c2.Get<double>());
-          return true;
+          break;
         }
         case Value::Type::Int: {
           stack.emplace_back(equal 
               ? c1.Get<std::int64_t>() == c2.Get<std::int64_t>()
               : c1.Get<std::int64_t>() != c2.Get<std::int64_t>());
-          return true;
+          break;
         }
-        case Value::Type::Null: {
+        default: {
           stack.emplace_back(false);
-          return true;
+          break;
         }
-        default:
-          return false;
       }
+      break;
     }
     case Value::Type::Double: {
       switch (c2.GetType()) {
@@ -224,33 +222,30 @@ static bool HandleEquality(const Value& c1, const Value& c2, std::vector<Value>&
           stack.emplace_back(equal 
               ? c1.Get<double>() == static_cast<double>(c2.Get<std::int64_t>())
               : c1.Get<double>() != static_cast<double>(c2.Get<std::int64_t>()));
-          return true;
+          break;
         }
         case Value::Type::Double: {
           stack.emplace_back(equal 
               ? c1.Get<double>() == c2.Get<double>()
               : c1.Get<double>() != c2.Get<double>());
-          return true;
+          break;
         }
-        case Value::Type::Null: {
+        default: {
           stack.emplace_back(false);
-          return true;
+          break;
         }
-        default:
-          return false;
       }
+      break;
     }
     case Value::Type::Bool: {
       if (c2.GetType() == Value::Type::Bool) {
         stack.emplace_back(equal 
             ? c1.Get<bool>() == c2.Get<bool>()
             : c1.Get<bool>() != c2.Get<bool>());
-        return true;
-      } else if (c2.GetType() == Value::Type::Null) {
+      } else {
         stack.emplace_back(false);
-        return true;
       }
-      return false;
+      break;
     }
     case Value::Type::Char: {
       switch (c2.GetType()) {
@@ -259,22 +254,21 @@ static bool HandleEquality(const Value& c1, const Value& c2, std::vector<Value>&
               && equal 
               ? c1.Get<char>() == c2.Get<std::string>()[0]
               : c1.Get<char>() != c2.Get<std::string>()[0]);
-          return true;
+          break;
         }
         case Value::Type::Char: {
           stack.emplace_back(c1.Get<std::string>().length() == 1 
               && equal
               ? c1.Get<char>() == c2.Get<char>()
               : c1.Get<char>() != c2.Get<char>());
-          return true;
+          break;
         }
-        case Value::Type::Null: {
+        default: {
           stack.emplace_back(false);
-          return true;
+          break;
         }
-        default:
-          return false;
       }
+      break;
     }
     case Value::Type::String: {
       switch (c2.GetType()) {
@@ -282,36 +276,35 @@ static bool HandleEquality(const Value& c1, const Value& c2, std::vector<Value>&
           stack.emplace_back(equal 
               ? c1.Get<std::string>() == c2.Get<std::string>()
               : c1.Get<std::string>() != c2.Get<std::string>());
-          return true;
+          break;
         }
         case Value::Type::Char: {
           stack.emplace_back(c1.Get<std::string>().length() == 1 
               && equal
               ? c1.Get<std::string>()[0] == c2.Get<char>()
               : c1.Get<std::string>()[0] != c2.Get<char>());
-          return true;
-        }
-        case Value::Type::Null: {
-          stack.emplace_back(false);
-          return true;
+          break;
         }
         default:
-          return false;
+          break;
       }
+      break;
     }
     case Value::Type::Null: {
       switch (c2.GetType()) {
         case Value::Type::Null: {
           stack.emplace_back(true);
-          return true;
+          break;
         }
         default:
           stack.emplace_back(false);
-          return true;
-      }                          
+          break;
+      }
+      break;
     }
     default:
-      return false;
+      stack.emplace_back(false);
+      break;
   }
 }
 

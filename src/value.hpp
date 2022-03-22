@@ -160,6 +160,27 @@ namespace Grace
         return m_Type;
       }
 
+      constexpr inline bool AsBool() const
+      {
+        switch (m_Type)
+        {
+          case Type::Bool:
+            return m_Data.m_Bool;
+          case Type::Char:
+            return m_Data.m_Char > (char)0;
+          case Type::Double:
+            return m_Data.m_Double > 0.0;
+          case Type::Int:
+            return m_Data.m_Int > 0;
+          case Type::Null:
+            return false;
+          case Type::String:
+            return m_Data.m_Str->length() > 0;
+          default:
+            return false;
+        }
+      }
+
     private:
 
       Type m_Type;

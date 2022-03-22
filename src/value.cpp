@@ -1,6 +1,6 @@
 #include <type_traits>
 
-#include "constant.hpp"
+#include "value.hpp"
 
 using namespace Grace::VM;
 

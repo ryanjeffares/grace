@@ -39,7 +39,7 @@ static void PrintLocals(const std::unordered_map<Grace::String, Value>& locals, 
 {
   fmt::print("{} LOCALS:\n", funcName);
   for (const auto& [name, value] : locals) {
-    fmt::print("\t");
+    fmt::print("\t{}: ", name);
     value.DebugPrint();
   }
 }
@@ -52,22 +52,48 @@ void VM::Start(bool verbose)
     return;
   }
 
-  Run("main", 1, verbose, callStack);
+  callStack.push_back(std::make_tuple("file", "main", 1));
+  Run("main", 1, verbose, callStack, {});
 }
 
-InterpretResult VM::Run(const String& funcName, int startLine, bool verbose, CallStack& callStack)
+std::pair<InterpretResult, Value> VM::Run(const String& funcName, int startLine, bool verbose, CallStack& callStack, const std::vector<Value>& args)
 {
-  if (m_FunctionList.find(funcName) == m_FunctionList.end()) {
-    RuntimeError(fmt::format("Could not find function {}", funcName), InterpretError::FunctionNotFound, startLine, {});
-    return InterpretResult::RuntimeError;
-  }
+#define PRINT_LOCAL_MEMORY()                                          \
+  do {                                                                \
+    if (verbose) {                                                    \
+      PrintStack(valueStack, funcName);                               \
+      PrintLocals(localsList, funcName);                              \
+    }                                                                 \
+  } while (false)                                                     \
 
+#define RETURN_ERR()                                                  \
+  do {                                                                \
+    localsList.clear();                                               \
+    return std::make_pair(InterpretResult::RuntimeError, Value());    \
+  } while (false)                                                     \
+
+#define RETURN_NULL()                                                 \
+  do {                                                                \
+    localsList.clear();                                               \
+    return std::make_pair(InterpretResult::RuntimeOk, Value());       \
+  } while (false)                                                     \
+
+#define RETURN_VALUE(value)                                           \
+  do {                                                                \
+    localsList.clear();                                               \
+    return std::make_pair(InterpretResult::RuntimeOk, value);         \
+  } while (false)                                                     \
+    
   std::vector<Value> valueStack;
   auto& function = m_FunctionList.at(funcName);
   auto& opList = function.m_OpList;
   auto& constantList = function.m_ConstantList;
   auto& localsList = function.m_Locals;
   std::size_t opCurrent = 0, constantCurrent = 0;
+
+  for (auto i = 0; i < args.size(); i++) {
+    localsList.insert(std::make_pair(function.m_Parameters[i], std::move(args[i])));
+  }
 
   while (opCurrent < opList.size()) {
     auto [op, line] = opList[opCurrent++];
@@ -77,7 +103,10 @@ InterpretResult VM::Run(const String& funcName, int startLine, bool verbose, Cal
         if (!HandleAddition(c1, c2, valueStack)) {
           RuntimeError(fmt::format("cannot add `{}` to `{}`", c2.GetType(), c1.GetType()), 
               InterpretError::InvalidOperand, line, callStack);
-          return InterpretResult::RuntimeError;
+#ifdef GRACE_DEBUG
+          PRINT_LOCAL_MEMORY();
+#endif
+          RETURN_ERR();
         }
         break;
       }
@@ -86,7 +115,10 @@ InterpretResult VM::Run(const String& funcName, int startLine, bool verbose, Cal
         if (!HandleSubtraction(c1, c2, valueStack)) {
           RuntimeError(fmt::format("cannot subtract `{}` from `{}`", c2.GetType(), c1.GetType()), 
               InterpretError::InvalidOperand, line, callStack);
-          return InterpretResult::RuntimeError;
+#ifdef GRACE_DEBUG
+          PRINT_LOCAL_MEMORY();
+#endif
+          RETURN_ERR();
         }
         break;
       }
@@ -95,7 +127,10 @@ InterpretResult VM::Run(const String& funcName, int startLine, bool verbose, Cal
         if (!HandleMultiplication(c1, c2, valueStack)) {
           RuntimeError(fmt::format("cannot multiply `{}` by `{}`", c1.GetType(), c2.GetType()), 
               InterpretError::InvalidOperand, line, callStack);
-          return InterpretResult::RuntimeError;
+#ifdef GRACE_DEBUG
+          PRINT_LOCAL_MEMORY();
+#endif
+          RETURN_ERR();
         }
         break;
       }
@@ -104,44 +139,31 @@ InterpretResult VM::Run(const String& funcName, int startLine, bool verbose, Cal
         if (!HandleDivision(c1, c2, valueStack)) {
           RuntimeError(fmt::format("cannot divide `{}` by `{}`", c1.GetType(), c2.GetType()), 
               InterpretError::InvalidOperand, line, callStack);
-          return InterpretResult::RuntimeError;
+#ifdef GRACE_DEBUG
+          PRINT_LOCAL_MEMORY();
+#endif
+          RETURN_ERR();
         }
         break;
       }
       case Ops::And: {
         auto [c1, c2] = PopLastTwo(valueStack);
-        if (c1.GetType() != Value::Type::Bool || c2.GetType() != Value::Type::Bool) {
-          RuntimeError("`and` can only be used with boolean operands", InterpretError::InvalidOperand, line, callStack);
-          return InterpretResult::RuntimeError; 
-        }
-        valueStack.emplace_back(c1.Get<bool>() == c2.Get<bool>());
+        valueStack.emplace_back(c1.AsBool() == c2.AsBool());
         break;
       }
       case Ops::Or: {
         auto [c1, c2] = PopLastTwo(valueStack);
-        if (c1.GetType() != Value::Type::Bool || c2.GetType() != Value::Type::Bool) {
-          RuntimeError("`or` can only be used with boolean operands", InterpretError::InvalidOperand, line, callStack);
-          return InterpretResult::RuntimeError; 
-        }
-        valueStack.emplace_back(c1.Get<bool>() || c2.Get<bool>());
+        valueStack.emplace_back(c1.AsBool() || c2.AsBool());
         break;
       }
       case Ops::Equal: {
         auto [c1, c2] = PopLastTwo(valueStack);
-        if (!HandleEquality(c1, c2, valueStack, true)) {
-          RuntimeError(fmt::format("cannot compare `{}` with `{}`", c1.GetType(), c2.GetType()), 
-              InterpretError::InvalidOperand, line, callStack);
-          return InterpretResult::RuntimeError;
-        }
+        HandleEquality(c1, c2, valueStack, true);
         break;
       }
       case Ops::NotEqual: {
         auto [c1, c2] = PopLastTwo(valueStack);
-        if (!HandleEquality(c1, c2, valueStack, false)) {
-          RuntimeError(fmt::format("cannot compare `{}` with `{}`", c1.GetType(), c2.GetType()), 
-              InterpretError::InvalidOperand, line, callStack);
-          return InterpretResult::RuntimeError;
-        }
+        HandleEquality(c1, c2, valueStack, false);
         break;
       }
       case Ops::Greater: {
@@ -149,7 +171,10 @@ InterpretResult VM::Run(const String& funcName, int startLine, bool verbose, Cal
         if (!HandleGreaterThan(c1, c2, valueStack)) {
           RuntimeError(fmt::format("cannot compare `{}` with `{}`", c1.GetType(), c2.GetType()), 
               InterpretError::InvalidOperand, line, callStack);
-          return InterpretResult::RuntimeError;
+#ifdef GRACE_DEBUG
+          PRINT_LOCAL_MEMORY();
+#endif
+          RETURN_ERR();
         }
         break;
       }
@@ -158,7 +183,10 @@ InterpretResult VM::Run(const String& funcName, int startLine, bool verbose, Cal
         if (!HandleGreaterEqual(c1, c2, valueStack)) {
           RuntimeError(fmt::format("cannot compare `{}` with `{}`", c1.GetType(), c2.GetType()), 
               InterpretError::InvalidOperand, line, callStack);
-          return InterpretResult::RuntimeError;
+#ifdef GRACE_DEBUG
+          PRINT_LOCAL_MEMORY();
+#endif
+          RETURN_ERR();
         }
         break;
       }
@@ -167,7 +195,10 @@ InterpretResult VM::Run(const String& funcName, int startLine, bool verbose, Cal
         if (!HandleLessThan(c1, c2, valueStack)) {
           RuntimeError(fmt::format("cannot compare `{}` with `{}`", c1.GetType(), c2.GetType()), 
               InterpretError::InvalidOperand, line, callStack);
-          return InterpretResult::RuntimeError;
+#ifdef GRACE_DEBUG
+          PRINT_LOCAL_MEMORY();
+#endif
+          RETURN_ERR();
         }
         break;
       }
@@ -176,7 +207,10 @@ InterpretResult VM::Run(const String& funcName, int startLine, bool verbose, Cal
         if (!HandleLessEqual(c1, c2, valueStack)) {
           RuntimeError(fmt::format("cannot compare `{}` with `{}`", c1.GetType(), c2.GetType()), 
               InterpretError::InvalidOperand, line, callStack);
-          return InterpretResult::RuntimeError;
+#ifdef GRACE_DEBUG
+          PRINT_LOCAL_MEMORY();
+#endif
+          RETURN_ERR();
         }
         break;
       }
@@ -185,7 +219,10 @@ InterpretResult VM::Run(const String& funcName, int startLine, bool verbose, Cal
         if (!HandlePower(c1, c2, valueStack)) {
           RuntimeError(fmt::format("cannot power `{}` with `{}`", c1.GetType(), c2.GetType()),
             InterpretError::InvalidOperand, line, callStack);
-          return InterpretResult::RuntimeError;
+#ifdef GRACE_DEBUG
+          PRINT_LOCAL_MEMORY();
+#endif
+          RETURN_ERR();
         }
         break;
       }
@@ -215,18 +252,53 @@ InterpretResult VM::Run(const String& funcName, int startLine, bool verbose, Cal
         fmt::print("\t");
         break;
       case Ops::Call: {
-        auto calleeName = valueStack.back().Get<std::string>();
+        auto calleeName = std::move(valueStack.back().Get<std::string>());
         valueStack.pop_back();
-        callStack.push_back(std::make_tuple(funcName, calleeName, line));
-        auto res = Run(calleeName, line, verbose, callStack);
-        if (res != InterpretResult::RuntimeOk) {
-          return res;
+        
+        if (m_FunctionList.find(calleeName) == m_FunctionList.end()) {
+          RuntimeError(fmt::format("Could not find function '{}'", calleeName), InterpretError::FunctionNotFound, line, callStack);
+#ifdef GRACE_DEBUG
+          PRINT_LOCAL_MEMORY();
+#endif
+          RETURN_ERR();
         }
+
+        auto& calleeFunc = m_FunctionList.at(calleeName);
+        int arity = calleeFunc.m_Arity;
+        auto numArgsGiven = valueStack.back().Get<std::int64_t>();
+        valueStack.pop_back();
+
+        if (numArgsGiven != arity) {
+          RuntimeError(fmt::format("Incorrect number of arguments given to function '{}', expected {} but got {}", 
+                calleeName, arity, numArgsGiven), 
+              InterpretError::IncorrectArgCount, line, callStack);
+#ifdef GRACE_DEBUG
+          PRINT_LOCAL_MEMORY();
+#endif
+          RETURN_ERR();
+        }
+
+        // top of the stack will be the last function argument 
+        std::vector<Value> callArgs;
+        for (auto i = 0; i < arity; i++) {
+          callArgs.push_back(std::move(valueStack.back()));
+          valueStack.pop_back();
+        }
+        
+        callStack.push_back(std::make_tuple(funcName, calleeName, line));
+        auto [res, value] = Run(calleeName, line, verbose, callStack, callArgs);
+        if (res != InterpretResult::RuntimeOk) {
+#ifdef GRACE_DEBUG
+          PRINT_LOCAL_MEMORY();
+#endif
+          RETURN_ERR();
+        }
+        valueStack.push_back(std::move(value));
         callStack.pop_back();
         break;
       }
       case Ops::AssignLocal: {
-        auto value = valueStack.back();
+        auto value = std::move(valueStack.back());
         valueStack.pop_back();
         localsList[valueStack.back().Get<std::string>()] = value;
         valueStack.pop_back();
@@ -237,29 +309,31 @@ InterpretResult VM::Run(const String& funcName, int startLine, bool verbose, Cal
         localsList.insert(std::make_pair(name, Value()));
         break;
       }
+      case Ops::Return: {
+        auto returnValue = std::move(valueStack.back());
+        valueStack.pop_back();
+#ifdef GRACE_DEBUG
+        PRINT_LOCAL_MEMORY();
+#endif
+        RETURN_VALUE(returnValue);
+      }
       default:
         GRACE_UNREACHABLE();
         break;
     }
   }
 
-#ifdef GRACE_DEBUG
-  if (verbose) {
-    PrintStack(valueStack, funcName);
-    PrintLocals(localsList, funcName);
-  }
-#endif
+  RETURN_NULL();
 
-  // clearing the locals here because that memory is no longer necessary
-  // not clearning the value stack, because that shouldnt have anything on it 
-  // so printing above while still in debug will show any problems
-  localsList.clear();
-  return InterpretResult::RuntimeOk;
+#undef PRINT_LOCAL_MEMORY
+#undef RETURN_ERR
+#undef RETURN_NULL
+#undef RETURN_VALUE
 }
 
-bool VM::AddFunction(const String& name, int line)
+bool VM::AddFunction(const String& name, int line, std::vector<std::string>&& parameters)
 {
-  auto [it, res] = m_FunctionList.try_emplace(name, Function(name, line));
+  auto [it, res] = m_FunctionList.try_emplace(name, Function(name, std::move(parameters), line));
   m_LastFunction = name;
   return res;
 }
@@ -267,15 +341,17 @@ bool VM::AddFunction(const String& name, int line)
 void VM::RuntimeError(const std::string& message, InterpretError errorType, int line, const CallStack& callStack)
 {
   fmt::print(stderr, "\n");
-  fmt::print(stderr, "Call stack:\n");
   
-  for (const auto& [caller, callee, ln] : callStack){
-    fmt::print(stderr, "\tline {}, in {}\n", ln, caller);
-    fmt::print(stderr, "\t\t{}\n", m_Compiler.GetCodeAtLine(ln));
+  fmt::print(stderr, "Call stack:\n");
+
+  for (auto i = 1; i < callStack.size(); i++) {
+    const auto& [caller, callee, ln] = callStack[i];
+    fmt::print(stderr, "\tline {}, in {}:\n", ln, caller);
+    fmt::print(stderr, "\t    {}\n", m_Compiler.GetCodeAtLine(ln));
   }
 
-  fmt::print(stderr, "\tline {}, in {}\n", line, std::get<1>(callStack.back()));
-  fmt::print(stderr, "\t\t{}\n", m_Compiler.GetCodeAtLine(line));
+  fmt::print(stderr, "\tline {}, in {}:\n", line, std::get<1>(callStack.back()));
+  fmt::print(stderr, "\t    {}\n", m_Compiler.GetCodeAtLine(line));
 
   fmt::print(stderr, "\n");
   fmt::print(stderr, fmt::fg(fmt::color::red) | fmt::emphasis::bold, "ERROR: ");

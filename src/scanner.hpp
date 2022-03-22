@@ -103,12 +103,11 @@ namespace Grace
 
         Scanner(std::string&& code);
 
-        std::vector<Token> GetTokens();
+        Token ScanToken();
         std::string GetCodeAtLine(int line) const;
 
       private:
 
-        Token ScanToken();
         void SkipWhitespace();
 
         char Advance();
