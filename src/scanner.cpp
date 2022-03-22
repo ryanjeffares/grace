@@ -73,6 +73,19 @@ Scanner::Scanner(std::string&& code)
 
 }
 
+std::vector<Token> Scanner::GetTokens()
+{
+  std::vector<Token> tokens;
+  while (true) {
+    auto tok = ScanToken();
+    tokens.push_back(tok);
+    if (tok.GetType() == TokenType::EndOfFile) {
+      break;
+    }
+  }
+  return tokens;
+}
+
 Token Scanner::ScanToken()
 {
   SkipWhitespace();

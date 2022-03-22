@@ -88,7 +88,6 @@ namespace Grace
          *  Will advance the compiler until a semicolon or keyword is found.
          */
         void Synchronize();
-        bool IsKeyword(std::string& outKeyword);
 
         void EmitOp(VM::Ops, int line);
 
@@ -114,12 +113,12 @@ namespace Grace
         void ReturnStatement();
         void WhileStatement();
 
-        void And(bool canAssign);
-        void Or(bool canAssign);
-        void Equality(bool canAssign);
-        void Comparison(bool canAssign);
-        void Term(bool canAssign);
-        void Factor(bool canAssign);
+        void And(bool canAssign, bool skipFirst);
+        void Or(bool canAssign, bool skipFirst);
+        void Equality(bool canAssign, bool skipFirst);
+        void Comparison(bool canAssign, bool skipFirst);
+        void Term(bool canAssign, bool skipFirst);
+        void Factor(bool canAssign, bool skipFirst);
         void Unary(bool canAssign);
         void Call(bool canAssign);
         void Primary(bool canAssign);
@@ -143,6 +142,8 @@ namespace Grace
 
         Scanner::Scanner m_Scanner;
         VM::VM m_Vm;
+        std::vector<Scanner::Token> m_Tokens;
+        std::size_t m_CurrentTokenIndex = 0;
 
         std::optional<Scanner::Token> m_Current, m_Previous;
         std::string m_CurrentFileName;

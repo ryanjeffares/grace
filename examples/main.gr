@@ -34,7 +34,7 @@ func main():
   b = "b is a string now";
   println(b);
 
-  n = b > 10;
-  println(n);
+  b = n / 2 + 3;
+  println(b);
 end
  

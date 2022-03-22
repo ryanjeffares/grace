@@ -4,6 +4,7 @@
 #include <string>
 #include <sstream>
 #include <string_view>
+#include <vector>
 
 #include "../include/fmt/format.h"
 
@@ -101,11 +102,12 @@ namespace Grace
 
         Scanner(std::string&& code);
 
-        Token ScanToken();
+        std::vector<Token> GetTokens();
         std::string GetCodeAtLine(int line) const;
 
       private:
 
+        Token ScanToken();
         void SkipWhitespace();
 
         char Advance();
