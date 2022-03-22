@@ -37,7 +37,7 @@ func main():
   println(b);
 
   n = 1;
-  b = n * 3 - 4;
+  b = n * 3 - 4 + 1 / 5.0 and b == "b is a string now";
   println(b);
 end
  

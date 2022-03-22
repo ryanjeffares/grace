@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <exception>
+#include <tuple>
 #include <unordered_map>
 #include <vector>
 #include <type_traits>
@@ -14,6 +15,11 @@
 
 namespace Grace
 {
+  namespace Compiler 
+  {
+    class Compiler;
+  }
+
   namespace VM
   {
     enum class Ops : std::uint8_t
@@ -59,6 +65,9 @@ namespace Grace
     {
       public:
 
+        // Caller, Callee, Line
+        typedef std::vector<std::tuple<String, String, int>> CallStack;
+
         struct OpLine
         {
           Ops m_Op;
@@ -77,15 +86,20 @@ namespace Grace
           std::vector<OpLine> m_OpList; 
           std::vector<Value> m_ConstantList;
           std::unordered_map<String, Value> m_Locals;
+          int m_Line;
 
-          Function(const String& name)
-            : m_Name(name)
+          Function(const String& name, int line)
+            : m_Name(name), m_Line(line)
           {
 
           }
         };
         
-        VM() = default;
+        VM(Compiler::Compiler& compiler) : m_Compiler(compiler)
+        {
+
+        }
+
         VM(const VM&) = delete;
         VM(VM&&) = delete;
 
@@ -110,15 +124,17 @@ namespace Grace
           m_FunctionList.at(m_LastFunction).m_ConstantList.emplace_back(value);
         }
 
-        bool AddFunction(const String& name);
-        InterpretResult Run(const String& funcName, int startLine, bool verbose);
+        bool AddFunction(const String& name, int line);
+        void Start(bool verbose);
 
       private:
 
-        void RuntimeError(const std::string& message, InterpretError errorType, int line);
+        InterpretResult Run(const String& funcName, int startLine, bool verbose, CallStack& cs);
+        void RuntimeError(const std::string& message, InterpretError errorType, int line, const CallStack& callStack);
 
         std::unordered_map<String, Function> m_FunctionList;
         String m_LastFunction;
+        Compiler::Compiler& m_Compiler;
     };
   }
 }

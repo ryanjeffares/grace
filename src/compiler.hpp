@@ -63,6 +63,7 @@ namespace Grace
 
         inline bool HadError() const { return m_HadError; }
         void Finalise(bool verbose);
+        std::string GetCodeAtLine(int line) const;
 
       private:
       

@@ -1,5 +1,6 @@
 #include "grace.hpp"
 
+#include "compiler.hpp"
 #include "vm.hpp"
 #include "vm_binop_handlers.hpp"
 
@@ -43,10 +44,21 @@ static void PrintLocals(const std::unordered_map<Grace::String, Value>& locals, 
   }
 }
 
-InterpretResult VM::Run(const String& funcName, int startLine, bool verbose)
+void VM::Start(bool verbose)
+{
+  CallStack callStack;
+  if (m_FunctionList.find("main") == m_FunctionList.end()) {
+    RuntimeError("Could not find `main` function", InterpretError::FunctionNotFound, 1, {});
+    return;
+  }
+
+  Run("main", 1, verbose, callStack);
+}
+
+InterpretResult VM::Run(const String& funcName, int startLine, bool verbose, CallStack& callStack)
 {
   if (m_FunctionList.find(funcName) == m_FunctionList.end()) {
-    RuntimeError(fmt::format("Could not find function {}", funcName), InterpretError::FunctionNotFound, startLine);
+    RuntimeError(fmt::format("Could not find function {}", funcName), InterpretError::FunctionNotFound, startLine, {});
     return InterpretResult::RuntimeError;
   }
 
@@ -64,7 +76,7 @@ InterpretResult VM::Run(const String& funcName, int startLine, bool verbose)
         auto [c1, c2] = PopLastTwo(valueStack);
         if (!HandleAddition(c1, c2, valueStack)) {
           RuntimeError(fmt::format("cannot add `{}` to `{}`", c2.GetType(), c1.GetType()), 
-              InterpretError::InvalidOperand, line);
+              InterpretError::InvalidOperand, line, callStack);
           return InterpretResult::RuntimeError;
         }
         break;
@@ -73,7 +85,7 @@ InterpretResult VM::Run(const String& funcName, int startLine, bool verbose)
         auto [c1, c2] = PopLastTwo(valueStack);
         if (!HandleSubtraction(c1, c2, valueStack)) {
           RuntimeError(fmt::format("cannot subtract `{}` from `{}`", c2.GetType(), c1.GetType()), 
-              InterpretError::InvalidOperand, line);
+              InterpretError::InvalidOperand, line, callStack);
           return InterpretResult::RuntimeError;
         }
         break;
@@ -82,7 +94,7 @@ InterpretResult VM::Run(const String& funcName, int startLine, bool verbose)
         auto [c1, c2] = PopLastTwo(valueStack);
         if (!HandleMultiplication(c1, c2, valueStack)) {
           RuntimeError(fmt::format("cannot multiply `{}` by `{}`", c1.GetType(), c2.GetType()), 
-              InterpretError::InvalidOperand, line);
+              InterpretError::InvalidOperand, line, callStack);
           return InterpretResult::RuntimeError;
         }
         break;
@@ -91,7 +103,7 @@ InterpretResult VM::Run(const String& funcName, int startLine, bool verbose)
         auto [c1, c2] = PopLastTwo(valueStack);
         if (!HandleDivision(c1, c2, valueStack)) {
           RuntimeError(fmt::format("cannot divide `{}` by `{}`", c1.GetType(), c2.GetType()), 
-              InterpretError::InvalidOperand, line);
+              InterpretError::InvalidOperand, line, callStack);
           return InterpretResult::RuntimeError;
         }
         break;
@@ -99,7 +111,7 @@ InterpretResult VM::Run(const String& funcName, int startLine, bool verbose)
       case Ops::And: {
         auto [c1, c2] = PopLastTwo(valueStack);
         if (c1.GetType() != Value::Type::Bool || c2.GetType() != Value::Type::Bool) {
-          RuntimeError("`and` can only be used with boolean operands", InterpretError::InvalidOperand, line);
+          RuntimeError("`and` can only be used with boolean operands", InterpretError::InvalidOperand, line, callStack);
           return InterpretResult::RuntimeError; 
         }
         valueStack.emplace_back(c1.Get<bool>() == c2.Get<bool>());
@@ -108,7 +120,7 @@ InterpretResult VM::Run(const String& funcName, int startLine, bool verbose)
       case Ops::Or: {
         auto [c1, c2] = PopLastTwo(valueStack);
         if (c1.GetType() != Value::Type::Bool || c2.GetType() != Value::Type::Bool) {
-          RuntimeError("`or` can only be used with boolean operands", InterpretError::InvalidOperand, line);
+          RuntimeError("`or` can only be used with boolean operands", InterpretError::InvalidOperand, line, callStack);
           return InterpretResult::RuntimeError; 
         }
         valueStack.emplace_back(c1.Get<bool>() || c2.Get<bool>());
@@ -118,7 +130,7 @@ InterpretResult VM::Run(const String& funcName, int startLine, bool verbose)
         auto [c1, c2] = PopLastTwo(valueStack);
         if (!HandleEquality(c1, c2, valueStack, true)) {
           RuntimeError(fmt::format("cannot compare `{}` with `{}`", c1.GetType(), c2.GetType()), 
-              InterpretError::InvalidOperand, line);
+              InterpretError::InvalidOperand, line, callStack);
           return InterpretResult::RuntimeError;
         }
         break;
@@ -127,7 +139,7 @@ InterpretResult VM::Run(const String& funcName, int startLine, bool verbose)
         auto [c1, c2] = PopLastTwo(valueStack);
         if (!HandleEquality(c1, c2, valueStack, false)) {
           RuntimeError(fmt::format("cannot compare `{}` with `{}`", c1.GetType(), c2.GetType()), 
-              InterpretError::InvalidOperand, line);
+              InterpretError::InvalidOperand, line, callStack);
           return InterpretResult::RuntimeError;
         }
         break;
@@ -136,7 +148,7 @@ InterpretResult VM::Run(const String& funcName, int startLine, bool verbose)
         auto [c1, c2] = PopLastTwo(valueStack);
         if (!HandleGreaterThan(c1, c2, valueStack)) {
           RuntimeError(fmt::format("cannot compare `{}` with `{}`", c1.GetType(), c2.GetType()), 
-              InterpretError::InvalidOperand, line);
+              InterpretError::InvalidOperand, line, callStack);
           return InterpretResult::RuntimeError;
         }
         break;
@@ -145,7 +157,7 @@ InterpretResult VM::Run(const String& funcName, int startLine, bool verbose)
         auto [c1, c2] = PopLastTwo(valueStack);
         if (!HandleGreaterEqual(c1, c2, valueStack)) {
           RuntimeError(fmt::format("cannot compare `{}` with `{}`", c1.GetType(), c2.GetType()), 
-              InterpretError::InvalidOperand, line);
+              InterpretError::InvalidOperand, line, callStack);
           return InterpretResult::RuntimeError;
         }
         break;
@@ -154,7 +166,7 @@ InterpretResult VM::Run(const String& funcName, int startLine, bool verbose)
         auto [c1, c2] = PopLastTwo(valueStack);
         if (!HandleLessThan(c1, c2, valueStack)) {
           RuntimeError(fmt::format("cannot compare `{}` with `{}`", c1.GetType(), c2.GetType()), 
-              InterpretError::InvalidOperand, line);
+              InterpretError::InvalidOperand, line, callStack);
           return InterpretResult::RuntimeError;
         }
         break;
@@ -163,7 +175,7 @@ InterpretResult VM::Run(const String& funcName, int startLine, bool verbose)
         auto [c1, c2] = PopLastTwo(valueStack);
         if (!HandleLessEqual(c1, c2, valueStack)) {
           RuntimeError(fmt::format("cannot compare `{}` with `{}`", c1.GetType(), c2.GetType()), 
-              InterpretError::InvalidOperand, line);
+              InterpretError::InvalidOperand, line, callStack);
           return InterpretResult::RuntimeError;
         }
         break;
@@ -172,7 +184,7 @@ InterpretResult VM::Run(const String& funcName, int startLine, bool verbose)
         auto [c1, c2] = PopLastTwo(valueStack);
         if (!HandlePower(c1, c2, valueStack)) {
           RuntimeError(fmt::format("cannot power `{}` with `{}`", c1.GetType(), c2.GetType()),
-            InterpretError::InvalidOperand, line);
+            InterpretError::InvalidOperand, line, callStack);
           return InterpretResult::RuntimeError;
         }
         break;
@@ -203,12 +215,14 @@ InterpretResult VM::Run(const String& funcName, int startLine, bool verbose)
         fmt::print("\t");
         break;
       case Ops::Call: {
-        auto funcName = valueStack.back().Get<std::string>();
+        auto calleeName = valueStack.back().Get<std::string>();
         valueStack.pop_back();
-        auto res = Run(funcName, line, verbose);
+        callStack.push_back(std::make_tuple(funcName, calleeName, line));
+        auto res = Run(calleeName, line, verbose, callStack);
         if (res != InterpretResult::RuntimeOk) {
           return res;
         }
+        callStack.pop_back();
         break;
       }
       case Ops::AssignLocal: {
@@ -243,15 +257,27 @@ InterpretResult VM::Run(const String& funcName, int startLine, bool verbose)
   return InterpretResult::RuntimeOk;
 }
 
-bool VM::AddFunction(const String& name)
+bool VM::AddFunction(const String& name, int line)
 {
-  auto [it, res] = m_FunctionList.try_emplace(name, Function(name));
+  auto [it, res] = m_FunctionList.try_emplace(name, Function(name, line));
   m_LastFunction = name;
   return res;
 }
 
-void VM::RuntimeError(const std::string& message, InterpretError errorType, int line)
+void VM::RuntimeError(const std::string& message, InterpretError errorType, int line, const CallStack& callStack)
 {
+  fmt::print(stderr, "\n");
+  fmt::print(stderr, "Call stack:\n");
+  
+  for (const auto& [caller, callee, ln] : callStack){
+    fmt::print(stderr, "\tline {}, in {}\n", ln, caller);
+    fmt::print(stderr, "\t\t{}\n", m_Compiler.GetCodeAtLine(ln));
+  }
+
+  fmt::print(stderr, "\tline {}, in {}\n", line, std::get<1>(callStack.back()));
+  fmt::print(stderr, "\t\t{}\n", m_Compiler.GetCodeAtLine(line));
+
+  fmt::print(stderr, "\n");
   fmt::print(stderr, fmt::fg(fmt::color::red) | fmt::emphasis::bold, "ERROR: ");
   fmt::print(stderr, "[line {}] {}: {}. Stopping execution.\n", line, errorType, message);
 }

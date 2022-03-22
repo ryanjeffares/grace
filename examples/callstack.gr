@@ -1,0 +1,17 @@
+func inner():
+  println(true and 5);
+end
+
+func middle():
+  inner();
+end 
+
+func outer():
+  middle();
+end 
+
+func main():
+  var a;
+  println(a == null);
+  outer();
+end

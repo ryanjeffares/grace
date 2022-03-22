@@ -26,16 +26,6 @@ namespace Grace
         String,
       };
 
-      union
-      {
-        bool m_Bool;
-        char m_Char;
-        double m_Double;
-        std::int64_t m_Int;
-        std::string* m_Str;
-        NullValue m_Null;
-      } m_Data;
-
       template<typename T>
       constexpr Value(const T& value)
       {
@@ -170,6 +160,17 @@ namespace Grace
     private:
 
       Type m_Type;
+
+      union
+      {
+        bool m_Bool;
+        char m_Char;
+        double m_Double;
+        std::int64_t m_Int;
+        std::string* m_Str;
+        NullValue m_Null;
+      } m_Data;
+
     };
   }
 }

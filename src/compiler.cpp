@@ -40,7 +40,8 @@ Compiler::Compiler(std::string&& fileName, std::string&& code)
   : m_Scanner(std::move(code)), 
   m_Tokens(m_Scanner.GetTokens()),
   m_CurrentFileName(std::move(fileName)),
-  m_CurrentContext(Context::TopLevel)
+  m_CurrentContext(Context::TopLevel),
+  m_Vm(*this)
 {
 
 }
@@ -52,7 +53,7 @@ void Compiler::Finalise(bool verbose)
     m_Vm.PrintOps();
   }
 #endif
-  m_Vm.Run("main", 1, verbose);
+  m_Vm.Start(verbose);
 }
 
 void Compiler::Advance()
@@ -230,7 +231,7 @@ void Compiler::FuncDeclaration()
 
   Consume(TokenType::Identifier, "Expected function name");
   Grace::String name = std::string(m_Previous.value().GetText());
-  if (!m_Vm.AddFunction(name)) {
+  if (!m_Vm.AddFunction(name, m_Previous.value().GetLine())) {
     ErrorAtPrevious("Duplicate function definitions");
     return;
   }
@@ -747,3 +748,7 @@ void Compiler::Error(const std::optional<Token>& token, const std::string& messa
   m_HadError = true;
 }
 
+std::string Compiler::GetCodeAtLine(int line) const 
+{
+  return m_Scanner.GetCodeAtLine(line);
+}
