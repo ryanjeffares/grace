@@ -31,7 +31,7 @@ namespace Grace
       {
         static_assert(std::is_same<T, std::int64_t>::value || std::is_same<T, double>::value
             || std::is_same<T, bool>::value || std::is_same<T, char>::value
-            || std::is_same<T, std::string>::value,
+            || std::is_same<T, std::string>::value || std::is_same<T, NullValue>::value,
             "Invalid type for Constant<T>");
         if constexpr (std::is_same<T, std::int64_t>::value) {
           m_Type = Type::Int;
@@ -48,6 +48,9 @@ namespace Grace
         } else if constexpr (std::is_same<T, std::string>::value) {
           m_Type = Type::String;
           m_Data.m_Str = new std::string(value);
+        } else if constexpr (std::is_same<T, NullValue>::value) {
+          m_Type = Type::Null;
+          m_Data.m_Null = nullptr;
         }
       }
 

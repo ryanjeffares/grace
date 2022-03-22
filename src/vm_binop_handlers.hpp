@@ -210,6 +210,10 @@ static bool HandleEquality(const Value& c1, const Value& c2, std::vector<Value>&
               : c1.Get<std::int64_t>() != c2.Get<std::int64_t>());
           return true;
         }
+        case Value::Type::Null: {
+          stack.emplace_back(false);
+          return true;
+        }
         default:
           return false;
       }
@@ -228,6 +232,10 @@ static bool HandleEquality(const Value& c1, const Value& c2, std::vector<Value>&
               : c1.Get<double>() != c2.Get<double>());
           return true;
         }
+        case Value::Type::Null: {
+          stack.emplace_back(false);
+          return true;
+        }
         default:
           return false;
       }
@@ -237,6 +245,9 @@ static bool HandleEquality(const Value& c1, const Value& c2, std::vector<Value>&
         stack.emplace_back(equal 
             ? c1.Get<bool>() == c2.Get<bool>()
             : c1.Get<bool>() != c2.Get<bool>());
+        return true;
+      } else if (c2.GetType() == Value::Type::Null) {
+        stack.emplace_back(false);
         return true;
       }
       return false;
@@ -255,6 +266,10 @@ static bool HandleEquality(const Value& c1, const Value& c2, std::vector<Value>&
               && equal
               ? c1.Get<char>() == c2.Get<char>()
               : c1.Get<char>() != c2.Get<char>());
+          return true;
+        }
+        case Value::Type::Null: {
+          stack.emplace_back(false);
           return true;
         }
         default:
@@ -276,9 +291,24 @@ static bool HandleEquality(const Value& c1, const Value& c2, std::vector<Value>&
               : c1.Get<std::string>()[0] != c2.Get<char>());
           return true;
         }
+        case Value::Type::Null: {
+          stack.emplace_back(false);
+          return true;
+        }
         default:
           return false;
       }
+    }
+    case Value::Type::Null: {
+      switch (c2.GetType()) {
+        case Value::Type::Null: {
+          stack.emplace_back(true);
+          return true;
+        }
+        default:
+          stack.emplace_back(false);
+          return true;
+      }                          
     }
     default:
       return false;

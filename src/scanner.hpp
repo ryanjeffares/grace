@@ -54,6 +54,7 @@ namespace Grace
       For,
       Func,
       If,
+      Null,
       Or,
       Print,
       PrintLn,
@@ -177,6 +178,7 @@ struct fmt::formatter<Grace::Scanner::TokenType> : fmt::formatter<std::string_vi
         case TokenType::For: name = "TokenType::For"; break;
         case TokenType::Func: name = "TokenType::Func"; break;
         case TokenType::If: name = "TokenType::If"; break;
+        case TokenType::Null: name = "TokenType::Null"; break;
         case TokenType::While: name = "TokenType::While"; break;
         case TokenType::Print: name = "TokenType::Print"; break;
         case TokenType::PrintLn: name = "TokenType::PrintLn"; break;

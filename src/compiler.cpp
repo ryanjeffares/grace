@@ -132,6 +132,7 @@ static bool IsKeyword(TokenType type, std::string& outKeyword)
     case TokenType::For: outKeyword = "for"; return true;
     case TokenType::Func: outKeyword = "func"; return true;
     case TokenType::If: outKeyword = "if"; return true;
+    case TokenType::Null: outKeyword = "null"; return true;
     case TokenType::Or: outKeyword = "or"; return true;
     case TokenType::Print: outKeyword = "print"; return true;
     case TokenType::PrintLn: outKeyword = "println"; return true;
@@ -603,6 +604,9 @@ void Compiler::Primary(bool canAssign)
     Char();
   } else if (Match(TokenType::Identifier)) {
     EmitConstant(std::string(m_Previous.value().GetText()));
+    EmitOp(Ops::LoadConstant, m_Previous.value().GetLine());
+  } else if (Match(TokenType::Null)) {
+    EmitConstant((void*)nullptr);
     EmitOp(Ops::LoadConstant, m_Previous.value().GetLine());
   } else {
     Expression(canAssign);

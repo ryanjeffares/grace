@@ -11,7 +11,7 @@ func outer():
 end 
 
 func main():
-  var a;
+  var a = 5;
   println(a == null);
   outer();
 end
