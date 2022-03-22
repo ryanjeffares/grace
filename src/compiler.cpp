@@ -127,7 +127,6 @@ static bool IsKeyword(TokenType type, std::string& outKeyword)
     case TokenType::As: outKeyword = "as"; return true;
     case TokenType::Class: outKeyword = "class"; return true;
     case TokenType::End: outKeyword = "end"; return true;
-    case TokenType::False: outKeyword = "false"; return true;
     case TokenType::Final: outKeyword = "final"; return true;
     case TokenType::For: outKeyword = "for"; return true;
     case TokenType::Func: outKeyword = "func"; return true;
@@ -136,8 +135,6 @@ static bool IsKeyword(TokenType type, std::string& outKeyword)
     case TokenType::Print: outKeyword = "print"; return true;
     case TokenType::PrintLn: outKeyword = "println"; return true;
     case TokenType::Return: outKeyword = "return"; return true;
-    case TokenType::This: outKeyword = "this"; return true;
-    case TokenType::True: outKeyword = "true"; return true;
     case TokenType::Var: outKeyword = "var"; return true;
     case TokenType::While: outKeyword = "while"; return true;
     default:
@@ -331,39 +328,43 @@ void Compiler::Expression(bool canAssign)
       int line = m_Previous.value().GetLine();
       EmitOp(Ops::AssignLocal, line);
     } else {
-      switch (m_Current.value().GetType()) {
-        case TokenType::And:
-          And(false, true);
-          break;
-        case TokenType::Or:
-          Or(false, true);
-          break;
-        case TokenType::EqualEqual:
-        case TokenType::BangEqual:
-          Equality(false, true);
-          break;
-        case TokenType::GreaterThan:
-        case TokenType::GreaterEqual:
-        case TokenType::LessThan:
-        case TokenType::LessEqual:
-          Comparison(false, true);
-          break;
-        case TokenType::Plus:
-        case TokenType::Minus:
-          Term(false, true);
-          break;
-        case TokenType::Star:
-        case TokenType::StarStar:
-        case TokenType::Slash:
-          Factor(false, true);
-          break;
-        case TokenType::Semicolon:
-        case TokenType::RightParen:
-          break;
-        default:
-          ErrorAtCurrent("Invalid token found in expression");
-          Advance();
-          return;
+      bool shouldBreak = false;
+      while (!shouldBreak) {
+        switch (m_Current.value().GetType()) {
+          case TokenType::And:
+            And(false, true);
+            break;
+          case TokenType::Or:
+            Or(false, true);
+            break;
+          case TokenType::EqualEqual:
+          case TokenType::BangEqual:
+            Equality(false, true);
+            break;
+          case TokenType::GreaterThan:
+          case TokenType::GreaterEqual:
+          case TokenType::LessThan:
+          case TokenType::LessEqual:
+            Comparison(false, true);
+            break;
+          case TokenType::Plus:
+          case TokenType::Minus:
+            Term(false, true);
+            break;
+          case TokenType::Star:
+          case TokenType::StarStar:
+          case TokenType::Slash:
+            Factor(false, true);
+            break;
+          case TokenType::Semicolon:
+          case TokenType::RightParen:
+            shouldBreak = true;
+            break;
+          default:
+            ErrorAtCurrent("Invalid token found in expression");
+            Advance();
+            return;
+        }
       }
     }
   } else {

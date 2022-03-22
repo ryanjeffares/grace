@@ -27,6 +27,8 @@ func main():
   b = 3.0;
   println(b);
 
+  println(2 * 2 == 4 and n > 0);
+
   function_f();
   hey_there();
   print_numbers();
@@ -34,7 +36,8 @@ func main():
   b = "b is a string now";
   println(b);
 
-  b = n / 2 + 3;
+  n = 1;
+  b = n * 3 - 4;
   println(b);
 end
  
