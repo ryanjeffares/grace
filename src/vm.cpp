@@ -348,6 +348,7 @@ std::pair<InterpretResult, Value> VM::Run(const String& funcName, int startLine,
     }
   }
 
+  PRINT_LOCAL_MEMORY();
   RETURN_NULL();
 
 #undef PRINT_LOCAL_MEMORY

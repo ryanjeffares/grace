@@ -1,0 +1,7 @@
+// multiplication/division has higher precedence than addition/subtraction
+func main():
+  var x = 2 * 3 - 4 + 1 / 5.0;
+  println(x);
+  var y = 1.0 + 2.0 / 4.0;
+  println(y);
+end
