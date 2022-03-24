@@ -38,6 +38,8 @@ namespace Grace
       LoadConstant,
       LoadLocal,
       Multiply,
+      Negate,
+      Not,
       NotEqual,
       Or,
       Pop,
@@ -61,6 +63,7 @@ namespace Grace
       FunctionNotFound,
       IncorrectArgCount,
       InvalidOperand,
+      InvalidType,
     };
 
     class VM
@@ -167,6 +170,8 @@ struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
       case Ops::LoadConstant: name = "Ops::LoadConstant"; break;
       case Ops::LoadLocal: name = "Ops::LoadLocal"; break;
       case Ops::Multiply: name = "Ops::Multiply"; break;
+      case Ops::Negate: name = "Ops::Negate"; break;
+      case Ops::Not: name = "Ops::Not"; break;
       case Ops::NotEqual: name = "Ops::NotEqual"; break;
       case Ops::Or: name = "Ops::Or"; break;
       case Ops::Pop: name = "Ops::Pop"; break;
@@ -195,6 +200,7 @@ struct fmt::formatter<Grace::VM::InterpretError> : fmt::formatter<std::string_vi
       case InterpretError::FunctionNotFound: name = "FunctionNotFound"; break;
       case InterpretError::IncorrectArgCount: name = "IncorrectArgCount"; break;
       case InterpretError::InvalidOperand: name = "InvalidOperand"; break;
+      case InterpretError::InvalidType: name = "InvalidType"; break;
     }
     return fmt::formatter<std::string_view>::format(name, context);
   }

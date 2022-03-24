@@ -98,7 +98,13 @@ Token Scanner::ScanToken()
 
   switch (c) {
     case '!':
-      return MakeToken(MatchChar('=') ? TokenType::BangEqual : TokenType::Bang);
+      // for some reason, using MatchChar was fucking this up
+      if (Peek() == '=') {
+        Advance();
+        return MakeToken(TokenType::BangEqual);
+      } else {
+        return MakeToken(TokenType::Bang);
+      }
     case '=':
       return MakeToken(MatchChar('=') ? TokenType::EqualEqual : TokenType::Equal);
     case '<':

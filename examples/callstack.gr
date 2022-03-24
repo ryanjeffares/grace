@@ -1,15 +1,15 @@
-func square(number):
-  return number ** 2;
-end
+func inner(n):
+  println(true * n);  // will error, testing callstack print upon error
+end 
 
-func say_hello(name):
-  return "Hello " + name + "!";
-end
+func middle(n):
+  inner(n);
+end 
+
+func outer(n):
+  middle(n);
+end 
 
 func main():
-  var a = square(2);
-  println(a);
-  final b = square(32);
-  println(b);
-  println(say_hello("Ryan"));
+  outer(100);
 end

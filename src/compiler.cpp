@@ -12,7 +12,7 @@ void Grace::Compiler::Compile(std::string&& fileName, std::string&& code, bool v
 
   auto start = steady_clock::now();
  
-  Compiler compiler(std::move(fileName), std::move(code));
+  Compiler compiler(std::move(fileName), std::move(code), verbose);
   compiler.Advance();
   
   while (!compiler.Match(TokenType::EndOfFile)) {
@@ -36,11 +36,12 @@ void Grace::Compiler::Compile(std::string&& fileName, std::string&& code, bool v
 
 using namespace Grace::Compiler;
 
-Compiler::Compiler(std::string&& fileName, std::string&& code) 
+Compiler::Compiler(std::string&& fileName, std::string&& code, bool verbose) 
   : m_Scanner(std::move(code)), 
   m_CurrentFileName(std::move(fileName)),
   m_CurrentContext(Context::TopLevel),
-  m_Vm(*this)
+  m_Vm(*this),
+  m_Verbose(verbose)
 {
 
 }
@@ -59,7 +60,12 @@ void Compiler::Advance()
 {
   m_Previous = m_Current;
   m_Current = m_Scanner.ScanToken();
-//  fmt::print("{}\n", m_Current.value().ToString());
+
+#ifdef GRACE_DEBUG
+  if (m_Verbose) {
+    fmt::print("{}\n", m_Current.value().ToString());
+  }
+#endif 
 
   if (m_Current.value().GetType() == TokenType::Error) {
     ErrorAtCurrent("Unexpected token");
@@ -235,7 +241,16 @@ void Compiler::FuncDeclaration()
 
   std::vector<std::string> parameters;
   while (true) {
-    if (Match(TokenType::Identifier)) {
+    if (Match(TokenType::Final)) {
+      Consume(TokenType::Identifier, "Expected identifier after `final`");
+      auto p = std::string(m_Previous.value().GetText());
+      if (std::find(parameters.begin(), parameters.end(), p) != parameters.end()) {
+        ErrorAtPrevious("Function parameters with the same name already defined");
+        return;
+      }
+      m_Locals.insert(std::make_pair(p, true));
+      parameters.push_back(p);
+    } else if (Match(TokenType::Identifier)) {
       auto p = std::string(m_Previous.value().GetText());
       if (std::find(parameters.begin(), parameters.end(), p) != parameters.end()) {
         ErrorAtPrevious("Function parameters with the same name already defined");
@@ -243,11 +258,11 @@ void Compiler::FuncDeclaration()
       }
       m_Locals.insert(std::make_pair(p, false));
       parameters.push_back(p);
-    }
-    if (Match(TokenType::RightParen)) {
+    } else if (Match(TokenType::RightParen)) {
       break;
+    } else {
+      Consume(TokenType::Comma, "Expected ',' after function parameter");
     }
-    Consume(TokenType::Comma, "Expected ',' after function parameter");
   }
 
   Consume(TokenType::Colon, "Expected ':' after function signature");
@@ -404,6 +419,7 @@ void Compiler::Expression(bool canAssign)
             break;
           case TokenType::Semicolon:
           case TokenType::RightParen:
+          case TokenType::Comma:
             shouldBreak = true;
             break;
           default:
@@ -583,9 +599,14 @@ void Compiler::Factor(bool canAssign, bool skipFirst)
 
 void Compiler::Unary(bool canAssign)
 {
-  if (Match(TokenType::Bang) || Match(TokenType::Minus)) {
-    // do something
+  if (Match(TokenType::Bang)) {
+    auto line = m_Previous.value().GetLine();
     Unary(canAssign);
+    EmitOp(Ops::Not, line);
+  } else if (Match(TokenType::Minus)) {
+    auto line = m_Previous.value().GetLine();
+    Unary(canAssign);
+    EmitOp(Ops::Negate, line);
   } else {
     Call(canAssign);
   }

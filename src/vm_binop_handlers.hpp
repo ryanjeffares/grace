@@ -521,3 +521,22 @@ static bool HandlePower(const Value& c1, const Value& c2, std::vector<Value>& st
   }
 }
 
+[[nodiscard]]
+static bool HandleNegate(const Value& c, std::vector<Value>& stack)
+{
+  switch (c.GetType()) {
+    case Value::Type::Int: {
+      auto val = c.Get<std::int64_t>();
+      stack.emplace_back(-val);
+      return true;
+    }
+    case Value::Type::Double: {
+      auto val = c.Get<double>();
+      stack.emplace_back(-val);
+      return true;
+    }
+    default:
+      return false;
+  }
+}
+

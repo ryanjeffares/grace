@@ -2,7 +2,6 @@
 #include <filesystem>
 #include <fstream>
 #include <sstream>
-#include <iostream>
 
 #include "../include/fmt/core.h" 
 #include "../include/fmt/color.h"
@@ -28,7 +27,7 @@ int main(int argc, const char* argv[])
   for (auto i = 0; i < argc; i++) {
     args.push_back(argv[i]);
   }
-  
+
   bool verbose = false;
   switch (argc) {
     case 1:

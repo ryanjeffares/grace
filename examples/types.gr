@@ -1,3 +1,5 @@
+// none of this shit is implemented yet
+
 class Person:
   func init(name, age):
     this.name = name;

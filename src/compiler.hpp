@@ -36,7 +36,7 @@ namespace Grace
          *
          *  @param code   The code to be compiled.
          */
-        explicit Compiler(std::string&& fileName, std::string&& code);
+        explicit Compiler(std::string&& fileName, std::string&& code, bool verbose);
         ~Compiler() = default;
 
         Compiler(const Compiler&) = delete;
@@ -149,6 +149,7 @@ namespace Grace
         std::unordered_map<std::string, bool> m_Locals;
 
         bool m_PanicMode = false, m_HadError = false;
+        bool m_Verbose;
     };
   }
 }

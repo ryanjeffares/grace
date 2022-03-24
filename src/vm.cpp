@@ -26,6 +26,13 @@ static inline Result PopLastTwo(std::vector<Value>& stack)
   return Result(std::move(c1), std::move(c2));
 }
 
+static inline Value Pop(std::vector<Value>& stack)
+{
+  auto c = std::move(stack.back());
+  stack.pop_back();
+  return c;
+}
+
 static void PrintStack(std::vector<Value>& stack, const Grace::String& funcName)
 {
   fmt::print("{} STACK:\n", funcName);
@@ -226,6 +233,23 @@ std::pair<InterpretResult, Value> VM::Run(const String& funcName, int startLine,
         }
         break;
       }
+      case Ops::Negate: {
+        auto c = Pop(valueStack);
+        if (!HandleNegate(c, valueStack)) {
+          RuntimeError(fmt::format("Cannot negate `{}`", c.GetType()), 
+              InterpretError::InvalidType, line, callStack);
+#ifdef GRACE_DEBUG
+          PRINT_LOCAL_MEMORY();
+#endif
+          RETURN_ERR();
+        }
+        break;
+      }
+      case Ops::Not: {
+        auto c = Pop(valueStack);
+        valueStack.emplace_back(!(c.AsBool()));
+        break;
+      }
       case Ops::LoadConstant:
         valueStack.push_back(constantList[constantCurrent++]);
         break;
@@ -279,9 +303,10 @@ std::pair<InterpretResult, Value> VM::Run(const String& funcName, int startLine,
         }
 
         // top of the stack will be the last function argument 
-        std::vector<Value> callArgs;
+        std::vector<Value> callArgs(arity);
         for (auto i = 0; i < arity; i++) {
-          callArgs.push_back(std::move(valueStack.back()));
+//          callArgs.push_back(std::move(valueStack.back()));
+          callArgs[arity - 1 - i] = std::move(valueStack.back());
           valueStack.pop_back();
         }
         
