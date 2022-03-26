@@ -54,8 +54,10 @@ static bool HandleAddition(const Value& c1, const Value& c2, std::vector<Value>&
           stack.emplace_back(c1.Get<std::string>() + c2.Get<char>());
           return true;
         }
-        default:
-          return false;
+        default: {
+          stack.emplace_back(c1.Get<std::string>() + c2.ToString());
+          return true;
+        }
       }
     }
     default:

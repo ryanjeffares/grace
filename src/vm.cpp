@@ -1,3 +1,5 @@
+#include <cstdlib>
+
 #include "grace.hpp"
 
 #include "compiler.hpp"
@@ -11,7 +13,7 @@ struct Result
   Value m_C1, m_C2;
 
   Result(Value&& c1, Value&& c2)
-    : m_C1(std::move(c1)), m_C2(std::move(c2))
+    : m_C1(c1), m_C2(c2)
   {
 
   }
@@ -23,7 +25,7 @@ static inline Result PopLastTwo(std::vector<Value>& stack)
   auto c2 = std::move(stack[stack.size() - 1]);
   stack.pop_back();
   stack.pop_back();
-  return Result(std::move(c1), std::move(c2));
+  return {std::move(c1), std::move(c2)};
 }
 
 static inline Value Pop(std::vector<Value>& stack)
@@ -33,7 +35,7 @@ static inline Value Pop(std::vector<Value>& stack)
   return c;
 }
 
-static void PrintStack(std::vector<Value>& stack, const Grace::String& funcName)
+static void PrintStack(std::vector<Value>& stack, const std::string& funcName)
 {
   fmt::print("{} STACK:\n", funcName);
   for (const auto& c : stack) {
@@ -42,34 +44,41 @@ static void PrintStack(std::vector<Value>& stack, const Grace::String& funcName)
   }
 }
 
-static void PrintLocals(const std::unordered_map<Grace::String, Value>& locals, const Grace::String& funcName)
+static void PrintLocals(const std::vector<Value>& locals, const std::string& funcName)
 {
   fmt::print("{} LOCALS:\n", funcName);
-  for (const auto& [name, value] : locals) {
-    fmt::print("\t{}: ", name);
+  for (const auto& value : locals) {
     value.DebugPrint();
   }
 }
 
 void VM::Start(bool verbose)
 {
+  auto mainHash = static_cast<std::int64_t>(m_Hasher("main"));
+  auto fileHash = static_cast<std::int64_t>(m_Hasher("file"));
   CallStack callStack;
-  if (m_FunctionList.find("main") == m_FunctionList.end()) {
+  if (m_FunctionList.find(mainHash) == m_FunctionList.end()) {
     RuntimeError("Could not find `main` function", InterpretError::FunctionNotFound, 1, {});
     return;
   }
 
-  callStack.push_back(std::make_tuple("file", "main", 1));
-  Run("main", 1, verbose, callStack, {});
+  callStack.push_back(std::make_tuple(fileHash, mainHash, 1));
+  Run(mainHash, 1, verbose, callStack, {}, 1);
 }
 
-std::pair<InterpretResult, Value> VM::Run(const String& funcName, int startLine, bool verbose, CallStack& callStack, const std::vector<Value>& args)
+std::pair<InterpretResult, Value> VM::Run(std::int64_t funcNameHash, 
+    int startLine, 
+    bool verbose, 
+    CallStack& callStack, 
+    const std::vector<Value>& args, 
+    int depth
+  )
 {
 #define PRINT_LOCAL_MEMORY()                                          \
   do {                                                                \
     if (verbose) {                                                    \
-      PrintStack(valueStack, funcName);                               \
-      PrintLocals(localsList, funcName);                              \
+      PrintStack(valueStack, m_FunctionNames.at(funcNameHash));       \
+      PrintLocals(localsList, m_FunctionNames.at(funcNameHash));      \
     }                                                                 \
   } while (false)                                                     \
 
@@ -90,17 +99,25 @@ std::pair<InterpretResult, Value> VM::Run(const String& funcName, int startLine,
     localsList.clear();                                               \
     return std::make_pair(InterpretResult::RuntimeOk, value);         \
   } while (false)                                                     \
-    
+
   std::vector<Value> valueStack;
-  auto& function = m_FunctionList.at(funcName);
+
+  auto& function = m_FunctionList.at(funcNameHash);
   auto& opList = function.m_OpList;
   auto& constantList = function.m_ConstantList;
-  auto& localsList = function.m_Locals;
+  // locals list needs to be copied
+  auto localsList = function.m_Locals;
+  
   std::size_t opCurrent = 0, constantCurrent = 0;
 
-  for (auto i = 0; i < args.size(); i++) {
-    localsList.insert(std::make_pair(function.m_Parameters[i], std::move(args[i])));
+  for (auto&& arg : args) {
+    localsList.push_back(arg);
   }
+  
+  if (depth > s_CallstackLimit/* / 10*/) {
+    RuntimeError(fmt::format("Maximum callstack depth {} exceeded", s_CallstackLimit), InterpretError::CallstackDepthExceeded, startLine, callStack);
+    RETURN_ERR();
+  }  
 
   while (opCurrent < opList.size()) {
     auto [op, line] = opList[opCurrent++];
@@ -254,9 +271,9 @@ std::pair<InterpretResult, Value> VM::Run(const String& funcName, int startLine,
         valueStack.push_back(constantList[constantCurrent++]);
         break;
       case Ops::LoadLocal: {
-        auto name = valueStack.back().Get<std::string>();
+        auto id = valueStack.back().Get<std::int64_t>();
         valueStack.pop_back();
-        auto value = localsList[name];
+        auto value = localsList[id];
         valueStack.push_back(value);
         break;
       }
@@ -276,25 +293,25 @@ std::pair<InterpretResult, Value> VM::Run(const String& funcName, int startLine,
         fmt::print("\t");
         break;
       case Ops::Call: {
-        auto calleeName = std::move(valueStack.back().Get<std::string>());
+        auto calleeNameHash = valueStack.back().Get<std::int64_t>();
         valueStack.pop_back();
         
-        if (m_FunctionList.find(calleeName) == m_FunctionList.end()) {
-          RuntimeError(fmt::format("Could not find function '{}'", calleeName), InterpretError::FunctionNotFound, line, callStack);
+        if (m_FunctionList.find(calleeNameHash) == m_FunctionList.end()) {
+          RuntimeError(fmt::format("Could not find function '{}'", calleeNameHash), InterpretError::FunctionNotFound, line, callStack);
 #ifdef GRACE_DEBUG
           PRINT_LOCAL_MEMORY();
 #endif
           RETURN_ERR();
         }
 
-        auto& calleeFunc = m_FunctionList.at(calleeName);
+        auto& calleeFunc = m_FunctionList.at(calleeNameHash);
         int arity = calleeFunc.m_Arity;
         auto numArgsGiven = valueStack.back().Get<std::int64_t>();
         valueStack.pop_back();
 
         if (numArgsGiven != arity) {
           RuntimeError(fmt::format("Incorrect number of arguments given to function '{}', expected {} but got {}", 
-                calleeName, arity, numArgsGiven), 
+                calleeNameHash, arity, numArgsGiven), 
               InterpretError::IncorrectArgCount, line, callStack);
 #ifdef GRACE_DEBUG
           PRINT_LOCAL_MEMORY();
@@ -310,8 +327,8 @@ std::pair<InterpretResult, Value> VM::Run(const String& funcName, int startLine,
           valueStack.pop_back();
         }
         
-        callStack.push_back(std::make_tuple(funcName, calleeName, line));
-        auto [res, value] = Run(calleeName, line, verbose, callStack, callArgs);
+        callStack.push_back(std::make_tuple(funcNameHash, calleeNameHash, line));
+        auto [res, value] = Run(calleeNameHash, line, verbose, callStack, callArgs, depth + 1);
         if (res != InterpretResult::RuntimeOk) {
 #ifdef GRACE_DEBUG
           PRINT_LOCAL_MEMORY();
@@ -325,13 +342,21 @@ std::pair<InterpretResult, Value> VM::Run(const String& funcName, int startLine,
       case Ops::AssignLocal: {
         auto value = std::move(valueStack.back());
         valueStack.pop_back();
-        localsList[valueStack.back().Get<std::string>()] = value;
+        localsList[valueStack.back().Get<std::int64_t>()] = value;
         valueStack.pop_back();
         break;
       }
       case Ops::DeclareLocal: {
-        auto name = valueStack.back().Get<std::string>();
-        localsList.insert(std::make_pair(name, Value()));
+        localsList.emplace_back();
+        break;
+      }
+      case Ops::JumpIfFalse: {
+        auto [constIdx, opIdx] = PopLastTwo(valueStack); 
+        auto condition = Pop(valueStack);
+        if (!condition.AsBool()) {
+          opCurrent = opIdx.Get<std::int64_t>();
+          constantCurrent = constIdx.Get<std::int64_t>();
+        }
         break;
       }
       case Ops::Return: {
@@ -344,11 +369,13 @@ std::pair<InterpretResult, Value> VM::Run(const String& funcName, int startLine,
       }
       default:
         GRACE_UNREACHABLE();
-        break;
     }
   }
 
+#ifdef GRACE_DEBUG 
   PRINT_LOCAL_MEMORY();
+#endif
+
   RETURN_NULL();
 
 #undef PRINT_LOCAL_MEMORY
@@ -357,11 +384,16 @@ std::pair<InterpretResult, Value> VM::Run(const String& funcName, int startLine,
 #undef RETURN_VALUE
 }
 
-bool VM::AddFunction(const String& name, int line, std::vector<std::string>&& parameters)
+bool VM::AddFunction(const std::string& name, int line, std::vector<std::string>&& parameters)
 {
-  auto [it, res] = m_FunctionList.try_emplace(name, Function(name, std::move(parameters), line));
-  m_LastFunction = name;
-  return res;
+  auto hash = static_cast<std::int64_t>(m_Hasher(name));
+  auto [it, res] = m_FunctionList.try_emplace(hash, Function(hash, std::move(parameters), line));
+  if (res) {
+    m_LastFunctionHash = hash;
+    m_FunctionNames.emplace(hash, name);
+    return true;
+  }
+  return false;
 }
 
 void VM::RuntimeError(const std::string& message, InterpretError errorType, int line, const CallStack& callStack)
@@ -370,13 +402,31 @@ void VM::RuntimeError(const std::string& message, InterpretError errorType, int 
   
   fmt::print(stderr, "Call stack:\n");
 
-  for (auto i = 1; i < callStack.size(); i++) {
-    const auto& [caller, callee, ln] = callStack[i];
-    fmt::print(stderr, "\tline {}, in {}:\n", ln, caller);
-    fmt::print(stderr, "\t    {}\n", m_Compiler.GetCodeAtLine(ln));
+  auto callStackSize = callStack.size();
+  if (callStackSize > 15) {
+    if (auto showFull = std::getenv("GRACE_SHOW_FULL_CALLSTACK")) {
+      for (auto i = 1; i < callStack.size(); i++) {
+        const auto& [caller, callee, ln] = callStack[i];
+        fmt::print(stderr, "\tline {}, in {}:\n", ln, m_FunctionNames.at(caller));
+        fmt::print(stderr, "\t    {}\n", m_Compiler.GetCodeAtLine(ln));
+      }
+    } else {
+      fmt::print(stderr, "\t{} more calls before - set environment variable `GRACE_SHOW_FULL_CALLSTACK` to see full callstack\n", callStackSize - 15);
+      for (auto i = callStackSize - 15; i < callStackSize; i++) {
+        const auto& [caller, callee, ln] = callStack[i];
+        fmt::print(stderr, "\tline {}, in {}:\n", ln, m_FunctionNames.at(caller));
+        fmt::print(stderr, "\t    {}\n", m_Compiler.GetCodeAtLine(ln));
+      }
+    }
+  } else {
+    for (auto i = 1; i < callStack.size(); i++) {
+      const auto& [caller, callee, ln] = callStack[i];
+      fmt::print(stderr, "\tline {}, in {}:\n", ln, m_FunctionNames.at(caller));
+      fmt::print(stderr, "\t    {}\n", m_Compiler.GetCodeAtLine(ln));
+    }
   }
 
-  fmt::print(stderr, "\tline {}, in {}:\n", line, std::get<1>(callStack.back()));
+  fmt::print(stderr, "\tline {}, in {}:\n", line, m_FunctionNames.at(std::get<1>(callStack.back())));
   fmt::print(stderr, "\t    {}\n", m_Compiler.GetCodeAtLine(line));
 
   fmt::print(stderr, "\n");

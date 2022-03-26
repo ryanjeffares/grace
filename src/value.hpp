@@ -5,8 +5,6 @@
 #include "../include/fmt/core.h"
 #include "../include/fmt/format.h"
 
-#include "objects/grace_string.hpp"
-
 namespace Grace
 {
   namespace VM
@@ -27,7 +25,7 @@ namespace Grace
       };
 
       template<typename T>
-      constexpr Value(const T& value)
+      explicit constexpr Value(const T& value)
       {
         static_assert(std::is_same<T, std::int64_t>::value || std::is_same<T, double>::value
             || std::is_same<T, bool>::value || std::is_same<T, char>::value
@@ -131,7 +129,7 @@ namespace Grace
       void PrintLn() const;
       void Print() const;
       void DebugPrint() const;
-      std::string ToString() const;
+      [[nodiscard]] std::string ToString() const;
 
       template<typename T> 
       constexpr inline T Get() const
@@ -155,11 +153,13 @@ namespace Grace
         }
       }
 
+      [[nodiscard]]
       constexpr inline Type GetType() const
       {
         return m_Type;
       }
 
+      [[nodiscard]]
       constexpr inline bool AsBool() const
       {
         switch (m_Type)

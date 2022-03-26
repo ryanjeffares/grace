@@ -150,7 +150,7 @@ static bool IsKeyword(TokenType type, std::string& outKeyword)
 
 static bool IsOperator(TokenType type)
 {
-  TokenType symbols[] = {
+  static const std::vector<TokenType> symbols = {
     TokenType::Colon,
     TokenType::Semicolon,
     TokenType::RightParen,
@@ -168,12 +168,10 @@ static bool IsOperator(TokenType type)
     TokenType::LessEqual,
     TokenType::GreaterEqual,
   };
-  for (auto i = 0; i < sizeof(symbols) / sizeof(TokenType); i++) {
-    if (type == symbols[i]) {
-      return true;
-    }
-  }
-  return false;
+
+  return std::any_of(symbols.begin(), symbols.end(), [type](TokenType t) {
+      return t == type;
+  });
 }
 
 void Compiler::EmitOp(VM::Ops op, int line)
@@ -235,7 +233,7 @@ void Compiler::FuncDeclaration()
   m_CurrentContext = Context::Function;  
 
   Consume(TokenType::Identifier, "Expected function name");
-  Grace::String name = std::string(m_Previous.value().GetText());
+  auto name = std::string(m_Previous.value().GetText());
 
   Consume(TokenType::LeftParen, "Expected '(' after function name");
 
@@ -248,7 +246,7 @@ void Compiler::FuncDeclaration()
         ErrorAtPrevious("Function parameters with the same name already defined");
         return;
       }
-      m_Locals.insert(std::make_pair(p, true));
+      m_Locals.insert(std::make_pair(p, std::make_pair(true, m_Locals.size())));
       parameters.push_back(p);
     } else if (Match(TokenType::Identifier)) {
       auto p = std::string(m_Previous.value().GetText());
@@ -256,7 +254,7 @@ void Compiler::FuncDeclaration()
         ErrorAtPrevious("Function parameters with the same name already defined");
         return;
       }
-      m_Locals.insert(std::make_pair(p, false));
+      m_Locals.insert(std::make_pair(p, std::make_pair(false, m_Locals.size())));
       parameters.push_back(p);
     } else if (Match(TokenType::RightParen)) {
       break;
@@ -300,14 +298,15 @@ void Compiler::VarDeclaration()
   std::string localName(m_Previous.value().GetText());
   int line = m_Previous.value().GetLine();
 
-  m_Locals.insert(std::make_pair(localName, false));
-  EmitConstant(localName);
+  std::int64_t localId = m_Locals.size();
+  m_Locals.insert(std::make_pair(localName, std::make_pair(false, localId)));
+  EmitConstant(localId);
   EmitOp(Ops::LoadConstant, line);
   EmitOp(Ops::DeclareLocal, line);
   EmitOp(Ops::Pop, line);
 
   if (Match(TokenType::Equal)) {
-    EmitConstant(localName);
+    EmitConstant(localId);
     EmitOp(Ops::LoadConstant, line);
     Expression(false);
     line = m_Previous.value().GetLine();
@@ -333,14 +332,15 @@ void Compiler::FinalDeclaration()
   std::string localName(m_Previous.value().GetText());
   int line = m_Previous.value().GetLine();
 
-  m_Locals.insert(std::make_pair(localName, true));
-  EmitConstant(localName);
+  auto localId = static_cast<std::int64_t>(m_Locals.size());
+  m_Locals.insert(std::make_pair(localName, std::make_pair(true, localId)));
+  EmitConstant(localId);
   EmitOp(Ops::LoadConstant, line);
   EmitOp(Ops::DeclareLocal, line);
   EmitOp(Ops::Pop, line);
 
   Consume(TokenType::Equal, "Must assign to `final` upon declaration");
-  EmitConstant(localName);
+  EmitConstant(localId);
   EmitOp(Ops::LoadConstant, line);
   Expression(false);
   line = m_Previous.value().GetLine();
@@ -372,7 +372,7 @@ void Compiler::Expression(bool canAssign)
         return;
       }
 
-      if (m_Locals.at(std::string(m_Previous.value().GetText()))) {
+      if (m_Locals.at(std::string(m_Previous.value().GetText())).first) {
         ErrorAtPrevious(fmt::format("Cannot reassign to final '{}'", m_Previous.value().GetText()));
         return;
       }
@@ -420,6 +420,7 @@ void Compiler::Expression(bool canAssign)
           case TokenType::Semicolon:
           case TokenType::RightParen:
           case TokenType::Comma:
+          case TokenType::Colon:
             shouldBreak = true;
             break;
           default:
@@ -447,7 +448,31 @@ void Compiler::ForStatement()
 
 void Compiler::IfStatement() 
 {
+  Expression(false);
+  Consume(TokenType::Colon, "Expected ':' after condition");
   
+  // store indexes of constant and instruction indexes to jump
+  EmitConstant(std::int64_t(0));
+  auto constantIdxToJump = m_Vm.GetNumConstants() - 1;  
+  EmitConstant(std::int64_t(0));
+  auto opIdxToJump = m_Vm.GetNumConstants() - 1;  
+
+  EmitOp(Ops::LoadConstant, m_Previous.value().GetLine());
+  EmitOp(Ops::LoadConstant, m_Previous.value().GetLine());
+  // stack: condition, constantIdx, opIdx
+  EmitOp(Ops::JumpIfFalse, m_Previous.value().GetLine());
+  while (!Match(TokenType::End)) {
+    Declaration();
+    if (Match(TokenType::EndOfFile)) {
+      ErrorAtPrevious("Unterminated `if` statement");
+      return;
+    }
+  }
+
+  auto constantIndex = m_Vm.GetNumConstants();
+  auto opIndex = m_Vm.GetNumOps();
+  m_Vm.SetConstantAtIndex(constantIdxToJump, static_cast<std::int64_t>(constantIndex));
+  m_Vm.SetConstantAtIndex(opIdxToJump, static_cast<std::int64_t>(opIndex));
 }
 
 void Compiler::PrintStatement() 
@@ -625,13 +650,6 @@ void Compiler::Call(bool canAssign)
 
   if (prev.GetType() == TokenType::Identifier) {
     if (Match(TokenType::LeftParen)) {
-      // parsing the identifier puts the identifier name at the top of the stack
-      // so we just need to validate the call syntax here
-      // Primary() put the function name on the top of the stack 
-      // pretty jank, but we need to pop that then put it back on top when we have the args 
-
-      EmitOp(Ops::Pop, m_Previous.value().GetLine());
-
       std::int64_t numArgs = 0;
       if (!Match(TokenType::RightParen)) {
         while (true) {        
@@ -645,10 +663,12 @@ void Compiler::Call(bool canAssign)
       }
       
       // values for function arguments (if any) will be on top of the value stack
-      // get the function name on the very top
+      // get the function hash on the very top
       EmitConstant(numArgs);
       EmitOp(Ops::LoadConstant, m_Previous.value().GetLine());
-      EmitConstant(prevText);
+
+      auto hash = static_cast<std::int64_t>(m_Hasher(prevText));
+      EmitConstant(hash);
       EmitOp(Ops::LoadConstant, m_Previous.value().GetLine());
       EmitOp(Ops::Call, m_Previous.value().GetLine());
     } else if (Match(TokenType::Dot)) {
@@ -662,7 +682,7 @@ void Compiler::Call(bool canAssign)
       // not a call or member access, so we are just trying to call on the value of the local
       // or reassign it 
       // if its not a reassignment, we are trying to load its value 
-      // Primary() has already but the variable's name on the stack
+      // Primary() has already but the variable's id on the stack
       if (!Check(TokenType::Equal)) {
         EmitOp(Ops::LoadLocal, prev.GetLine());
       }
@@ -707,8 +727,15 @@ void Compiler::Primary(bool canAssign)
   } else if (Match(TokenType::Char)) {
     Char();
   } else if (Match(TokenType::Identifier)) {
-    EmitConstant(std::string(m_Previous.value().GetText()));
-    EmitOp(Ops::LoadConstant, m_Previous.value().GetLine());
+    auto identName = std::string(m_Previous.value().GetText());
+    if (m_Locals.find(identName) != m_Locals.end()) {
+      // local variable access or reassignment, put its ID on the stack 
+      auto localId = m_Locals.at(identName).second;
+      EmitConstant(localId);
+      EmitOp(Ops::LoadConstant, m_Previous.value().GetLine());
+    }
+    // if its not a local, it might be a function
+    // do nothing here
   } else if (Match(TokenType::Null)) {
     EmitConstant((void*)nullptr);
     EmitOp(Ops::LoadConstant, m_Previous.value().GetLine());
@@ -717,8 +744,8 @@ void Compiler::Primary(bool canAssign)
   }
 }
 
-static char s_EscapeChars[] = {'t', 'b', 'n', 'r', 'f', '\'', '"', '\\'};
-static std::unordered_map<char, char> s_EscapeCharsLookup = {
+static const char s_EscapeChars[] = {'t', 'b', 'n', 'r', 'f', '\'', '"', '\\'};
+static const std::unordered_map<char, char> s_EscapeCharsLookup = {
   std::make_pair('t', '\t'),
   std::make_pair('b', '\b'),
   std::make_pair('r', '\r'),
@@ -731,21 +758,13 @@ static std::unordered_map<char, char> s_EscapeCharsLookup = {
 
 static bool IsEscapeChar(char c, char& result) 
 {
-  for (auto i = 0; i < sizeof(s_EscapeChars) / sizeof(char); i++) {
-    if (c == s_EscapeChars[i]) {
-      result = s_EscapeCharsLookup[s_EscapeChars[i]];
+  for (auto escapeChar : s_EscapeChars) {
+    if (c == escapeChar) {
+      result = s_EscapeCharsLookup.at(escapeChar);
       return true;
     }
   }
   return false;
-}
-
-bool Compiler::IsPrimaryToken()
-{
-  auto t = m_Current.value().GetType();
-  return t == TokenType::True || t == TokenType::False || t == TokenType::This
-    || t == TokenType::Integer || t == TokenType::Double || t == TokenType::String
-    || t == TokenType::Char || t == TokenType::Identifier || t == TokenType::LeftParen;
 }
 
 void Compiler::Char()

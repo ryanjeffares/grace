@@ -75,6 +75,8 @@ void Value::DebugPrint() const
       break;
   }
 }
+
+[[nodiscard]]
 std::string Value::ToString() const
 {
   switch (m_Type)

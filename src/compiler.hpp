@@ -8,7 +8,6 @@
 
 #include "scanner.hpp"
 #include "vm.hpp"
-#include "objects/grace_string.hpp"
 
 namespace Grace
 {
@@ -18,23 +17,25 @@ namespace Grace
     /*
      *  Starts the compilation process.
      *
+     *  @param fileName  Name of the file to be read
      *  @param code      The code to be compiled.
      *  @param verbose   Verbose mode (display compilation time).
      */
     void Compile(std::string&& fileName, std::string&& code, bool verbose);
 
     /*
-     *  The main Compiler class.   
+     *  The main Compiler class.
      */
     class Compiler
     {
       public:
 
         /*
-         *  Constructs a new compiler instance, taking the code to be compiled as a 
+         *  Constructs a new compiler instance, taking the code to be compiled as a
          *  forward reference to be given to the Scanner.
          *
-         *  @param code   The code to be compiled.
+         *  @param fileName     The file to be read
+         *  @param code         The code to be compiled.
          */
         explicit Compiler(std::string&& fileName, std::string&& code, bool verbose);
         ~Compiler() = default;
@@ -66,7 +67,7 @@ namespace Grace
         std::string GetCodeAtLine(int line) const;
 
       private:
-      
+
         /*
          *  Returns true if the current token matches the given type.
          *  No side effects, does not advance the scanner or compiler.
@@ -135,7 +136,7 @@ namespace Grace
 
       private:
 
-        enum class Context 
+        enum class Context
         {
           TopLevel,
           Function,
@@ -146,7 +147,8 @@ namespace Grace
 
         std::optional<Scanner::Token> m_Current, m_Previous;
         std::string m_CurrentFileName;
-        std::unordered_map<std::string, bool> m_Locals;
+        std::unordered_map<std::string, std::pair<bool, std::int64_t>> m_Locals;
+        std::hash<std::string> m_Hasher;
 
         bool m_PanicMode = false, m_HadError = false;
         bool m_Verbose;

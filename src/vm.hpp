@@ -22,6 +22,9 @@ namespace Grace
 
   namespace VM
   {
+
+    static constexpr inline int s_CallstackLimit = 1000;
+    
     enum class Ops : std::uint8_t
     {
       Add,
@@ -33,6 +36,7 @@ namespace Grace
       Equal,
       Greater,
       GreaterEqual,
+      JumpIfFalse,
       Less,
       LessEqual,
       LoadConstant,
@@ -64,6 +68,7 @@ namespace Grace
       IncorrectArgCount,
       InvalidOperand,
       InvalidType,
+      CallstackDepthExceeded,
     };
 
     class VM
@@ -71,7 +76,7 @@ namespace Grace
       public:
 
         // Caller, Callee, Line
-        typedef std::vector<std::tuple<String, String, int>> CallStack;
+        typedef std::vector<std::tuple<std::int64_t, std::int64_t, int>> CallStack;
 
         struct OpLine
         {
@@ -87,24 +92,23 @@ namespace Grace
 
         struct Function 
         {
-          String m_Name;
+          std::int64_t m_NameHash;
           std::vector<OpLine> m_OpList; 
           std::vector<Value> m_ConstantList;
           std::vector<std::string> m_Parameters;
-          std::unordered_map<String, Value> m_Locals;
+          std::vector<Value> m_Locals;
           int m_Line, m_Arity;
 
-          Function(const String& name, std::vector<std::string>&& params, int line)
-            : m_Name(name), m_Parameters(std::move(params)), 
+          Function(std::int64_t nameHash, std::vector<std::string>&& params, int line)
+            : m_NameHash(nameHash), m_Parameters(std::move(params)), 
             m_Line(line), m_Arity(m_Parameters.size())
           {
-
           }
         };
         
         VM(Compiler::Compiler& compiler) : m_Compiler(compiler)
         {
-
+    
         }
 
         VM(const VM&) = delete;
@@ -112,7 +116,7 @@ namespace Grace
 
         inline void PushOp(Ops op, int line)
         {
-          m_FunctionList.at(m_LastFunction).m_OpList.emplace_back(op, line);
+          m_FunctionList.at(m_LastFunctionHash).m_OpList.emplace_back(op, line);
         }
 
         void PrintOps() const
@@ -128,20 +132,38 @@ namespace Grace
         template<typename T>
         constexpr inline void PushConstant(T value)
         {
-          m_FunctionList.at(m_LastFunction).m_ConstantList.emplace_back(value);
+          m_FunctionList.at(m_LastFunctionHash).m_ConstantList.emplace_back(value);
         }
 
-        bool AddFunction(const String& name, int line, std::vector<std::string>&& parmeters);
+        inline std::size_t GetNumConstants() const
+        {
+          return m_FunctionList.at(m_LastFunctionHash).m_ConstantList.size();
+        }
+
+        inline std::size_t GetNumOps() const 
+        {
+          return m_FunctionList.at(m_LastFunctionHash).m_OpList.size();
+        }
+
+        template<typename T>
+        constexpr inline void SetConstantAtIndex(std::size_t index, T value)
+        {
+          m_FunctionList.at(m_LastFunctionHash).m_ConstantList[index] = value;
+        }
+
+        bool AddFunction(const std::string& name, int line, std::vector<std::string>&& parmeters);
         void Start(bool verbose);
 
       private:
 
-        std::pair<InterpretResult, Value> Run(const String& funcName, int startLine, bool verbose, CallStack& cs, const std::vector<Value>& args);
+        std::pair<InterpretResult, Value> Run(std::int64_t funcNameHash, int startLine, bool verbose, CallStack& cs, const std::vector<Value>& args, int depth);
         void RuntimeError(const std::string& message, InterpretError errorType, int line, const CallStack& callStack);
 
-        std::unordered_map<String, Function> m_FunctionList;
-        String m_LastFunction;
+        std::unordered_map<std::int64_t, Function> m_FunctionList;
+        std::unordered_map<std::int64_t, std::string> m_FunctionNames;
+        std::int64_t m_LastFunctionHash;
         Compiler::Compiler& m_Compiler;
+        std::hash<std::string> m_Hasher;
     };
   }
 }
@@ -165,6 +187,7 @@ struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
       case Ops::Equal: name = "Ops::Equal"; break;
       case Ops::Greater: name = "Ops::Greater"; break;
       case Ops::GreaterEqual: name = "Ops::GreaterEqual"; break;
+      case Ops::JumpIfFalse: name = "Ops::JumpIfFalse"; break;
       case Ops::Less: name = "Ops::Less"; break;
       case Ops::LessEqual: name = "Ops::LessEqual"; break;
       case Ops::LoadConstant: name = "Ops::LoadConstant"; break;
@@ -201,6 +224,7 @@ struct fmt::formatter<Grace::VM::InterpretError> : fmt::formatter<std::string_vi
       case InterpretError::IncorrectArgCount: name = "IncorrectArgCount"; break;
       case InterpretError::InvalidOperand: name = "InvalidOperand"; break;
       case InterpretError::InvalidType: name = "InvalidType"; break;
+      case InterpretError::CallstackDepthExceeded: name = "CallstackDepthExceeded"; break;
     }
     return fmt::formatter<std::string_view>::format(name, context);
   }
