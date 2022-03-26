@@ -94,15 +94,15 @@ namespace Grace
         {
           std::int64_t m_NameHash;
           std::vector<OpLine> m_OpList; 
-          std::vector<Value> m_ConstantList;
+          std::vector<Value> m_ConstantList, m_ValueStack;
           std::vector<std::string> m_Parameters;
-          std::vector<Value> m_Locals;
           int m_Line, m_Arity;
 
           Function(std::int64_t nameHash, std::vector<std::string>&& params, int line)
             : m_NameHash(nameHash), m_Parameters(std::move(params)), 
             m_Line(line), m_Arity(m_Parameters.size())
           {
+            m_ValueStack.reserve(8);
           }
         };
         
@@ -151,12 +151,52 @@ namespace Grace
           m_FunctionList.at(m_LastFunctionHash).m_ConstantList[index] = value;
         }
 
+        [[nodiscard]]
+        inline const std::string& GetLastFunctionName() const 
+        {
+          return m_FunctionNames.at(m_LastFunctionHash);
+        }
+
         bool AddFunction(const std::string& name, int line, std::vector<std::string>&& parmeters);
         void Start(bool verbose);
 
       private:
 
-        std::pair<InterpretResult, Value> Run(std::int64_t funcNameHash, int startLine, bool verbose, CallStack& cs, const std::vector<Value>& args, int depth);
+        [[nodiscard]]
+        static bool HandleAddition(const Value& c1, const Value& c2, std::vector<Value>& stack);
+
+        [[nodiscard]]
+        static bool HandleSubtraction(const Value& c1, const Value& c2, std::vector<Value>& stack);
+
+        [[nodiscard]]
+        static bool HandleDivision(const Value& c1, const Value& c2, std::vector<Value>& stack);
+
+        [[nodiscard]]
+        static bool HandleMultiplication(const Value& c1, const Value& c2, std::vector<Value>& stack);
+
+        static void HandleEquality(const Value& c1, const Value& c2, std::vector<Value>& stack, bool equal);
+
+        [[nodiscard]]
+        static bool HandleLessThan(const Value& c1, const Value& c2, std::vector<Value>& stack);
+        
+        [[nodiscard]]
+        static bool HandleLessEqual(const Value& c1, const Value& c2, std::vector<Value>& stack);
+
+        [[nodiscard]]
+        static bool HandleGreaterThan(const Value& c1, const Value& c2, std::vector<Value>& stack);
+
+        [[nodiscard]]
+        static bool HandleGreaterEqual(const Value& c1, const Value& c2, std::vector<Value>& stack);
+
+        [[nodiscard]]
+        static bool HandlePower(const Value& c1, const Value& c2, std::vector<Value>& stack);
+
+        [[nodiscard]]
+        static bool HandleNegate(const Value& c, std::vector<Value>& stack);
+
+      private:
+
+        InterpretResult Run(std::int64_t funcNameHash, int startLine, bool verbose);
         void RuntimeError(const std::string& message, InterpretError errorType, int line, const CallStack& callStack);
 
         std::unordered_map<std::int64_t, Function> m_FunctionList;
