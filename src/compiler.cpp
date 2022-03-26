@@ -699,7 +699,7 @@ void Compiler::Primary(bool canAssign)
     EmitOp(Ops::LoadConstant, m_Previous.value().GetLine());
     EmitConstant(false);
   } else if (Match(TokenType::This)) {
-    
+    // TODO: this 
   } else if (Match(TokenType::Integer)) {
     try {
       std::string str(m_Previous.value().GetText());
