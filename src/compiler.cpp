@@ -270,12 +270,20 @@ void Compiler::FuncDeclaration()
     return;
   }
 
+  m_FunctionHadReturn = false;
   while (!Match(TokenType::End)) {
     Declaration();
     if (m_Current.value().GetType() == TokenType::EndOfFile) {
       ErrorAtCurrent("Expected `end` after function");
       return;
     }
+  }
+
+  // implicitly return if the user didnt write a return so the VM knows to return to the caller
+  if (!m_FunctionHadReturn && m_Vm.GetLastFunctionName() != "main") {
+    EmitConstant((void*)nullptr);
+    EmitOp(Ops::LoadConstant, m_Previous.value().GetLine());
+    EmitOp(Ops::Return, m_Previous.value().GetLine());
   }
   
   m_Locals.clear();
@@ -510,6 +518,11 @@ void Compiler::ReturnStatement()
     return;
   }
 
+  if (m_Vm.GetLastFunctionName() == "main") {
+    ErrorAtPrevious("Cannot return from main function");
+    return;
+  } 
+
   if (Match(TokenType::Semicolon)) {
     EmitConstant((void*)nullptr);
     EmitOp(Ops::LoadConstant, m_Previous.value().GetLine());
@@ -520,6 +533,7 @@ void Compiler::ReturnStatement()
   Expression(false);
   EmitOp(Ops::Return, m_Previous.value().GetLine());
   Consume(TokenType::Semicolon, "Expected ';' after expression");
+  m_FunctionHadReturn = true;
 }
 
 void Compiler::WhileStatement() 

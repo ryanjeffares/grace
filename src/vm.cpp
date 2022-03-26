@@ -1,25 +1,14 @@
 #include <cstdlib>
+#include <stack>
 
 #include "grace.hpp"
 
 #include "compiler.hpp"
 #include "vm.hpp"
-#include "vm_binop_handlers.hpp"
 
 using namespace Grace::VM;
 
-struct Result 
-{
-  Value m_C1, m_C2;
-
-  Result(Value&& c1, Value&& c2)
-    : m_C1(c1), m_C2(c2)
-  {
-
-  }
-};
-
-static inline Result PopLastTwo(std::vector<Value>& stack)
+static inline std::tuple<Value, Value> PopLastTwo(std::vector<Value>& stack)
 {
   auto c1 = std::move(stack[stack.size() - 2]);
   auto c2 = std::move(stack[stack.size() - 1]);
@@ -55,76 +44,94 @@ static void PrintLocals(const std::vector<Value>& locals, const std::string& fun
 void VM::Start(bool verbose)
 {
   auto mainHash = static_cast<std::int64_t>(m_Hasher("main"));
-  auto fileHash = static_cast<std::int64_t>(m_Hasher("file"));
-  CallStack callStack;
   if (m_FunctionList.find(mainHash) == m_FunctionList.end()) {
     RuntimeError("Could not find `main` function", InterpretError::FunctionNotFound, 1, {});
     return;
   }
 
-  callStack.push_back(std::make_tuple(fileHash, mainHash, 1));
-  Run(mainHash, 1, verbose, callStack, {}, 1);
+  using namespace std::chrono;
+  auto start = steady_clock::now();
+  auto res = Run(mainHash, 1, verbose);
+  auto end = steady_clock::now();
+  if (verbose) {
+    if (res == InterpretResult::RuntimeOk) {
+      auto dur = duration_cast<microseconds>(end - start).count();
+      if (dur > 1000) {
+        fmt::print("Program finished successfully in {} ms.\n", duration_cast<milliseconds>(end - start).count());
+      } else {
+        fmt::print("Program finished successfully in {} μs.\n", dur);
+      }
+    }
+  }
 }
 
-std::pair<InterpretResult, Value> VM::Run(std::int64_t funcNameHash, 
-    int startLine, 
-    bool verbose, 
-    CallStack& callStack, 
-    const std::vector<Value>& args, 
-    int depth
-  )
+InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
 {
 #define PRINT_LOCAL_MEMORY()                                          \
   do {                                                                \
     if (verbose) {                                                    \
-      PrintStack(valueStack, m_FunctionNames.at(funcNameHash));       \
-      PrintLocals(localsList, m_FunctionNames.at(funcNameHash));      \
+      PrintStack(*valueStack, m_FunctionNames.at(funcNameHash));      \
+      PrintLocals(*localsList, m_FunctionNames.at(funcNameHash));     \
     }                                                                 \
   } while (false)                                                     \
 
 #define RETURN_ERR()                                                  \
   do {                                                                \
-    localsList.clear();                                               \
-    return std::make_pair(InterpretResult::RuntimeError, Value());    \
+    localsList->clear();                                              \
+    return InterpretResult::RuntimeError;                             \
   } while (false)                                                     \
 
 #define RETURN_NULL()                                                 \
   do {                                                                \
-    localsList.clear();                                               \
-    return std::make_pair(InterpretResult::RuntimeOk, Value());       \
+    localsList->clear();                                              \
+    return InterpretResult::RuntimeOk;                                \
   } while (false)                                                     \
 
 #define RETURN_VALUE(value)                                           \
   do {                                                                \
     localsList.clear();                                               \
-    return std::make_pair(InterpretResult::RuntimeOk, value);         \
+    return InterpretResult::RuntimeOk;                                \
   } while (false)                                                     \
 
-  std::vector<Value> valueStack;
+  // Function, op index, constant index
+  struct FunctionInfo 
+  {
+    Function& m_Function;
+    std::size_t m_OpIndex, m_ConstantIndex;
+    std::vector<Value> m_Locals;
 
-  auto& function = m_FunctionList.at(funcNameHash);
-  auto& opList = function.m_OpList;
-  auto& constantList = function.m_ConstantList;
-  // locals list needs to be copied
-  auto localsList = function.m_Locals;
-  
-  std::size_t opCurrent = 0, constantCurrent = 0;
+    FunctionInfo(Function& func, std::size_t opIdx, std::size_t constIdx)
+      : m_Function(func), m_OpIndex(opIdx), m_ConstantIndex(constIdx)
+    {
+    }
+  };
 
-  for (auto&& arg : args) {
-    localsList.push_back(arg);
-  }
-  
-  if (depth > s_CallstackLimit/* / 10*/) {
-    RuntimeError(fmt::format("Maximum callstack depth {} exceeded", s_CallstackLimit), InterpretError::CallstackDepthExceeded, startLine, callStack);
-    RETURN_ERR();
-  }  
+  std::vector<FunctionInfo> funcInfoStack;
+  funcInfoStack.reserve(64);
+  funcInfoStack.emplace_back(m_FunctionList.at(funcNameHash), 0, 0);
 
-  while (opCurrent < opList.size()) {
-    auto [op, line] = opList[opCurrent++];
+  auto opCurrent = &funcInfoStack.back().m_OpIndex;
+  auto constantCurrent = &funcInfoStack.back().m_ConstantIndex;
+  auto opList = &funcInfoStack.back().m_Function.m_OpList;
+  auto constantList = &funcInfoStack.back().m_Function.m_ConstantList;
+  auto valueStack = &funcInfoStack.back().m_Function.m_ValueStack;
+  auto localsList = &funcInfoStack.back().m_Locals;
+
+  CallStack callStack;
+  callStack.emplace_back(
+      static_cast<std::int64_t>(m_Hasher("file")),
+      static_cast<std::int64_t>(m_Hasher("main")),
+      1
+  );
+
+  while (*opCurrent < opList->size()) {
+    auto [op, line] = opList->at(*opCurrent);
+    (*opCurrent)++;
+
     switch (op) {
       case Ops::Add: {
-        auto [c1, c2] = PopLastTwo(valueStack);
-        if (!HandleAddition(c1, c2, valueStack)) {
+        auto [c1, c2] = PopLastTwo(*valueStack);
+        if (!HandleAddition(c1, c2, *valueStack)) {
           RuntimeError(fmt::format("cannot add `{}` to `{}`", c2.GetType(), c1.GetType()), 
               InterpretError::InvalidOperand, line, callStack);
 #ifdef GRACE_DEBUG
@@ -135,8 +142,8 @@ std::pair<InterpretResult, Value> VM::Run(std::int64_t funcNameHash,
         break;
       }
       case Ops::Subtract: {
-        auto [c1, c2] = PopLastTwo(valueStack);
-        if (!HandleSubtraction(c1, c2, valueStack)) {
+        auto [c1, c2] = PopLastTwo(*valueStack);
+        if (!HandleSubtraction(c1, c2, *valueStack)) {
           RuntimeError(fmt::format("cannot subtract `{}` from `{}`", c2.GetType(), c1.GetType()), 
               InterpretError::InvalidOperand, line, callStack);
 #ifdef GRACE_DEBUG
@@ -147,8 +154,8 @@ std::pair<InterpretResult, Value> VM::Run(std::int64_t funcNameHash,
         break;
       }
       case Ops::Multiply: {
-        auto [c1, c2] = PopLastTwo(valueStack);
-        if (!HandleMultiplication(c1, c2, valueStack)) {
+        auto [c1, c2] = PopLastTwo(*valueStack);
+        if (!HandleMultiplication(c1, c2, *valueStack)) {
           RuntimeError(fmt::format("cannot multiply `{}` by `{}`", c1.GetType(), c2.GetType()), 
               InterpretError::InvalidOperand, line, callStack);
 #ifdef GRACE_DEBUG
@@ -159,8 +166,8 @@ std::pair<InterpretResult, Value> VM::Run(std::int64_t funcNameHash,
         break;
       }
       case Ops::Divide: {
-        auto [c1, c2] = PopLastTwo(valueStack);
-        if (!HandleDivision(c1, c2, valueStack)) {
+        auto [c1, c2] = PopLastTwo(*valueStack);
+        if (!HandleDivision(c1, c2, *valueStack)) {
           RuntimeError(fmt::format("cannot divide `{}` by `{}`", c1.GetType(), c2.GetType()), 
               InterpretError::InvalidOperand, line, callStack);
 #ifdef GRACE_DEBUG
@@ -171,28 +178,28 @@ std::pair<InterpretResult, Value> VM::Run(std::int64_t funcNameHash,
         break;
       }
       case Ops::And: {
-        auto [c1, c2] = PopLastTwo(valueStack);
-        valueStack.emplace_back(c1.AsBool() == c2.AsBool());
+        auto [c1, c2] = PopLastTwo(*valueStack);
+        valueStack->emplace_back(c1.AsBool() == c2.AsBool());
         break;
       }
       case Ops::Or: {
-        auto [c1, c2] = PopLastTwo(valueStack);
-        valueStack.emplace_back(c1.AsBool() || c2.AsBool());
+        auto [c1, c2] = PopLastTwo(*valueStack);
+        valueStack->emplace_back(c1.AsBool() || c2.AsBool());
         break;
       }
       case Ops::Equal: {
-        auto [c1, c2] = PopLastTwo(valueStack);
-        HandleEquality(c1, c2, valueStack, true);
+        auto [c1, c2] = PopLastTwo(*valueStack);
+        HandleEquality(c1, c2, *valueStack, true);
         break;
       }
       case Ops::NotEqual: {
-        auto [c1, c2] = PopLastTwo(valueStack);
-        HandleEquality(c1, c2, valueStack, false);
+        auto [c1, c2] = PopLastTwo(*valueStack);
+        HandleEquality(c1, c2, *valueStack, false);
         break;
       }
       case Ops::Greater: {
-        auto [c1, c2] = PopLastTwo(valueStack);
-        if (!HandleGreaterThan(c1, c2, valueStack)) {
+        auto [c1, c2] = PopLastTwo(*valueStack);
+        if (!HandleGreaterThan(c1, c2, *valueStack)) {
           RuntimeError(fmt::format("cannot compare `{}` with `{}`", c1.GetType(), c2.GetType()), 
               InterpretError::InvalidOperand, line, callStack);
 #ifdef GRACE_DEBUG
@@ -203,8 +210,8 @@ std::pair<InterpretResult, Value> VM::Run(std::int64_t funcNameHash,
         break;
       }
       case Ops::GreaterEqual: {
-        auto [c1, c2] = PopLastTwo(valueStack);
-        if (!HandleGreaterEqual(c1, c2, valueStack)) {
+        auto [c1, c2] = PopLastTwo(*valueStack);
+        if (!HandleGreaterEqual(c1, c2, *valueStack)) {
           RuntimeError(fmt::format("cannot compare `{}` with `{}`", c1.GetType(), c2.GetType()), 
               InterpretError::InvalidOperand, line, callStack);
 #ifdef GRACE_DEBUG
@@ -215,8 +222,8 @@ std::pair<InterpretResult, Value> VM::Run(std::int64_t funcNameHash,
         break;
       }
       case Ops::Less: {
-        auto [c1, c2] = PopLastTwo(valueStack);
-        if (!HandleLessThan(c1, c2, valueStack)) {
+        auto [c1, c2] = PopLastTwo(*valueStack);
+        if (!HandleLessThan(c1, c2, *valueStack)) {
           RuntimeError(fmt::format("cannot compare `{}` with `{}`", c1.GetType(), c2.GetType()), 
               InterpretError::InvalidOperand, line, callStack);
 #ifdef GRACE_DEBUG
@@ -227,8 +234,8 @@ std::pair<InterpretResult, Value> VM::Run(std::int64_t funcNameHash,
         break;
       }
       case Ops::LessEqual: {
-        auto [c1, c2] = PopLastTwo(valueStack);
-        if (!HandleLessEqual(c1, c2, valueStack)) {
+        auto [c1, c2] = PopLastTwo(*valueStack);
+        if (!HandleLessEqual(c1, c2, *valueStack)) {
           RuntimeError(fmt::format("cannot compare `{}` with `{}`", c1.GetType(), c2.GetType()), 
               InterpretError::InvalidOperand, line, callStack);
 #ifdef GRACE_DEBUG
@@ -239,8 +246,8 @@ std::pair<InterpretResult, Value> VM::Run(std::int64_t funcNameHash,
         break;
       }
       case Ops::Pow: {
-        auto [c1, c2] = PopLastTwo(valueStack);
-        if (!HandlePower(c1, c2, valueStack)) {
+        auto [c1, c2] = PopLastTwo(*valueStack);
+        if (!HandlePower(c1, c2, *valueStack)) {
           RuntimeError(fmt::format("cannot power `{}` with `{}`", c1.GetType(), c2.GetType()),
             InterpretError::InvalidOperand, line, callStack);
 #ifdef GRACE_DEBUG
@@ -251,8 +258,8 @@ std::pair<InterpretResult, Value> VM::Run(std::int64_t funcNameHash,
         break;
       }
       case Ops::Negate: {
-        auto c = Pop(valueStack);
-        if (!HandleNegate(c, valueStack)) {
+        auto c = Pop(*valueStack);
+        if (!HandleNegate(c, *valueStack)) {
           RuntimeError(fmt::format("Cannot negate `{}`", c.GetType()), 
               InterpretError::InvalidType, line, callStack);
 #ifdef GRACE_DEBUG
@@ -263,38 +270,40 @@ std::pair<InterpretResult, Value> VM::Run(std::int64_t funcNameHash,
         break;
       }
       case Ops::Not: {
-        auto c = Pop(valueStack);
-        valueStack.emplace_back(!(c.AsBool()));
+        auto c = Pop(*valueStack);
+        valueStack->emplace_back(!(c.AsBool()));
         break;
       }
       case Ops::LoadConstant:
-        valueStack.push_back(constantList[constantCurrent++]);
+        // hot path here
+        valueStack->push_back(std::move(constantList->at(*constantCurrent)));
+        (*constantCurrent)++;
         break;
       case Ops::LoadLocal: {
-        auto id = valueStack.back().Get<std::int64_t>();
-        valueStack.pop_back();
-        auto value = localsList[id];
-        valueStack.push_back(value);
+        auto id = valueStack->back().Get<std::int64_t>();
+        valueStack->pop_back();
+        auto value = localsList->at(id);
+        valueStack->push_back(value);
         break;
       }
       case Ops::Pop:
-        valueStack.pop_back();
+        valueStack->pop_back();
         break;
       case Ops::Print:
-        valueStack.back().Print();
+        valueStack->back().Print();
         break;
       case Ops::PrintEmptyLine:
         fmt::print("\n");
         break;
       case Ops::PrintLn:
-        valueStack.back().PrintLn();
+        valueStack->back().PrintLn();
         break;
       case Ops::PrintTab:
         fmt::print("\t");
         break;
       case Ops::Call: {
-        auto calleeNameHash = valueStack.back().Get<std::int64_t>();
-        valueStack.pop_back();
+        auto calleeNameHash = valueStack->back().Get<std::int64_t>();
+        valueStack->pop_back();
         
         if (m_FunctionList.find(calleeNameHash) == m_FunctionList.end()) {
           RuntimeError(fmt::format("Could not find function '{}'", calleeNameHash), InterpretError::FunctionNotFound, line, callStack);
@@ -306,12 +315,11 @@ std::pair<InterpretResult, Value> VM::Run(std::int64_t funcNameHash,
 
         auto& calleeFunc = m_FunctionList.at(calleeNameHash);
         int arity = calleeFunc.m_Arity;
-        auto numArgsGiven = valueStack.back().Get<std::int64_t>();
-        valueStack.pop_back();
+        auto numArgsGiven = valueStack->back().Get<std::int64_t>();
+        valueStack->pop_back();
 
         if (numArgsGiven != arity) {
-          RuntimeError(fmt::format("Incorrect number of arguments given to function '{}', expected {} but got {}", 
-                calleeNameHash, arity, numArgsGiven), 
+          RuntimeError(fmt::format("Incorrect number of arguments given to function '{}', expected {} but got {}", calleeNameHash, arity, numArgsGiven), 
               InterpretError::IncorrectArgCount, line, callStack);
 #ifdef GRACE_DEBUG
           PRINT_LOCAL_MEMORY();
@@ -319,53 +327,73 @@ std::pair<InterpretResult, Value> VM::Run(std::int64_t funcNameHash,
           RETURN_ERR();
         }
 
-        // top of the stack will be the last function argument 
-        std::vector<Value> callArgs(arity);
-        for (auto i = 0; i < arity; i++) {
-//          callArgs.push_back(std::move(valueStack.back()));
-          callArgs[arity - 1 - i] = std::move(valueStack.back());
-          valueStack.pop_back();
-        }
+        callStack.emplace_back(funcNameHash, calleeNameHash, line);
+        funcInfoStack.emplace_back(calleeFunc, 0, 0);
+
+        // reassign pointers
+        opCurrent = &funcInfoStack.back().m_OpIndex;
+        constantCurrent = &funcInfoStack.back().m_ConstantIndex;
+        opList = &funcInfoStack.back().m_Function.m_OpList;
+        constantList = &funcInfoStack.back().m_Function.m_ConstantList;
+        localsList = &funcInfoStack.back().m_Locals;
         
-        callStack.push_back(std::make_tuple(funcNameHash, calleeNameHash, line));
-        auto [res, value] = Run(calleeNameHash, line, verbose, callStack, callArgs, depth + 1);
-        if (res != InterpretResult::RuntimeOk) {
-#ifdef GRACE_DEBUG
-          PRINT_LOCAL_MEMORY();
-#endif
-          RETURN_ERR();
+        for (auto i = 0; i < arity; i++) {
+          localsList->push_back(std::move(valueStack->back()));
+          valueStack->pop_back();
         }
-        valueStack.push_back(std::move(value));
-        callStack.pop_back();
+
+        valueStack = &funcInfoStack.back().m_Function.m_ValueStack;
+        funcNameHash = calleeNameHash;
+
         break;
       }
       case Ops::AssignLocal: {
-        auto value = std::move(valueStack.back());
-        valueStack.pop_back();
-        localsList[valueStack.back().Get<std::int64_t>()] = value;
-        valueStack.pop_back();
+        auto value = std::move(valueStack->back());
+        valueStack->pop_back();
+        localsList->at(valueStack->back().Get<std::int64_t>()) = value;
+        valueStack->pop_back();
         break;
       }
       case Ops::DeclareLocal: {
-        localsList.emplace_back();
+        localsList->emplace_back();
         break;
       }
       case Ops::JumpIfFalse: {
-        auto [constIdx, opIdx] = PopLastTwo(valueStack); 
-        auto condition = Pop(valueStack);
+        auto [constIdx, opIdx] = PopLastTwo(*valueStack);
+        auto condition = Pop(*valueStack);
         if (!condition.AsBool()) {
-          opCurrent = opIdx.Get<std::int64_t>();
-          constantCurrent = constIdx.Get<std::int64_t>();
+          *opCurrent = opIdx.Get<std::int64_t>();
+          *constantCurrent = constIdx.Get<std::int64_t>();
         }
         break;
       }
       case Ops::Return: {
-        auto returnValue = std::move(valueStack.back());
-        valueStack.pop_back();
+        auto returnValue = std::move(valueStack->back());
+        valueStack->pop_back();
+
 #ifdef GRACE_DEBUG
         PRINT_LOCAL_MEMORY();
 #endif
-        RETURN_VALUE(returnValue);
+        
+        // hot path here
+        funcInfoStack.pop_back();
+        callStack.pop_back();
+
+        // reassign pointers
+        opCurrent = &funcInfoStack.back().m_OpIndex;
+        constantCurrent = &funcInfoStack.back().m_ConstantIndex;
+        opList = &funcInfoStack.back().m_Function.m_OpList;
+        constantList = &funcInfoStack.back().m_Function.m_ConstantList;
+        valueStack = &funcInfoStack.back().m_Function.m_ValueStack;
+        localsList = &funcInfoStack.back().m_Locals;
+
+        funcNameHash = funcInfoStack.back().m_Function.m_NameHash;
+        valueStack->push_back(std::move(returnValue));
+
+#ifdef GRACE_DEBUG
+        PRINT_LOCAL_MEMORY();
+#endif
+        break;
       }
       default:
         GRACE_UNREACHABLE();
@@ -433,3 +461,544 @@ void VM::RuntimeError(const std::string& message, InterpretError errorType, int 
   fmt::print(stderr, fmt::fg(fmt::color::red) | fmt::emphasis::bold, "ERROR: ");
   fmt::print(stderr, "[line {}] {}: {}. Stopping execution.\n", line, errorType, message);
 }
+
+[[nodiscard]] 
+bool VM::HandleAddition(const Value& c1, const Value& c2, std::vector<Value>& stack)
+{
+  switch (c1.GetType()) {
+    case Value::Type::Int: {
+      switch (c2.GetType()) {
+        case Value::Type::Int: {
+          stack.emplace_back(c1.Get<std::int64_t>() + c2.Get<std::int64_t>());
+          return true;
+        }
+        case Value::Type::Double: {
+          stack.emplace_back(static_cast<double>(c1.Get<std::int64_t>()) + c2.Get<double>());
+          return true;
+        }
+        default:
+          return false;
+      }
+    }
+    case Value::Type::Double: {
+      switch (c2.GetType()) {
+        case Value::Type::Int: {
+          stack.emplace_back(c1.Get<double>() + static_cast<double>(c2.Get<std::int64_t>()));
+          return true;
+        }
+        case Value::Type::Double: {
+          stack.emplace_back(c1.Get<double>() + c2.Get<double>());
+          return true;
+        }
+        default:
+          return false;
+      }
+    }
+    case Value::Type::Char: {
+      if (c2.GetType() == Value::Type::Char) {
+        std::string res;
+        res.push_back(c1.Get<char>());
+        res.push_back(c2.Get<char>());
+        stack.emplace_back(res);
+        return true;
+      }
+      return false;
+    }
+    case Value::Type::String: {
+      switch (c2.GetType()) {
+        case Value::Type::String: {
+          stack.emplace_back(c1.Get<std::string>() + c2.Get<std::string>());
+          return true;
+        }
+        case Value::Type::Char: {
+          stack.emplace_back(c1.Get<std::string>() + c2.Get<char>());
+          return true;
+        }
+        default: {
+          stack.emplace_back(c1.Get<std::string>() + c2.ToString());
+          return true;
+        }
+      }
+    }
+    default:
+      return false;
+  }
+}
+
+[[nodiscard]]
+bool VM::HandleSubtraction(const Value& c1, const Value& c2, std::vector<Value>& stack)
+{
+  switch (c1.GetType()) {
+    case Value::Type::Int: {
+      switch (c2.GetType()) {
+        case Value::Type::Int: {
+          stack.emplace_back(c1.Get<std::int64_t>() - c2.Get<std::int64_t>());
+          return true;
+        }
+        case Value::Type::Double: {
+          stack.emplace_back(static_cast<double>(c1.Get<std::int64_t>()) - c2.Get<double>());
+          return true;
+        }
+        default:
+          return false;
+      }
+    }
+    case Value::Type::Double: {
+      switch (c2.GetType()) {
+        case Value::Type::Int: {
+          stack.emplace_back(c1.Get<double>() - static_cast<double>(c2.Get<std::int64_t>()));
+          return true;
+        }
+        case Value::Type::Double: {
+          stack.emplace_back(c1.Get<double>() - c2.Get<double>());
+          return true;
+        }
+        default:
+          return false;
+      }
+    }
+    default:
+      return false;
+  }
+}
+
+[[nodiscard]]
+bool VM::HandleDivision(const Value& c1, const Value& c2, std::vector<Value>& stack)
+{
+  switch (c1.GetType()) {
+    case Value::Type::Int: {
+      switch (c2.GetType()) {
+        case Value::Type::Int: {
+          stack.emplace_back(c1.Get<std::int64_t>() / c2.Get<std::int64_t>());
+          return true;
+        }
+        case Value::Type::Double: {
+          stack.emplace_back(static_cast<double>(c1.Get<std::int64_t>()) / c2.Get<double>());
+          return true;
+        }
+        default:
+          return false;
+      }
+    }
+    case Value::Type::Double: {
+      switch (c2.GetType()) {
+        case Value::Type::Int: {
+          stack.emplace_back(c1.Get<double>() / static_cast<double>(c2.Get<std::int64_t>()));
+          return true;
+        }
+        case Value::Type::Double: {
+          stack.emplace_back(c1.Get<double>() / c2.Get<double>());
+          return true;
+        }
+        default:
+          return false;
+      }
+    }
+    default:
+      return false;
+  }
+}
+
+[[nodiscard]]
+bool VM::HandleMultiplication(const Value& c1, const Value& c2, std::vector<Value>& stack)
+{
+  switch (c1.GetType()) {
+    case Value::Type::Int: {
+      switch (c2.GetType()) {
+        case Value::Type::Int: {
+          stack.emplace_back(c1.Get<std::int64_t>() * c2.Get<std::int64_t>());
+          return true;
+        }
+        case Value::Type::Double: {
+          stack.emplace_back(static_cast<double>(c1.Get<std::int64_t>()) * c2.Get<double>());
+          return true;
+        }
+        default:
+          return false;
+      }
+    }
+    case Value::Type::Double: {
+      switch (c2.GetType()) {
+        case Value::Type::Int: {
+          stack.emplace_back(c1.Get<double>() * static_cast<double>(c2.Get<std::int64_t>()));
+          return true;
+        }
+        case Value::Type::Double: {
+          stack.emplace_back(c1.Get<double>() * c2.Get<double>());
+          return true;
+        }
+        default:
+          return false;
+      }
+    }
+    case Value::Type::Char: {
+      if (c2.GetType() == Value::Type::Int) {
+        stack.emplace_back(std::string(c2.Get<std::int64_t>(), c1.Get<char>()));
+        return true;
+      }
+      return false;
+    }
+    case Value::Type::String: {
+      if (c2.GetType() == Value::Type::Int) {
+        std::string res;
+        for (auto i = 0; i < c2.Get<std::int64_t>(); i++) {
+          res += c1.Get<std::string>();
+        }
+        stack.emplace_back(res);
+        return true;
+      }
+      return false;
+    }
+    default:
+      return false;
+  }
+}
+
+void VM::HandleEquality(const Value& c1, const Value& c2, std::vector<Value>& stack, bool equal)
+{
+  switch (c1.GetType()) {
+    case Value::Type::Int: {
+      switch (c2.GetType()) {
+        case Value::Type::Double: {
+          stack.emplace_back(equal 
+              ? static_cast<double>(c1.Get<std::int64_t>()) == c2.Get<double>()
+              : static_cast<double>(c1.Get<std::int64_t>()) != c2.Get<double>());
+          break;
+        }
+        case Value::Type::Int: {
+          stack.emplace_back(equal 
+              ? c1.Get<std::int64_t>() == c2.Get<std::int64_t>()
+              : c1.Get<std::int64_t>() != c2.Get<std::int64_t>());
+          break;
+        }
+        default: {
+          stack.emplace_back(false);
+          break;
+        }
+      }
+      break;
+    }
+    case Value::Type::Double: {
+      switch (c2.GetType()) {
+        case Value::Type::Int: {
+          stack.emplace_back(equal 
+              ? c1.Get<double>() == static_cast<double>(c2.Get<std::int64_t>())
+              : c1.Get<double>() != static_cast<double>(c2.Get<std::int64_t>()));
+          break;
+        }
+        case Value::Type::Double: {
+          stack.emplace_back(equal 
+              ? c1.Get<double>() == c2.Get<double>()
+              : c1.Get<double>() != c2.Get<double>());
+          break;
+        }
+        default: {
+          stack.emplace_back(false);
+          break;
+        }
+      }
+      break;
+    }
+    case Value::Type::Bool: {
+      if (c2.GetType() == Value::Type::Bool) {
+        stack.emplace_back(equal 
+            ? c1.Get<bool>() == c2.Get<bool>()
+            : c1.Get<bool>() != c2.Get<bool>());
+      } else {
+        stack.emplace_back(false);
+      }
+      break;
+    }
+    case Value::Type::Char: {
+      switch (c2.GetType()) {
+        case Value::Type::String: {
+          stack.emplace_back(c2.Get<std::string>().length() == 1 
+              && equal 
+              ? c1.Get<char>() == c2.Get<std::string>()[0]
+              : c1.Get<char>() != c2.Get<std::string>()[0]);
+          break;
+        }
+        case Value::Type::Char: {
+          stack.emplace_back(c1.Get<std::string>().length() == 1 
+              && equal
+              ? c1.Get<char>() == c2.Get<char>()
+              : c1.Get<char>() != c2.Get<char>());
+          break;
+        }
+        default: {
+          stack.emplace_back(false);
+          break;
+        }
+      }
+      break;
+    }
+    case Value::Type::String: {
+      switch (c2.GetType()) {
+        case Value::Type::String: {
+          stack.emplace_back(equal 
+              ? c1.Get<std::string>() == c2.Get<std::string>()
+              : c1.Get<std::string>() != c2.Get<std::string>());
+          break;
+        }
+        case Value::Type::Char: {
+          stack.emplace_back(c1.Get<std::string>().length() == 1 
+              && equal
+              ? c1.Get<std::string>()[0] == c2.Get<char>()
+              : c1.Get<std::string>()[0] != c2.Get<char>());
+          break;
+        }
+        default:
+          break;
+      }
+      break;
+    }
+    case Value::Type::Null: {
+      switch (c2.GetType()) {
+        case Value::Type::Null: {
+          stack.emplace_back(true);
+          break;
+        }
+        default:
+          stack.emplace_back(false);
+          break;
+      }
+      break;
+    }
+    default:
+      stack.emplace_back(false);
+      break;
+  }
+}
+
+[[nodiscard]]
+bool VM::HandleLessThan(const Value& c1, const Value& c2, std::vector<Value>& stack)
+{
+  switch (c1.GetType()) {
+    case Value::Type::Int: {
+      switch (c2.GetType()) {
+        case Value::Type::Double: {                                          
+          stack.emplace_back(static_cast<double>(c1.Get<std::int64_t>()) < c2.Get<double>());
+          return true;
+        }
+        case Value::Type::Int: {
+          stack.emplace_back(c1.Get<std::int64_t>() < c2.Get<std::int64_t>());
+          return true;
+        }
+        default:
+          return false;
+      }
+    }
+    case Value::Type::Double: {
+      switch (c2.GetType()) {
+        case Value::Type::Int: {
+          stack.emplace_back(c1.Get<double>() < static_cast<double>(c2.Get<std::int64_t>()));
+          return true;
+        }
+        case Value::Type::Double: {
+          stack.emplace_back(c1.Get<double>() < c2.Get<double>());
+          return true;
+        }
+        default:
+          return false;
+      }
+    }
+    case Value::Type::Char: {
+      if (c2.GetType() == Value::Type::Char) {
+        stack.emplace_back(c1.Get<char>() < c2.Get<char>());
+        return true;
+      }
+      return false;
+    }
+    default:
+      return false;
+  }
+}
+
+[[nodiscard]]
+bool VM::HandleLessEqual(const Value& c1, const Value& c2, std::vector<Value>& stack)
+{
+  switch (c1.GetType()) {
+    case Value::Type::Int: {
+      switch (c2.GetType()) {
+        case Value::Type::Double: {                                          
+          stack.emplace_back(static_cast<double>(c1.Get<std::int64_t>()) <= c2.Get<double>());
+          return true;
+        }
+        case Value::Type::Int: {
+          stack.emplace_back(c1.Get<std::int64_t>() <= c2.Get<std::int64_t>());
+          return true;
+        }
+        default:
+          return false;
+      }
+    }
+    case Value::Type::Double: {
+      switch (c2.GetType()) {
+        case Value::Type::Int: {
+          stack.emplace_back(c1.Get<double>() <= static_cast<double>(c2.Get<std::int64_t>()));
+          return true;
+        }
+        case Value::Type::Double: {
+          stack.emplace_back(c1.Get<double>() <= c2.Get<double>());
+          return true;
+        }
+        default:
+          return false;
+      }
+    }
+    case Value::Type::Char: {
+      if (c2.GetType() == Value::Type::Char) {
+        stack.emplace_back(c1.Get<char>() <= c2.Get<char>());
+        return true;
+      }
+      return false;
+    }
+    default:
+      return false;
+  }
+}
+
+[[nodiscard]]
+bool VM::HandleGreaterThan(const Value& c1, const Value& c2, std::vector<Value>& stack)
+{
+  switch (c1.GetType()) {
+    case Value::Type::Int: {
+      switch (c2.GetType()) {
+        case Value::Type::Double: {                                          
+          stack.emplace_back(static_cast<double>(c1.Get<std::int64_t>()) > c2.Get<double>());
+          return true;
+        }
+        case Value::Type::Int: {
+          stack.emplace_back(c1.Get<std::int64_t>() > c2.Get<std::int64_t>());
+          return true;
+        }
+        default:
+          return false;
+      }
+    }
+    case Value::Type::Double: {
+      switch (c2.GetType()) {
+        case Value::Type::Int: {
+          stack.emplace_back(c1.Get<double>() > static_cast<double>(c2.Get<std::int64_t>()));
+          return true;
+        }
+        case Value::Type::Double: {
+          stack.emplace_back(c1.Get<double>() > c2.Get<double>());
+          return true;
+        }
+        default:
+          return false;
+      }
+    }
+    case Value::Type::Char: {
+      if (c2.GetType() == Value::Type::Char) {
+        stack.emplace_back(c1.Get<char>() > c2.Get<char>());
+        return true;
+      }
+      return false;
+    }
+    default:
+      return false;
+  }
+}
+
+[[nodiscard]]
+bool VM::HandleGreaterEqual(const Value& c1, const Value& c2, std::vector<Value>& stack)
+{
+  switch (c1.GetType()) {
+    case Value::Type::Int: {
+      switch (c2.GetType()) {
+        case Value::Type::Double: {                                          
+          stack.emplace_back(static_cast<double>(c1.Get<std::int64_t>()) >= c2.Get<double>());
+          return true;
+        }
+        case Value::Type::Int: {
+          stack.emplace_back(c1.Get<std::int64_t>() >= c2.Get<std::int64_t>());
+          return true;
+        }
+        default:
+          return false;
+      }
+    }
+    case Value::Type::Double: {
+      switch (c2.GetType()) {
+        case Value::Type::Int: {
+          stack.emplace_back(c1.Get<double>() >= static_cast<double>(c2.Get<std::int64_t>()));
+          return true;
+        }
+        case Value::Type::Double: {
+          stack.emplace_back(c1.Get<double>() >= c2.Get<double>());
+          return true;
+        }
+        default:
+          return false;
+      }
+    }
+    case Value::Type::Char: {
+      if (c2.GetType() == Value::Type::Char) {
+        stack.emplace_back(c1.Get<char>() >= c2.Get<char>());
+        return true;
+      }
+      return false;
+    }
+    default:
+      return false;
+  }
+}
+
+[[nodiscard]]
+bool VM::HandlePower(const Value& c1, const Value& c2, std::vector<Value>& stack)
+{
+  switch (c1.GetType()) {
+    case Value::Type::Int: {
+      switch (c2.GetType()) {
+        case Value::Type::Int: {
+          stack.emplace_back(std::pow(c1.Get<std::int64_t>(), c2.Get<std::int64_t>()));
+          return true;
+        }
+        case Value::Type::Double: {
+          stack.emplace_back(std::pow(static_cast<double>(c1.Get<std::int64_t>()), c2.Get<double>()));
+          return true;
+        }
+        default:
+          return false;
+      }
+    }
+    case Value::Type::Double: {
+      switch (c2.GetType()) {
+        case Value::Type::Int: {
+          stack.emplace_back(std::pow(c1.Get<double>(), static_cast<double>(c2.Get<std::int64_t>())));
+          return true;
+        }
+        case Value::Type::Double: {
+          stack.emplace_back(std::pow(c1.Get<double>(), c2.Get<double>()));
+          return true;
+        }
+        default:
+          return false;
+      }
+    }
+    default:
+      return false;
+  }
+}
+
+[[nodiscard]]
+bool VM::HandleNegate(const Value& c, std::vector<Value>& stack)
+{
+  switch (c.GetType()) {
+    case Value::Type::Int: {
+      auto val = c.Get<std::int64_t>();
+      stack.emplace_back(-val);
+      return true;
+    }
+    case Value::Type::Double: {
+      auto val = c.Get<double>();
+      stack.emplace_back(-val);
+      return true;
+    }
+    default:
+      return false;
+  }
+}
+

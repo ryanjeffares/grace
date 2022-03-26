@@ -150,6 +150,7 @@ namespace Grace
         std::unordered_map<std::string, std::pair<bool, std::int64_t>> m_Locals;
         std::hash<std::string> m_Hasher;
 
+        bool m_FunctionHadReturn = false;
         bool m_PanicMode = false, m_HadError = false;
         bool m_Verbose;
     };
