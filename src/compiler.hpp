@@ -115,8 +115,8 @@ namespace Grace
         void ReturnStatement();
         void WhileStatement();
 
-        void And(bool canAssign, bool skipFirst);
         void Or(bool canAssign, bool skipFirst);
+        void And(bool canAssign, bool skipFirst);
         void Equality(bool canAssign, bool skipFirst);
         void Comparison(bool canAssign, bool skipFirst);
         void Term(bool canAssign, bool skipFirst);

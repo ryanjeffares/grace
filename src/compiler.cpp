@@ -753,6 +753,9 @@ void Compiler::Primary(bool canAssign)
   } else if (Match(TokenType::Null)) {
     EmitConstant((void*)nullptr);
     EmitOp(Ops::LoadConstant, m_Previous.value().GetLine());
+  } else if (Match(TokenType::LeftParen)) {
+    Expression(canAssign);
+    Consume(TokenType::RightParen, "Expected ')'");
   } else {
     Expression(canAssign);
   }
