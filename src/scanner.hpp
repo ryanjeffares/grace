@@ -22,6 +22,11 @@ namespace Grace
       Identifier,
       Integer,
       String,
+      IntIdent,
+      FloatIdent,
+      BoolIdent,
+      StringIdent,
+      CharIdent,
       
       // Symbols
       Colon,
@@ -187,6 +192,11 @@ struct fmt::formatter<Grace::Scanner::TokenType> : fmt::formatter<std::string_vi
         case TokenType::Var: name = "TokenType::Var"; break;
         case TokenType::Or: name = "TokenType::Or"; break;
         case TokenType::And: name = "TokenType::And"; break;
+        case TokenType::IntIdent: name = "TokenType::IntIdent"; break;
+        case TokenType::FloatIdent: name = "TokenType::FloatIdent"; break;
+        case TokenType::BoolIdent: name = "TokenType::BoolIdent"; break;
+        case TokenType::StringIdent: name = "TokenType::StringIdent"; break;
+        case TokenType::CharIdent: name = "TokenType::CharIdent"; break;
       }
     return fmt::formatter<std::string_view>::format(name, context);
   }

@@ -2,10 +2,9 @@ if exists('b:current_syntax')
   finish
 endif
 
-syn keyword graceKeywords class if else for in by while return end import this print println and or skipwhite
+syn keyword graceKeywords class if else for in by while return end import this print println and or func as skipwhite
 syn keyword graceBooleans true false skipwhite
-syn keyword graceVariable var final skipwhite
-syn keyword graceFunction func skipwhite
+syn keyword graceVariable var final int float bool string char skipwhite
 
 syn keyword graceTodo TODO FIXME NOTE NOTES XXX contained
 syn match graceComment "//.*$" contains=graceTodo
@@ -23,6 +22,5 @@ hi def link graceNumber         Number
 hi def link graceBooleans       Boolean
 hi def link graceKeywords       Keyword
 hi def link graceVariable       Type
-hi def link graceFunction       Function
 
 let b:current_syntax = "grace"

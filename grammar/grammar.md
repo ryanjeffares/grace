@@ -35,10 +35,10 @@ forStmt       -> "for" "(" ( varDecl | exprStmt | ";" )
                            expression? ";"
                            expression? ")"
                            ":" statement "end" ;
-ifStmt        -> "if" "(" expression ")" ":" 
+ifStmt        -> "if" expression ":" 
                  statement
-                 "else" ":" statement "end" 
-                 | "end" ;
+                 ( "else" ("if" expression ) ":" statement  )* 
+                 "end" ;
 printStmt     -> "print" "(" expression ")" ";" ;
 returnStmt    -> "return" expression? ";" ;
 whileStmt     -> "while" "(" expression ")" statement ;
@@ -58,7 +58,8 @@ logic_and     -> equality ( "and" equality )* ;
 equality      -> comparison ( ( "!=" | "==" ) comparison )* ;
 comparison    -> term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
 term          -> factor ( ( "-" | "+" ) factor )* ;
-factor        -> unary ( ( "/" | "*" ) unary )* ;
+factor        -> as  ( ( "/" | "*" ) as )* ;
+as            -> unary  ( ( "as" TYPE )* unary )*;
 
 unary         -> ( "!" | "-" ) unary | call ;
 call          -> primary ( "(" arguments? ")" | "." IDENTIFIER )* ;
@@ -82,6 +83,7 @@ STRING        -> "\"" <any char except "\"">* "\"" ;
 IDENTIFIER    -> ALPHA ( ALPHA | DIGIT )* ;
 ALPHA         -> "a" ... "z" | "A" ... "Z" | "_" ;
 DIGIT         -> "0" ... "9" ;
+TYPE          -> "int" | "float" | "bool" | "string" | "char" ;
 ```
 
 ## Keywords

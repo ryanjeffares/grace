@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <string>
 
 #include "../include/fmt/core.h"
@@ -129,7 +130,12 @@ namespace Grace
       void PrintLn() const;
       void Print() const;
       void DebugPrint() const;
-      [[nodiscard]] std::string ToString() const;
+
+      [[nodiscard]] std::string AsString() const;
+      [[nodiscard]] bool AsBool() const;
+      [[nodiscard]] std::tuple<bool, std::optional<std::string>> AsInt(std::int64_t& result) const;
+      [[nodiscard]] std::tuple<bool, std::optional<std::string>> AsDouble(double& result) const;
+      [[nodiscard]] std::tuple<bool, std::optional<std::string>> AsChar(char& result) const;
 
       template<typename T> 
       constexpr inline T Get() const
@@ -157,28 +163,6 @@ namespace Grace
       constexpr inline Type GetType() const
       {
         return m_Type;
-      }
-
-      [[nodiscard]]
-      constexpr inline bool AsBool() const
-      {
-        switch (m_Type)
-        {
-          case Type::Bool:
-            return m_Data.m_Bool;
-          case Type::Char:
-            return m_Data.m_Char > (char)0;
-          case Type::Double:
-            return m_Data.m_Double > 0.0;
-          case Type::Int:
-            return m_Data.m_Int > 0;
-          case Type::Null:
-            return false;
-          case Type::String:
-            return m_Data.m_Str->length() > 0;
-          default:
-            return false;
-        }
       }
 
     private:

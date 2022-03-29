@@ -1,0 +1,10 @@
+func main():
+  if 97 as char == 'a':
+    println("utf8 babee");
+  end 
+
+  var num = 1234;
+  var str = num as string;
+  println(str * 3);
+  println(str as int * 3);
+end

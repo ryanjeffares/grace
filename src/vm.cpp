@@ -395,6 +395,66 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
 #endif
         break;
       }
+      case Ops::CastAsInt: {
+        auto value = std::move(valueStack->back());
+        valueStack->pop_back();
+        std::int64_t result;
+        auto [success, message] = value.AsInt(result);
+        if (success) {
+          valueStack->emplace_back(result);
+        } else {
+          RuntimeError(message.value(), InterpretError::InvalidCast, line, callStack);
+#ifdef GRACE_DEBUG
+          PRINT_LOCAL_MEMORY();
+#endif
+          RETURN_ERR();
+        }
+        break;
+      }
+      case Ops::CastAsFloat: {
+        auto value = std::move(valueStack->back());
+        valueStack->pop_back();
+        double result;
+        auto [success, message] = value.AsDouble(result);
+        if (success) {
+          valueStack->emplace_back(result);
+        } else {
+          RuntimeError(message.value(), InterpretError::InvalidCast, line, callStack);
+#ifdef GRACE_DEBUG
+          PRINT_LOCAL_MEMORY();
+#endif
+          RETURN_ERR();
+        }
+        break;
+      }
+      case Ops::CastAsBool: {
+        auto value = std::move(valueStack->back());
+        valueStack->pop_back();
+        valueStack->emplace_back(value.AsBool());
+        break;
+      }
+      case Ops::CastAsString: {
+        auto value = std::move(valueStack->back());
+        valueStack->pop_back();
+        valueStack->emplace_back(value.AsString());
+        break;
+      }
+      case Ops::CastAsChar: {
+        auto value = std::move(valueStack->back());
+        valueStack->pop_back();
+        char result;
+        auto [success, message] = value.AsChar(result);
+        if (success) {
+          valueStack->emplace_back(result);
+        } else {
+          RuntimeError(message.value(), InterpretError::InvalidCast, line, callStack);
+#ifdef GRACE_DEBUG
+          PRINT_LOCAL_MEMORY();
+#endif
+          RETURN_ERR();
+        }
+        break;
+      }
       default:
         GRACE_UNREACHABLE();
     }
@@ -515,7 +575,7 @@ bool VM::HandleAddition(const Value& c1, const Value& c2, std::vector<Value>& st
           return true;
         }
         default: {
-          stack.emplace_back(c1.Get<std::string>() + c2.ToString());
+          stack.emplace_back(c1.Get<std::string>() + c2.AsString());
           return true;
         }
       }
@@ -719,8 +779,7 @@ void VM::HandleEquality(const Value& c1, const Value& c2, std::vector<Value>& st
           break;
         }
         case Value::Type::Char: {
-          stack.emplace_back(c1.Get<std::string>().length() == 1 
-              && equal
+          stack.emplace_back(equal
               ? c1.Get<char>() == c2.Get<char>()
               : c1.Get<char>() != c2.Get<char>());
           break;

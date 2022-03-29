@@ -35,6 +35,11 @@ static std::unordered_map<std::string, TokenType> s_KeywordLookup =
   std::make_pair("this", TokenType::This),
   std::make_pair("true", TokenType::True),
   std::make_pair("var", TokenType::Var),
+  std::make_pair("int", TokenType::IntIdent),
+  std::make_pair("float", TokenType::FloatIdent),
+  std::make_pair("bool", TokenType::BoolIdent),
+  std::make_pair("string", TokenType::StringIdent),
+  std::make_pair("char", TokenType::CharIdent),
 };
 
 static Token EndOfFileToken()

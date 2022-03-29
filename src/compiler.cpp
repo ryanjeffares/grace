@@ -143,6 +143,11 @@ static bool IsKeyword(TokenType type, std::string& outKeyword)
     case TokenType::Return: outKeyword = "return"; return true;
     case TokenType::Var: outKeyword = "var"; return true;
     case TokenType::While: outKeyword = "while"; return true;
+    case TokenType::IntIdent: outKeyword = "int"; return true;
+    case TokenType::FloatIdent: outKeyword = "float"; return true;
+    case TokenType::BoolIdent: outKeyword = "bool"; return true;
+    case TokenType::StringIdent: outKeyword = "string"; return true;
+    case TokenType::CharIdent: outKeyword = "char"; return true;
     default:
       return false;
   }
@@ -425,6 +430,9 @@ void Compiler::Expression(bool canAssign)
           case TokenType::Slash:
             Factor(false, true);
             break;
+          case TokenType::As:
+            As(false, true);
+            break;
           case TokenType::Semicolon:
           case TokenType::RightParen:
           case TokenType::Comma:
@@ -432,6 +440,7 @@ void Compiler::Expression(bool canAssign)
             shouldBreak = true;
             break;
           default:
+            fmt::print("{}\n\n", m_Current.value().ToString());
             ErrorAtCurrent("Invalid token found in expression");
             Advance();
             return;
@@ -618,21 +627,68 @@ void Compiler::Term(bool canAssign, bool skipFirst)
 void Compiler::Factor(bool canAssign, bool skipFirst)
 {
   if (!skipFirst) {
-    Unary(canAssign);
+    As(canAssign, skipFirst);
   }
   while (true) {
     if (Match(TokenType::StarStar)) {
-      Unary(canAssign);
+      As(canAssign, skipFirst);
       EmitOp(Ops::Pow, m_Current.value().GetLine());
     } else if (Match(TokenType::Star)) {
-      Unary(canAssign);
+      As(canAssign, skipFirst);
       EmitOp(Ops::Multiply, m_Current.value().GetLine());
     } else if (Match(TokenType::Slash)) {
-      Unary(canAssign);
+      As(canAssign, skipFirst);
       EmitOp(Ops::Divide, m_Current.value().GetLine());
     } else {
       break;
     }
+  }
+}
+
+static std::unordered_map<TokenType, Ops> s_CastOps = {
+  std::make_pair(TokenType::IntIdent, Ops::CastAsInt),
+  std::make_pair(TokenType::FloatIdent, Ops::CastAsFloat),
+  std::make_pair(TokenType::BoolIdent, Ops::CastAsBool),
+  std::make_pair(TokenType::StringIdent, Ops::CastAsString),
+  std::make_pair(TokenType::CharIdent, Ops::CastAsChar),
+};
+
+static bool IsPrimaryToken(const Token& token)
+{
+  auto type = token.GetType();
+  return type == TokenType::True || type == TokenType::False 
+    || type == TokenType::This || type == TokenType::Integer 
+    || type == TokenType::Double || type == TokenType::String 
+    || type == TokenType::Char || type == TokenType::Identifier;
+}
+
+static bool IsUnaryOp(const Token& token)
+{
+  auto type = token.GetType();
+  return type == TokenType::Bang || type == TokenType::Minus;
+}
+
+void Compiler::As(bool canAssign, bool skipFirst)
+{
+  if (!skipFirst) {
+    Unary(canAssign);
+  }
+  while (true) {
+    if (Match(TokenType::As)) {
+      if (s_CastOps.find(m_Current.value().GetType()) != s_CastOps.end()) {
+        EmitOp(s_CastOps[m_Current.value().GetType()], m_Current.value().GetLine());
+        Advance();
+      } else {
+        ErrorAtCurrent("Expected type after `as`");
+        return;
+      }
+    } else {
+      break;
+    }
+  }
+  // continue the expression.. 
+  if (IsPrimaryToken(m_Current.value()) || IsUnaryOp(m_Current.value())) {
+    Unary(canAssign);
   }
 }
 
