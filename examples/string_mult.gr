@@ -1,4 +1,13 @@
+func multiply_string(final value, final n):
+  if instanceof(value, string):
+    return value * n;
+  end
+  return string(value) * n;
+end
+
 func main():
-  println("aA" * 5);
-  println("aA" * -5);
+  final s = "aA";
+  println(multiply_string(s, 5));
+  println(multiply_string(true, 5));
+  println(multiply_string(1234, 20));
 end 

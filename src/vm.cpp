@@ -336,7 +336,7 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
         localsList = &funcInfoStack.back().m_Locals;
         
         for (auto i = 0; i < arity; i++) {
-          localsList->push_back(std::move(valueStack->back()));
+          localsList->insert(localsList->begin(), std::move(valueStack->back()));
           valueStack->pop_back();
         }
 

@@ -338,10 +338,7 @@ void Compiler::FinalDeclaration()
 
   auto localId = static_cast<std::int64_t>(m_Locals.size());
   m_Locals.insert(std::make_pair(localName, std::make_pair(true, localId)));
-  EmitConstant(localId);
-  EmitOp(Ops::LoadConstant, line);
   EmitOp(Ops::DeclareLocal, line);
-  EmitOp(Ops::Pop, line);
 
   Consume(TokenType::Equal, "Must assign to `final` upon declaration");
   Expression(false);

@@ -129,7 +129,7 @@ namespace Grace
         void PrintOps() const
         {
           for (const auto& [name, func] : m_FunctionList) {
-            fmt::print("<function `{}`>\n", name);
+            fmt::print("<function `{}`>\n", m_FunctionNames.at(name));
             for (const auto o : func.m_OpList) {
               fmt::print("\t{}\n", o.m_Op);
             }
