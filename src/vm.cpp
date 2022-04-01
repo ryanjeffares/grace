@@ -302,8 +302,7 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
         fmt::print("\t");
         break;
       case Ops::Call: {
-        auto calleeNameHash = valueStack->back().Get<std::int64_t>();
-        valueStack->pop_back();
+        auto calleeNameHash = constantList->at((*constantCurrent)++).Get<std::int64_t>();
         
         if (m_FunctionList.find(calleeNameHash) == m_FunctionList.end()) {
           RuntimeError(fmt::format("Could not find function '{}'", calleeNameHash), InterpretError::FunctionNotFound, line, callStack);
@@ -315,8 +314,7 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
 
         auto& calleeFunc = m_FunctionList.at(calleeNameHash);
         int arity = calleeFunc.m_Arity;
-        auto numArgsGiven = valueStack->back().Get<std::int64_t>();
-        valueStack->pop_back();
+        auto numArgsGiven = constantList->at((*constantCurrent)++).Get<std::int64_t>();
 
         if (numArgsGiven != arity) {
           RuntimeError(fmt::format("Incorrect number of arguments given to function '{}', expected {} but got {}", calleeNameHash, arity, numArgsGiven), 

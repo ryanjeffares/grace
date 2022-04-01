@@ -699,14 +699,9 @@ void Compiler::Call(bool canAssign)
         }
       }
       
-      // values for function arguments (if any) will be on top of the value stack
-      // get the function hash on the very top
-      EmitConstant(numArgs);
-      EmitOp(Ops::LoadConstant, m_Previous.value().GetLine());
-
       auto hash = static_cast<std::int64_t>(m_Hasher(prevText));
       EmitConstant(hash);
-      EmitOp(Ops::LoadConstant, m_Previous.value().GetLine());
+      EmitConstant(numArgs);
       EmitOp(Ops::Call, m_Previous.value().GetLine());
     } else if (Match(TokenType::Dot)) {
       // TODO: account for dot
