@@ -356,11 +356,12 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
         break;
       }
       case Ops::JumpIfFalse: {
-        auto [constIdx, opIdx] = PopLastTwo(*valueStack);
+        auto constIdx = constantList->at((*constantCurrent)++).Get<std::int64_t>(); 
+        auto opIdx = constantList->at((*constantCurrent)++).Get<std::int64_t>(); 
         auto condition = Pop(*valueStack);
         if (!condition.AsBool()) {
-          *opCurrent = opIdx.Get<std::int64_t>();
-          *constantCurrent = constIdx.Get<std::int64_t>();
+          *opCurrent = opIdx;
+          *constantCurrent = constIdx;
         }
         break;
       }

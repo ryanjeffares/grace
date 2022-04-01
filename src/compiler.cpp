@@ -463,9 +463,6 @@ void Compiler::IfStatement()
   EmitConstant(std::int64_t(0));
   auto opIdxToJump = m_Vm.GetNumConstants() - 1;  
 
-  EmitOp(Ops::LoadConstant, m_Previous.value().GetLine());
-  EmitOp(Ops::LoadConstant, m_Previous.value().GetLine());
-  // stack: condition, constantIdx, opIdx
   EmitOp(Ops::JumpIfFalse, m_Previous.value().GetLine());
   while (!Match(TokenType::End)) {
     Declaration();
