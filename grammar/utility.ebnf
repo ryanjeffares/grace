@@ -1,3 +1,0 @@
-function      -> IDENTIFIER "(" parameters? ")" ":" block "end" ;
-parameters    -> IDENTIFIER ( "," IDENTIFIER )* ;
-arguments     -> expression ( "," expression )* ;

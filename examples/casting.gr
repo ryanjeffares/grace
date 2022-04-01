@@ -6,5 +6,5 @@ func main():
   var num = 1234;
   var str = string(num);
   println(str * 3);
-  println(str as int * 3);
+  println(int(str) * 3);
 end

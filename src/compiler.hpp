@@ -110,7 +110,6 @@ namespace Grace
         void ExpressionStatement();
         void ForStatement();
         void IfStatement();
-        void InstanceOfStatement();
         void PrintStatement();
         void PrintLnStatement();
         void ReturnStatement();
@@ -128,6 +127,8 @@ namespace Grace
 
         void Char();
         void String();
+        void InstanceOf();
+        void Cast();
 
         void ErrorAtCurrent(const std::string& message);
         void ErrorAtPrevious(const std::string& message);

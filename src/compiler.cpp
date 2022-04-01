@@ -143,11 +143,6 @@ static bool IsKeyword(TokenType type, std::string& outKeyword)
     case TokenType::Return: outKeyword = "return"; return true;
     case TokenType::Var: outKeyword = "var"; return true;
     case TokenType::While: outKeyword = "while"; return true;
-    case TokenType::IntIdent: outKeyword = "int"; return true;
-    case TokenType::FloatIdent: outKeyword = "float"; return true;
-    case TokenType::BoolIdent: outKeyword = "bool"; return true;
-    case TokenType::StringIdent: outKeyword = "string"; return true;
-    case TokenType::CharIdent: outKeyword = "char"; return true;
     default:
       return false;
   }
@@ -441,8 +436,6 @@ void Compiler::Expression(bool canAssign)
         }
       }
     }
-  } else if (Match(TokenType::InstanceOf)) {
-    InstanceOfStatement();
   } else {
     Or(canAssign, false);
   }
@@ -488,41 +481,7 @@ void Compiler::IfStatement()
   m_Vm.SetConstantAtIndex(opIdxToJump, static_cast<std::int64_t>(opIndex));
 }
 
-void Compiler::InstanceOfStatement()
-{
-  Consume(TokenType::LeftParen, "Expected '(' after 'instanceof'");
-  Expression(false);
-  Consume(TokenType::Comma, "Expected ',' after expression");
 
-  switch (m_Current.value().GetType()) {
-    case TokenType::BoolIdent:
-      EmitConstant(std::int64_t(0));
-      break;
-    case TokenType::CharIdent:
-      EmitConstant(std::int64_t(1));
-      break;
-    case TokenType::FloatIdent:
-      EmitConstant(std::int64_t(2));
-      break;
-    case TokenType::IntIdent:
-      EmitConstant(std::int64_t(3));
-      break;
-    case TokenType::Null:
-      EmitConstant(std::int64_t(4));
-      break;
-    case TokenType::StringIdent:
-      EmitConstant(std::int64_t(5));
-      break;
-    default:
-      ErrorAtCurrent("Expected type as second argument for `instanceof`");
-      return;
-  }
-
-  EmitOp(Ops::CheckType, m_Current.value().GetLine());
-
-  Advance();  // Consume the type ident
-  Consume(TokenType::RightParen, "Expected ')'");
-}
 
 void Compiler::PrintStatement() 
 {
@@ -768,6 +727,14 @@ void Compiler::Call(bool canAssign)
   }
 }
 
+static bool IsTypeIdent(const Token& token)
+{
+  auto type = token.GetType();
+  return type == TokenType::IntIdent || type == TokenType::FloatIdent 
+    || type == TokenType::BoolIdent || type == TokenType::StringIdent 
+    || type == TokenType::CharIdent;
+}
+
 void Compiler::Primary(bool canAssign)
 {
   if (Match(TokenType::True)) {
@@ -820,6 +787,10 @@ void Compiler::Primary(bool canAssign)
   } else if (Match(TokenType::LeftParen)) {
     Expression(canAssign);
     Consume(TokenType::RightParen, "Expected ')'");
+  } else if (Match(TokenType::InstanceOf)) {
+    InstanceOf();
+  } else if (IsTypeIdent(m_Current.value())) {
+    Cast();
   } else {
     Expression(canAssign);
   }
@@ -904,6 +875,52 @@ void Compiler::String()
   }
   EmitOp(Ops::LoadConstant, m_Previous.value().GetLine());
   EmitConstant(res);
+}
+
+void Compiler::InstanceOf()
+{
+  Consume(TokenType::LeftParen, "Expected '(' after 'instanceof'");
+  Expression(false);
+  Consume(TokenType::Comma, "Expected ',' after expression");
+
+  switch (m_Current.value().GetType()) {
+    case TokenType::BoolIdent:
+      EmitConstant(std::int64_t(0));
+      break;
+    case TokenType::CharIdent:
+      EmitConstant(std::int64_t(1));
+      break;
+    case TokenType::FloatIdent:
+      EmitConstant(std::int64_t(2));
+      break;
+    case TokenType::IntIdent:
+      EmitConstant(std::int64_t(3));
+      break;
+    case TokenType::Null:
+      EmitConstant(std::int64_t(4));
+      break;
+    case TokenType::StringIdent:
+      EmitConstant(std::int64_t(5));
+      break;
+    default:
+      ErrorAtCurrent("Expected type as second argument for `instanceof`");
+      return;
+  }
+
+  EmitOp(Ops::CheckType, m_Current.value().GetLine());
+
+  Advance();  // Consume the type ident
+  Consume(TokenType::RightParen, "Expected ')'");
+}
+
+void Compiler::Cast()
+{
+  auto type = m_Current.value().GetType();
+  Advance();
+  Consume(TokenType::LeftParen, "Expected '(' after type ident");
+  Expression(false);
+  EmitOp(s_CastOps[type], m_Current.value().GetLine());
+  Consume(TokenType::RightParen, "Expected ')' after expression");
 }
 
 void Compiler::ErrorAtCurrent(const std::string& message)
