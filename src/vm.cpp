@@ -348,8 +348,7 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
       case Ops::AssignLocal: {
         auto value = std::move(valueStack->back());
         valueStack->pop_back();
-        localsList->at(valueStack->back().Get<std::int64_t>()) = value;
-        valueStack->pop_back();
+        localsList->at(constantList->at((*constantCurrent)++).Get<std::int64_t>()) = value;
         break;
       }
       case Ops::DeclareLocal: {

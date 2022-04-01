@@ -311,10 +311,9 @@ void Compiler::VarDeclaration()
   EmitOp(Ops::DeclareLocal, line);
 
   if (Match(TokenType::Equal)) {
-    EmitConstant(localId);
-    EmitOp(Ops::LoadConstant, line);
     Expression(false);
     line = m_Previous.value().GetLine();
+    EmitConstant(localId);
     EmitOp(Ops::AssignLocal, line);
   }
   Consume(TokenType::Semicolon, "Expected ';' after `var` declaration");
@@ -345,10 +344,9 @@ void Compiler::FinalDeclaration()
   EmitOp(Ops::Pop, line);
 
   Consume(TokenType::Equal, "Must assign to `final` upon declaration");
-  EmitConstant(localId);
-  EmitOp(Ops::LoadConstant, line);
   Expression(false);
   line = m_Previous.value().GetLine();
+  EmitConstant(localId);
   EmitOp(Ops::AssignLocal, line);
 
   Consume(TokenType::Semicolon, "Expected ';' after `final` declaration");
@@ -377,7 +375,8 @@ void Compiler::Expression(bool canAssign)
         return;
       }
 
-      if (m_Locals.at(std::string(m_Previous.value().GetText())).first) {
+      auto localName = std::string(m_Previous.value().GetText());
+      if (m_Locals.at(localName).first) {
         ErrorAtPrevious(fmt::format("Cannot reassign to final '{}'", m_Previous.value().GetText()));
         return;
       }
@@ -392,6 +391,7 @@ void Compiler::Expression(bool canAssign)
       Expression(false); // disallow x = y = z...
 
       int line = m_Previous.value().GetLine();
+      EmitConstant(m_Locals.at(localName).second);
       EmitOp(Ops::AssignLocal, line);
     } else {
       bool shouldBreak = false;
