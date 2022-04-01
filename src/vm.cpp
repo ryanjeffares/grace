@@ -500,27 +500,27 @@ void VM::RuntimeError(const std::string& message, InterpretError errorType, int 
     if (auto showFull = std::getenv("GRACE_SHOW_FULL_CALLSTACK")) {
       for (auto i = 1; i < callStack.size(); i++) {
         const auto& [caller, callee, ln] = callStack[i];
-        fmt::print(stderr, "\tline {}, in {}:\n", ln, m_FunctionNames.at(caller));
-        fmt::print(stderr, "\t    {}\n", m_Compiler.GetCodeAtLine(ln));
+        fmt::print(stderr, "line {}, in {}:\n", ln, m_FunctionNames.at(caller));
+        fmt::print(stderr, "{:>4}{}\n", m_Compiler.GetCodeAtLine(ln));
       }
     } else {
-      fmt::print(stderr, "\t{} more calls before - set environment variable `GRACE_SHOW_FULL_CALLSTACK` to see full callstack\n", callStackSize - 15);
+      fmt::print(stderr, "{} more calls before - set environment variable `GRACE_SHOW_FULL_CALLSTACK` to see full callstack\n", callStackSize - 15);
       for (auto i = callStackSize - 15; i < callStackSize; i++) {
         const auto& [caller, callee, ln] = callStack[i];
-        fmt::print(stderr, "\tline {}, in {}:\n", ln, m_FunctionNames.at(caller));
-        fmt::print(stderr, "\t    {}\n", m_Compiler.GetCodeAtLine(ln));
+        fmt::print(stderr, "line {}, in {}:\n", ln, m_FunctionNames.at(caller));
+        fmt::print(stderr, "{:>4}{}\n", m_Compiler.GetCodeAtLine(ln));
       }
     }
   } else {
     for (auto i = 1; i < callStack.size(); i++) {
       const auto& [caller, callee, ln] = callStack[i];
-      fmt::print(stderr, "\tline {}, in {}:\n", ln, m_FunctionNames.at(caller));
-      fmt::print(stderr, "\t    {}\n", m_Compiler.GetCodeAtLine(ln));
+      fmt::print(stderr, "line {}, in {}:\n", ln, m_FunctionNames.at(caller));
+      fmt::print(stderr, "{:>4}{}\n", m_Compiler.GetCodeAtLine(ln));
     }
   }
 
-  fmt::print(stderr, "\tline {}, in {}:\n", line, m_FunctionNames.at(std::get<1>(callStack.back())));
-  fmt::print(stderr, "\t    {}\n", m_Compiler.GetCodeAtLine(line));
+  fmt::print(stderr, "line {}, in {}:\n", line, m_FunctionNames.at(std::get<1>(callStack.back())));
+  fmt::print(stderr, "{:>4}{}\n", m_Compiler.GetCodeAtLine(line));
 
   fmt::print(stderr, "\n");
   fmt::print(stderr, fmt::fg(fmt::color::red) | fmt::emphasis::bold, "ERROR: ");
@@ -706,8 +706,10 @@ bool VM::HandleMultiplication(const Value& c1, const Value& c2, std::vector<Valu
     case Value::Type::String: {
       if (c2.GetType() == Value::Type::Int) {
         std::string res;
-        for (auto i = 0; i < c2.Get<std::int64_t>(); i++) {
-          res += c1.Get<std::string>();
+        if (c2.Get<std::int64_t>() > 0) {
+          for (auto i = 0; i < c2.Get<std::int64_t>(); i++) {
+            res += c1.Get<std::string>();
+          }
         }
         stack.emplace_back(res);
         return true;

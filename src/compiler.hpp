@@ -122,7 +122,6 @@ namespace Grace
         void Comparison(bool canAssign, bool skipFirst);
         void Term(bool canAssign, bool skipFirst);
         void Factor(bool canAssign, bool skipFirst);
-        void As(bool canAssign, bool skipFirst);
         void Unary(bool canAssign);
         void Call(bool canAssign);
         void Primary(bool canAssign);

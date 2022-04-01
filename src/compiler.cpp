@@ -313,10 +313,7 @@ void Compiler::VarDeclaration()
 
   std::int64_t localId = m_Locals.size();
   m_Locals.insert(std::make_pair(localName, std::make_pair(false, localId)));
-  EmitConstant(localId);
-  EmitOp(Ops::LoadConstant, line);
   EmitOp(Ops::DeclareLocal, line);
-  EmitOp(Ops::Pop, line);
 
   if (Match(TokenType::Equal)) {
     EmitConstant(localId);
@@ -429,9 +426,6 @@ void Compiler::Expression(bool canAssign)
           case TokenType::StarStar:
           case TokenType::Slash:
             Factor(false, true);
-            break;
-          case TokenType::As:
-            As(false, true);
             break;
           case TokenType::Semicolon:
           case TokenType::RightParen:
@@ -665,17 +659,17 @@ void Compiler::Term(bool canAssign, bool skipFirst)
 void Compiler::Factor(bool canAssign, bool skipFirst)
 {
   if (!skipFirst) {
-    As(canAssign, skipFirst);
+    Unary(canAssign);
   }
   while (true) {
     if (Match(TokenType::StarStar)) {
-      As(canAssign, skipFirst);
+      Unary(canAssign);
       EmitOp(Ops::Pow, m_Current.value().GetLine());
     } else if (Match(TokenType::Star)) {
-      As(canAssign, skipFirst);
+      Unary(canAssign);
       EmitOp(Ops::Multiply, m_Current.value().GetLine());
     } else if (Match(TokenType::Slash)) {
-      As(canAssign, skipFirst);
+      Unary(canAssign);
       EmitOp(Ops::Divide, m_Current.value().GetLine());
     } else {
       break;
@@ -704,30 +698,6 @@ static bool IsUnaryOp(const Token& token)
 {
   auto type = token.GetType();
   return type == TokenType::Bang || type == TokenType::Minus;
-}
-
-void Compiler::As(bool canAssign, bool skipFirst)
-{
-  if (!skipFirst) {
-    Unary(canAssign);
-  }
-  while (true) {
-    if (Match(TokenType::As)) {
-      if (s_CastOps.find(m_Current.value().GetType()) != s_CastOps.end()) {
-        EmitOp(s_CastOps[m_Current.value().GetType()], m_Current.value().GetLine());
-        Advance();
-      } else {
-        ErrorAtCurrent("Expected type after `as`");
-        return;
-      }
-    } else {
-      break;
-    }
-  }
-  // continue the expression.. 
-  if (IsPrimaryToken(m_Current.value())/* || IsUnaryOp(m_Current.value())*/) {
-    Unary(canAssign);
-  }
 }
 
 void Compiler::Unary(bool canAssign)
@@ -971,10 +941,10 @@ void Compiler::Error(const std::optional<Token>& token, const std::string& messa
 
   auto lineNo = token.value().GetLine();
   auto column = token.value().GetColumn() - token.value().GetLength();  // need the START of the token
-  fmt::print(stderr, "       --> {}:{}:{}\n", m_CurrentFileName, lineNo, column + 1); 
-  fmt::print(stderr, "        |\n");
-  fmt::print(stderr, "{:>7} | {}\n", lineNo, m_Scanner.GetCodeAtLine(lineNo));
-  fmt::print(stderr, "        | ");
+  fmt::print(stderr, "{:>7}--> {}:{}:{}\n", m_CurrentFileName, lineNo, column + 1); 
+  fmt::print(stderr, "{:>8}|\n");
+  fmt::print(stderr, "{:>8}| {}\n", lineNo, m_Scanner.GetCodeAtLine(lineNo));
+  fmt::print(stderr, "{:>8}| ");
   for (auto i = 0; i < column; i++) {
     fmt::print(stderr, " ");
   }

@@ -58,13 +58,15 @@ logic_and     -> equality ( "and" equality )* ;
 equality      -> comparison ( ( "!=" | "==" ) comparison )* ;
 comparison    -> term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
 term          -> factor ( ( "-" | "+" ) factor )* ;
-factor        -> as  ( ( "/" | "*" ) as )* ;
-as            -> unary  ( ( "as" TYPE )* unary )*;
+factor        -> unary ( ( "/" | "*" ) unary )* ;
 
 unary         -> ( "!" | "-" ) unary | call ;
 call          -> primary ( "(" arguments? ")" | "." IDENTIFIER )* ;
-primary       -> "true" | "false" | "this"
+primary       -> "true" | "false" | "this" | instanceof | cast
                | NUMBER | STRING | IDENTIFIER | "(" expression ")" ;
+
+instanceof    -> "instanceof" "(" expression "," TYPE ")" ; 
+cast          -> TYPE "(" expression ")" ;
 ```
 
 ## Utility Rules
@@ -89,11 +91,8 @@ TYPE          -> "int" | "float" | "bool" | "string" | "char" ;
 ## Keywords
 
 ```ebnf
-keyword       -> as 
-              | class 
-              | final 
+keyword       -> class 
               | func 
-              | meth 
               | for 
               | while 
               | end 
