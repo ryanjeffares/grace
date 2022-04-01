@@ -77,7 +77,7 @@ void Value::DebugPrint() const
 }
 
 [[nodiscard]]
-std::string Value::ToString() const
+std::string Value::AsString() const
 {
   switch (m_Type)
   {
@@ -96,5 +96,133 @@ std::string Value::ToString() const
     default:
       return "Invalid type";
   }
+}
+
+[[nodiscard]]
+bool Value::AsBool() const
+{
+  switch (m_Type)
+  {
+    case Type::Bool:
+      return m_Data.m_Bool;
+    case Type::Char:
+      return m_Data.m_Char > (char)0;
+    case Type::Double:
+      return m_Data.m_Double > 0.0;
+    case Type::Int:
+      return m_Data.m_Int > 0;
+    case Type::Null:
+      return false;
+    case Type::String:
+      return m_Data.m_Str->length() > 0;
+    default:
+      return false;
+  }
+}
+
+[[nodiscard]] 
+std::tuple<bool, std::optional<std::string>> Value::AsInt(std::int64_t& result) const
+{
+  switch (m_Type) {
+    case Type::Int: {
+      result = m_Data.m_Int;
+      return {true, {}};
+    }
+    case Type::Double: {
+      result = static_cast<std::int64_t>(m_Data.m_Double);
+      return {true, {}};
+    }
+    case Type::Bool: {
+      result = m_Data.m_Bool ? 1 : 0;
+      return {true, {}};
+    }
+    case Type::String: {
+      try {
+        result = std::stoll(*m_Data.m_Str);
+        return {true, {}};
+      } catch (const std::invalid_argument& e) {
+        return {false, fmt::format("Could not convert '{}' to int: {}", *m_Data.m_Str, e.what())};
+      } catch (const std::out_of_range&) {
+        return {false, "Int represented by string was out of range"};
+      }
+    }
+    case Type::Char: {
+      result = static_cast<std::int64_t>(m_Data.m_Char);
+      return {true, {}};
+    }
+    case Type::Null: {
+      return {false, "Cannot convert `null` to int"};
+    }
+  }
+}
+
+[[nodiscard]] 
+std::tuple<bool, std::optional<std::string>> Value::AsDouble(double& result) const
+{
+  switch (m_Type) {
+    case Type::Int: {
+      result = static_cast<double>(m_Data.m_Int);
+      return {true, {}};
+    }
+    case Type::Double: {
+      result = m_Data.m_Double;
+      return {true, {}};
+    }
+    case Type::Bool: {
+      result = m_Data.m_Bool ? 1.0 : 0.0;
+      return {true, {}};
+    }
+    case Type::String: {
+      try {
+        result = std::stod(*m_Data.m_Str);
+        return {true, {}};
+      } catch (const std::invalid_argument& e) {
+        return {false, fmt::format("Could not convert '{}' to int: {}", *m_Data.m_Str, e.what())};
+      } catch (const std::out_of_range&) {
+        return {false, "Int represented by string was out of range"};
+      }
+    }
+    case Type::Char: {
+      result = static_cast<double>(m_Data.m_Char);
+      return {true, {}};
+    }
+    case Type::Null: {
+      return {false, "Cannot convert `null` to float"};
+    }
+  } 
+}
+
+[[nodiscard]] 
+std::tuple<bool, std::optional<std::string>> Value::AsChar(char& result) const
+{
+  switch (m_Type) {
+    case Type::Int: {
+      result = static_cast<char>(m_Data.m_Int);
+      return {true, {}};
+    }
+    case Type::Double: {
+      result = static_cast<char>(m_Data.m_Double);
+      return {true, {}};
+    }
+    case Type::Bool: {
+      result = m_Data.m_Bool ? 1.0 : 0.0;
+      return {true, {}};
+    }
+    case Type::String: {
+      if (m_Data.m_Str->length() == 1) {
+        result = (*m_Data.m_Str)[0];
+        return {true,{}};
+      } else {
+        return {false, fmt::format("Cannot convert {} to `char`, string must be 1 character long to convert to char", *m_Data.m_Str)};
+      } 
+    }
+    case Type::Char: {
+      result = m_Data.m_Char;
+      return {true, {}};
+    }
+    case Type::Null: {
+      return {false, "Cannot convert `null` to char"};
+    }
+  } 
 }
 

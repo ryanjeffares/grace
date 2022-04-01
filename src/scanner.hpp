@@ -22,6 +22,11 @@ namespace Grace
       Identifier,
       Integer,
       String,
+      IntIdent,
+      FloatIdent,
+      BoolIdent,
+      StringIdent,
+      CharIdent,
       
       // Symbols
       Colon,
@@ -54,6 +59,7 @@ namespace Grace
       For,
       Func,
       If,
+      InstanceOf,
       Null,
       Or,
       Print,
@@ -177,6 +183,7 @@ struct fmt::formatter<Grace::Scanner::TokenType> : fmt::formatter<std::string_vi
         case TokenType::For: name = "TokenType::For"; break;
         case TokenType::Func: name = "TokenType::Func"; break;
         case TokenType::If: name = "TokenType::If"; break;
+        case TokenType::InstanceOf: name = "TokenType::InstanceOf"; break;
         case TokenType::Null: name = "TokenType::Null"; break;
         case TokenType::While: name = "TokenType::While"; break;
         case TokenType::Print: name = "TokenType::Print"; break;
@@ -187,6 +194,11 @@ struct fmt::formatter<Grace::Scanner::TokenType> : fmt::formatter<std::string_vi
         case TokenType::Var: name = "TokenType::Var"; break;
         case TokenType::Or: name = "TokenType::Or"; break;
         case TokenType::And: name = "TokenType::And"; break;
+        case TokenType::IntIdent: name = "TokenType::IntIdent"; break;
+        case TokenType::FloatIdent: name = "TokenType::FloatIdent"; break;
+        case TokenType::BoolIdent: name = "TokenType::BoolIdent"; break;
+        case TokenType::StringIdent: name = "TokenType::StringIdent"; break;
+        case TokenType::CharIdent: name = "TokenType::CharIdent"; break;
       }
     return fmt::formatter<std::string_view>::format(name, context);
   }

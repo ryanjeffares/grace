@@ -31,6 +31,12 @@ namespace Grace
       And,
       AssignLocal,
       Call,
+      CastAsInt,
+      CastAsFloat,
+      CastAsBool,
+      CastAsString,
+      CastAsChar,
+      CheckType,
       DeclareLocal,
       Divide,
       Equal,
@@ -66,6 +72,7 @@ namespace Grace
     {
       FunctionNotFound,
       IncorrectArgCount,
+      InvalidCast,
       InvalidOperand,
       InvalidType,
       CallstackDepthExceeded,
@@ -222,6 +229,12 @@ struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
       case Ops::And: name = "Ops::And"; break;
       case Ops::AssignLocal: name = "Ops::AssignLocal"; break;
       case Ops::Call: name = "Ops::Call"; break;
+      case Ops::CastAsInt: name = "Ops::CastAsInt"; break;
+      case Ops::CastAsFloat: name = "Ops::CastAsFloat"; break;
+      case Ops::CastAsBool: name = "Ops::CastAsBool"; break;
+      case Ops::CastAsString: name = "Ops::CastAsString"; break;
+      case Ops::CastAsChar: name = "Ops::CastAsChar"; break;
+      case Ops::CheckType: name = "Ops::CheckType"; break;
       case Ops::DeclareLocal: name = "Ops::DeclareLocal"; break;
       case Ops::Divide: name = "Ops::Divide"; break;
       case Ops::Equal: name = "Ops::Equal"; break;
@@ -262,6 +275,7 @@ struct fmt::formatter<Grace::VM::InterpretError> : fmt::formatter<std::string_vi
     switch (type) {
       case InterpretError::FunctionNotFound: name = "FunctionNotFound"; break;
       case InterpretError::IncorrectArgCount: name = "IncorrectArgCount"; break;
+      case InterpretError::InvalidCast: name = "InvalidCast"; break;
       case InterpretError::InvalidOperand: name = "InvalidOperand"; break;
       case InterpretError::InvalidType: name = "InvalidType"; break;
       case InterpretError::CallstackDepthExceeded: name = "CallstackDepthExceeded"; break;

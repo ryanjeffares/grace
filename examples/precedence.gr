@@ -1,7 +1,21 @@
 // multiplication/division has higher precedence than addition/subtraction
+// parentheses can be used to change order of operations
+
 func main():
+  var a = 2 * -3 - 4 + 1 / 5.0;
   var x = 2 * 3 - 4 + 1 / 5.0;
+  println(a);
   println(x);
+  
   var y = 1.0 + 2.0 / 4.0;
   println(y);
+
+  var z = (1 + 2) * 4;
+  println(z);
+
+  var w = 1 + 2 * 4;
+  println(w);
+  println((z == w) or (x == y));
+
+  println((1 - 1) != true);
 end

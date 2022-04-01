@@ -308,10 +308,7 @@ void Compiler::VarDeclaration()
 
   std::int64_t localId = m_Locals.size();
   m_Locals.insert(std::make_pair(localName, std::make_pair(false, localId)));
-  EmitConstant(localId);
-  EmitOp(Ops::LoadConstant, line);
   EmitOp(Ops::DeclareLocal, line);
-  EmitOp(Ops::Pop, line);
 
   if (Match(TokenType::Equal)) {
     EmitConstant(localId);
@@ -432,6 +429,7 @@ void Compiler::Expression(bool canAssign)
             shouldBreak = true;
             break;
           default:
+            fmt::print("{}\n\n", m_Current.value().ToString());
             ErrorAtCurrent("Invalid token found in expression");
             Advance();
             return;
@@ -482,6 +480,8 @@ void Compiler::IfStatement()
   m_Vm.SetConstantAtIndex(constantIdxToJump, static_cast<std::int64_t>(constantIndex));
   m_Vm.SetConstantAtIndex(opIdxToJump, static_cast<std::int64_t>(opIndex));
 }
+
+
 
 void Compiler::PrintStatement() 
 {
@@ -636,6 +636,29 @@ void Compiler::Factor(bool canAssign, bool skipFirst)
   }
 }
 
+static std::unordered_map<TokenType, Ops> s_CastOps = {
+  std::make_pair(TokenType::IntIdent, Ops::CastAsInt),
+  std::make_pair(TokenType::FloatIdent, Ops::CastAsFloat),
+  std::make_pair(TokenType::BoolIdent, Ops::CastAsBool),
+  std::make_pair(TokenType::StringIdent, Ops::CastAsString),
+  std::make_pair(TokenType::CharIdent, Ops::CastAsChar),
+};
+
+static bool IsPrimaryToken(const Token& token)
+{
+  auto type = token.GetType();
+  return type == TokenType::True || type == TokenType::False 
+    || type == TokenType::This || type == TokenType::Integer 
+    || type == TokenType::Double || type == TokenType::String 
+    || type == TokenType::Char || type == TokenType::Identifier;
+}
+
+static bool IsUnaryOp(const Token& token)
+{
+  auto type = token.GetType();
+  return type == TokenType::Bang || type == TokenType::Minus;
+}
+
 void Compiler::Unary(bool canAssign)
 {
   if (Match(TokenType::Bang)) {
@@ -704,6 +727,14 @@ void Compiler::Call(bool canAssign)
   }
 }
 
+static bool IsTypeIdent(const Token& token)
+{
+  auto type = token.GetType();
+  return type == TokenType::IntIdent || type == TokenType::FloatIdent 
+    || type == TokenType::BoolIdent || type == TokenType::StringIdent 
+    || type == TokenType::CharIdent;
+}
+
 void Compiler::Primary(bool canAssign)
 {
   if (Match(TokenType::True)) {
@@ -753,6 +784,13 @@ void Compiler::Primary(bool canAssign)
   } else if (Match(TokenType::Null)) {
     EmitConstant((void*)nullptr);
     EmitOp(Ops::LoadConstant, m_Previous.value().GetLine());
+  } else if (Match(TokenType::LeftParen)) {
+    Expression(canAssign);
+    Consume(TokenType::RightParen, "Expected ')'");
+  } else if (Match(TokenType::InstanceOf)) {
+    InstanceOf();
+  } else if (IsTypeIdent(m_Current.value())) {
+    Cast();
   } else {
     Expression(canAssign);
   }
@@ -839,6 +877,52 @@ void Compiler::String()
   EmitConstant(res);
 }
 
+void Compiler::InstanceOf()
+{
+  Consume(TokenType::LeftParen, "Expected '(' after 'instanceof'");
+  Expression(false);
+  Consume(TokenType::Comma, "Expected ',' after expression");
+
+  switch (m_Current.value().GetType()) {
+    case TokenType::BoolIdent:
+      EmitConstant(std::int64_t(0));
+      break;
+    case TokenType::CharIdent:
+      EmitConstant(std::int64_t(1));
+      break;
+    case TokenType::FloatIdent:
+      EmitConstant(std::int64_t(2));
+      break;
+    case TokenType::IntIdent:
+      EmitConstant(std::int64_t(3));
+      break;
+    case TokenType::Null:
+      EmitConstant(std::int64_t(4));
+      break;
+    case TokenType::StringIdent:
+      EmitConstant(std::int64_t(5));
+      break;
+    default:
+      ErrorAtCurrent("Expected type as second argument for `instanceof`");
+      return;
+  }
+
+  EmitOp(Ops::CheckType, m_Current.value().GetLine());
+
+  Advance();  // Consume the type ident
+  Consume(TokenType::RightParen, "Expected ')'");
+}
+
+void Compiler::Cast()
+{
+  auto type = m_Current.value().GetType();
+  Advance();
+  Consume(TokenType::LeftParen, "Expected '(' after type ident");
+  Expression(false);
+  EmitOp(s_CastOps[type], m_Current.value().GetLine());
+  Consume(TokenType::RightParen, "Expected ')' after expression");
+}
+
 void Compiler::ErrorAtCurrent(const std::string& message)
 {
   Error(m_Current, message);
@@ -874,10 +958,10 @@ void Compiler::Error(const std::optional<Token>& token, const std::string& messa
 
   auto lineNo = token.value().GetLine();
   auto column = token.value().GetColumn() - token.value().GetLength();  // need the START of the token
-  fmt::print(stderr, "       --> {}:{}:{}\n", m_CurrentFileName, lineNo, column + 1); 
-  fmt::print(stderr, "        |\n");
-  fmt::print(stderr, "{:>7} | {}\n", lineNo, m_Scanner.GetCodeAtLine(lineNo));
-  fmt::print(stderr, "        | ");
+  fmt::print(stderr, "{:>7}--> {}:{}:{}\n", m_CurrentFileName, lineNo, column + 1); 
+  fmt::print(stderr, "{:>8}|\n");
+  fmt::print(stderr, "{:>8}| {}\n", lineNo, m_Scanner.GetCodeAtLine(lineNo));
+  fmt::print(stderr, "{:>8}| ");
   for (auto i = 0; i < column; i++) {
     fmt::print(stderr, " ");
   }
