@@ -455,6 +455,11 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
         }
         break;
       }
+      case Ops::CheckType: {
+        auto typeIdx = constantList->at((*constantCurrent)++).Get<std::int64_t>();
+        valueStack->emplace_back(typeIdx == static_cast<std::int64_t>(Pop(*valueStack).GetType()));
+        break;
+      }
       default:
         GRACE_UNREACHABLE();
     }

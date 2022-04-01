@@ -1,0 +1,4 @@
+func main():
+  println("aA" * 5);
+  println("aA" * -5);
+end 

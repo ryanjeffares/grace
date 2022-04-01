@@ -2,8 +2,10 @@
 // parentheses can be used to change order of operations
 
 func main():
-  var x = 2 * 3 - 4 + 1 / 5.0;
+  var x = 2 * -3 - 4 + 1 / 5.0;
+  var y = 2 * 3 - 4 + 1 / 5.0;
   println(x);
+  println(y);
   
   var y = 1.0 + 2.0 / 4.0;
   println(y);

@@ -110,6 +110,7 @@ namespace Grace
         void ExpressionStatement();
         void ForStatement();
         void IfStatement();
+        void InstanceOfStatement();
         void PrintStatement();
         void PrintLnStatement();
         void ReturnStatement();

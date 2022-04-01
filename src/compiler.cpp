@@ -447,6 +447,8 @@ void Compiler::Expression(bool canAssign)
         }
       }
     }
+  } else if (Match(TokenType::InstanceOf)) {
+    InstanceOfStatement();
   } else {
     Or(canAssign, false);
   }
@@ -490,6 +492,42 @@ void Compiler::IfStatement()
   auto opIndex = m_Vm.GetNumOps();
   m_Vm.SetConstantAtIndex(constantIdxToJump, static_cast<std::int64_t>(constantIndex));
   m_Vm.SetConstantAtIndex(opIdxToJump, static_cast<std::int64_t>(opIndex));
+}
+
+void Compiler::InstanceOfStatement()
+{
+  Consume(TokenType::LeftParen, "Expected '(' after 'instanceof'");
+  Expression(false);
+  Consume(TokenType::Comma, "Expected ',' after expression");
+
+  switch (m_Current.value().GetType()) {
+    case TokenType::BoolIdent:
+      EmitConstant(std::int64_t(0));
+      break;
+    case TokenType::CharIdent:
+      EmitConstant(std::int64_t(1));
+      break;
+    case TokenType::FloatIdent:
+      EmitConstant(std::int64_t(2));
+      break;
+    case TokenType::IntIdent:
+      EmitConstant(std::int64_t(3));
+      break;
+    case TokenType::Null:
+      EmitConstant(std::int64_t(4));
+      break;
+    case TokenType::StringIdent:
+      EmitConstant(std::int64_t(5));
+      break;
+    default:
+      ErrorAtCurrent("Expected type as second argument for `instanceof`");
+      return;
+  }
+
+  EmitOp(Ops::CheckType, m_Current.value().GetLine());
+
+  Advance();  // Consume the type ident
+  Consume(TokenType::RightParen, "Expected ')'");
 }
 
 void Compiler::PrintStatement() 
@@ -687,7 +725,7 @@ void Compiler::As(bool canAssign, bool skipFirst)
     }
   }
   // continue the expression.. 
-  if (IsPrimaryToken(m_Current.value()) || IsUnaryOp(m_Current.value())) {
+  if (IsPrimaryToken(m_Current.value())/* || IsUnaryOp(m_Current.value())*/) {
     Unary(canAssign);
   }
 }
