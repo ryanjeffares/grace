@@ -355,6 +355,13 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
         localsList->emplace_back();
         break;
       }
+      case Ops::Jump: {
+        auto constIdx = constantList->at((*constantCurrent)++).Get<std::int64_t>(); 
+        auto opIdx = constantList->at((*constantCurrent)++).Get<std::int64_t>(); 
+        *opCurrent = opIdx;
+        *constantCurrent = constIdx;
+        break;
+      }
       case Ops::JumpIfFalse: {
         auto constIdx = constantList->at((*constantCurrent)++).Get<std::int64_t>(); 
         auto opIdx = constantList->at((*constantCurrent)++).Get<std::int64_t>(); 

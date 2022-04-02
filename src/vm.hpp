@@ -42,6 +42,7 @@ namespace Grace
       Equal,
       Greater,
       GreaterEqual,
+      Jump,
       JumpIfFalse,
       Less,
       LessEqual,
@@ -240,6 +241,7 @@ struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
       case Ops::Equal: name = "Ops::Equal"; break;
       case Ops::Greater: name = "Ops::Greater"; break;
       case Ops::GreaterEqual: name = "Ops::GreaterEqual"; break;
+      case Ops::Jump: name = "Ops::Jump"; break;
       case Ops::JumpIfFalse: name = "Ops::JumpIfFalse"; break;
       case Ops::Less: name = "Ops::Less"; break;
       case Ops::LessEqual: name = "Ops::LessEqual"; break;

@@ -311,7 +311,9 @@ void Compiler::VarDeclaration()
   EmitOp(Ops::DeclareLocal, line);
 
   if (Match(TokenType::Equal)) {
+    m_IsInAssignmentExpression = true;
     Expression(false);
+    m_IsInAssignmentExpression = false;
     line = m_Previous.value().GetLine();
     EmitConstant(localId);
     EmitOp(Ops::AssignLocal, line);
@@ -341,7 +343,9 @@ void Compiler::FinalDeclaration()
   EmitOp(Ops::DeclareLocal, line);
 
   Consume(TokenType::Equal, "Must assign to `final` upon declaration");
+  m_IsInAssignmentExpression = true;
   Expression(false);
+  m_IsInAssignmentExpression = false;
   line = m_Previous.value().GetLine();
   EmitConstant(localId);
   EmitOp(Ops::AssignLocal, line);
@@ -385,7 +389,9 @@ void Compiler::Expression(bool canAssign)
         return;
       }
 
+      m_IsInAssignmentExpression = true;
       Expression(false); // disallow x = y = z...
+      m_IsInAssignmentExpression = false;
 
       int line = m_Previous.value().GetLine();
       EmitConstant(m_Locals.at(localName).second);
@@ -451,31 +457,95 @@ void Compiler::ForStatement()
 
 void Compiler::IfStatement() 
 {
+  m_IsInAssignmentExpression = true;
   Expression(false);
+  m_IsInAssignmentExpression = false;
   Consume(TokenType::Colon, "Expected ':' after condition");
   
   // store indexes of constant and instruction indexes to jump
-  EmitConstant(std::int64_t(0));
-  auto constantIdxToJump = m_Vm.GetNumConstants() - 1;  
-  EmitConstant(std::int64_t(0));
-  auto opIdxToJump = m_Vm.GetNumConstants() - 1;  
+  auto topConstantIdxToJump = m_Vm.GetNumConstants();
+  EmitConstant(std::int64_t{});
+  auto topOpIdxToJump = m_Vm.GetNumConstants();
+  EmitConstant(std::int64_t{});
 
   EmitOp(Ops::JumpIfFalse, m_Previous.value().GetLine());
-  while (!Match(TokenType::End)) {
+
+  // constant index, op index
+  std::vector<std::tuple<std::int64_t, std::int64_t>> endJumpIndexPairs;
+
+  bool topJumpSet = false;
+  bool elseBlockFound = false;
+  bool elseIfBlockFound = false;
+  bool needsElseBlock = true;
+  while (true) {
+    if (Match(TokenType::Else)) {
+      // make any unreachables 'else' blocks a compiler error
+      if (elseBlockFound) {
+        ErrorAtPrevious("Unreachable `else` due to previous `else`");
+        return;
+      }
+      
+      // if the ifs condition passed and its block executed, it needs to jump to the end
+      auto endConstantIdx = m_Vm.GetNumConstants();
+      EmitConstant(std::int64_t{});
+      auto endOpIdx = m_Vm.GetNumConstants();
+      EmitConstant(std::int64_t{});
+      EmitOp(Ops::Jump, m_Previous.value().GetLine());
+      
+      endJumpIndexPairs.emplace_back(endConstantIdx, endOpIdx);
+
+      auto numConstants = m_Vm.GetNumConstants();
+      auto numOps = m_Vm.GetNumOps();
+      
+      // haven't told the 'if' where to jump to yet if its condition fails 
+      if (!topJumpSet) {
+        m_Vm.SetConstantAtIndex(topConstantIdxToJump, static_cast<std::int64_t>(numConstants));
+        m_Vm.SetConstantAtIndex(topOpIdxToJump, static_cast<std::int64_t>(numOps));
+        topJumpSet = true;
+      }
+
+      if (Match(TokenType::Colon)) {
+        elseBlockFound = true;
+      } else if (Check(TokenType::If)) {
+        elseIfBlockFound = true;
+        needsElseBlock = false;
+      } else {
+        ErrorAtCurrent("Expected `if` or `:` after `else`");
+        return;
+      }
+    }   
+
     Declaration();
+
+    // above call to Declaration() will handle chained if/else
+    if (elseIfBlockFound) {
+      break;
+    }
+    
     if (Match(TokenType::EndOfFile)) {
       ErrorAtPrevious("Unterminated `if` statement");
       return;
     }
+
+    if (needsElseBlock && Match(TokenType::End)) {
+      break;
+    }
   }
 
-  auto constantIndex = m_Vm.GetNumConstants();
-  auto opIndex = m_Vm.GetNumOps();
-  m_Vm.SetConstantAtIndex(constantIdxToJump, static_cast<std::int64_t>(constantIndex));
-  m_Vm.SetConstantAtIndex(opIdxToJump, static_cast<std::int64_t>(opIndex));
+  auto numConstants = static_cast<std::int64_t>(m_Vm.GetNumConstants());
+  auto numOps = static_cast<std::int64_t>(m_Vm.GetNumOps());
+
+  for (auto [constIdx, opIdx] : endJumpIndexPairs) {
+    m_Vm.SetConstantAtIndex(constIdx, numConstants);
+    m_Vm.SetConstantAtIndex(opIdx, numOps);
+  }
+  
+  // if there was no else or elseif block, jump to here
+  if (!topJumpSet) {
+    m_Vm.SetConstantAtIndex(topConstantIdxToJump, numConstants);
+    m_Vm.SetConstantAtIndex(topOpIdxToJump, numOps);
+  }
 }
-
-
 
 void Compiler::PrintStatement() 
 {
@@ -483,7 +553,9 @@ void Compiler::PrintStatement()
   if (Match(TokenType::RightParen)) {
     EmitOp(Ops::PrintTab, m_Current.value().GetLine());
   } else {
+    m_IsInAssignmentExpression = true;
     Expression(false);
+    m_IsInAssignmentExpression = false;
     EmitOp(Ops::Print, m_Current.value().GetLine());
     EmitOp(Ops::Pop, m_Current.value().GetLine());
     Consume(TokenType::RightParen, "Expected ')' after expression");
@@ -497,7 +569,9 @@ void Compiler::PrintLnStatement()
   if (Match(TokenType::RightParen)) {
     EmitOp(Ops::PrintEmptyLine, m_Current.value().GetLine());
   } else {
+    m_IsInAssignmentExpression = true;
     Expression(false);
+    m_IsInAssignmentExpression = false;
     EmitOp(Ops::PrintLn, m_Current.value().GetLine());
     EmitOp(Ops::Pop, m_Current.value().GetLine());
     Consume(TokenType::RightParen, "Expected ')' after expression");
@@ -524,7 +598,9 @@ void Compiler::ReturnStatement()
     return;
   }
 
+  m_IsInAssignmentExpression = true;
   Expression(false);
+  m_IsInAssignmentExpression = false;
   EmitOp(Ops::Return, m_Previous.value().GetLine());
   Consume(TokenType::Semicolon, "Expected ';' after expression");
   m_FunctionHadReturn = true;
@@ -697,6 +773,11 @@ void Compiler::Call(bool canAssign)
       EmitConstant(hash);
       EmitConstant(numArgs);
       EmitOp(Ops::Call, m_Previous.value().GetLine());
+
+      if (!m_IsInAssignmentExpression) {
+        // pop unused return value
+        EmitOp(Ops::Pop, m_Previous.value().GetLine());
+      }
     } else if (Match(TokenType::Dot)) {
       // TODO: account for dot
     } else {
@@ -900,6 +981,11 @@ void Compiler::InstanceOf()
 
   Advance();  // Consume the type ident
   Consume(TokenType::RightParen, "Expected ')'");
+
+  if (!m_IsInAssignmentExpression) {
+    // pop unused return value
+    EmitOp(Ops::Pop, m_Previous.value().GetLine());
+  }
 }
 
 void Compiler::Cast()
@@ -910,6 +996,10 @@ void Compiler::Cast()
   Expression(false);
   EmitOp(s_CastOps[type], m_Current.value().GetLine());
   Consume(TokenType::RightParen, "Expected ')' after expression");
+  if (!m_IsInAssignmentExpression) {
+    // pop unused return value
+    EmitOp(Ops::Pop, m_Previous.value().GetLine());
+  }
 }
 
 void Compiler::ErrorAtCurrent(const std::string& message)
@@ -947,10 +1037,10 @@ void Compiler::Error(const std::optional<Token>& token, const std::string& messa
 
   auto lineNo = token.value().GetLine();
   auto column = token.value().GetColumn() - token.value().GetLength();  // need the START of the token
-  fmt::print(stderr, "{:>7}--> {}:{}:{}\n", m_CurrentFileName, lineNo, column + 1); 
-  fmt::print(stderr, "{:>8}|\n");
+  fmt::print(stderr, "       --> {}:{}:{}\n", m_CurrentFileName, lineNo, column + 1); 
+  fmt::print(stderr, "        |\n");
   fmt::print(stderr, "{:>8}| {}\n", lineNo, m_Scanner.GetCodeAtLine(lineNo));
-  fmt::print(stderr, "{:>8}| ");
+  fmt::print(stderr, "        | ");
   for (auto i = 0; i < column; i++) {
     fmt::print(stderr, " ");
   }
@@ -962,7 +1052,48 @@ void Compiler::Error(const std::optional<Token>& token, const std::string& messa
   m_HadError = true;
 }
 
-std::string Compiler::GetCodeAtLine(int line) const 
+void Compiler::WarningAtCurrent(const std::string& message)
 {
-  return m_Scanner.GetCodeAtLine(line);
+  Warning(m_Current, message);
 }
+
+void Compiler::WarningAtPrevious(const std::string& message)
+{
+  Warning(m_Previous, message);
+}
+
+void Compiler::Warning(const std::optional<Token>& token, const std::string& message)
+{
+  fmt::print(stderr, "[line {}] ", token.value().GetLine());
+  fmt::print(stderr, fmt::fg(fmt::color::yellow) | fmt::emphasis::bold, "WARNING: ");
+  
+  auto type = token.value().GetType();
+  switch (type) {
+    case TokenType::EndOfFile:
+      fmt::print(stderr, "at end: ");
+      fmt::print(stderr, "{}\n", message);
+      break;
+    case TokenType::Error:
+      fmt::print(stderr, "{}\n", token.value().GetErrorMessage());
+      break;
+    default:
+      fmt::print(stderr, "at '{}': ", token.value().GetText());
+      fmt::print(stderr, "{}\n", message);
+      break;
+  }
+
+  auto lineNo = token.value().GetLine();
+  auto column = token.value().GetColumn() - token.value().GetLength();  // need the START of the token
+  fmt::print(stderr, "       --> {}:{}:{}\n", m_CurrentFileName, lineNo, column + 1); 
+  fmt::print(stderr, "        |\n");
+  fmt::print(stderr, "{:>8}| {}\n", lineNo, m_Scanner.GetCodeAtLine(lineNo));
+  fmt::print(stderr, "        | ");
+  for (auto i = 0; i < column; i++) {
+    fmt::print(stderr, " ");
+  }
+  for (auto i = 0; i < token.value().GetLength(); i++) {
+    fmt::print(stderr, fmt::fg(fmt::color::yellow), "^");
+  }
+  fmt::print("\n\n");
+}
+

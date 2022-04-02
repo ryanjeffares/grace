@@ -15,7 +15,7 @@ declaration   -> classDecl
 
 classDecl     -> "class" IDENTIFIER ":" function* "end" ;
 funcDecl      -> "func" function ;
-varDecl       -> TYPE IDENTIFIER ( "=" expression )? ";" ;
+varDecl       -> "var" TYPE IDENTIFIER ( "=" expression )? ";" ;
 finalDecl     -> "final" TYPE IDENTIFIER "=" expression ";" ;
 ```
 
@@ -26,6 +26,7 @@ statement     -> exprStmt
                | forStmt
                | ifStmt
                | printStmt
+               | printLnStmt
                | returnStmt
                | whileStmt 
                | block ; 
@@ -36,10 +37,11 @@ forStmt       -> "for" "(" ( varDecl | exprStmt | ";" )
                            expression? ")"
                            ":" statement "end" ;
 ifStmt        -> "if" expression ":" 
-                 statement
-                 ( "else" ("if" expression ) ":" statement  )* 
+                 block
+                 ( "else" ( "if" expression ) ) ":" block )* 
                  "end" ;
 printStmt     -> "print" "(" expression ")" ";" ;
+printLnStmt   -> "println" "(" expression ")" ";" ;
 returnStmt    -> "return" expression? ";" ;
 whileStmt     -> "while" "(" expression ")" statement ;
 block         -> declaration* ;

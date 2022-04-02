@@ -22,6 +22,7 @@ static std::unordered_map<std::string, TokenType> s_KeywordLookup =
   std::make_pair("as", TokenType::As),
   std::make_pair("class", TokenType::Class),
   std::make_pair("end", TokenType::End),
+  std::make_pair("else", TokenType::Else),
   std::make_pair("false", TokenType::False),
   std::make_pair("final", TokenType::Final),
   std::make_pair("for", TokenType::For),
@@ -166,6 +167,18 @@ void Scanner::SkipWhitespace()
         if (PeekNext() == '/') {
           while (!IsAtEnd() && Peek() != '\n') {
             Advance();
+          }
+        } else if (PeekNext() == '*') {
+          while (!IsAtEnd()) {
+            if (Peek() == '*') {
+              Advance();
+              if (Peek() == '/') {
+                Advance();
+                break;
+              }
+            } else {
+              Advance();
+            }
           }
         } else {
           return;

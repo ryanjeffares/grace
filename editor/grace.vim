@@ -8,6 +8,7 @@ syn keyword graceVariable var final int float bool string char skipwhite
 
 syn keyword graceTodo TODO FIXME NOTE NOTES XXX contained
 syn match graceComment "//.*$" contains=graceTodo
+syn region graceBlockComment start = "/\*" end = "\*/"
 
 syn match graceNumber "\v<\d+>"
 syn match graceNumber "\v<\d+\.\d+>"
@@ -16,6 +17,7 @@ syn region graceChar start="'" end="'"
 
 hi def link graceTodo           Todo
 hi def link graceComment        Comment
+hi def link graceBlockComment   Comment
 hi def link graceString         String
 hi def link graceChar           String
 hi def link graceNumber         Number

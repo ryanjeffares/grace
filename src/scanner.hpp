@@ -53,6 +53,7 @@ namespace Grace
       And,
       As,
       Class, 
+      Else,
       End, 
       False,
       Final,
@@ -178,6 +179,7 @@ struct fmt::formatter<Grace::Scanner::TokenType> : fmt::formatter<std::string_vi
         case TokenType::As: name = "TokenType::As"; break;
         case TokenType::Class: name = "TokenType::Class"; break;
         case TokenType::End: name = "TokenType::End"; break;
+        case TokenType::Else: name = "TokenType::Else"; break;
         case TokenType::False: name = "TokenType::False"; break;
         case TokenType::Final: name = "TokenType::Final"; break;
         case TokenType::For: name = "TokenType::For"; break;
