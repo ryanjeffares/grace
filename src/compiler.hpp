@@ -6,6 +6,7 @@
 #include "../include/fmt/core.h"
 #include "../include/fmt/color.h"
 
+#include "grace.hpp"
 #include "scanner.hpp"
 #include "vm.hpp"
 
@@ -64,7 +65,10 @@ namespace Grace
 
         inline bool HadError() const { return m_HadError; }
         void Finalise(bool verbose);
-        std::string GetCodeAtLine(int line) const;
+        inline std::string GetCodeAtLine(int line) const
+        {
+          return m_Scanner.GetCodeAtLine(line);
+        }
 
       private:
 
@@ -134,6 +138,10 @@ namespace Grace
         void ErrorAtPrevious(const std::string& message);
         void Error(const std::optional<Scanner::Token>& token, const std::string& message);
 
+        void WarningAtCurrent(const std::string& message);
+        void WarningAtPrevious(const std::string& message);
+        void Warning(const std::optional<Scanner::Token>& token, const std::string& message);
+
       private:
 
         enum class Context
@@ -150,6 +158,7 @@ namespace Grace
         std::unordered_map<std::string, std::pair<bool, std::int64_t>> m_Locals;
         std::hash<std::string> m_Hasher;
 
+        bool m_IsInAssignmentExpression = false;
         bool m_FunctionHadReturn = false;
         bool m_PanicMode = false, m_HadError = false;
         bool m_Verbose;

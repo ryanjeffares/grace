@@ -1,5 +1,7 @@
+#include <cmath>
 #include <cstdlib>
 #include <stack>
+#include <chrono>
 
 #include "grace.hpp"
 
@@ -165,6 +167,18 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
         }
         break;
       }
+      case Ops::Mod: {
+        auto [c1, c2] = PopLastTwo(*valueStack);
+        if (!HandleMod(c1, c2, *valueStack)) {
+          RuntimeError(fmt::format("cannot multiply `{}` by `{}`", c1.GetType(), c2.GetType()), 
+              InterpretError::InvalidOperand, line, callStack);
+#ifdef GRACE_DEBUG
+          PRINT_LOCAL_MEMORY();
+#endif
+          RETURN_ERR();
+        }
+        break;
+      }
       case Ops::Divide: {
         auto [c1, c2] = PopLastTwo(*valueStack);
         if (!HandleDivision(c1, c2, *valueStack)) {
@@ -276,7 +290,7 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
       }
       case Ops::LoadConstant:
         // hot path here
-        valueStack->push_back(std::move(constantList->at(*constantCurrent)));
+        valueStack->push_back(constantList->at(*constantCurrent));
         (*constantCurrent)++;
         break;
       case Ops::LoadLocal: {
@@ -302,8 +316,7 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
         fmt::print("\t");
         break;
       case Ops::Call: {
-        auto calleeNameHash = valueStack->back().Get<std::int64_t>();
-        valueStack->pop_back();
+        auto calleeNameHash = constantList->at((*constantCurrent)++).Get<std::int64_t>();
         
         if (m_FunctionList.find(calleeNameHash) == m_FunctionList.end()) {
           RuntimeError(fmt::format("Could not find function '{}'", calleeNameHash), InterpretError::FunctionNotFound, line, callStack);
@@ -315,8 +328,7 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
 
         auto& calleeFunc = m_FunctionList.at(calleeNameHash);
         int arity = calleeFunc.m_Arity;
-        auto numArgsGiven = valueStack->back().Get<std::int64_t>();
-        valueStack->pop_back();
+        auto numArgsGiven = constantList->at((*constantCurrent)++).Get<std::int64_t>();
 
         if (numArgsGiven != arity) {
           RuntimeError(fmt::format("Incorrect number of arguments given to function '{}', expected {} but got {}", calleeNameHash, arity, numArgsGiven), 
@@ -338,7 +350,7 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
         localsList = &funcInfoStack.back().m_Locals;
         
         for (auto i = 0; i < arity; i++) {
-          localsList->push_back(std::move(valueStack->back()));
+          localsList->insert(localsList->begin(), std::move(valueStack->back()));
           valueStack->pop_back();
         }
 
@@ -350,20 +362,27 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
       case Ops::AssignLocal: {
         auto value = std::move(valueStack->back());
         valueStack->pop_back();
-        localsList->at(valueStack->back().Get<std::int64_t>()) = value;
-        valueStack->pop_back();
+        localsList->at(constantList->at((*constantCurrent)++).Get<std::int64_t>()) = value;
         break;
       }
       case Ops::DeclareLocal: {
         localsList->emplace_back();
         break;
       }
+      case Ops::Jump: {
+        auto constIdx = constantList->at((*constantCurrent)++).Get<std::int64_t>(); 
+        auto opIdx = constantList->at((*constantCurrent)++).Get<std::int64_t>(); 
+        *opCurrent = opIdx;
+        *constantCurrent = constIdx;
+        break;
+      }
       case Ops::JumpIfFalse: {
-        auto [constIdx, opIdx] = PopLastTwo(*valueStack);
+        auto constIdx = constantList->at((*constantCurrent)++).Get<std::int64_t>(); 
+        auto opIdx = constantList->at((*constantCurrent)++).Get<std::int64_t>(); 
         auto condition = Pop(*valueStack);
         if (!condition.AsBool()) {
-          *opCurrent = opIdx.Get<std::int64_t>();
-          *constantCurrent = constIdx.Get<std::int64_t>();
+          *opCurrent = opIdx;
+          *constantCurrent = constIdx;
         }
         break;
       }
@@ -501,26 +520,26 @@ void VM::RuntimeError(const std::string& message, InterpretError errorType, int 
       for (auto i = 1; i < callStack.size(); i++) {
         const auto& [caller, callee, ln] = callStack[i];
         fmt::print(stderr, "line {}, in {}:\n", ln, m_FunctionNames.at(caller));
-        fmt::print(stderr, "{:>4}{}\n", m_Compiler.GetCodeAtLine(ln));
+        fmt::print(stderr, "{:>4}\n", m_Compiler.GetCodeAtLine(ln));
       }
     } else {
       fmt::print(stderr, "{} more calls before - set environment variable `GRACE_SHOW_FULL_CALLSTACK` to see full callstack\n", callStackSize - 15);
       for (auto i = callStackSize - 15; i < callStackSize; i++) {
         const auto& [caller, callee, ln] = callStack[i];
         fmt::print(stderr, "line {}, in {}:\n", ln, m_FunctionNames.at(caller));
-        fmt::print(stderr, "{:>4}{}\n", m_Compiler.GetCodeAtLine(ln));
+        fmt::print(stderr, "{:>4}\n", m_Compiler.GetCodeAtLine(ln));
       }
     }
   } else {
     for (auto i = 1; i < callStack.size(); i++) {
       const auto& [caller, callee, ln] = callStack[i];
       fmt::print(stderr, "line {}, in {}:\n", ln, m_FunctionNames.at(caller));
-      fmt::print(stderr, "{:>4}{}\n", m_Compiler.GetCodeAtLine(ln));
+      fmt::print(stderr, "{:>4}\n", m_Compiler.GetCodeAtLine(ln));
     }
   }
 
   fmt::print(stderr, "line {}, in {}:\n", line, m_FunctionNames.at(std::get<1>(callStack.back())));
-  fmt::print(stderr, "{:>4}{}\n", m_Compiler.GetCodeAtLine(line));
+  fmt::print(stderr, "{:>4}\n", m_Compiler.GetCodeAtLine(line));
 
   fmt::print(stderr, "\n");
   fmt::print(stderr, fmt::fg(fmt::color::red) | fmt::emphasis::bold, "ERROR: ");
@@ -715,6 +734,43 @@ bool VM::HandleMultiplication(const Value& c1, const Value& c2, std::vector<Valu
         return true;
       }
       return false;
+    }
+    default:
+      return false;
+  }
+}
+
+[[nodiscard]]
+bool VM::HandleMod(const Value& c1, const Value& c2, std::vector<Value>& stack)
+{
+  switch (c1.GetType()) {
+    case Value::Type::Int: {
+      switch (c2.GetType()) {
+        case Value::Type::Int: {
+          stack.emplace_back(c1.Get<std::int64_t>() % c2.Get<std::int64_t>());
+          return true;
+        }
+        case Value::Type::Double: {
+          stack.emplace_back(std::fmod(static_cast<double>(c1.Get<std::int64_t>()), c2.Get<double>()));
+          return true;
+        }
+        default:
+          return false;
+      }
+    }
+    case Value::Type::Double: {
+      switch (c2.GetType()) {
+        case Value::Type::Int: {
+          stack.emplace_back(std::fmod(c1.Get<double>(), static_cast<double>(c2.Get<std::int64_t>())));
+          return true;
+        }
+        case Value::Type::Double: {
+          stack.emplace_back(std::fmod(c1.Get<double>(), c2.Get<double>()));
+          return true;
+        }
+        default:
+          return false;
+      }
     }
     default:
       return false;

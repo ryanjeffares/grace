@@ -15,7 +15,7 @@ declaration   -> classDecl
 
 classDecl     -> "class" IDENTIFIER ":" function* "end" ;
 funcDecl      -> "func" function ;
-varDecl       -> TYPE IDENTIFIER ( "=" expression )? ";" ;
+varDecl       -> "var" TYPE IDENTIFIER ( "=" expression )? ";" ;
 finalDecl     -> "final" TYPE IDENTIFIER "=" expression ";" ;
 ```
 
@@ -26,20 +26,22 @@ statement     -> exprStmt
                | forStmt
                | ifStmt
                | printStmt
+               | printLnStmt
                | returnStmt
                | whileStmt 
                | block ; 
 
 exprStmt      -> expression ";" ;
-forStmt       -> "for" "(" ( varDecl | exprStmt | ";" )
-                           expression? ";"
-                           expression? ")"
-                           ":" statement "end" ;
+forStmt       -> "for" IDENTIFIER "in" RANGE ( "by" NUMBER ) ":"
+                 block 
+                 "end" ;
 ifStmt        -> "if" expression ":" 
-                 statement
-                 ( "else" ("if" expression ) ":" statement  )* 
+                 block
+                 ( "else" "if" expression ":" block )*
+                 ( "else" ":" block )
                  "end" ;
 printStmt     -> "print" "(" expression ")" ";" ;
+printLnStmt   -> "println" "(" expression ")" ";" ;
 returnStmt    -> "return" expression? ";" ;
 whileStmt     -> "while" "(" expression ")" statement ;
 block         -> declaration* ;
@@ -80,12 +82,15 @@ arguments     -> expression ( "," expression )* ;
 ## Lexical Grammar
 
 ```ebnf
-NUMBER        -> DIGIT+ ( "." DIGIT+ )? ;
+NUMBER        -> INTEGER | FLOAT ;
+INTEGER       -> DIGIT+ ;
+FLOAT         -> DIGIT+ ( "." DIGIT+ )? ;
 STRING        -> "\"" <any char except "\"">* "\"" ;
 IDENTIFIER    -> ALPHA ( ALPHA | DIGIT )* ;
 ALPHA         -> "a" ... "z" | "A" ... "Z" | "_" ;
 DIGIT         -> "0" ... "9" ;
 TYPE          -> "int" | "float" | "bool" | "string" | "char" ;
+RANGE         -> ( INTEGER | NUMBER ) ".." ( IDENTIFIER | INTEGER ) ;
 ```
 
 ## Keywords

@@ -5,5 +5,5 @@
 Grace is a programming language.
 
 ## TODO
-* Fix null returns from functions hanging around on the stack
+* Seg fault in fizzbuzz example
 * Performance

@@ -42,11 +42,13 @@ namespace Grace
       Equal,
       Greater,
       GreaterEqual,
+      Jump,
       JumpIfFalse,
       Less,
       LessEqual,
       LoadConstant,
       LoadLocal,
+      Mod,
       Multiply,
       Negate,
       Not,
@@ -129,7 +131,7 @@ namespace Grace
         void PrintOps() const
         {
           for (const auto& [name, func] : m_FunctionList) {
-            fmt::print("<function `{}`>\n", name);
+            fmt::print("<function `{}`>\n", m_FunctionNames.at(name));
             for (const auto o : func.m_OpList) {
               fmt::print("\t{}\n", o.m_Op);
             }
@@ -180,6 +182,9 @@ namespace Grace
 
         [[nodiscard]]
         static bool HandleMultiplication(const Value& c1, const Value& c2, std::vector<Value>& stack);
+
+        [[nodiscard]]
+        static bool HandleMod(const Value& c1, const Value& c2, std::vector<Value>& stack);
 
         static void HandleEquality(const Value& c1, const Value& c2, std::vector<Value>& stack, bool equal);
 
@@ -240,11 +245,13 @@ struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
       case Ops::Equal: name = "Ops::Equal"; break;
       case Ops::Greater: name = "Ops::Greater"; break;
       case Ops::GreaterEqual: name = "Ops::GreaterEqual"; break;
+      case Ops::Jump: name = "Ops::Jump"; break;
       case Ops::JumpIfFalse: name = "Ops::JumpIfFalse"; break;
       case Ops::Less: name = "Ops::Less"; break;
       case Ops::LessEqual: name = "Ops::LessEqual"; break;
       case Ops::LoadConstant: name = "Ops::LoadConstant"; break;
       case Ops::LoadLocal: name = "Ops::LoadLocal"; break;
+      case Ops::Mod: name = "Ops::Mod"; break;
       case Ops::Multiply: name = "Ops::Multiply"; break;
       case Ops::Negate: name = "Ops::Negate"; break;
       case Ops::Not: name = "Ops::Not"; break;

@@ -9,8 +9,8 @@ static std::unordered_map<char, TokenType> s_SymbolLookup =
   std::make_pair('(', TokenType::LeftParen),
   std::make_pair(')', TokenType::RightParen),
   std::make_pair(',', TokenType::Comma),
-  std::make_pair('.', TokenType::Dot),
   std::make_pair('-', TokenType::Minus),
+  std::make_pair('%', TokenType::Mod),
   std::make_pair('+', TokenType::Plus),
   std::make_pair('/', TokenType::Slash),
 };
@@ -20,13 +20,16 @@ static std::unordered_map<std::string, TokenType> s_KeywordLookup =
   std::make_pair("and", TokenType::And),
   std::make_pair("or", TokenType::Or),
   std::make_pair("as", TokenType::As),
+  std::make_pair("by", TokenType::By),
   std::make_pair("class", TokenType::Class),
   std::make_pair("end", TokenType::End),
+  std::make_pair("else", TokenType::Else),
   std::make_pair("false", TokenType::False),
   std::make_pair("final", TokenType::Final),
   std::make_pair("for", TokenType::For),
   std::make_pair("func", TokenType::Func),
   std::make_pair("if", TokenType::If),
+  std::make_pair("in", TokenType::In),
   std::make_pair("instanceof", TokenType::InstanceOf),
   std::make_pair("null", TokenType::Null),
   std::make_pair("print", TokenType::Print),
@@ -119,6 +122,8 @@ Token Scanner::ScanToken()
       return MakeToken(MatchChar('=') ? TokenType::GreaterEqual : TokenType::GreaterThan);
     case '*':
       return MakeToken(MatchChar('*') ? TokenType::StarStar: TokenType::Star);
+    case '.':
+      return MakeToken(MatchChar('.') ? TokenType::DotDot : TokenType::Dot);
     case '"':
       return MakeString();
     case '\'':
@@ -166,6 +171,18 @@ void Scanner::SkipWhitespace()
         if (PeekNext() == '/') {
           while (!IsAtEnd() && Peek() != '\n') {
             Advance();
+          }
+        } else if (PeekNext() == '*') {
+          while (!IsAtEnd()) {
+            if (Peek() == '*') {
+              Advance();
+              if (Peek() == '/') {
+                Advance();
+                break;
+              }
+            } else {
+              Advance();
+            }
           }
         } else {
           return;

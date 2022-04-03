@@ -69,6 +69,15 @@ namespace Grace
         }
       }
 
+      Value(Value&& other)
+      {
+        m_Type = other.m_Type;
+        m_Data = other.m_Data;
+        if (other.m_Type == Type::String) {
+          other.m_Data.m_Str = nullptr;
+        }
+      }
+
       ~Value()
       {
         if (m_Type == Type::String && m_Data.m_Str != nullptr) {

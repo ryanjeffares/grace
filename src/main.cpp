@@ -51,15 +51,15 @@ int main(int argc, const char* argv[])
         return 1; 
       }
 
+      std::stringstream inStream;
       try {
         std::ifstream inFile(args[1]);
-        std::stringstream inStream;
         inStream << inFile.rdbuf();
-        Grace::Compiler::Compile(std::move(inPath.filename()), std::move(inStream.str()), verbose);
       } catch (const std::exception& e) {
         Error(e.what());
         return 1;
       }
+      Grace::Compiler::Compile(std::move(inPath.filename()), std::move(inStream.str()), verbose);
       break;
   }
 }
