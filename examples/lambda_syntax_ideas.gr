@@ -1,0 +1,18 @@
+func main():
+  
+  var fn = (foo, bar):
+    // code
+  end 
+
+  var fn = |foo, bar|:
+    //code 
+  end 
+
+  var fn = |foo, bar| (
+    // code
+  );
+
+  var fn = lambda(foo, bar):
+    // code
+  end 
+end
