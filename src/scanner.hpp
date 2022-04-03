@@ -54,6 +54,7 @@ namespace Grace
       // Keywords
       And,
       As,
+      Break,
       By,
       Class, 
       Else,
@@ -183,6 +184,7 @@ struct fmt::formatter<Grace::Scanner::TokenType> : fmt::formatter<std::string_vi
         case TokenType::LessEqual: name = "TokenType::LessEqual"; break;
         case TokenType::GreaterEqual: name = "TokenType::GreaterEqual"; break;
         case TokenType::As: name = "TokenType::As"; break;
+        case TokenType::Break: name = "TokenType::Break"; break;
         case TokenType::By: name = "TokenType::By"; break;
         case TokenType::Class: name = "TokenType::Class"; break;
         case TokenType::End: name = "TokenType::End"; break;

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stack>
 #include <string>
 #include <unordered_map>
 
@@ -148,6 +149,7 @@ namespace Grace
         {
           TopLevel,
           Function,
+          Loop,
         } m_CurrentContext;
 
         Scanner::Scanner m_Scanner;
@@ -162,6 +164,10 @@ namespace Grace
         bool m_FunctionHadReturn = false;
         bool m_PanicMode = false, m_HadError = false;
         bool m_Verbose;
+
+        bool m_BreakJumpNeedsIndexes = false;
+        // const idx, op idx
+        std::stack<std::vector<std::pair<std::int64_t, std::int64_t>>> m_BreakIdxPairs;
     };
   }
 }

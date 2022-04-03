@@ -189,6 +189,20 @@ void Compiler::Declaration()
     VarDeclaration();
   } else if (Match(TokenType::Final)) {
     FinalDeclaration();
+  } else if (Match(TokenType::Break)) {
+    if (m_CurrentContext != Context::Loop) {
+      // don't return early from here, so the compiler can synchronize...
+      ErrorAtPrevious("`break` only allowed inside `for` and `while` loops");
+    } else {
+      m_BreakJumpNeedsIndexes = true;
+      auto constIdx = static_cast<std::int64_t>(m_Vm.GetNumConstants());
+      EmitConstant(std::int64_t{});
+      auto opIdx = static_cast<std::int64_t>(m_Vm.GetNumConstants());
+      EmitConstant(std::int64_t{});
+      EmitOp(Ops::Jump, m_Previous.value().GetLine());
+      m_BreakIdxPairs.top().push_back(std::make_pair(constIdx, opIdx));
+      Consume(TokenType::Semicolon, "Expected ';' after `break`");
+    }
   } else {
     Statement();
   }
@@ -478,6 +492,11 @@ void Compiler::ExpressionStatement()
 
 void Compiler::ForStatement() 
 {
+  auto previousContext = m_CurrentContext;
+  m_CurrentContext = Context::Loop;
+
+  m_BreakIdxPairs.emplace();
+
   Consume(TokenType::Identifier, "Expected identifier after `for`");
   auto iteratorName = std::string(m_Previous.value().GetText());
   std::int64_t iteratorId;
@@ -618,6 +637,7 @@ void Compiler::ForStatement()
 
   while (!Match(TokenType::End)) {
     Declaration();
+
     if (Match(TokenType::EndOfFile)) {
       ErrorAtPrevious("Unterminated `for`");
       return;
@@ -662,6 +682,17 @@ void Compiler::ForStatement()
   EmitConstant(constantIdx);
   EmitConstant(opIdx);
   EmitOp(Ops::JumpIfFalse, line);
+
+  if (m_BreakJumpNeedsIndexes) {
+    for (auto& p : m_BreakIdxPairs.top()) {
+      m_Vm.SetConstantAtIndex(p.first, static_cast<std::int64_t>(m_Vm.GetNumConstants()));
+      m_Vm.SetConstantAtIndex(p.second, static_cast<std::int64_t>(m_Vm.GetNumOps()));
+    }
+    m_BreakJumpNeedsIndexes = !m_BreakIdxPairs.empty();
+    m_BreakIdxPairs.pop();
+  }
+
+  m_CurrentContext = previousContext;
 }
 
 void Compiler::IfStatement() 
@@ -817,6 +848,11 @@ void Compiler::ReturnStatement()
 
 void Compiler::WhileStatement() 
 {
+  auto previousContext = m_CurrentContext;
+  m_CurrentContext = Context::Loop;
+
+  m_BreakIdxPairs.emplace();
+
   auto constantIdx = static_cast<std::int64_t>(m_Vm.GetNumConstants());
   auto opIdx = static_cast<std::int64_t>(m_Vm.GetNumOps());
 
@@ -851,6 +887,17 @@ void Compiler::WhileStatement()
   auto numOps = static_cast<std::int64_t>(m_Vm.GetNumOps());
   m_Vm.SetConstantAtIndex(endConstantJumpIdx, numConstants);
   m_Vm.SetConstantAtIndex(endOpJumpIdx, numOps);
+
+  if (m_BreakJumpNeedsIndexes) {
+    for (auto& p : m_BreakIdxPairs.top()) {
+      m_Vm.SetConstantAtIndex(p.first, numConstants);
+      m_Vm.SetConstantAtIndex(p.second, numOps);
+    }
+    m_BreakJumpNeedsIndexes = !m_BreakIdxPairs.empty();
+    m_BreakIdxPairs.pop();
+  }
+  
+  m_CurrentContext = previousContext;
 }
 
 void Compiler::Or(bool canAssign, bool skipFirst)
