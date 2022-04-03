@@ -1,0 +1,13 @@
+func main():
+  var n = 0;
+  while n < 101:
+    println(n);
+    n = n + 1;
+  end 
+
+  var count = 1;
+  while true:
+    println("this will happen forever.... x" + count);
+    count = count + 1;
+  end
+end

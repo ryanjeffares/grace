@@ -817,7 +817,40 @@ void Compiler::ReturnStatement()
 
 void Compiler::WhileStatement() 
 {
-  GRACE_NOT_IMPLEMENTED();  
+  auto constantIdx = static_cast<std::int64_t>(m_Vm.GetNumConstants());
+  auto opIdx = static_cast<std::int64_t>(m_Vm.GetNumOps());
+
+  m_IsInAssignmentExpression = true;
+  Expression(false);
+  m_IsInAssignmentExpression = false;
+
+  auto line = m_Previous.value().GetLine();
+
+  auto endConstantJumpIdx = m_Vm.GetNumConstants();
+  EmitConstant(std::int64_t{});
+  auto endOpJumpIdx = m_Vm.GetNumConstants();
+  EmitConstant(std::int64_t{});
+  EmitOp(Ops::JumpIfFalse, m_Previous.value().GetLine());
+
+  Consume(TokenType::Colon, "Expected ':' after expression");
+
+  while (!Match(TokenType::End)) {
+    Declaration();
+    if (Match(TokenType::EndOfFile)) {
+      ErrorAtPrevious("Unterminated `while` loop");
+      return;
+    }
+  }
+
+  // jump back up to the expression so it can be re-evaluated
+  EmitConstant(constantIdx);
+  EmitConstant(opIdx);
+  EmitOp(Ops::Jump, line);
+
+  auto numConstants = static_cast<std::int64_t>(m_Vm.GetNumConstants());
+  auto numOps = static_cast<std::int64_t>(m_Vm.GetNumOps());
+  m_Vm.SetConstantAtIndex(endConstantJumpIdx, numConstants);
+  m_Vm.SetConstantAtIndex(endOpJumpIdx, numOps);
 }
 
 void Compiler::Or(bool canAssign, bool skipFirst)
