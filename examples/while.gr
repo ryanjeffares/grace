@@ -3,11 +3,19 @@ func main():
   while n < 101:
     println(n);
     n = n + 1;
+
+    for i in 0..50:
+      if i > 25:
+        println("breaking inner");
+        break;
+      end 
+    end 
+
+    if n > 50:
+      println("breaking outer");
+      break;
+    end
   end 
 
-  var count = 1;
-  while true:
-    println("this will happen forever.... x" + count);
-    count = count + 1;
-  end
+  println("end");
 end

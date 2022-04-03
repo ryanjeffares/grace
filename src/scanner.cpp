@@ -20,6 +20,7 @@ static std::unordered_map<std::string, TokenType> s_KeywordLookup =
   std::make_pair("and", TokenType::And),
   std::make_pair("or", TokenType::Or),
   std::make_pair("as", TokenType::As),
+  std::make_pair("break", TokenType::Break),
   std::make_pair("by", TokenType::By),
   std::make_pair("class", TokenType::Class),
   std::make_pair("end", TokenType::End),
