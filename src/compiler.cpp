@@ -1,4 +1,3 @@
-#include <charconv>
 #include <chrono>
 
 #include "compiler.hpp"
@@ -68,7 +67,7 @@ void Compiler::Advance()
 #endif 
 
   if (m_Current.value().GetType() == TokenType::Error) {
-    ErrorAtCurrent("Unexpected token");
+    MessageAtCurrent("Unexpected token", LogLevel::Error);
   }
 }
 
@@ -94,7 +93,7 @@ void Compiler::Consume(TokenType expected, const std::string& message)
     return;
   }
 
-  ErrorAtCurrent(message);
+  MessageAtCurrent(message, LogLevel::Error);
 }
 
 void Compiler::Synchronize()
@@ -130,7 +129,6 @@ static bool IsKeyword(TokenType type, std::string& outKeyword)
 {
   switch (type) {
     case TokenType::And: outKeyword = "and"; return true;
-    case TokenType::As: outKeyword = "as"; return true;
     case TokenType::Class: outKeyword = "class"; return true;
     case TokenType::End: outKeyword = "end"; return true;
     case TokenType::Final: outKeyword = "final"; return true;
@@ -192,7 +190,7 @@ void Compiler::Declaration()
   } else if (Match(TokenType::Break)) {
     if (m_CurrentContext != Context::Loop) {
       // don't return early from here, so the compiler can synchronize...
-      ErrorAtPrevious("`break` only allowed inside `for` and `while` loops");
+      MessageAtPrevious("`break` only allowed inside `for` and `while` loops", LogLevel::Error);
     } else {
       m_BreakJumpNeedsIndexes = true;
       auto constIdx = static_cast<std::int64_t>(m_Vm.GetNumConstants());
@@ -203,6 +201,25 @@ void Compiler::Declaration()
       m_BreakIdxPairs.top().push_back(std::make_pair(constIdx, opIdx));
       Consume(TokenType::Semicolon, "Expected ';' after `break`");
     }
+  } else if (Match(TokenType::Assert)) {
+    auto line = m_Previous.value().GetLine();
+
+    Consume(TokenType::LeftParen, "Expected '(' after `assert`");
+    m_ShouldNotPopValue = true; 
+    Expression(false);
+    m_ShouldNotPopValue = false; 
+
+    if (Match(TokenType::Comma)) {
+      Consume(TokenType::String, "Expected message");
+      EmitConstant(std::string(m_Previous.value().GetText()));
+      EmitOp(Ops::AssertWithMessage, line);
+      Consume(TokenType::RightParen, "Expected ')'");
+    } else {
+      EmitOp(Ops::Assert, line); 
+      Consume(TokenType::RightParen, "Expected ')'");
+    }
+
+    Consume(TokenType::Semicolon, "Expected ';' after `assert` expression");
   } else {
     Statement();
   }
@@ -215,7 +232,7 @@ void Compiler::Declaration()
 void Compiler::Statement()
 {
   if (m_CurrentContext == Context::TopLevel) {
-    ErrorAtCurrent("Only functions and classes are allowed at top level");
+    MessageAtCurrent("Only functions and classes are allowed at top level", LogLevel::Error);
     return;
   }
 
@@ -257,7 +274,7 @@ void Compiler::FuncDeclaration()
       Consume(TokenType::Identifier, "Expected identifier after `final`");
       auto p = std::string(m_Previous.value().GetText());
       if (std::find(parameters.begin(), parameters.end(), p) != parameters.end()) {
-        ErrorAtPrevious("Function parameters with the same name already defined");
+        MessageAtPrevious("Function parameters with the same name already defined", LogLevel::Error);
         return;
       }
       m_Locals.insert(std::make_pair(p, std::make_pair(true, m_Locals.size())));
@@ -265,7 +282,7 @@ void Compiler::FuncDeclaration()
     } else if (Match(TokenType::Identifier)) {
       auto p = std::string(m_Previous.value().GetText());
       if (std::find(parameters.begin(), parameters.end(), p) != parameters.end()) {
-        ErrorAtPrevious("Function parameters with the same name already defined");
+        MessageAtPrevious("Function parameters with the same name already defined", LogLevel::Error);
         return;
       }
       m_Locals.insert(std::make_pair(p, std::make_pair(false, m_Locals.size())));
@@ -279,8 +296,8 @@ void Compiler::FuncDeclaration()
 
   Consume(TokenType::Colon, "Expected ':' after function signature");
 
-  if (!m_Vm.AddFunction(name, m_Previous.value().GetLine(), std::move(parameters))) {
-    ErrorAtPrevious("Duplicate function definitions");
+  if (!m_Vm.AddFunction(name, m_Previous.value().GetLine(), parameters.size())) {
+    MessageAtPrevious("Duplicate function definitions", LogLevel::Error);
     return;
   }
 
@@ -288,7 +305,7 @@ void Compiler::FuncDeclaration()
   while (!Match(TokenType::End)) {
     Declaration();
     if (m_Current.value().GetType() == TokenType::EndOfFile) {
-      ErrorAtCurrent("Expected `end` after function");
+      MessageAtCurrent("Expected `end` after function", LogLevel::Error);
       return;
     }
   }
@@ -307,13 +324,13 @@ void Compiler::FuncDeclaration()
 void Compiler::VarDeclaration() 
 {
   if (m_CurrentContext == Context::TopLevel) {
-    ErrorAtPrevious("Only functions and classes are allowed at top level");
+    MessageAtPrevious("Only functions and classes are allowed at top level", LogLevel::Error);
     return;
   }
 
   Consume(TokenType::Identifier, "Expected identifier after `var`");
   if (m_Locals.find(std::string(m_Previous.value().GetText())) != m_Locals.end()) {
-    ErrorAtPrevious("A local variable with the same name already exists");
+    MessageAtPrevious("A local variable with the same name already exists", LogLevel::Error);
     return;
   }
 
@@ -325,9 +342,9 @@ void Compiler::VarDeclaration()
   EmitOp(Ops::DeclareLocal, line);
 
   if (Match(TokenType::Equal)) {
-    m_IsInAssignmentExpression = true;
+    m_ShouldNotPopValue = true;
     Expression(false);
-    m_IsInAssignmentExpression = false;
+    m_ShouldNotPopValue = false;
     line = m_Previous.value().GetLine();
     EmitConstant(localId);
     EmitOp(Ops::AssignLocal, line);
@@ -338,14 +355,14 @@ void Compiler::VarDeclaration()
 void Compiler::FinalDeclaration() 
 {
   if (m_CurrentContext == Context::TopLevel) {
-    ErrorAtPrevious("Only functions and classes are allowed at top level");
+    MessageAtPrevious("Only functions and classes are allowed at top level", LogLevel::Error);
     return;
   } 
 
   Consume(TokenType::Identifier, "Expected identifier after `final`");
 
   if (m_Locals.find(std::string(m_Previous.value().GetText())) != m_Locals.end()) {
-    ErrorAtPrevious("A local variable with the same name already exists");
+    MessageAtPrevious("A local variable with the same name already exists", LogLevel::Error);
     return;
   }
 
@@ -357,9 +374,9 @@ void Compiler::FinalDeclaration()
   EmitOp(Ops::DeclareLocal, line);
 
   Consume(TokenType::Equal, "Must assign to `final` upon declaration");
-  m_IsInAssignmentExpression = true;
+  m_ShouldNotPopValue = true;
   Expression(false);
-  m_IsInAssignmentExpression = false;
+  m_ShouldNotPopValue = false;
   line = m_Previous.value().GetLine();
   EmitConstant(localId);
   EmitOp(Ops::AssignLocal, line);
@@ -370,14 +387,14 @@ void Compiler::FinalDeclaration()
 void Compiler::Expression(bool canAssign)
 {
   if (IsOperator(m_Current.value().GetType())) {
-    ErrorAtCurrent("Expected identifier or literal at start of expression");
+    MessageAtCurrent("Expected identifier or literal at start of expression", LogLevel::Error);
     Advance();
     return;
   }
 
   std::string kw;
   if (IsKeyword(m_Current.value().GetType(), kw)) {
-    ErrorAtCurrent(fmt::format("'{}' is a keyword and not valid in this context", kw));
+    MessageAtCurrent(fmt::format("'{}' is a keyword and not valid in this context", kw), LogLevel::Error);
     Advance();  //consume the illegal identifier
     return;
   }
@@ -386,26 +403,26 @@ void Compiler::Expression(bool canAssign)
     Call(canAssign);
     if (Check(TokenType::Equal)) {
       if (m_Previous.value().GetType() != TokenType::Identifier) {
-        ErrorAtCurrent("Only identifiers can be assigned to");
+        MessageAtCurrent("Only identifiers can be assigned to", LogLevel::Error);
         return;
       }
 
       auto localName = std::string(m_Previous.value().GetText());
       if (m_Locals.at(localName).first) {
-        ErrorAtPrevious(fmt::format("Cannot reassign to final '{}'", m_Previous.value().GetText()));
+        MessageAtPrevious(fmt::format("Cannot reassign to final '{}'", m_Previous.value().GetText()), LogLevel::Error);
         return;
       }
 
       Advance();  // consume the equals
 
       if (!canAssign) {
-        ErrorAtCurrent("Assignment is not valid in the current context");
+        MessageAtCurrent("Assignment is not valid in the current context", LogLevel::Error);
         return;
       }
 
-      m_IsInAssignmentExpression = true;
+      m_ShouldNotPopValue = true;
       Expression(false); // disallow x = y = z...
-      m_IsInAssignmentExpression = false;
+      m_ShouldNotPopValue = false;
 
       int line = m_Previous.value().GetLine();
       EmitConstant(m_Locals.at(localName).second);
@@ -447,7 +464,7 @@ void Compiler::Expression(bool canAssign)
             shouldBreak = true;
             break;
           default:
-            ErrorAtCurrent("Invalid token found in expression");
+            MessageAtCurrent("Invalid token found in expression", LogLevel::Error);
             Advance();
             return;
         }
@@ -505,7 +522,15 @@ void Compiler::ForStatement()
     m_Locals.insert(std::make_pair(iteratorName, std::make_pair(false, iteratorId)));
     EmitOp(Ops::DeclareLocal, m_Previous.value().GetLine());
   } else {
+    if (m_Locals.at(iteratorName).first) {
+      MessageAtPrevious(fmt::format("Loop variable '{}' has already been declared as `final`", iteratorName), LogLevel::Error);
+      return;
+    }
     iteratorId = m_Locals.at(iteratorName).second;
+    if (m_Verbose) {
+      MessageAtPrevious(fmt::format("There is already a local variable called '{}' in this scope which will be reassigned inside the `for` loop", iteratorName), 
+          LogLevel::Warning);
+    }
   }
 
   Consume(TokenType::In, "Expected `in` after identifier");
@@ -515,7 +540,7 @@ void Compiler::ForStatement()
     std::int64_t value;
     auto result = TryParseInt(m_Previous.value(), value);
     if (result.has_value()) {
-      ErrorAtPrevious(fmt::format("Token could not be parsed as integer: {}", result.value().what()));
+      MessageAtPrevious(fmt::format("Token could not be parsed as integer: {}", result.value().what()), LogLevel::Error);
       return;
     }
     EmitConstant(value);
@@ -526,7 +551,7 @@ void Compiler::ForStatement()
     double value;
     auto result = TryParseDouble(m_Previous.value(), value);
     if (result.has_value()) {
-      ErrorAtPrevious(fmt::format("Token could not be parsed as float: {}", result.value().what()));
+      MessageAtPrevious(fmt::format("Token could not be parsed as float: {}", result.value().what()), LogLevel::Error);
       return;
     }
     EmitConstant(value);
@@ -536,7 +561,7 @@ void Compiler::ForStatement()
   } else if (Match(TokenType::Identifier)) {
     auto localName = std::string(m_Previous.value().GetText());
     if (m_Locals.find(localName) == m_Locals.end()) {
-      ErrorAtPrevious(fmt::format("Cannot find variable '{}' in this scope.", localName));
+      MessageAtPrevious(fmt::format("Cannot find variable '{}' in this scope.", localName), LogLevel::Error);
       return;
     }
     auto localId = m_Locals.at(localName).second;
@@ -546,7 +571,7 @@ void Compiler::ForStatement()
     EmitConstant(iteratorId);
     EmitOp(Ops::AssignLocal, line);
   } else {
-    ErrorAtCurrent("Expected identifier or number as range min");
+    MessageAtCurrent("Expected identifier or number as range min", LogLevel::Error);
     return;
   }
 
@@ -568,7 +593,7 @@ void Compiler::ForStatement()
     std::int64_t value;
     auto result = TryParseInt(m_Previous.value(), value);
     if (result.has_value()) {
-      ErrorAtPrevious(fmt::format("Token could not be parsed as integer: {}", result.value().what()));
+      MessageAtPrevious(fmt::format("Token could not be parsed as integer: {}", result.value().what()), LogLevel::Error);
       return;
     }
     max.m_Int = value;
@@ -577,7 +602,7 @@ void Compiler::ForStatement()
     double value;
     auto result = TryParseDouble(m_Previous.value(), value);
     if (result.has_value()) {
-      ErrorAtPrevious(fmt::format("Token could not be parsed as float: {}", result.value().what()));
+      MessageAtPrevious(fmt::format("Token could not be parsed as float: {}", result.value().what()), LogLevel::Error);
       return;
     }
     max.m_Double = value;
@@ -585,14 +610,14 @@ void Compiler::ForStatement()
   } else if (Match(TokenType::Identifier)) {
     auto localName = std::string(m_Previous.value().GetText());
     if (m_Locals.find(localName) == m_Locals.end()) {
-      ErrorAtPrevious(fmt::format("Cannot find variable '{}' in this scope.", localName));
+      MessageAtPrevious(fmt::format("Cannot find variable '{}' in this scope.", localName), LogLevel::Error);
       return;
     }
     auto localId = m_Locals.at(localName).second;
     max.m_LocalId = localId;
     maxType = MaxType::Local;
   } else {
-    ErrorAtCurrent("Expected identifier or integer as range max");
+    MessageAtCurrent("Expected identifier or integer as range max", LogLevel::Error);
     return;
   }
 
@@ -607,7 +632,7 @@ void Compiler::ForStatement()
       std::int64_t value;
       auto result = TryParseInt(m_Previous.value(), value);
       if (result.has_value()) {
-        ErrorAtPrevious(fmt::format("Token could not be parsed as integer: {}", result.value().what()));
+        MessageAtPrevious(fmt::format("Token could not be parsed as integer: {}", result.value().what()), LogLevel::Error);
         return;
       }
       increment.m_Int = value;
@@ -616,13 +641,13 @@ void Compiler::ForStatement()
       double value;
       auto result = TryParseDouble(m_Previous.value(), value);
       if (result.has_value()) {
-        ErrorAtPrevious(fmt::format("Token could not be parsed as float: {}", result.value().what()));
+        MessageAtPrevious(fmt::format("Token could not be parsed as float: {}", result.value().what()), LogLevel::Error);
         return;
       }
       increment.m_Double = value;
       incrementIsInt = false;
     } else {
-      ErrorAtPrevious("Increment must be a number");
+      MessageAtPrevious("Increment must be a number", LogLevel::Error);
       return;
     }
   } else {
@@ -639,7 +664,7 @@ void Compiler::ForStatement()
     Declaration();
 
     if (Match(TokenType::EndOfFile)) {
-      ErrorAtPrevious("Unterminated `for`");
+      MessageAtPrevious("Unterminated `for`", LogLevel::Error);
       return;
     }
   }
@@ -697,9 +722,9 @@ void Compiler::ForStatement()
 
 void Compiler::IfStatement() 
 {
-  m_IsInAssignmentExpression = true;
+  m_ShouldNotPopValue = true;
   Expression(false);
-  m_IsInAssignmentExpression = false;
+  m_ShouldNotPopValue = false;
   Consume(TokenType::Colon, "Expected ':' after condition");
   
   // store indexes of constant and instruction indexes to jump
@@ -721,7 +746,7 @@ void Compiler::IfStatement()
     if (Match(TokenType::Else)) {
       // make any unreachables 'else' blocks a compiler error
       if (elseBlockFound) {
-        ErrorAtPrevious("Unreachable `else` due to previous `else`");
+        MessageAtPrevious("Unreachable `else` due to previous `else`", LogLevel::Error);
         return;
       }
       
@@ -750,7 +775,7 @@ void Compiler::IfStatement()
         elseIfBlockFound = true;
         needsElseBlock = false;
       } else {
-        ErrorAtCurrent("Expected `if` or `:` after `else`");
+        MessageAtCurrent("Expected `if` or `:` after `else`", LogLevel::Error);
         return;
       }
     }   
@@ -763,7 +788,7 @@ void Compiler::IfStatement()
     }
     
     if (Match(TokenType::EndOfFile)) {
-      ErrorAtPrevious("Unterminated `if` statement");
+      MessageAtPrevious("Unterminated `if` statement", LogLevel::Error);
       return;
     }
 
@@ -793,9 +818,9 @@ void Compiler::PrintStatement()
   if (Match(TokenType::RightParen)) {
     EmitOp(Ops::PrintTab, m_Current.value().GetLine());
   } else {
-    m_IsInAssignmentExpression = true;
+    m_ShouldNotPopValue = true;
     Expression(false);
-    m_IsInAssignmentExpression = false;
+    m_ShouldNotPopValue = false;
     EmitOp(Ops::Print, m_Current.value().GetLine());
     EmitOp(Ops::Pop, m_Current.value().GetLine());
     Consume(TokenType::RightParen, "Expected ')' after expression");
@@ -809,9 +834,9 @@ void Compiler::PrintLnStatement()
   if (Match(TokenType::RightParen)) {
     EmitOp(Ops::PrintEmptyLine, m_Current.value().GetLine());
   } else {
-    m_IsInAssignmentExpression = true;
+    m_ShouldNotPopValue = true;
     Expression(false);
-    m_IsInAssignmentExpression = false;
+    m_ShouldNotPopValue = false;
     EmitOp(Ops::PrintLn, m_Current.value().GetLine());
     EmitOp(Ops::Pop, m_Current.value().GetLine());
     Consume(TokenType::RightParen, "Expected ')' after expression");
@@ -822,12 +847,12 @@ void Compiler::PrintLnStatement()
 void Compiler::ReturnStatement() 
 {
   if (m_CurrentContext != Context::Function) {
-    ErrorAtPrevious("`return` only allowed inside functions");
+    MessageAtPrevious("`return` only allowed inside functions", LogLevel::Error);
     return;
   }
 
   if (m_Vm.GetLastFunctionName() == "main") {
-    ErrorAtPrevious("Cannot return from main function");
+    MessageAtPrevious("Cannot return from main function", LogLevel::Error);
     return;
   } 
 
@@ -838,9 +863,9 @@ void Compiler::ReturnStatement()
     return;
   }
 
-  m_IsInAssignmentExpression = true;
+  m_ShouldNotPopValue = true;
   Expression(false);
-  m_IsInAssignmentExpression = false;
+  m_ShouldNotPopValue = false;
   EmitOp(Ops::Return, m_Previous.value().GetLine());
   Consume(TokenType::Semicolon, "Expected ';' after expression");
   m_FunctionHadReturn = true;
@@ -856,9 +881,9 @@ void Compiler::WhileStatement()
   auto constantIdx = static_cast<std::int64_t>(m_Vm.GetNumConstants());
   auto opIdx = static_cast<std::int64_t>(m_Vm.GetNumOps());
 
-  m_IsInAssignmentExpression = true;
+  m_ShouldNotPopValue = true;
   Expression(false);
-  m_IsInAssignmentExpression = false;
+  m_ShouldNotPopValue = false;
 
   auto line = m_Previous.value().GetLine();
 
@@ -873,7 +898,7 @@ void Compiler::WhileStatement()
   while (!Match(TokenType::End)) {
     Declaration();
     if (Match(TokenType::EndOfFile)) {
-      ErrorAtPrevious("Unterminated `while` loop");
+      MessageAtPrevious("Unterminated `while` loop", LogLevel::Error);
       return;
     }
   }
@@ -1043,7 +1068,7 @@ void Compiler::Call(bool canAssign)
   auto prevText = std::string(m_Previous.value().GetText());
 
   if (prev.GetType() != TokenType::Identifier && Check(TokenType::LeftParen)) {
-    ErrorAtCurrent("'(' only allowed after functions and classes");
+    MessageAtCurrent("'(' only allowed after functions and classes", LogLevel::Error);
     return;
   }
 
@@ -1066,7 +1091,7 @@ void Compiler::Call(bool canAssign)
       EmitConstant(numArgs);
       EmitOp(Ops::Call, m_Previous.value().GetLine());
 
-      if (!m_IsInAssignmentExpression) {
+      if (!m_ShouldNotPopValue) {
         // pop unused return value
         EmitOp(Ops::Pop, m_Previous.value().GetLine());
       }
@@ -1074,7 +1099,7 @@ void Compiler::Call(bool canAssign)
       // TODO: account for dot
     } else {
       if (m_Locals.find(std::string(prev.GetText())) == m_Locals.end()) {
-        ErrorAtPrevious(fmt::format("Cannot find variable '{}' in this scope.", prev.GetText()));
+        MessageAtPrevious(fmt::format("Cannot find variable '{}' in this scope.", prev.GetText()), LogLevel::Error);
         return;
       }
 
@@ -1114,10 +1139,10 @@ void Compiler::Primary(bool canAssign)
       EmitOp(Ops::LoadConstant, m_Previous.value().GetLine());
       EmitConstant(value);
     } catch (const std::invalid_argument& e) {
-      ErrorAtPrevious(fmt::format("Token could not be parsed as an int: {}", e.what()));
+      MessageAtPrevious(fmt::format("Token could not be parsed as an int: {}", e.what()), LogLevel::Error);
       return;
     } catch (const std::out_of_range&) {
-      ErrorAtPrevious("Int out of range.");
+      MessageAtPrevious("Int out of range.", LogLevel::Error);
       return;
     }
   } else if (Match(TokenType::Double)) {
@@ -1127,10 +1152,10 @@ void Compiler::Primary(bool canAssign)
       EmitOp(Ops::LoadConstant, m_Previous.value().GetLine());
       EmitConstant(value);
     } catch (const std::invalid_argument& e) {
-      ErrorAtPrevious(fmt::format("Token could not be parsed as an float: {}", e.what()));
+      MessageAtPrevious(fmt::format("Token could not be parsed as an float: {}", e.what()), LogLevel::Error);
       return;
     } catch (const std::out_of_range&) {
-      ErrorAtPrevious("Float out of range.");
+      MessageAtPrevious("Float out of range.", LogLevel::Error);
       return;
     }
   } else if (Match(TokenType::String)) {
@@ -1192,7 +1217,7 @@ void Compiler::Char()
   switch (trimmed.length()) {
     case 2:
       if (trimmed[0] != '\\') {
-        ErrorAtPrevious("`char` must contain a single character or escape character");
+        MessageAtPrevious("`char` must contain a single character or escape character", LogLevel::Error);
         return;
       }
       char c;
@@ -1200,19 +1225,19 @@ void Compiler::Char()
         EmitOp(Ops::LoadConstant, m_Previous.value().GetLine());
         EmitConstant(c);
       } else {
-        ErrorAtPrevious("Unrecognised escape character");
+        MessageAtPrevious("Unrecognised escape character", LogLevel::Error);
       }
       break;
     case 1:
       if (trimmed[0] == '\\') {
-        ErrorAtPrevious("Expected escape character after backslash");
+        MessageAtPrevious("Expected escape character after backslash", LogLevel::Error);
         return;
       }
       EmitOp(Ops::LoadConstant, m_Previous.value().GetLine());
       EmitConstant(static_cast<char>(trimmed[0]));
       break;
     default:
-      ErrorAtPrevious("`char` must contain a single character or escape character");
+      MessageAtPrevious("`char` must contain a single character or escape character", LogLevel::Error);
       break;
   }
 }
@@ -1225,14 +1250,14 @@ void Compiler::String()
     if (text[i] == '\\') {
       i++;
       if (i == text.length() - 2) {
-        ErrorAtPrevious("Expected escape character");
+        MessageAtPrevious("Expected escape character", LogLevel::Error);
         return;
       }
       char c;
       if (IsEscapeChar(text[i], c)) {
         res.push_back(c);
       } else {
-        ErrorAtPrevious("Unrecognised escape character");
+        MessageAtPrevious("Unrecognised escape character", LogLevel::Error);
         return;
       }
     } else {
@@ -1269,7 +1294,7 @@ void Compiler::InstanceOf()
       EmitConstant(std::int64_t(5));
       break;
     default:
-      ErrorAtCurrent("Expected type as second argument for `instanceof`");
+      MessageAtCurrent("Expected type as second argument for `instanceof`", LogLevel::Error);
       return;
   }
 
@@ -1278,7 +1303,7 @@ void Compiler::InstanceOf()
   Advance();  // Consume the type ident
   Consume(TokenType::RightParen, "Expected ')'");
 
-  if (!m_IsInAssignmentExpression) {
+  if (!m_ShouldNotPopValue) {
     // pop unused return value
     EmitOp(Ops::Pop, m_Previous.value().GetLine());
   }
@@ -1292,29 +1317,31 @@ void Compiler::Cast()
   Expression(false);
   EmitOp(s_CastOps[type], m_Current.value().GetLine());
   Consume(TokenType::RightParen, "Expected ')' after expression");
-  if (!m_IsInAssignmentExpression) {
+  if (!m_ShouldNotPopValue) {
     // pop unused return value
     EmitOp(Ops::Pop, m_Previous.value().GetLine());
   }
 }
 
-void Compiler::ErrorAtCurrent(const std::string& message)
+void Compiler::MessageAtCurrent(const std::string& message, LogLevel level)
 {
-  Error(m_Current, message);
+  Message(m_Current, message, level);
 }
 
-void Compiler::ErrorAtPrevious(const std::string& message)
+void Compiler::MessageAtPrevious(const std::string& message, LogLevel level)
 {
-  Error(m_Previous, message);
+  Message(m_Previous, message, level);
 }
 
-void Compiler::Error(const std::optional<Token>& token, const std::string& message)
+void Compiler::Message(const std::optional<Token>& token, const std::string& message, LogLevel level)
 {
-  if (m_PanicMode) return;
+  if (level == LogLevel::Error) {
+    if (m_PanicMode) return;
+    m_PanicMode = true;
+  }
 
-  m_PanicMode = true;
-  fmt::print(stderr, "[line {}] ", token.value().GetLine());
-  fmt::print(stderr, fmt::fg(fmt::color::red) | fmt::emphasis::bold, "ERROR: ");
+  auto colour = level == LogLevel::Error ? fmt::color::red : fmt::color::orange;
+  fmt::print(stderr, fmt::fg(colour) | fmt::emphasis::bold, level == LogLevel::Error ? "ERROR: " : "WARNING: ");
   
   auto type = token.value().GetType();
   switch (type) {
@@ -1335,61 +1362,18 @@ void Compiler::Error(const std::optional<Token>& token, const std::string& messa
   auto column = token.value().GetColumn() - token.value().GetLength();  // need the START of the token
   fmt::print(stderr, "       --> {}:{}:{}\n", m_CurrentFileName, lineNo, column + 1); 
   fmt::print(stderr, "        |\n");
-  fmt::print(stderr, "{:>8}| {}\n", lineNo, m_Scanner.GetCodeAtLine(lineNo));
+  fmt::print(stderr, "{:>7} | {}\n", lineNo, m_Scanner.GetCodeAtLine(lineNo));
   fmt::print(stderr, "        | ");
   for (auto i = 0; i < column; i++) {
     fmt::print(stderr, " ");
   }
   for (auto i = 0; i < token.value().GetLength(); i++) {
-    fmt::print(stderr, fmt::fg(fmt::color::red), "^");
+    fmt::print(stderr, fmt::fg(colour), "^");
   }
   fmt::print("\n\n");
 
-  m_HadError = true;
-}
-
-void Compiler::WarningAtCurrent(const std::string& message)
-{
-  Warning(m_Current, message);
-}
-
-void Compiler::WarningAtPrevious(const std::string& message)
-{
-  Warning(m_Previous, message);
-}
-
-void Compiler::Warning(const std::optional<Token>& token, const std::string& message)
-{
-  fmt::print(stderr, "[line {}] ", token.value().GetLine());
-  fmt::print(stderr, fmt::fg(fmt::color::yellow) | fmt::emphasis::bold, "WARNING: ");
-  
-  auto type = token.value().GetType();
-  switch (type) {
-    case TokenType::EndOfFile:
-      fmt::print(stderr, "at end: ");
-      fmt::print(stderr, "{}\n", message);
-      break;
-    case TokenType::Error:
-      fmt::print(stderr, "{}\n", token.value().GetErrorMessage());
-      break;
-    default:
-      fmt::print(stderr, "at '{}': ", token.value().GetText());
-      fmt::print(stderr, "{}\n", message);
-      break;
+  if (level == LogLevel::Error) {
+    m_HadError = true;
   }
-
-  auto lineNo = token.value().GetLine();
-  auto column = token.value().GetColumn() - token.value().GetLength();  // need the START of the token
-  fmt::print(stderr, "       --> {}:{}:{}\n", m_CurrentFileName, lineNo, column + 1); 
-  fmt::print(stderr, "        |\n");
-  fmt::print(stderr, "{:>8}| {}\n", lineNo, m_Scanner.GetCodeAtLine(lineNo));
-  fmt::print(stderr, "        | ");
-  for (auto i = 0; i < column; i++) {
-    fmt::print(stderr, " ");
-  }
-  for (auto i = 0; i < token.value().GetLength(); i++) {
-    fmt::print(stderr, fmt::fg(fmt::color::yellow), "^");
-  }
-  fmt::print("\n\n");
 }
 

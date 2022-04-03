@@ -135,13 +135,15 @@ namespace Grace
         void InstanceOf();
         void Cast();
 
-        void ErrorAtCurrent(const std::string& message);
-        void ErrorAtPrevious(const std::string& message);
-        void Error(const std::optional<Scanner::Token>& token, const std::string& message);
+        enum class LogLevel
+        {
+          Warning,
+          Error,
+        };
 
-        void WarningAtCurrent(const std::string& message);
-        void WarningAtPrevious(const std::string& message);
-        void Warning(const std::optional<Scanner::Token>& token, const std::string& message);
+        void MessageAtCurrent(const std::string& message, LogLevel level);
+        void MessageAtPrevious(const std::string& message, LogLevel level);
+        void Message(const std::optional<Scanner::Token>& token, const std::string& message, LogLevel level);
 
       private:
 
@@ -160,7 +162,7 @@ namespace Grace
         std::unordered_map<std::string, std::pair<bool, std::int64_t>> m_Locals;
         std::hash<std::string> m_Hasher;
 
-        bool m_IsInAssignmentExpression = false;
+        bool m_ShouldNotPopValue = false;
         bool m_FunctionHadReturn = false;
         bool m_PanicMode = false, m_HadError = false;
         bool m_Verbose;

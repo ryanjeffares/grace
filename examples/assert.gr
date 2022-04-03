@@ -1,0 +1,8 @@
+func main():
+  var n = 2;
+  assert(n == 2, "n did not equal 2");
+  println("n equaled 2, all is good");
+
+  var name = "ryan";
+  assert(name == "Ryan", "You should capitalise your name!");
+end

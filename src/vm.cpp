@@ -43,6 +43,18 @@ static void PrintLocals(const std::vector<Value>& locals, const std::string& fun
   }
 }
 
+bool VM::AddFunction(const std::string& name, int line, int arity)
+{
+  auto hash = static_cast<std::int64_t>(m_Hasher(name));
+  auto [it, res] = m_FunctionList.try_emplace(hash, Function(hash, arity, line));
+  if (res) {
+    m_LastFunctionHash = hash;
+    m_FunctionNames.emplace(hash, name);
+    return true;
+  }
+  return false;
+}
+
 void VM::Start(bool verbose)
 {
   auto mainHash = static_cast<std::int64_t>(m_Hasher("main"));
@@ -81,6 +93,12 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
   do {                                                                \
     localsList->clear();                                              \
     return InterpretResult::RuntimeError;                             \
+  } while (false)                                                     \
+
+#define RETURN_ASSERT_FAILED()                                        \
+  do {                                                                \
+    localsList->clear();                                              \
+    return InterpretResult::RuntimeAssertionFailed;                   \
   } while (false)                                                     \
 
 #define RETURN_NULL()                                                 \
@@ -479,6 +497,29 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
         valueStack->emplace_back(typeIdx == static_cast<std::int64_t>(Pop(*valueStack).GetType()));
         break;
       }
+      case Ops::Assert: {
+        auto condition = Pop(*valueStack);
+        if (!condition.AsBool()) {
+          RuntimeError("Assertion failed", InterpretError::AssertionFailed, line, callStack);
+#ifdef GRACE_DEBUG
+          PRINT_LOCAL_MEMORY();
+#endif
+          RETURN_ASSERT_FAILED();
+        }
+        break;
+      }
+      case Ops::AssertWithMessage: {
+        auto condition = Pop(*valueStack);
+        auto message = constantList->at((*constantCurrent)++).Get<std::string>();
+        if (!condition.AsBool()) {
+          RuntimeError(message, InterpretError::AssertionFailed, line, callStack);
+#ifdef GRACE_DEBUG
+          PRINT_LOCAL_MEMORY();
+#endif
+          RETURN_ASSERT_FAILED();
+        }
+        break;
+      }
       default:
         GRACE_UNREACHABLE();
     }
@@ -494,18 +535,6 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
 #undef RETURN_ERR
 #undef RETURN_NULL
 #undef RETURN_VALUE
-}
-
-bool VM::AddFunction(const std::string& name, int line, std::vector<std::string>&& parameters)
-{
-  auto hash = static_cast<std::int64_t>(m_Hasher(name));
-  auto [it, res] = m_FunctionList.try_emplace(hash, Function(hash, std::move(parameters), line));
-  if (res) {
-    m_LastFunctionHash = hash;
-    m_FunctionNames.emplace(hash, name);
-    return true;
-  }
-  return false;
 }
 
 void VM::RuntimeError(const std::string& message, InterpretError errorType, int line, const CallStack& callStack)

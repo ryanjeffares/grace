@@ -12,6 +12,7 @@ declaration   -> classDecl
                | varDecl
                | finalDecl
                | breakDecl
+               | assertDecl
                | statement ;
 
 classDecl     -> "class" IDENTIFIER ":" function* "end" ;
@@ -19,6 +20,7 @@ funcDecl      -> "func" function ;
 varDecl       -> "var" TYPE IDENTIFIER ( "=" expression )? ";" ;
 finalDecl     -> "final" TYPE IDENTIFIER "=" expression ";" ;
 breakDecl     -> "break" ";" ;
+assertDecl    -> "assert" "(" expression ( "," STRING) ")" ";" ;
 ```
 
 ## Statements

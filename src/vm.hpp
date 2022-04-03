@@ -22,13 +22,12 @@ namespace Grace
 
   namespace VM
   {
-
-    static constexpr inline int s_CallstackLimit = 1000;
-    
     enum class Ops : std::uint8_t
     {
       Add,
       And,
+      Assert,
+      AssertWithMessage,
       AssignLocal,
       Call,
       CastAsInt,
@@ -66,12 +65,14 @@ namespace Grace
 
     enum class InterpretResult
     {
+      RuntimeAssertionFailed,
       RuntimeError,
       RuntimeOk,
     };
 
     enum class InterpretError
     {
+      AssertionFailed,
       FunctionNotFound,
       IncorrectArgCount,
       InvalidCast,
@@ -104,12 +105,10 @@ namespace Grace
           std::int64_t m_NameHash;
           std::vector<OpLine> m_OpList; 
           std::vector<Value> m_ConstantList, m_ValueStack;
-          std::vector<std::string> m_Parameters;
           int m_Line, m_Arity;
 
-          Function(std::int64_t nameHash, std::vector<std::string>&& params, int line)
-            : m_NameHash(nameHash), m_Parameters(std::move(params)), 
-            m_Line(line), m_Arity(m_Parameters.size())
+          Function(std::int64_t nameHash, int arity, int line)
+            : m_NameHash(nameHash), m_Line(line), m_Arity(arity)
           {
             m_ValueStack.reserve(8);
           }
@@ -166,10 +165,13 @@ namespace Grace
           return m_FunctionNames.at(m_LastFunctionHash);
         }
 
-        bool AddFunction(const std::string& name, int line, std::vector<std::string>&& parmeters);
+        bool AddFunction(const std::string& name, int line, int arity);
         void Start(bool verbose);
 
       private:
+
+        InterpretResult Run(std::int64_t funcNameHash, int startLine, bool verbose);
+        void RuntimeError(const std::string& message, InterpretError errorType, int line, const CallStack& callStack);
 
         [[nodiscard]]
         static bool HandleAddition(const Value& c1, const Value& c2, std::vector<Value>& stack);
@@ -208,9 +210,6 @@ namespace Grace
 
       private:
 
-        InterpretResult Run(std::int64_t funcNameHash, int startLine, bool verbose);
-        void RuntimeError(const std::string& message, InterpretError errorType, int line, const CallStack& callStack);
-
         std::unordered_map<std::int64_t, Function> m_FunctionList;
         std::unordered_map<std::int64_t, std::string> m_FunctionNames;
         std::int64_t m_LastFunctionHash;
@@ -232,6 +231,8 @@ struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
     switch (type) {
       case Ops::Add: name = "Ops::Add"; break;
       case Ops::And: name = "Ops::And"; break;
+      case Ops::Assert: name = "Ops::Assert"; break;
+      case Ops::AssertWithMessage: name = "Ops::AssertWithMessage"; break;
       case Ops::AssignLocal: name = "Ops::AssignLocal"; break;
       case Ops::Call: name = "Ops::Call"; break;
       case Ops::CastAsInt: name = "Ops::CastAsInt"; break;
@@ -280,6 +281,7 @@ struct fmt::formatter<Grace::VM::InterpretError> : fmt::formatter<std::string_vi
 
     std::string_view name = "unknown";
     switch (type) {
+      case InterpretError::AssertionFailed: name = "AssertionFailed"; break;
       case InterpretError::FunctionNotFound: name = "FunctionNotFound"; break;
       case InterpretError::IncorrectArgCount: name = "IncorrectArgCount"; break;
       case InterpretError::InvalidCast: name = "InvalidCast"; break;
@@ -290,5 +292,4 @@ struct fmt::formatter<Grace::VM::InterpretError> : fmt::formatter<std::string_vi
     return fmt::formatter<std::string_view>::format(name, context);
   }
 };
-
 

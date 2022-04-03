@@ -2,7 +2,7 @@ if exists('b:current_syntax')
   finish
 endif
 
-syn keyword graceKeywords class if else for in by while break return end import this print println and or func as instanceof skipwhite
+syn keyword graceKeywords class if else for in by while break return end import this print println and or func instanceof assert skipwhite
 syn keyword graceBooleans true false skipwhite
 syn keyword graceVariable var final int float bool string char skipwhite
 
