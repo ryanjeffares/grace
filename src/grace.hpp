@@ -13,3 +13,8 @@
     assert(false && "Not implemented");         \
   } while (false)                               \
 
+#define GRACE_ASSERT(expression, message)       \
+  do {                                          \
+    assert(expression && message);              \
+  } while (false)                               \
+

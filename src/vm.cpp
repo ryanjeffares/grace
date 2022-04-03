@@ -101,18 +101,6 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
     return InterpretResult::RuntimeAssertionFailed;                   \
   } while (false)                                                     \
 
-#define RETURN_NULL()                                                 \
-  do {                                                                \
-    localsList->clear();                                              \
-    return InterpretResult::RuntimeOk;                                \
-  } while (false)                                                     \
-
-#define RETURN_VALUE(value)                                           \
-  do {                                                                \
-    localsList.clear();                                               \
-    return InterpretResult::RuntimeOk;                                \
-  } while (false)                                                     \
-
   // Function, op index, constant index
   struct FunctionInfo 
   {
@@ -529,12 +517,14 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
   PRINT_LOCAL_MEMORY();
 #endif
 
-  RETURN_NULL();
+  GRACE_ASSERT(valueStack->empty(), "Unhandled data on the stack");
+
+  localsList->clear();
+  return InterpretResult::RuntimeOk;
 
 #undef PRINT_LOCAL_MEMORY
 #undef RETURN_ERR
-#undef RETURN_NULL
-#undef RETURN_VALUE
+#undef RETURN_ASSERT_FAILED
 }
 
 void VM::RuntimeError(const std::string& message, InterpretError errorType, int line, const CallStack& callStack)

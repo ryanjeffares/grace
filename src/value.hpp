@@ -13,7 +13,8 @@ namespace Grace
     class Value final 
     {
     public:
-      typedef void* NullValue;
+
+      using NullValue = void*;
 
       enum class Type : std::uint8_t 
       {

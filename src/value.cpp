@@ -179,7 +179,7 @@ std::tuple<bool, std::optional<std::string>> Value::AsDouble(double& result) con
       } catch (const std::invalid_argument& e) {
         return {false, fmt::format("Could not convert '{}' to int: {}", *m_Data.m_Str, e.what())};
       } catch (const std::out_of_range&) {
-        return {false, "Int represented by string was out of range"};
+        return {false, "Float represented by string was out of range"};
       }
     }
     case Type::Char: {
@@ -205,7 +205,7 @@ std::tuple<bool, std::optional<std::string>> Value::AsChar(char& result) const
       return {true, {}};
     }
     case Type::Bool: {
-      result = m_Data.m_Bool ? 1.0 : 0.0;
+      result = static_cast<char>(m_Data.m_Bool);
       return {true, {}};
     }
     case Type::String: {
