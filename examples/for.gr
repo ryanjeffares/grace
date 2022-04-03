@@ -1,0 +1,12 @@
+func fib(n):
+  if n < 2:
+    return n;
+  end
+  return fib(n - 2) + fib(n - 1);
+end 
+
+func main():
+  for i in 0..30:
+    println(fib(i));
+  end 
+end

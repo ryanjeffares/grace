@@ -35,7 +35,9 @@ namespace Grace
       RightParen,
       Comma,
       Dot,
+      DotDot,
       Minus,
+      Mod,
       Plus,
       Slash,
       Star,
@@ -52,6 +54,7 @@ namespace Grace
       // Keywords
       And,
       As,
+      By,
       Class, 
       Else,
       End, 
@@ -60,6 +63,7 @@ namespace Grace
       For,
       Func,
       If,
+      In,
       InstanceOf,
       Null,
       Or,
@@ -163,7 +167,9 @@ struct fmt::formatter<Grace::Scanner::TokenType> : fmt::formatter<std::string_vi
         case TokenType::RightParen: name = "TokenType::RightParen"; break;
         case TokenType::Comma: name = "TokenType::Comma"; break;
         case TokenType::Dot: name = "TokenType::Dot"; break;
+        case TokenType::DotDot: name = "TokenType::DotDot"; break;
         case TokenType::Minus: name = "TokenType::Minus"; break;
+        case TokenType::Mod: name = "TokenType::Mod"; break;
         case TokenType::Plus: name = "TokenType::Plus"; break;
         case TokenType::Slash: name = "TokenType::Slash"; break;
         case TokenType::Star: name = "TokenType::Star"; break;
@@ -177,6 +183,7 @@ struct fmt::formatter<Grace::Scanner::TokenType> : fmt::formatter<std::string_vi
         case TokenType::LessEqual: name = "TokenType::LessEqual"; break;
         case TokenType::GreaterEqual: name = "TokenType::GreaterEqual"; break;
         case TokenType::As: name = "TokenType::As"; break;
+        case TokenType::By: name = "TokenType::By"; break;
         case TokenType::Class: name = "TokenType::Class"; break;
         case TokenType::End: name = "TokenType::End"; break;
         case TokenType::Else: name = "TokenType::Else"; break;
@@ -185,6 +192,7 @@ struct fmt::formatter<Grace::Scanner::TokenType> : fmt::formatter<std::string_vi
         case TokenType::For: name = "TokenType::For"; break;
         case TokenType::Func: name = "TokenType::Func"; break;
         case TokenType::If: name = "TokenType::If"; break;
+        case TokenType::In: name = "TokenType::In"; break;
         case TokenType::InstanceOf: name = "TokenType::InstanceOf"; break;
         case TokenType::Null: name = "TokenType::Null"; break;
         case TokenType::While: name = "TokenType::While"; break;

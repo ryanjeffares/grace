@@ -6,6 +6,7 @@
 #include "../include/fmt/core.h"
 #include "../include/fmt/color.h"
 
+#include "grace.hpp"
 #include "scanner.hpp"
 #include "vm.hpp"
 

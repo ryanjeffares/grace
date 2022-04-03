@@ -1,3 +1,4 @@
+#include <cmath>
 #include <cstdlib>
 #include <stack>
 
@@ -165,6 +166,18 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
         }
         break;
       }
+      case Ops::Mod: {
+        auto [c1, c2] = PopLastTwo(*valueStack);
+        if (!HandleMod(c1, c2, *valueStack)) {
+          RuntimeError(fmt::format("cannot multiply `{}` by `{}`", c1.GetType(), c2.GetType()), 
+              InterpretError::InvalidOperand, line, callStack);
+#ifdef GRACE_DEBUG
+          PRINT_LOCAL_MEMORY();
+#endif
+          RETURN_ERR();
+        }
+        break;
+      }
       case Ops::Divide: {
         auto [c1, c2] = PopLastTwo(*valueStack);
         if (!HandleDivision(c1, c2, *valueStack)) {
@@ -276,7 +289,7 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
       }
       case Ops::LoadConstant:
         // hot path here
-        valueStack->push_back(std::move(constantList->at(*constantCurrent)));
+        valueStack->push_back(constantList->at(*constantCurrent));
         (*constantCurrent)++;
         break;
       case Ops::LoadLocal: {
@@ -506,26 +519,26 @@ void VM::RuntimeError(const std::string& message, InterpretError errorType, int 
       for (auto i = 1; i < callStack.size(); i++) {
         const auto& [caller, callee, ln] = callStack[i];
         fmt::print(stderr, "line {}, in {}:\n", ln, m_FunctionNames.at(caller));
-        fmt::print(stderr, "{:>4}{}\n", m_Compiler.GetCodeAtLine(ln));
+        fmt::print(stderr, "{:>4}\n", m_Compiler.GetCodeAtLine(ln));
       }
     } else {
       fmt::print(stderr, "{} more calls before - set environment variable `GRACE_SHOW_FULL_CALLSTACK` to see full callstack\n", callStackSize - 15);
       for (auto i = callStackSize - 15; i < callStackSize; i++) {
         const auto& [caller, callee, ln] = callStack[i];
         fmt::print(stderr, "line {}, in {}:\n", ln, m_FunctionNames.at(caller));
-        fmt::print(stderr, "{:>4}{}\n", m_Compiler.GetCodeAtLine(ln));
+        fmt::print(stderr, "{:>4}\n", m_Compiler.GetCodeAtLine(ln));
       }
     }
   } else {
     for (auto i = 1; i < callStack.size(); i++) {
       const auto& [caller, callee, ln] = callStack[i];
       fmt::print(stderr, "line {}, in {}:\n", ln, m_FunctionNames.at(caller));
-      fmt::print(stderr, "{:>4}{}\n", m_Compiler.GetCodeAtLine(ln));
+      fmt::print(stderr, "{:>4}\n", m_Compiler.GetCodeAtLine(ln));
     }
   }
 
   fmt::print(stderr, "line {}, in {}:\n", line, m_FunctionNames.at(std::get<1>(callStack.back())));
-  fmt::print(stderr, "{:>4}{}\n", m_Compiler.GetCodeAtLine(line));
+  fmt::print(stderr, "{:>4}\n", m_Compiler.GetCodeAtLine(line));
 
   fmt::print(stderr, "\n");
   fmt::print(stderr, fmt::fg(fmt::color::red) | fmt::emphasis::bold, "ERROR: ");
@@ -720,6 +733,43 @@ bool VM::HandleMultiplication(const Value& c1, const Value& c2, std::vector<Valu
         return true;
       }
       return false;
+    }
+    default:
+      return false;
+  }
+}
+
+[[nodiscard]]
+bool VM::HandleMod(const Value& c1, const Value& c2, std::vector<Value>& stack)
+{
+  switch (c1.GetType()) {
+    case Value::Type::Int: {
+      switch (c2.GetType()) {
+        case Value::Type::Int: {
+          stack.emplace_back(c1.Get<std::int64_t>() % c2.Get<std::int64_t>());
+          return true;
+        }
+        case Value::Type::Double: {
+          stack.emplace_back(std::fmod(static_cast<double>(c1.Get<std::int64_t>()), c2.Get<double>()));
+          return true;
+        }
+        default:
+          return false;
+      }
+    }
+    case Value::Type::Double: {
+      switch (c2.GetType()) {
+        case Value::Type::Int: {
+          stack.emplace_back(std::fmod(c1.Get<double>(), static_cast<double>(c2.Get<std::int64_t>())));
+          return true;
+        }
+        case Value::Type::Double: {
+          stack.emplace_back(std::fmod(c1.Get<double>(), c2.Get<double>()));
+          return true;
+        }
+        default:
+          return false;
+      }
     }
     default:
       return false;

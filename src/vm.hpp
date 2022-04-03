@@ -48,6 +48,7 @@ namespace Grace
       LessEqual,
       LoadConstant,
       LoadLocal,
+      Mod,
       Multiply,
       Negate,
       Not,
@@ -182,6 +183,9 @@ namespace Grace
         [[nodiscard]]
         static bool HandleMultiplication(const Value& c1, const Value& c2, std::vector<Value>& stack);
 
+        [[nodiscard]]
+        static bool HandleMod(const Value& c1, const Value& c2, std::vector<Value>& stack);
+
         static void HandleEquality(const Value& c1, const Value& c2, std::vector<Value>& stack, bool equal);
 
         [[nodiscard]]
@@ -247,6 +251,7 @@ struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
       case Ops::LessEqual: name = "Ops::LessEqual"; break;
       case Ops::LoadConstant: name = "Ops::LoadConstant"; break;
       case Ops::LoadLocal: name = "Ops::LoadLocal"; break;
+      case Ops::Mod: name = "Ops::Mod"; break;
       case Ops::Multiply: name = "Ops::Multiply"; break;
       case Ops::Negate: name = "Ops::Negate"; break;
       case Ops::Not: name = "Ops::Not"; break;

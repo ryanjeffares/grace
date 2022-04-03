@@ -53,7 +53,7 @@ void Compiler::Finalise(bool verbose)
     m_Vm.PrintOps();
   }
 #endif
-  m_Vm.Start(verbose);
+   m_Vm.Start(verbose);
 }
 
 void Compiler::Advance()
@@ -224,7 +224,7 @@ void Compiler::Statement()
 
 void Compiler::ClassDeclaration() 
 {
-  
+  GRACE_NOT_IMPLEMENTED();  
 }
 
 void Compiler::FuncDeclaration() 
@@ -423,6 +423,7 @@ void Compiler::Expression(bool canAssign)
           case TokenType::Star:
           case TokenType::StarStar:
           case TokenType::Slash:
+          case TokenType::Mod:
             Factor(false, true);
             break;
           case TokenType::Semicolon:
@@ -432,7 +433,6 @@ void Compiler::Expression(bool canAssign)
             shouldBreak = true;
             break;
           default:
-            fmt::print("{}\n\n", m_Current.value().ToString());
             ErrorAtCurrent("Invalid token found in expression");
             Advance();
             return;
@@ -444,6 +444,32 @@ void Compiler::Expression(bool canAssign)
   }
 }
 
+std::optional<std::exception> TryParseInt(const Token& token, std::int64_t& result)
+{
+  try {
+    std::string str(token.GetText());
+    result = std::stoll(str);
+    return std::nullopt;
+  } catch (const std::invalid_argument& e) {
+    return e;
+  } catch (const std::out_of_range& e) {
+    return e;
+  }
+}
+
+std::optional<std::exception> TryParseDouble(const Token& token, double& result)
+{
+  try {
+    std::string str(token.GetText());
+    result = std::stod(str);
+    return std::nullopt;
+  } catch (const std::invalid_argument& e) {
+    return e;
+  } catch (const std::out_of_range& e) {
+    return e;
+  }
+}
+
 void Compiler::ExpressionStatement() 
 {
   Expression(true);
@@ -452,7 +478,190 @@ void Compiler::ExpressionStatement()
 
 void Compiler::ForStatement() 
 {
-  
+  Consume(TokenType::Identifier, "Expected identifier after `for`");
+  auto iteratorName = std::string(m_Previous.value().GetText());
+  std::int64_t iteratorId;
+  if (m_Locals.find(iteratorName) == m_Locals.end()) {
+    iteratorId = m_Locals.size();
+    m_Locals.insert(std::make_pair(iteratorName, std::make_pair(false, iteratorId)));
+    EmitOp(Ops::DeclareLocal, m_Previous.value().GetLine());
+  } else {
+    iteratorId = m_Locals.at(iteratorName).second;
+  }
+
+  Consume(TokenType::In, "Expected `in` after identifier");
+
+  auto line = m_Previous.value().GetLine();
+  if (Match(TokenType::Integer)) {
+    std::int64_t value;
+    auto result = TryParseInt(m_Previous.value(), value);
+    if (result.has_value()) {
+      ErrorAtPrevious(fmt::format("Token could not be parsed as integer: {}", result.value().what()));
+      return;
+    }
+    EmitConstant(value);
+    EmitOp(Ops::LoadConstant, line);
+    EmitConstant(iteratorId);
+    EmitOp(Ops::AssignLocal, line);
+  } else if (Match(TokenType::Double)) {
+    double value;
+    auto result = TryParseDouble(m_Previous.value(), value);
+    if (result.has_value()) {
+      ErrorAtPrevious(fmt::format("Token could not be parsed as float: {}", result.value().what()));
+      return;
+    }
+    EmitConstant(value);
+    EmitOp(Ops::LoadConstant, line);
+    EmitConstant(iteratorId);
+    EmitOp(Ops::AssignLocal, line);
+  } else if (Match(TokenType::Identifier)) {
+    auto localName = std::string(m_Previous.value().GetText());
+    if (m_Locals.find(localName) == m_Locals.end()) {
+      ErrorAtPrevious(fmt::format("Cannot find variable '{}' in this scope.", localName));
+      return;
+    }
+    auto localId = m_Locals.at(localName).second;
+    EmitConstant(localId);
+    EmitOp(Ops::LoadConstant, line);
+    EmitOp(Ops::LoadLocal, line);
+    EmitConstant(iteratorId);
+    EmitOp(Ops::AssignLocal, line);
+  } else {
+    ErrorAtCurrent("Expected identifier or number as range min");
+    return;
+  }
+
+  Consume(TokenType::DotDot, "Expected '..' after range min");
+
+  union {
+    std::int64_t m_Int;
+    double m_Double;
+    std::int64_t m_LocalId;
+  } max;
+
+  enum MaxType {
+    Int,
+    Double,
+    Local,
+  } maxType;
+
+  if (Match(TokenType::Integer)) {
+    std::int64_t value;
+    auto result = TryParseInt(m_Previous.value(), value);
+    if (result.has_value()) {
+      ErrorAtPrevious(fmt::format("Token could not be parsed as integer: {}", result.value().what()));
+      return;
+    }
+    max.m_Int = value;
+    maxType = MaxType::Int;
+  } else if (Match(TokenType::Double)) {
+    double value;
+    auto result = TryParseDouble(m_Previous.value(), value);
+    if (result.has_value()) {
+      ErrorAtPrevious(fmt::format("Token could not be parsed as float: {}", result.value().what()));
+      return;
+    }
+    max.m_Double = value;
+    maxType = MaxType::Double;
+  } else if (Match(TokenType::Identifier)) {
+    auto localName = std::string(m_Previous.value().GetText());
+    if (m_Locals.find(localName) == m_Locals.end()) {
+      ErrorAtPrevious(fmt::format("Cannot find variable '{}' in this scope.", localName));
+      return;
+    }
+    auto localId = m_Locals.at(localName).second;
+    max.m_LocalId = localId;
+    maxType = MaxType::Local;
+  } else {
+    ErrorAtCurrent("Expected identifier or integer as range max");
+    return;
+  }
+
+  union {
+    std::int64_t m_Int;
+    double m_Double;
+  } increment;
+  bool incrementIsInt;
+
+  if (Match(TokenType::By)) {
+    if (Match(TokenType::Integer)) {
+      std::int64_t value;
+      auto result = TryParseInt(m_Previous.value(), value);
+      if (result.has_value()) {
+        ErrorAtPrevious(fmt::format("Token could not be parsed as integer: {}", result.value().what()));
+        return;
+      }
+      increment.m_Int = value;
+      incrementIsInt = true;
+    } else if (Match(TokenType::Double)) {
+      double value;
+      auto result = TryParseDouble(m_Previous.value(), value);
+      if (result.has_value()) {
+        ErrorAtPrevious(fmt::format("Token could not be parsed as float: {}", result.value().what()));
+        return;
+      }
+      increment.m_Double = value;
+      incrementIsInt = false;
+    } else {
+      ErrorAtPrevious("Increment must be a number");
+      return;
+    }
+  } else {
+    increment.m_Int = 1;
+    incrementIsInt = true;
+  }
+
+  Consume(TokenType::Colon, "Expected ':' after `for` statement");
+
+  auto constantIdx = static_cast<std::int64_t>(m_Vm.GetNumConstants());
+  auto opIdx = static_cast<std::int64_t>(m_Vm.GetNumOps());
+
+  while (!Match(TokenType::End)) {
+    Declaration();
+    if (Match(TokenType::EndOfFile)) {
+      ErrorAtPrevious("Unterminated `for`");
+      return;
+    }
+  }
+
+  EmitConstant(iteratorId);
+  EmitOp(Ops::LoadConstant, line);
+  EmitOp(Ops::LoadLocal, line);
+  if (incrementIsInt) {
+    EmitConstant(increment.m_Int);
+  } else {
+    EmitConstant(increment.m_Double);
+  }
+  EmitOp(Ops::LoadConstant, line);
+  EmitOp(Ops::Add, line);
+  EmitConstant(iteratorId);
+  EmitOp(Ops::AssignLocal, line);
+
+  EmitConstant(iteratorId);
+  EmitOp(Ops::LoadConstant, line);
+  EmitOp(Ops::LoadLocal, line);
+
+  switch (maxType) {
+    case MaxType::Int:
+      EmitConstant(max.m_Int);
+      EmitOp(Ops::LoadConstant, line);
+      break;
+    case MaxType::Double:
+      EmitConstant(max.m_Double);
+      EmitOp(Ops::LoadConstant, line);
+      break;
+    case MaxType::Local:
+      EmitConstant(max.m_LocalId);
+      EmitOp(Ops::LoadConstant, line);
+      EmitOp(Ops::LoadLocal, line);
+      break;
+  }
+
+  EmitOp(Ops::GreaterEqual, line);
+
+  EmitConstant(constantIdx);
+  EmitConstant(opIdx);
+  EmitOp(Ops::JumpIfFalse, line);
 }
 
 void Compiler::IfStatement() 
@@ -608,7 +817,7 @@ void Compiler::ReturnStatement()
 
 void Compiler::WhileStatement() 
 {
-  
+  GRACE_NOT_IMPLEMENTED();  
 }
 
 void Compiler::Or(bool canAssign, bool skipFirst)
@@ -700,6 +909,9 @@ void Compiler::Factor(bool canAssign, bool skipFirst)
     } else if (Match(TokenType::Slash)) {
       Unary(canAssign);
       EmitOp(Ops::Divide, m_Current.value().GetLine());
+    } else if (Match(TokenType::Mod)) {
+      Unary(canAssign);
+      EmitOp(Ops::Mod, m_Current.value().GetLine());
     } else {
       break;
     }
@@ -823,8 +1035,10 @@ void Compiler::Primary(bool canAssign)
       EmitConstant(value);
     } catch (const std::invalid_argument& e) {
       ErrorAtPrevious(fmt::format("Token could not be parsed as an int: {}", e.what()));
+      return;
     } catch (const std::out_of_range&) {
       ErrorAtPrevious("Int out of range.");
+      return;
     }
   } else if (Match(TokenType::Double)) {
     try {
@@ -834,8 +1048,10 @@ void Compiler::Primary(bool canAssign)
       EmitConstant(value);
     } catch (const std::invalid_argument& e) {
       ErrorAtPrevious(fmt::format("Token could not be parsed as an float: {}", e.what()));
+      return;
     } catch (const std::out_of_range&) {
       ErrorAtPrevious("Float out of range.");
+      return;
     }
   } else if (Match(TokenType::String)) {
     String();
