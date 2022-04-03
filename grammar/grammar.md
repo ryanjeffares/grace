@@ -43,7 +43,7 @@ ifStmt        -> "if" expression ":"
 printStmt     -> "print" "(" expression ")" ";" ;
 printLnStmt   -> "println" "(" expression ")" ";" ;
 returnStmt    -> "return" expression? ";" ;
-whileStmt     -> "while" "(" expression ")" statement ;
+whileStmt     -> "while"  expression ":" block "end" ;
 block         -> declaration* ;
 ```
 
@@ -84,13 +84,13 @@ arguments     -> expression ( "," expression )* ;
 ```ebnf
 NUMBER        -> INTEGER | FLOAT ;
 INTEGER       -> DIGIT+ ;
-FLOAT         -> DIGIT+ ( "." DIGIT+ )? ;
+FLOAT         -> DIGIT+ "." DIGIT+ ;
 STRING        -> "\"" <any char except "\"">* "\"" ;
 IDENTIFIER    -> ALPHA ( ALPHA | DIGIT )* ;
 ALPHA         -> "a" ... "z" | "A" ... "Z" | "_" ;
 DIGIT         -> "0" ... "9" ;
 TYPE          -> "int" | "float" | "bool" | "string" | "char" ;
-RANGE         -> ( INTEGER | NUMBER ) ".." ( IDENTIFIER | INTEGER ) ;
+RANGE         -> ( NUMBER | IDENTIFIER ) ".." ( NUMBER | IDENTIFIER ) ;
 ```
 
 ## Keywords
@@ -99,9 +99,12 @@ RANGE         -> ( INTEGER | NUMBER ) ".." ( IDENTIFIER | INTEGER ) ;
 keyword       -> class 
               | func 
               | for 
+              | in 
+              | by
               | while 
               | end 
-              | if 
+              | if
+              | else 
               | true 
               | false 
               | this
