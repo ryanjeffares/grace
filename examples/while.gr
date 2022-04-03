@@ -1,4 +1,4 @@
-func main():
+func nested_loops():
   var n = 0;
   while n < 101:
     println(n);
@@ -18,4 +18,10 @@ func main():
   end 
 
   println("end");
+end
+
+func main():
+  for i in 0..30:
+    nested_loops();
+  end
 end
