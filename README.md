@@ -2,13 +2,19 @@
 
 [![Total alerts](https://img.shields.io/lgtm/alerts/g/ryanjeffares/grace.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/ryanjeffares/grace/alerts/) [![Language grade: C/C++](https://img.shields.io/lgtm/grade/cpp/g/ryanjeffares/grace.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/ryanjeffares/grace/context:cpp)
 
-Grace is a dynamically typed, bytecode interpreted programming language, written with C++17, that manages memory without the need for a garbage collector through reference counting. Still a work in progress, Grace will support object oriented and precedural programming, and features a concise syntax inspired by Python and Ruby.
+Grace is a dynamically typed, bytecode interpreted programming language, written with C++17. Still a work in progress, Grace will support object oriented and precedural programming, use reference counting as opposed to a garbage collector, and features a concise syntax inspired by Python and Ruby.
 
-The goal of Grace is to provide the portability and ease of use of an interpreted language with the scalability and robustness of a compiled language. For this prupose, Grace does not support a REPL or top-level statements - a Grace program starts at the `main` function, and performance is predictable due to automatic reference counting as opposed to a garbage collector. 
+## Aspirations
 
-# Getting Started 
+The goal of Grace is to combine the ease of use and portability of an interpreted language with the scalability and robustness of a compiled language. Grace is easy to write and run, similar to Python, but to better achieve the goals of scalability it does not support a REPL shell or top level statements. A Grace program starts in the `main` function, and code is limited to classes and functions.
 
-Grace's only dependency is [fmtlib](https://github.com/fmtlib/fmt) which is used in header only mode and included in this repository, so building is simple. In a terminal, simply run
+An important aspiration of Grace is to be unambiguous and predictable. By keeping syntax and operators to a minimum, Grace can avoid unexpected behaviour and having many different ways to do the exact same thing, which can be hostile things for newcomers and programming beginners.
+
+Performance is pertinent, and should stay predictable due to the use of reference counting over garbage collection.
+
+## Getting Started 
+
+Grace's only dependency is [fmtlib](https://github.com/fmtlib/fmt) which is used in header only mode and included in this repository, so building is simple, all you need is a C++ compiler that supports C++17 and cmake. In a terminal, simply run
 
 ```bash
 git clone https://github.com/ryanjeffares/grace.git 
@@ -21,11 +27,25 @@ cmake --build .
 
 This will build the `grace` executable, which you can add to your path or move somewhere that is on your path. Full install process as well as documentation is WIP.
 
-## TODO
+## Alpha Release Roadmap
 * Performance
+  * Returning from functions is a bottleneck due to popping the function 
+  * Consider using raw arrays over vectors for the op and constant list
+  * Or using vector iterators over indexes
 * Classes
-* Functions as first class objects/lambdas 
-* Imports
+  * Reference counting
+  * Cyclic references handled through a "cyclic reference tracker" - if a cyclic reference is detected, start tracking the two objects, and when those objects' only reminaing references are eachother they can be safely destroyed 
+* Lambdas 
+* Global const fields 
+* Imports 
 * Extension methods
-* Native methods
-* Consider removing colons, wrapping expressions for ifs/loops in parentheses
+* Standard library
+* Filesystem handling
+* Install process 
+* Tests 
+* Documentation 
+
+## Long Term Goals 
+* Optional type annotations for use by a static analyzer
+* Package management similar to cargo - new projects, type checking, adding libraries, tests
+* Optimisation mode which allows the bytecode compiler to perform optimisations such as loop unrolling, constant folding, dead code elimination - slower initial compile time in return for better run time performance for scripts that will run for a long time

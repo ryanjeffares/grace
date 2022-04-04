@@ -55,3 +55,5 @@ lib/*
 bin/*
 test/test_runner
 .cache/*
+.vscode/*
+.vs/*
