@@ -1,3 +1,14 @@
+/*
+ *  The Grace Programming Language.
+ *
+ *  This file contains the out of line definitions for the Compiler class, which outputs Grace bytecode based on Tokens provided by the Scanner. 
+ *  
+ *  Copyright (c) 2022 - Present, Ryan Jeffares.
+ *  All rights reserved.
+ *
+ *  For licensing information, see grace.hpp
+ */
+
 #include <chrono>
 
 #include "compiler.hpp"

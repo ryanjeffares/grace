@@ -1,3 +1,15 @@
+/*
+ *  The Grace Programming Language.
+ *
+ *  This file contains the out of line definitions for the Scanner class, which 
+ *  produces Tokens based on inputted source code, as well as some static helper functions. 
+ *  
+ *  Copyright (c) 2022 - Present, Ryan Jeffares.
+ *  All rights reserved.
+ *
+ *  For licensing information, see grace.hpp
+ */
+
 #include "scanner.hpp"
 
 using namespace Grace::Scanner;

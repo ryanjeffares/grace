@@ -1,3 +1,14 @@
+/*
+ *  The Grace Programming Language.
+ *
+ *  This file contains the VM class, which executes compiled Grace bytecode.
+ *
+ *  Copyright (c) 2022 - Present, Ryan Jeffares.
+ *  All rights reserved.
+ *
+ *  For licensing information, see grace.hpp
+ */
+
 #pragma once
 
 #include <cstdint>
@@ -11,6 +22,7 @@
 #include "../include/fmt/core.h"
 #include "../include/fmt/format.h"
 
+#include "grace.hpp"
 #include "value.hpp"
 
 namespace Grace
@@ -122,7 +134,7 @@ namespace Grace
         VM(const VM&) = delete;
         VM(VM&&) = delete;
 
-        inline void PushOp(Ops op, int line)
+        GRACE_INLINE void PushOp(Ops op, int line)
         {
           m_FunctionList.at(m_LastFunctionHash).m_OpList.emplace_back(op, line);
         }
@@ -138,29 +150,29 @@ namespace Grace
         }
 
         template<typename T>
-        constexpr inline void PushConstant(T value)
+        constexpr GRACE_INLINE void PushConstant(T value)
         {
           m_FunctionList.at(m_LastFunctionHash).m_ConstantList.emplace_back(value);
         }
 
-        inline std::size_t GetNumConstants() const
+        GRACE_INLINE std::size_t GetNumConstants() const
         {
           return m_FunctionList.at(m_LastFunctionHash).m_ConstantList.size();
         }
 
-        inline std::size_t GetNumOps() const 
+        GRACE_INLINE std::size_t GetNumOps() const 
         {
           return m_FunctionList.at(m_LastFunctionHash).m_OpList.size();
         }
 
         template<typename T>
-        constexpr inline void SetConstantAtIndex(std::size_t index, T value)
+        constexpr GRACE_INLINE void SetConstantAtIndex(std::size_t index, T value)
         {
           m_FunctionList.at(m_LastFunctionHash).m_ConstantList[index] = value;
         }
 
-        [[nodiscard]]
-        inline const std::string& GetLastFunctionName() const 
+        GRACE_NODISCARD
+        GRACE_INLINE const std::string& GetLastFunctionName() const 
         {
           return m_FunctionNames.at(m_LastFunctionHash);
         }
@@ -173,39 +185,39 @@ namespace Grace
         InterpretResult Run(std::int64_t funcNameHash, int startLine, bool verbose);
         void RuntimeError(const std::string& message, InterpretError errorType, int line, const CallStack& callStack);
 
-        [[nodiscard]]
+        GRACE_NODISCARD
         static bool HandleAddition(const Value& c1, const Value& c2, std::vector<Value>& stack);
 
-        [[nodiscard]]
+        GRACE_NODISCARD
         static bool HandleSubtraction(const Value& c1, const Value& c2, std::vector<Value>& stack);
 
-        [[nodiscard]]
+        GRACE_NODISCARD
         static bool HandleDivision(const Value& c1, const Value& c2, std::vector<Value>& stack);
 
-        [[nodiscard]]
+        GRACE_NODISCARD
         static bool HandleMultiplication(const Value& c1, const Value& c2, std::vector<Value>& stack);
 
-        [[nodiscard]]
+        GRACE_NODISCARD
         static bool HandleMod(const Value& c1, const Value& c2, std::vector<Value>& stack);
 
         static void HandleEquality(const Value& c1, const Value& c2, std::vector<Value>& stack, bool equal);
 
-        [[nodiscard]]
+        GRACE_NODISCARD
         static bool HandleLessThan(const Value& c1, const Value& c2, std::vector<Value>& stack);
         
-        [[nodiscard]]
+        GRACE_NODISCARD
         static bool HandleLessEqual(const Value& c1, const Value& c2, std::vector<Value>& stack);
 
-        [[nodiscard]]
+        GRACE_NODISCARD
         static bool HandleGreaterThan(const Value& c1, const Value& c2, std::vector<Value>& stack);
 
-        [[nodiscard]]
+        GRACE_NODISCARD
         static bool HandleGreaterEqual(const Value& c1, const Value& c2, std::vector<Value>& stack);
 
-        [[nodiscard]]
+        GRACE_NODISCARD
         static bool HandlePower(const Value& c1, const Value& c2, std::vector<Value>& stack);
 
-        [[nodiscard]]
+        GRACE_NODISCARD
         static bool HandleNegate(const Value& c, std::vector<Value>& stack);
 
       private:

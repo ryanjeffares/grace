@@ -1,3 +1,14 @@
+/*
+ *  The Grace Programming Language.
+ *
+ *  This file contains the Compiler class, which outputs Grace bytecode based on Tokens provided by the Scanner. 
+ *  
+ *  Copyright (c) 2022 - Present, Ryan Jeffares.
+ *  All rights reserved.
+ *
+ *  For licensing information, see grace.hpp
+ */
+
 #pragma once
 
 #include <stack>
@@ -64,9 +75,9 @@ namespace Grace
          */
         bool Match(Scanner::TokenType expected);
 
-        inline bool HadError() const { return m_HadError; }
+        GRACE_INLINE bool HadError() const { return m_HadError; }
         void Finalise(bool verbose);
-        inline std::string GetCodeAtLine(int line) const
+        GRACE_INLINE std::string GetCodeAtLine(int line) const
         {
           return m_Scanner.GetCodeAtLine(line);
         }

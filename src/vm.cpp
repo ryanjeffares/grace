@@ -1,3 +1,14 @@
+/*
+ *  The Grace Programming Language.
+ *
+ *  This file contains the out of line definitions for the VM class, which executes compiled Grace bytecode, as well as some static helper methods.
+ *
+ *  Copyright (c) 2022 - Present, Ryan Jeffares.
+ *  All rights reserved.
+ *
+ *  For licensing information, see grace.hpp
+ */
+
 #include <cmath>
 #include <cstdlib>
 #include <stack>
@@ -10,7 +21,7 @@
 
 using namespace Grace::VM;
 
-static inline std::tuple<Value, Value> PopLastTwo(std::vector<Value>& stack)
+static GRACE_INLINE std::tuple<Value, Value> PopLastTwo(std::vector<Value>& stack)
 {
   auto c1 = std::move(stack[stack.size() - 2]);
   auto c2 = std::move(stack[stack.size() - 1]);
@@ -19,7 +30,7 @@ static inline std::tuple<Value, Value> PopLastTwo(std::vector<Value>& stack)
   return {std::move(c1), std::move(c2)};
 }
 
-static inline Value Pop(std::vector<Value>& stack)
+static GRACE_INLINE Value Pop(std::vector<Value>& stack)
 {
   auto c = std::move(stack.back());
   stack.pop_back();
@@ -564,8 +575,7 @@ void VM::RuntimeError(const std::string& message, InterpretError errorType, int 
   fmt::print(stderr, fmt::fg(fmt::color::red) | fmt::emphasis::bold, "ERROR: ");
   fmt::print(stderr, "[line {}] {}: {}. Stopping execution.\n", line, errorType, message);
 }
-
-[[nodiscard]] 
+ 
 bool VM::HandleAddition(const Value& c1, const Value& c2, std::vector<Value>& stack)
 {
   switch (c1.GetType()) {
@@ -628,7 +638,6 @@ bool VM::HandleAddition(const Value& c1, const Value& c2, std::vector<Value>& st
   }
 }
 
-[[nodiscard]]
 bool VM::HandleSubtraction(const Value& c1, const Value& c2, std::vector<Value>& stack)
 {
   switch (c1.GetType()) {
@@ -665,7 +674,6 @@ bool VM::HandleSubtraction(const Value& c1, const Value& c2, std::vector<Value>&
   }
 }
 
-[[nodiscard]]
 bool VM::HandleDivision(const Value& c1, const Value& c2, std::vector<Value>& stack)
 {
   switch (c1.GetType()) {
@@ -702,7 +710,6 @@ bool VM::HandleDivision(const Value& c1, const Value& c2, std::vector<Value>& st
   }
 }
 
-[[nodiscard]]
 bool VM::HandleMultiplication(const Value& c1, const Value& c2, std::vector<Value>& stack)
 {
   switch (c1.GetType()) {
@@ -759,7 +766,6 @@ bool VM::HandleMultiplication(const Value& c1, const Value& c2, std::vector<Valu
   }
 }
 
-[[nodiscard]]
 bool VM::HandleMod(const Value& c1, const Value& c2, std::vector<Value>& stack)
 {
   switch (c1.GetType()) {
@@ -911,7 +917,6 @@ void VM::HandleEquality(const Value& c1, const Value& c2, std::vector<Value>& st
   }
 }
 
-[[nodiscard]]
 bool VM::HandleLessThan(const Value& c1, const Value& c2, std::vector<Value>& stack)
 {
   switch (c1.GetType()) {
@@ -955,7 +960,6 @@ bool VM::HandleLessThan(const Value& c1, const Value& c2, std::vector<Value>& st
   }
 }
 
-[[nodiscard]]
 bool VM::HandleLessEqual(const Value& c1, const Value& c2, std::vector<Value>& stack)
 {
   switch (c1.GetType()) {
@@ -999,7 +1003,6 @@ bool VM::HandleLessEqual(const Value& c1, const Value& c2, std::vector<Value>& s
   }
 }
 
-[[nodiscard]]
 bool VM::HandleGreaterThan(const Value& c1, const Value& c2, std::vector<Value>& stack)
 {
   switch (c1.GetType()) {
@@ -1043,7 +1046,7 @@ bool VM::HandleGreaterThan(const Value& c1, const Value& c2, std::vector<Value>&
   }
 }
 
-[[nodiscard]]
+
 bool VM::HandleGreaterEqual(const Value& c1, const Value& c2, std::vector<Value>& stack)
 {
   switch (c1.GetType()) {
@@ -1087,7 +1090,6 @@ bool VM::HandleGreaterEqual(const Value& c1, const Value& c2, std::vector<Value>
   }
 }
 
-[[nodiscard]]
 bool VM::HandlePower(const Value& c1, const Value& c2, std::vector<Value>& stack)
 {
   switch (c1.GetType()) {
@@ -1124,7 +1126,6 @@ bool VM::HandlePower(const Value& c1, const Value& c2, std::vector<Value>& stack
   }
 }
 
-[[nodiscard]]
 bool VM::HandleNegate(const Value& c, std::vector<Value>& stack)
 {
   switch (c.GetType()) {

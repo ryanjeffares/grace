@@ -1,3 +1,14 @@
+/*
+ *  The Grace Programming Language.
+ *
+ *  This file contains the Value class, which represents all values in Grace. 
+ *
+ *  Copyright (c) 2022 - Present, Ryan Jeffares.
+ *  All rights reserved.
+ *
+ *  For licensing information, see grace.hpp
+ */
+
 #pragma once
 
 #include <optional>
@@ -5,6 +16,8 @@
 
 #include "../include/fmt/core.h"
 #include "../include/fmt/format.h"
+
+#include "grace.hpp"
 
 namespace Grace
 {
@@ -141,14 +154,14 @@ namespace Grace
       void Print() const;
       void DebugPrint() const;
 
-      [[nodiscard]] std::string AsString() const;
-      [[nodiscard]] bool AsBool() const;
-      [[nodiscard]] std::tuple<bool, std::optional<std::string>> AsInt(std::int64_t& result) const;
-      [[nodiscard]] std::tuple<bool, std::optional<std::string>> AsDouble(double& result) const;
-      [[nodiscard]] std::tuple<bool, std::optional<std::string>> AsChar(char& result) const;
+      GRACE_NODISCARD std::string AsString() const;
+      GRACE_NODISCARD bool AsBool() const;
+      GRACE_NODISCARD std::tuple<bool, std::optional<std::string>> AsInt(std::int64_t& result) const;
+      GRACE_NODISCARD std::tuple<bool, std::optional<std::string>> AsDouble(double& result) const;
+      GRACE_NODISCARD std::tuple<bool, std::optional<std::string>> AsChar(char& result) const;
 
       template<typename T> 
-      constexpr inline T Get() const
+      constexpr GRACE_INLINE T Get() const
       {
         static_assert(std::is_same<T, std::int64_t>::value || std::is_same<T, double>::value
             || std::is_same<T, bool>::value || std::is_same<T, char>::value
@@ -169,8 +182,8 @@ namespace Grace
         }
       }
 
-      [[nodiscard]]
-      constexpr inline Type GetType() const
+      GRACE_NODISCARD
+      constexpr GRACE_INLINE Type GetType() const
       {
         return m_Type;
       }
