@@ -32,27 +32,47 @@
 # error "C++17 is required"
 #endif
 
-#if defined(__clang__) || defined(__GNUC__)
-# define GRACE_INLINE __attribute__((always_inline))
-#else
-# define GRACE_INLINE inline
+#ifndef GRACE_INLINE
+# if defined(__clang__) || defined(__GNUC__)
+#  define GRACE_INLINE __attribute__((always_inline))
+# else
+#  define GRACE_INLINE inline
+# endif
 #endif
 
-#define GRACE_NODISCARD [[nodiscard]]
+#ifndef GRACE_NODISCARD
+# define GRACE_NODISCARD [[nodiscard]]
+#endif
 
-#define GRACE_UNREACHABLE()                     \
-  do {                                          \
-    assert(false &&                             \
-        "Unreachable code detected");           \
-  } while (false)                               \
+#ifndef FMT_HEADER_ONLY
+# define FMT_HEADER_ONLY
+#endif
 
-#define GRACE_NOT_IMPLEMENTED()                 \
-  do {                                          \
-    assert(false && "Not implemented");         \
-  } while (false)                               \
+#ifndef GRACE_UNREACHABLE
 
-#define GRACE_ASSERT(expression, message)       \
-  do {                                          \
-    assert(expression && message);              \
-  } while (false)                               \
+  #define GRACE_UNREACHABLE()                     \
+    do {                                          \
+      assert(false &&                             \
+          "Unreachable code detected");           \
+    } while (false)                               \
+
+#endif
+
+#ifndef GRACE_NOT_IMPLEMENTED
+
+  #define GRACE_NOT_IMPLEMENTED()                 \
+    do {                                          \
+      assert(false && "Not implemented");         \
+    } while (false)                               \
+
+#endif
+
+#ifndef GRACE_ASSERT
+
+  #define GRACE_ASSERT(expression, message)       \
+    do {                                          \
+      assert(expression && message);              \
+    } while (false)                               \
+
+#endif
 
