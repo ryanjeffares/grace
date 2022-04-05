@@ -110,7 +110,7 @@ namespace Grace
         constexpr GRACE_INLINE int GetColumn() const { return m_Column; }
         GRACE_INLINE const std::string& GetErrorMessage() const { return m_ErrorMessage; }
         constexpr GRACE_INLINE std::size_t GetLength() const { return m_Length; }
-        GRACE_INLINE const std::string_view& GetText() const { return m_Text; }
+        GRACE_INLINE const std::string_view GetText() const { return m_Text.substr(0, m_Length); }
         constexpr const char* GetData() const { return m_Text.data(); }
 
       private:

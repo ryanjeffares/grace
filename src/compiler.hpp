@@ -94,7 +94,7 @@ namespace Grace
 
         /*
          *  Advances the compiler if the current token matches the expected.
-         *  Calls `ErrorAtCurrent()` with the given message otherwise.
+         *  Reports and error with the given message otherwise.
          *
          *  @param expected   The expected TokenType
          *  @param message    Error message to be given on mismatch

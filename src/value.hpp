@@ -201,7 +201,6 @@ namespace Grace
         std::string* m_Str;
         NullValue m_Null;
       } m_Data;
-
     };
   }
 }

@@ -16,4 +16,11 @@ func main():
     println(i);
     max = max - 1;
   end
+
+  for i in 0..100:
+    final first_name = "Ryan";
+    final last_name = "Jeffares";
+    println("Hello, " + first_name + " " + last_name);
+    println("x" + i);
+  end
 end

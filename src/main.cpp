@@ -70,7 +70,7 @@ int main(int argc, const char* argv[])
         Error(e.what());
         return 1;
       }
-      Grace::Compiler::Compile(std::move(inPath.filename()), std::move(inStream.str()), verbose);
+      Grace::Compiler::Compile(inPath.filename(), inStream.str(), verbose);
       break;
   }
 }

@@ -115,14 +115,13 @@ namespace Grace
         struct Function 
         {
           std::int64_t m_NameHash;
-          std::vector<OpLine> m_OpList; 
-          std::vector<Value> m_ConstantList, m_ValueStack;
+          std::vector<Value> m_ValueStack;
           int m_Line, m_Arity;
 
           Function(std::int64_t nameHash, int arity, int line)
             : m_NameHash(nameHash), m_Line(line), m_Arity(arity)
           {
-            m_ValueStack.reserve(8);
+
           }
         };
         
@@ -136,14 +135,14 @@ namespace Grace
 
         GRACE_INLINE void PushOp(Ops op, int line)
         {
-          m_FunctionList.at(m_LastFunctionHash).m_OpList.emplace_back(op, line);
+          m_FunctionOpLists.at(m_LastFunctionHash).emplace_back(op, line);
         }
 
         void PrintOps() const
         {
           for (const auto& [name, func] : m_FunctionList) {
             fmt::print("<function `{}`>\n", m_FunctionNames.at(name));
-            for (const auto o : func.m_OpList) {
+            for (const auto o : m_FunctionOpLists.at(name)) {
               fmt::print("\t{}\n", o.m_Op);
             }
           }
@@ -152,23 +151,23 @@ namespace Grace
         template<typename T>
         constexpr GRACE_INLINE void PushConstant(T value)
         {
-          m_FunctionList.at(m_LastFunctionHash).m_ConstantList.emplace_back(value);
+          m_FunctionConstantLists.at(m_LastFunctionHash).emplace_back(value);
         }
 
         GRACE_INLINE std::size_t GetNumConstants() const
         {
-          return m_FunctionList.at(m_LastFunctionHash).m_ConstantList.size();
+          return m_FunctionConstantLists.at(m_LastFunctionHash).size();
         }
 
         GRACE_INLINE std::size_t GetNumOps() const 
         {
-          return m_FunctionList.at(m_LastFunctionHash).m_OpList.size();
+          return m_FunctionOpLists.at(m_LastFunctionHash).size();
         }
 
         template<typename T>
         constexpr GRACE_INLINE void SetConstantAtIndex(std::size_t index, T value)
         {
-          m_FunctionList.at(m_LastFunctionHash).m_ConstantList[index] = value;
+          m_FunctionConstantLists.at(m_LastFunctionHash)[index] = value;
         }
 
         GRACE_NODISCARD
@@ -224,6 +223,10 @@ namespace Grace
 
         std::unordered_map<std::int64_t, Function> m_FunctionList;
         std::unordered_map<std::int64_t, std::string> m_FunctionNames;
+
+        std::unordered_map<std::int64_t, std::vector<OpLine>> m_FunctionOpLists;
+        std::unordered_map<std::int64_t, std::vector<Value>> m_FunctionConstantLists;
+
         std::int64_t m_LastFunctionHash;
         Compiler::Compiler& m_Compiler;
         std::hash<std::string> m_Hasher;
