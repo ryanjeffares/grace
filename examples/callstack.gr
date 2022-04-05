@@ -11,5 +11,9 @@ func outer(n):
 end 
 
 func main():
-  outer(100);
+  var i = "Ryan";
+  for i in 0..10:
+  println(i);
+  end 
+  //outer(100);
 end

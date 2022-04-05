@@ -36,6 +36,10 @@ cmake --build .
 This will build the `grace` executable, which you can add to your path or move somewhere that is on your path. Full install process as well as documentation is WIP.
 
 ## Alpha Release Roadmap
+* Fix compiler errors causing map exceptions
+* Experiment with `std::variant` over C style unions
+* Experiment with string interning
+* Destroy locals made in nested scopes
 * Performance
   * Returning from functions is a bottleneck due to popping the function 
   * Consider using raw arrays over vectors for the op and constant list
@@ -47,6 +51,11 @@ This will build the `grace` executable, which you can add to your path or move s
 * Global const fields 
 * Imports 
 * Extension methods
+* Collections
+  * Lists 
+  * Hash table 
+  * Immutable set 
+  * Need iteration
 * Standard library
 * Filesystem handling
 * Install process 
@@ -57,3 +66,4 @@ This will build the `grace` executable, which you can add to your path or move s
 * Optional type annotations for use by a static analyzer
 * Package management similar to cargo - new projects, type checking, adding libraries, tests
 * Optimisation mode which allows the bytecode compiler to perform optimisations such as loop unrolling, constant folding, dead code elimination - slower initial compile time in return for better run time performance for scripts that will run for a long time
+

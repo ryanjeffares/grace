@@ -29,7 +29,7 @@
 #include <cassert>
 
 #if (__cplusplus < 201703L)
-# error C++17 is required
+# error "C++17 is required"
 #endif
 
 #if defined(__clang__) || defined(__GNUC__)
