@@ -1,3 +1,14 @@
+/*
+ *  The Grace Programming Language.
+ *
+ *  This file contains the Scanner class, which produces Tokens based on inputted source code. 
+ *  
+ *  Copyright (c) 2022 - Present, Ryan Jeffares.
+ *  All rights reserved.
+ *
+ *  For licensing information, see grace.hpp
+ */
+
 #include <cstddef>
 #include <unordered_map>
 #include <optional>
@@ -7,6 +18,8 @@
 #include <vector>
 
 #include "../include/fmt/format.h"
+
+#include "grace.hpp"
 
 namespace Grace
 {
@@ -92,12 +105,12 @@ namespace Grace
         Token(TokenType, int line, int column, const std::string& errorMessage);
 
         std::string ToString() const;
-        constexpr inline TokenType GetType() const { return m_Type; }
-        constexpr inline int GetLine() const { return m_Line; }
-        constexpr inline int GetColumn() const { return m_Column; }
-        inline const std::string& GetErrorMessage() const { return m_ErrorMessage; }
-        constexpr inline std::size_t GetLength() const { return m_Length; }
-        inline const std::string_view& GetText() const { return m_Text; }
+        constexpr GRACE_INLINE TokenType GetType() const { return m_Type; }
+        constexpr GRACE_INLINE int GetLine() const { return m_Line; }
+        constexpr GRACE_INLINE int GetColumn() const { return m_Column; }
+        GRACE_INLINE const std::string& GetErrorMessage() const { return m_ErrorMessage; }
+        constexpr GRACE_INLINE std::size_t GetLength() const { return m_Length; }
+        GRACE_INLINE const std::string_view& GetText() const { return m_Text; }
         constexpr const char* GetData() const { return m_Text.data(); }
 
       private:

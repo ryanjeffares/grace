@@ -1,3 +1,14 @@
+/*
+ *  The Grace Programming Language.
+ *
+ *  This file contains the out of line definitions for the Value class, which represents all values in Grace. 
+ *
+ *  Copyright (c) 2022 - Present, Ryan Jeffares.
+ *  All rights reserved.
+ *
+ *  For licensing information, see grace.hpp
+ */
+
 #include <type_traits>
 
 #include "value.hpp"
@@ -76,7 +87,6 @@ void Value::DebugPrint() const
   }
 }
 
-[[nodiscard]]
 std::string Value::AsString() const
 {
   switch (m_Type)
@@ -98,7 +108,6 @@ std::string Value::AsString() const
   }
 }
 
-[[nodiscard]]
 bool Value::AsBool() const
 {
   switch (m_Type)
@@ -119,8 +128,7 @@ bool Value::AsBool() const
       return false;
   }
 }
-
-[[nodiscard]] 
+ 
 std::tuple<bool, std::optional<std::string>> Value::AsInt(std::int64_t& result) const
 {
   switch (m_Type) {
@@ -155,8 +163,7 @@ std::tuple<bool, std::optional<std::string>> Value::AsInt(std::int64_t& result) 
     }
   }
 }
-
-[[nodiscard]] 
+ 
 std::tuple<bool, std::optional<std::string>> Value::AsDouble(double& result) const
 {
   switch (m_Type) {
@@ -179,7 +186,7 @@ std::tuple<bool, std::optional<std::string>> Value::AsDouble(double& result) con
       } catch (const std::invalid_argument& e) {
         return {false, fmt::format("Could not convert '{}' to int: {}", *m_Data.m_Str, e.what())};
       } catch (const std::out_of_range&) {
-        return {false, "Int represented by string was out of range"};
+        return {false, "Float represented by string was out of range"};
       }
     }
     case Type::Char: {
@@ -191,8 +198,7 @@ std::tuple<bool, std::optional<std::string>> Value::AsDouble(double& result) con
     }
   } 
 }
-
-[[nodiscard]] 
+ 
 std::tuple<bool, std::optional<std::string>> Value::AsChar(char& result) const
 {
   switch (m_Type) {
@@ -205,7 +211,7 @@ std::tuple<bool, std::optional<std::string>> Value::AsChar(char& result) const
       return {true, {}};
     }
     case Type::Bool: {
-      result = m_Data.m_Bool ? 1.0 : 0.0;
+      result = static_cast<char>(m_Data.m_Bool);
       return {true, {}};
     }
     case Type::String: {
