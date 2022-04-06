@@ -115,7 +115,6 @@ namespace Grace
         struct Function 
         {
           std::int64_t m_NameHash;
-          std::vector<Value> m_ValueStack;
           int m_Line, m_Arity;
 
           Function(std::int64_t nameHash, int arity, int line)

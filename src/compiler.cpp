@@ -596,7 +596,6 @@ void Compiler::ForStatement()
     }
     auto localId = m_Locals.at(localName).second;
     EmitConstant(localId);
-    EmitOp(Ops::LoadConstant, line);
     EmitOp(Ops::LoadLocal, line);
     EmitConstant(iteratorId);
     EmitOp(Ops::AssignLocal, line);
@@ -680,7 +679,6 @@ void Compiler::ForStatement()
   }
 
   EmitConstant(iteratorId);
-  EmitOp(Ops::LoadConstant, line);
   EmitOp(Ops::LoadLocal, line);
   if (increment.index() == 0) {
     EmitConstant(std::get<0>(increment));
@@ -693,7 +691,6 @@ void Compiler::ForStatement()
   EmitOp(Ops::AssignLocal, line);
 
   EmitConstant(iteratorId);
-  EmitOp(Ops::LoadConstant, line);
   EmitOp(Ops::LoadLocal, line);
 
   switch (max.index()) {
@@ -707,7 +704,6 @@ void Compiler::ForStatement()
       break;
     case 2:
       EmitConstant(std::get<2>(max));
-      EmitOp(Ops::LoadConstant, line);
       EmitOp(Ops::LoadLocal, line);
       break;
   }
@@ -1098,6 +1094,11 @@ void Compiler::Call(bool canAssign)
       // if its not a reassignment, we are trying to load its value 
       // Primary() has already but the variable's id on the stack
       if (!Check(TokenType::Equal)) {
+        if (m_Locals.find(prevText) == m_Locals.end()) {
+          MessageAtPrevious(fmt::format("Cannot find variable '{}' in this scope", prevText), LogLevel::Error);
+          return;
+        }
+        EmitConstant(m_Locals.at(prevText).second);
         EmitOp(Ops::LoadLocal, prev.GetLine());
       }
     }
@@ -1153,15 +1154,8 @@ void Compiler::Primary(bool canAssign)
   } else if (Match(TokenType::Char)) {
     Char();
   } else if (Match(TokenType::Identifier)) {
-    auto identName = std::string(m_Previous.value().GetText());
-    if (m_Locals.find(identName) != m_Locals.end()) {
-      // local variable access or reassignment, put its ID on the stack 
-      auto localId = m_Locals.at(identName).second;
-      EmitConstant(localId);
-      EmitOp(Ops::LoadConstant, m_Previous.value().GetLine());
-    }
-    // if its not a local, it might be a function
-    // do nothing here
+    // do nothing, but consume the identifier and return
+    // caller functions will handle it
   } else if (Match(TokenType::Null)) {
     EmitConstant((void*)nullptr);
     EmitOp(Ops::LoadConstant, m_Previous.value().GetLine());

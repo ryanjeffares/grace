@@ -119,11 +119,12 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
   {
     Function& m_Function;
     std::size_t m_OpIndex, m_ConstantIndex;
-    std::vector<Value> m_Locals;
+    std::vector<Value> m_Locals, m_ValueStack;
 
     FunctionInfo(Function& func, std::size_t opIdx, std::size_t constIdx)
       : m_Function(func), m_OpIndex(opIdx), m_ConstantIndex(constIdx)
     {
+      m_ValueStack.reserve(8);
     }
   };
 
@@ -135,7 +136,7 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
   auto constantCurrent = &funcInfoStack.back().m_ConstantIndex;
   auto opList = &m_FunctionOpLists.at(funcNameHash);
   auto constantList = &m_FunctionConstantLists.at(funcNameHash);
-  auto valueStack = &funcInfoStack.back().m_Function.m_ValueStack;
+  auto valueStack = &funcInfoStack.back().m_ValueStack;
   auto localsList = &funcInfoStack.back().m_Locals;
 
   CallStack callStack;
@@ -307,7 +308,7 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
         valueStack->push_back(constantList->at((*constantCurrent)++));
         break;
       case Ops::LoadLocal: {
-        auto id = std::move(Pop(*valueStack)).Get<std::int64_t>();
+        auto id = constantList->at((*constantCurrent)++).Get<std::int64_t>();
         auto value = localsList->at(id);
         valueStack->push_back(value);
         break;
@@ -363,11 +364,11 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
         
         localsList->resize(arity);
         for (auto i = 0; i < arity; i++) {
-          localsList->at(i) = std::move(valueStack->back());
+          localsList->at(arity - i - 1) = std::move(valueStack->back());
           valueStack->pop_back();
         }
 
-        valueStack = &funcInfoStack.back().m_Function.m_ValueStack;
+        valueStack = &funcInfoStack.back().m_ValueStack;
         funcNameHash = calleeNameHash;
 
         break;
@@ -405,6 +406,8 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
         PRINT_LOCAL_MEMORY();
 #endif
         
+        GRACE_ASSERT(valueStack->empty(), "Unhandled data on the stack returning from function");
+
         // hot path here
         funcInfoStack.pop_back();
         callStack.pop_back();
@@ -412,7 +415,7 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
         // reassign pointers
         opCurrent = &funcInfoStack.back().m_OpIndex;
         constantCurrent = &funcInfoStack.back().m_ConstantIndex;
-        valueStack = &funcInfoStack.back().m_Function.m_ValueStack;
+        valueStack = &funcInfoStack.back().m_ValueStack;
         localsList = &funcInfoStack.back().m_Locals;
 
         funcNameHash = funcInfoStack.back().m_Function.m_NameHash;
