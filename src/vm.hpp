@@ -66,6 +66,7 @@ namespace Grace
       NotEqual,
       Or,
       Pop,
+      PopLocal,
       Pow,
       Print,
       PrintEmptyLine,
@@ -273,6 +274,7 @@ struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
       case Ops::NotEqual: name = "Ops::NotEqual"; break;
       case Ops::Or: name = "Ops::Or"; break;
       case Ops::Pop: name = "Ops::Pop"; break;
+      case Ops::PopLocal: name = "Ops::PopLocal"; break;
       case Ops::Pow: name = "Ops::Pow"; break;
       case Ops::Print: name = "Ops::Print"; break;
       case Ops::PrintEmptyLine: name = "Ops::PrintEmptyLine"; break;

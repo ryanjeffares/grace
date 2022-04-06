@@ -316,6 +316,9 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
       case Ops::Pop:
         valueStack->pop_back();
         break;
+      case Ops::PopLocal:
+        localsList->pop_back();
+        break;
       case Ops::Print:
         valueStack->back().Print();
         break;

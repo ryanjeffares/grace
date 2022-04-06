@@ -1,0 +1,23 @@
+func main():
+  
+  var hello = "Hello";
+
+  if true:
+    // var hello = 'h' + 'e' + 'l' + 'l' + 'o'; // compiler error, hello already exists
+    var a = "Ryan";
+    var b = 2;
+    var c = false;
+  end // a, b, and c are deleted here
+
+  // println(a); // compiler error - a has been deleted
+
+  // can reuse names in new nested scope
+  if true:
+    var a = "Ryan";
+    var b = 2;
+    var c = false;
+  end // a, b, and c are deleted here
+
+  assert(hello == "Hello");
+
+end

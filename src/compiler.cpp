@@ -544,6 +544,11 @@ void Compiler::ForStatement()
 
   m_BreakIdxPairs.emplace();
 
+  std::vector<std::string> startLocalsList;
+  for (const auto& [name, _] : m_Locals) {
+    startLocalsList.push_back(name);
+  }
+
   Consume(TokenType::Identifier, "Expected identifier after `for`");
   auto iteratorName = std::string(m_Previous.value().GetText());
   std::int64_t iteratorId;
@@ -723,6 +728,15 @@ void Compiler::ForStatement()
     m_BreakIdxPairs.pop();
   }
 
+  for (auto it = m_Locals.begin(); it != m_Locals.end();) {
+    if (std::find(startLocalsList.begin(), startLocalsList.end(), it->first) == startLocalsList.end()) {
+      EmitOp(Ops::PopLocal, line);
+      it = m_Locals.erase(it);
+    } else {
+      it++;
+    }
+  }
+
   m_CurrentContext = previousContext;
 }
 
@@ -743,6 +757,11 @@ void Compiler::IfStatement()
 
   // constant index, op index
   std::vector<std::tuple<std::int64_t, std::int64_t>> endJumpIndexPairs;
+
+  std::vector<std::string> startLocalsList;
+  for (const auto& [name, _] : m_Locals) {
+    startLocalsList.push_back(name);
+  }
 
   bool topJumpSet = false;
   bool elseBlockFound = false;
@@ -815,6 +834,16 @@ void Compiler::IfStatement()
   if (!topJumpSet) {
     m_Vm.SetConstantAtIndex(topConstantIdxToJump, numConstants);
     m_Vm.SetConstantAtIndex(topOpIdxToJump, numOps);
+  }
+
+  auto line = m_Previous.value().GetLine();
+  for (auto it = m_Locals.begin(); it != m_Locals.end();) {
+    if (std::find(startLocalsList.begin(), startLocalsList.end(), it->first) == startLocalsList.end()) {
+      EmitOp(Ops::PopLocal, line);
+      it = m_Locals.erase(it);
+    } else {
+      it++;
+    }
   }
 }
 
@@ -901,6 +930,11 @@ void Compiler::WhileStatement()
 
   Consume(TokenType::Colon, "Expected ':' after expression");
 
+  std::vector<std::string> startLocalsList;
+  for (const auto& [name, _] : m_Locals) {
+    startLocalsList.push_back(name);
+  }
+
   while (!Match(TokenType::End)) {
     Declaration();
     if (Match(TokenType::EndOfFile)) {
@@ -928,6 +962,15 @@ void Compiler::WhileStatement()
     m_BreakIdxPairs.pop();
   }
   
+  for (auto it = m_Locals.begin(); it != m_Locals.end();) {
+    if (std::find(startLocalsList.begin(), startLocalsList.end(), it->first) == startLocalsList.end()) {
+      EmitOp(Ops::PopLocal, line);
+      it = m_Locals.erase(it);
+    } else {
+      it++;
+    }
+  }
+
   m_CurrentContext = previousContext;
 }
 
