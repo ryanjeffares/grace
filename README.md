@@ -37,8 +37,8 @@ This will build the `grace` executable, which you can add to your path or move s
 
 ## Alpha Release Roadmap
 * Experiment with string interning
-* Destroy locals made in nested scopes
-* Refactor + fix reassigning locals
+* Investigate segfault in callstack.gr 
+* Disallow calling main function
 * Performance
   * Returning from functions is a bottleneck due to popping the function 
   * Consider using raw arrays over vectors for the op and constant list

@@ -1,5 +1,10 @@
 func inner(n):
-  println(true * n);  // will error, testing callstack print upon error
+println(n);
+  if n > 100:
+    println(true * n);  // will error, testing callstack print upon error
+  else:
+    inner(n + 1);
+  end 
 end 
 
 func middle(n):
@@ -11,5 +16,5 @@ func outer(n):
 end 
 
 func main():
-  outer(100);
+  outer(0);
 end

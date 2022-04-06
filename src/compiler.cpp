@@ -309,7 +309,7 @@ void Compiler::FuncDeclaration()
 
   Consume(TokenType::Colon, "Expected ':' after function signature");
 
-  if (!m_Vm.AddFunction(name, m_Previous.value().GetLine(), parameters.size())) {
+  if (!m_Vm.AddFunction(name, m_Previous.value().GetLine(), static_cast<int>(parameters.size()))) {
     MessageAtPrevious("Duplicate function definitions", LogLevel::Error);
     return;
   }

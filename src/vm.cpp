@@ -147,7 +147,7 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
 
     switch (op) {
       case Ops::Add: {
-        auto [c1, c2] = std::move(PopLastTwo(*valueStack));
+        auto [c1, c2] = PopLastTwo(*valueStack);
         if (!HandleAddition(c1, c2, *valueStack)) {
           RuntimeError(fmt::format("cannot add `{}` to `{}`", c2.GetType(), c1.GetType()), 
               InterpretError::InvalidOperand, line, callStack);
@@ -159,7 +159,7 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
         break;
       }
       case Ops::Subtract: {
-        auto [c1, c2] = std::move(PopLastTwo(*valueStack));
+        auto [c1, c2] = PopLastTwo(*valueStack);
         if (!HandleSubtraction(c1, c2, *valueStack)) {
           RuntimeError(fmt::format("cannot subtract `{}` from `{}`", c2.GetType(), c1.GetType()), 
               InterpretError::InvalidOperand, line, callStack);
@@ -171,7 +171,7 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
         break;
       }
       case Ops::Multiply: {
-        auto [c1, c2] = std::move(PopLastTwo(*valueStack));
+        auto [c1, c2] = PopLastTwo(*valueStack);
         if (!HandleMultiplication(c1, c2, *valueStack)) {
           RuntimeError(fmt::format("cannot multiply `{}` by `{}`", c1.GetType(), c2.GetType()), 
               InterpretError::InvalidOperand, line, callStack);
@@ -183,7 +183,7 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
         break;
       }
       case Ops::Mod: {
-        auto [c1, c2] = std::move(PopLastTwo(*valueStack));
+        auto [c1, c2] = PopLastTwo(*valueStack);
         if (!HandleMod(c1, c2, *valueStack)) {
           RuntimeError(fmt::format("cannot multiply `{}` by `{}`", c1.GetType(), c2.GetType()), 
               InterpretError::InvalidOperand, line, callStack);
@@ -195,7 +195,7 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
         break;
       }
       case Ops::Divide: {
-        auto [c1, c2] = std::move(PopLastTwo(*valueStack));
+        auto [c1, c2] = PopLastTwo(*valueStack);
         if (!HandleDivision(c1, c2, *valueStack)) {
           RuntimeError(fmt::format("cannot divide `{}` by `{}`", c1.GetType(), c2.GetType()), 
               InterpretError::InvalidOperand, line, callStack);
@@ -207,27 +207,27 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
         break;
       }
       case Ops::And: {
-        auto [c1, c2] = std::move(PopLastTwo(*valueStack));
+        auto [c1, c2] = PopLastTwo(*valueStack);
         valueStack->emplace_back(c1.AsBool() && c2.AsBool());
         break;
       }
       case Ops::Or: {
-        auto [c1, c2] = std::move(PopLastTwo(*valueStack));
+        auto [c1, c2] = PopLastTwo(*valueStack);
         valueStack->emplace_back(c1.AsBool() || c2.AsBool());
         break;
       }
       case Ops::Equal: {
-        auto [c1, c2] = std::move(PopLastTwo(*valueStack));
+        auto [c1, c2] = PopLastTwo(*valueStack);
         HandleEquality(c1, c2, *valueStack, true);
         break;
       }
       case Ops::NotEqual: {
-        auto [c1, c2] = std::move(PopLastTwo(*valueStack));
+        auto [c1, c2] = PopLastTwo(*valueStack);
         HandleEquality(c1, c2, *valueStack, false);
         break;
       }
       case Ops::Greater: {
-        auto [c1, c2] = std::move(PopLastTwo(*valueStack));
+        auto [c1, c2] = PopLastTwo(*valueStack);
         if (!HandleGreaterThan(c1, c2, *valueStack)) {
           RuntimeError(fmt::format("cannot compare `{}` with `{}`", c1.GetType(), c2.GetType()), 
               InterpretError::InvalidOperand, line, callStack);
@@ -239,7 +239,7 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
         break;
       }
       case Ops::GreaterEqual: {
-        auto [c1, c2] = std::move(PopLastTwo(*valueStack));
+        auto [c1, c2] = PopLastTwo(*valueStack);
         if (!HandleGreaterEqual(c1, c2, *valueStack)) {
           RuntimeError(fmt::format("cannot compare `{}` with `{}`", c1.GetType(), c2.GetType()), 
               InterpretError::InvalidOperand, line, callStack);
@@ -251,7 +251,7 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
         break;
       }
       case Ops::Less: {
-        auto [c1, c2] = std::move(PopLastTwo(*valueStack));
+        auto [c1, c2] = PopLastTwo(*valueStack);
         if (!HandleLessThan(c1, c2, *valueStack)) {
           RuntimeError(fmt::format("cannot compare `{}` with `{}`", c1.GetType(), c2.GetType()), 
               InterpretError::InvalidOperand, line, callStack);
@@ -263,7 +263,7 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
         break;
       }
       case Ops::LessEqual: {
-        auto [c1, c2] = std::move(PopLastTwo(*valueStack));
+        auto [c1, c2] = PopLastTwo(*valueStack);
         if (!HandleLessEqual(c1, c2, *valueStack)) {
           RuntimeError(fmt::format("cannot compare `{}` with `{}`", c1.GetType(), c2.GetType()), 
               InterpretError::InvalidOperand, line, callStack);
@@ -275,7 +275,7 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
         break;
       }
       case Ops::Pow: {
-        auto [c1, c2] = std::move(PopLastTwo(*valueStack));
+        auto [c1, c2] = PopLastTwo(*valueStack);
         if (!HandlePower(c1, c2, *valueStack)) {
           RuntimeError(fmt::format("cannot power `{}` with `{}`", c1.GetType(), c2.GetType()),
             InterpretError::InvalidOperand, line, callStack);
@@ -287,7 +287,7 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
         break;
       }
       case Ops::Negate: {
-        auto c = std::move(Pop(*valueStack));
+        auto c = Pop(*valueStack);
         if (!HandleNegate(c, *valueStack)) {
           RuntimeError(fmt::format("Cannot negate `{}`", c.GetType()), 
               InterpretError::InvalidType, line, callStack);
@@ -299,7 +299,7 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
         break;
       }
       case Ops::Not: {
-        auto c = std::move(Pop(*valueStack));
+        auto c = Pop(*valueStack);
         valueStack->emplace_back(!(c.AsBool()));
         break;
       }
@@ -377,7 +377,7 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
         break;
       }
       case Ops::AssignLocal: {
-        auto value = std::move(Pop(*valueStack));
+        auto value = Pop(*valueStack);
         localsList->at(constantList->at((*constantCurrent)++).Get<std::int64_t>()) = value;
         break;
       }
@@ -395,7 +395,7 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
       case Ops::JumpIfFalse: {
         auto constIdx = constantList->at((*constantCurrent)++).Get<std::int64_t>(); 
         auto opIdx = constantList->at((*constantCurrent)++).Get<std::int64_t>(); 
-        auto condition = std::move(Pop(*valueStack));
+        auto condition = Pop(*valueStack);
         if (!condition.AsBool()) {
           *opCurrent = opIdx;
           *constantCurrent = constIdx;
@@ -403,7 +403,7 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
         break;
       }
       case Ops::Return: {
-        auto returnValue = std::move(Pop(*valueStack));
+        auto returnValue = Pop(*valueStack);
 
 #ifdef GRACE_DEBUG
         PRINT_LOCAL_MEMORY();
@@ -432,7 +432,7 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
         break;
       }
       case Ops::CastAsInt: {
-        auto value = std::move(Pop(*valueStack));
+        auto value = Pop(*valueStack);
         std::int64_t result;
         auto [success, message] = value.AsInt(result);
         if (success) {
@@ -447,7 +447,7 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
         break;
       }
       case Ops::CastAsFloat: {
-        auto value = std::move(Pop(*valueStack));
+        auto value = Pop(*valueStack);
         double result;
         auto [success, message] = value.AsDouble(result);
         if (success) {
@@ -462,17 +462,17 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
         break;
       }
       case Ops::CastAsBool: {
-        auto value = std::move(Pop(*valueStack));
+        auto value = Pop(*valueStack);
         valueStack->emplace_back(value.AsBool());
         break;
       }
       case Ops::CastAsString: {
-        auto value = std::move(Pop(*valueStack));
+        auto value = Pop(*valueStack);
         valueStack->emplace_back(value.AsString());
         break;
       }
       case Ops::CastAsChar: {
-        auto value = std::move(Pop(*valueStack));
+        auto value = Pop(*valueStack);
         char result;
         auto [success, message] = value.AsChar(result);
         if (success) {
@@ -488,11 +488,11 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
       }
       case Ops::CheckType: {
         auto typeIdx = constantList->at((*constantCurrent)++).Get<std::int64_t>();
-        valueStack->emplace_back(typeIdx == static_cast<std::int64_t>(std::move(Pop(*valueStack)).GetType()));
+        valueStack->emplace_back(typeIdx == static_cast<std::int64_t>(Pop(*valueStack).GetType()));
         break;
       }
       case Ops::Assert: {
-        auto condition = std::move(Pop(*valueStack));
+        auto condition = Pop(*valueStack);
         if (!condition.AsBool()) {
           RuntimeError("Assertion failed", InterpretError::AssertionFailed, line, callStack);
 #ifdef GRACE_DEBUG
@@ -503,7 +503,7 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
         break;
       }
       case Ops::AssertWithMessage: {
-        auto condition = std::move(Pop(*valueStack));
+        auto condition = Pop(*valueStack);
         auto message = constantList->at((*constantCurrent)++).Get<std::string>();
         if (!condition.AsBool()) {
           RuntimeError(message, InterpretError::AssertionFailed, line, callStack);
