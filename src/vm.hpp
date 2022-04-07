@@ -18,9 +18,9 @@
 #include <vector>
 #include <type_traits>
 
-#include "../include/fmt/color.h"
-#include "../include/fmt/core.h"
-#include "../include/fmt/format.h"
+#include <fmt/color.h>
+#include <fmt/core.h>
+#include <fmt/format.h>
 
 #include "grace.hpp"
 #include "value.hpp"

@@ -14,8 +14,8 @@
 #include <optional>
 #include <string>
 
-#include "../include/fmt/core.h"
-#include "../include/fmt/format.h"
+#include <fmt/core.h>
+#include <fmt/format.h>
 
 #include "grace.hpp"
 

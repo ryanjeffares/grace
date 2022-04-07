@@ -14,8 +14,8 @@
 #include <fstream>
 #include <sstream>
 
-#include "../include/fmt/core.h" 
-#include "../include/fmt/color.h"
+#include <fmt/core.h>
+#include <fmt/color.h>
 
 #include "grace.hpp"
 #include "compiler.hpp"
