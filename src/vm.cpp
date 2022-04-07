@@ -61,6 +61,8 @@ bool VM::AddFunction(const std::string& name, int line, int arity)
   if (res) {
     m_LastFunctionHash = hash;
     m_FunctionNames.emplace(hash, name);
+    m_FunctionConstantLists.emplace(hash, std::vector<Value>());
+    m_FunctionOpLists.emplace(hash, std::vector<OpLine>());
     return true;
   }
   return false;
@@ -117,11 +119,12 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
   {
     Function& m_Function;
     std::size_t m_OpIndex, m_ConstantIndex;
-    std::vector<Value> m_Locals;
+    std::vector<Value> m_Locals, m_ValueStack;
 
     FunctionInfo(Function& func, std::size_t opIdx, std::size_t constIdx)
       : m_Function(func), m_OpIndex(opIdx), m_ConstantIndex(constIdx)
     {
+      m_ValueStack.reserve(8);
     }
   };
 
@@ -131,21 +134,16 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
 
   auto opCurrent = &funcInfoStack.back().m_OpIndex;
   auto constantCurrent = &funcInfoStack.back().m_ConstantIndex;
-  auto opList = &funcInfoStack.back().m_Function.m_OpList;
-  auto constantList = &funcInfoStack.back().m_Function.m_ConstantList;
-  auto valueStack = &funcInfoStack.back().m_Function.m_ValueStack;
+  auto opList = &m_FunctionOpLists.at(funcNameHash);
+  auto constantList = &m_FunctionConstantLists.at(funcNameHash);
+  auto valueStack = &funcInfoStack.back().m_ValueStack;
   auto localsList = &funcInfoStack.back().m_Locals;
 
   CallStack callStack;
-  callStack.emplace_back(
-      static_cast<std::int64_t>(m_Hasher("file")),
-      static_cast<std::int64_t>(m_Hasher("main")),
-      1
-  );
+  callStack.emplace_back(static_cast<std::int64_t>(m_Hasher("file")), funcNameHash, 1);
 
   while (*opCurrent < opList->size()) {
-    auto [op, line] = opList->at(*opCurrent);
-    (*opCurrent)++;
+    auto [op, line] = opList->at((*opCurrent)++);
 
     switch (op) {
       case Ops::Add: {
@@ -210,7 +208,7 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
       }
       case Ops::And: {
         auto [c1, c2] = PopLastTwo(*valueStack);
-        valueStack->emplace_back(c1.AsBool() == c2.AsBool());
+        valueStack->emplace_back(c1.AsBool() && c2.AsBool());
         break;
       }
       case Ops::Or: {
@@ -307,18 +305,19 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
       }
       case Ops::LoadConstant:
         // hot path here
-        valueStack->push_back(constantList->at(*constantCurrent));
-        (*constantCurrent)++;
+        valueStack->push_back(constantList->at((*constantCurrent)++));
         break;
       case Ops::LoadLocal: {
-        auto id = valueStack->back().Get<std::int64_t>();
-        valueStack->pop_back();
+        auto id = constantList->at((*constantCurrent)++).Get<std::int64_t>();
         auto value = localsList->at(id);
         valueStack->push_back(value);
         break;
       }
       case Ops::Pop:
         valueStack->pop_back();
+        break;
+      case Ops::PopLocal:
+        localsList->pop_back();
         break;
       case Ops::Print:
         valueStack->back().Print();
@@ -357,28 +356,31 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
         }
 
         callStack.emplace_back(funcNameHash, calleeNameHash, line);
+
+        std::vector<Value> args(arity);
+        for (auto i = 0; i < arity; i++) {
+          args[arity - i - 1] = Pop(*valueStack);
+        }
+
+        // pointers to members of current FunctionInfo may be invalidated here
         funcInfoStack.emplace_back(calleeFunc, 0, 0);
 
         // reassign pointers
         opCurrent = &funcInfoStack.back().m_OpIndex;
         constantCurrent = &funcInfoStack.back().m_ConstantIndex;
-        opList = &funcInfoStack.back().m_Function.m_OpList;
-        constantList = &funcInfoStack.back().m_Function.m_ConstantList;
-        localsList = &funcInfoStack.back().m_Locals;
+        opList = &m_FunctionOpLists.at(calleeNameHash);
+        constantList = &m_FunctionConstantLists.at(calleeNameHash);
         
-        for (auto i = 0; i < arity; i++) {
-          localsList->insert(localsList->begin(), std::move(valueStack->back()));
-          valueStack->pop_back();
-        }
-
-        valueStack = &funcInfoStack.back().m_Function.m_ValueStack;
+        localsList = &funcInfoStack.back().m_Locals;
+        localsList->swap(args);
+        valueStack = &funcInfoStack.back().m_ValueStack;
+        
         funcNameHash = calleeNameHash;
 
         break;
       }
       case Ops::AssignLocal: {
-        auto value = std::move(valueStack->back());
-        valueStack->pop_back();
+        auto value = Pop(*valueStack);
         localsList->at(constantList->at((*constantCurrent)++).Get<std::int64_t>()) = value;
         break;
       }
@@ -404,13 +406,14 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
         break;
       }
       case Ops::Return: {
-        auto returnValue = std::move(valueStack->back());
-        valueStack->pop_back();
+        auto returnValue = Pop(*valueStack);
 
 #ifdef GRACE_DEBUG
         PRINT_LOCAL_MEMORY();
 #endif
         
+        GRACE_ASSERT(valueStack->empty(), "Unhandled data on the stack returning from function");
+
         // hot path here
         funcInfoStack.pop_back();
         callStack.pop_back();
@@ -418,12 +421,12 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
         // reassign pointers
         opCurrent = &funcInfoStack.back().m_OpIndex;
         constantCurrent = &funcInfoStack.back().m_ConstantIndex;
-        opList = &funcInfoStack.back().m_Function.m_OpList;
-        constantList = &funcInfoStack.back().m_Function.m_ConstantList;
-        valueStack = &funcInfoStack.back().m_Function.m_ValueStack;
+        valueStack = &funcInfoStack.back().m_ValueStack;
         localsList = &funcInfoStack.back().m_Locals;
 
         funcNameHash = funcInfoStack.back().m_Function.m_NameHash;
+        opList = &m_FunctionOpLists.at(funcNameHash);
+        constantList = &m_FunctionConstantLists.at(funcNameHash);
         valueStack->push_back(std::move(returnValue));
 
 #ifdef GRACE_DEBUG
@@ -432,8 +435,7 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
         break;
       }
       case Ops::CastAsInt: {
-        auto value = std::move(valueStack->back());
-        valueStack->pop_back();
+        auto value = Pop(*valueStack);
         std::int64_t result;
         auto [success, message] = value.AsInt(result);
         if (success) {
@@ -448,8 +450,7 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
         break;
       }
       case Ops::CastAsFloat: {
-        auto value = std::move(valueStack->back());
-        valueStack->pop_back();
+        auto value = Pop(*valueStack);
         double result;
         auto [success, message] = value.AsDouble(result);
         if (success) {
@@ -464,20 +465,17 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
         break;
       }
       case Ops::CastAsBool: {
-        auto value = std::move(valueStack->back());
-        valueStack->pop_back();
+        auto value = Pop(*valueStack);
         valueStack->emplace_back(value.AsBool());
         break;
       }
       case Ops::CastAsString: {
-        auto value = std::move(valueStack->back());
-        valueStack->pop_back();
+        auto value = Pop(*valueStack);
         valueStack->emplace_back(value.AsString());
         break;
       }
       case Ops::CastAsChar: {
-        auto value = std::move(valueStack->back());
-        valueStack->pop_back();
+        auto value = Pop(*valueStack);
         char result;
         auto [success, message] = value.AsChar(result);
         if (success) {

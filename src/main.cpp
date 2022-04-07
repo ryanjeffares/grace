@@ -14,8 +14,8 @@
 #include <fstream>
 #include <sstream>
 
-#include "../include/fmt/core.h" 
-#include "../include/fmt/color.h"
+#include <fmt/core.h>
+#include <fmt/color.h>
 
 #include "grace.hpp"
 #include "compiler.hpp"
@@ -70,7 +70,7 @@ int main(int argc, const char* argv[])
         Error(e.what());
         return 1;
       }
-      Grace::Compiler::Compile(std::move(inPath.filename()), std::move(inStream.str()), verbose);
+      Grace::Compiler::Compile(inPath.filename(), inStream.str(), verbose);
       break;
   }
 }
