@@ -44,6 +44,10 @@
 # define GRACE_NODISCARD [[nodiscard]]
 #endif
 
+#ifndef GRACE_NOEXCEPT
+# define GRACE_NOEXCEPT noexcept
+#endif
+
 #ifndef FMT_HEADER_ONLY
 # define FMT_HEADER_ONLY
 #endif

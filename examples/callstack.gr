@@ -1,7 +1,7 @@
 func inner(n):
-println(n);
+  println(n);
   if n > 100:
-    println(true * n);  // will error, testing callstack print upon error
+    println("hello");
   else:
     inner(n + 1);
   end 

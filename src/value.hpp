@@ -83,7 +83,7 @@ namespace Grace
         }
       }
 
-      Value(Value&& other)
+      Value(Value&& other) GRACE_NOEXCEPT
       {
         m_Type = other.m_Type;
         m_Data = other.m_Data;
@@ -111,6 +111,18 @@ namespace Grace
             m_Data.m_Str = new std::string(*other.m_Data.m_Str);
           } else {
             m_Data = other.m_Data;
+          }
+        }
+        return *this;
+      }
+
+      constexpr Value& operator=(Value&& other) GRACE_NOEXCEPT
+      {
+        if (this != &other) {
+          m_Type = other.m_Type;
+          m_Data = other.m_Data;
+          if (other.m_Type == Type::String) {
+            other.m_Data.m_Str = nullptr;
           }
         }
         return *this;

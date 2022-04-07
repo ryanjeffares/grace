@@ -356,6 +356,13 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
         }
 
         callStack.emplace_back(funcNameHash, calleeNameHash, line);
+
+        std::vector<Value> args(arity);
+        for (auto i = 0; i < arity; i++) {
+          args[arity - i - 1] = Pop(*valueStack);
+        }
+
+        // pointers to members of current FunctionInfo may be invalidated here
         funcInfoStack.emplace_back(calleeFunc, 0, 0);
 
         // reassign pointers
@@ -363,15 +370,11 @@ InterpretResult VM::Run(std::int64_t funcNameHash, int startLine, bool verbose)
         constantCurrent = &funcInfoStack.back().m_ConstantIndex;
         opList = &m_FunctionOpLists.at(calleeNameHash);
         constantList = &m_FunctionConstantLists.at(calleeNameHash);
-        localsList = &funcInfoStack.back().m_Locals;
         
-        localsList->resize(arity);
-        for (auto i = 0; i < arity; i++) {
-          localsList->at(arity - i - 1) = std::move(valueStack->back());
-          valueStack->pop_back();
-        }
-
+        localsList = &funcInfoStack.back().m_Locals;
+        localsList->swap(args);
         valueStack = &funcInfoStack.back().m_ValueStack;
+        
         funcNameHash = calleeNameHash;
 
         break;
