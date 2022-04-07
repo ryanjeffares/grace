@@ -9,6 +9,7 @@
  *  For licensing information, see grace.hpp
  */
 
+#include <charconv>
 #include <chrono>
 #include <variant>
 
@@ -493,17 +494,19 @@ void Compiler::Expression(bool canAssign)
   }
 }
 
-std::optional<std::exception> TryParseInt(const Token& token, std::int64_t& result)
+std::optional<std::string> TryParseInt(const Token& token, std::int64_t& result)
 {
-  try {
-    std::string str(token.GetText());
-    result = std::stoll(str);
-    return std::nullopt;
-  } catch (const std::invalid_argument& e) {
-    return e;
-  } catch (const std::out_of_range& e) {
-    return e;
+  auto [ptr, ec] = std::from_chars(token.GetData(), token.GetData() + token.GetLength(), result);
+  if (ec == std::errc()) {
+    return {};
   }
+  if (ec == std::errc::invalid_argument) {
+    return "Invalid argument";
+  }
+  if (ec == std::errc::result_out_of_range) {
+    return "Out of range";
+  }
+  GRACE_ASSERT(false, "Unhandled std::errc returned from TryParseInt()");
 }
 
 std::optional<std::exception> TryParseDouble(const Token& token, double& result)
@@ -575,7 +578,7 @@ void Compiler::ForStatement()
     std::int64_t value;
     auto result = TryParseInt(m_Previous.value(), value);
     if (result.has_value()) {
-      MessageAtPrevious(fmt::format("Token could not be parsed as integer: {}", result.value().what()), LogLevel::Error);
+      MessageAtPrevious(fmt::format("Token could not be parsed as integer: {}", result.value()), LogLevel::Error);
       return;
     }
     EmitConstant(value);
@@ -617,7 +620,7 @@ void Compiler::ForStatement()
     std::int64_t value;
     auto result = TryParseInt(m_Previous.value(), value);
     if (result.has_value()) {
-      MessageAtPrevious(fmt::format("Token could not be parsed as integer: {}", result.value().what()), LogLevel::Error);
+      MessageAtPrevious(fmt::format("Token could not be parsed as integer: {}", result.value()), LogLevel::Error);
       return;
     }
     max.emplace<0>(value);
@@ -649,7 +652,7 @@ void Compiler::ForStatement()
       std::int64_t value;
       auto result = TryParseInt(m_Previous.value(), value);
       if (result.has_value()) {
-        MessageAtPrevious(fmt::format("Token could not be parsed as integer: {}", result.value().what()), LogLevel::Error);
+        MessageAtPrevious(fmt::format("Token could not be parsed as integer: {}", result.value()), LogLevel::Error);
         return;
       }
       increment.emplace<0>(value);
@@ -1174,31 +1177,23 @@ void Compiler::Primary(bool canAssign)
   } else if (Match(TokenType::This)) {
     // TODO: this 
   } else if (Match(TokenType::Integer)) {
-    try {
-      std::string str(m_Previous.value().GetText());
-      std::int64_t value = std::stoll(str);
-      EmitOp(Ops::LoadConstant, m_Previous.value().GetLine());
-      EmitConstant(value);
-    } catch (const std::invalid_argument& e) {
-      MessageAtPrevious(fmt::format("Token could not be parsed as an int: {}", e.what()), LogLevel::Error);
-      return;
-    } catch (const std::out_of_range&) {
-      MessageAtPrevious("Int out of range.", LogLevel::Error);
+    std::int64_t value;
+    auto result = TryParseInt(m_Previous.value(), value);
+    if (result.has_value()) {
+      MessageAtPrevious(fmt::format("Token could not be parsed as an int: {}", result.value()), LogLevel::Error);
       return;
     }
+    EmitOp(Ops::LoadConstant, m_Previous.value().GetLine());
+    EmitConstant(value);
   } else if (Match(TokenType::Double)) {
-    try {
-      std::string str(m_Previous.value().GetText());
-      auto value = std::stod(str);
-      EmitOp(Ops::LoadConstant, m_Previous.value().GetLine());
-      EmitConstant(value);
-    } catch (const std::invalid_argument& e) {
-      MessageAtPrevious(fmt::format("Token could not be parsed as an float: {}", e.what()), LogLevel::Error);
-      return;
-    } catch (const std::out_of_range&) {
-      MessageAtPrevious("Float out of range.", LogLevel::Error);
+    double value;
+    auto result = TryParseDouble(m_Previous.value(), value);
+    if (result.has_value()) {
+      MessageAtPrevious(fmt::format("Token could not be parsed as an float: {}", result.value().what()), LogLevel::Error);
       return;
     }
+    EmitOp(Ops::LoadConstant, m_Previous.value().GetLine());
+    EmitConstant(value);
   } else if (Match(TokenType::String)) {
     String();
   } else if (Match(TokenType::Char)) {
