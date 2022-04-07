@@ -22,10 +22,10 @@ Grace is licensed under the MIT License.
 
 ## Getting Started 
 
-Grace's only dependency is [fmtlib](https://github.com/fmtlib/fmt) which is used in header only mode and included in this repository, so building is simple, all you need is a C++ compiler that supports C++17 and cmake. In a terminal, simply run
+Grace's only dependency is [fmtlib](https://github.com/fmtlib/fmt) which is used in header only mode and included as a submodule in this repository, so building is simple, all you need is a C++ compiler that supports C++17 and cmake. In a terminal, simply run
 
 ```bash
-git clone https://github.com/ryanjeffares/grace.git 
+git clone --recursive https://github.com/ryanjeffares/grace.git 
 cd grace 
 mkdir build 
 cd build 
@@ -37,11 +37,9 @@ This will build the `grace` executable, which you can add to your path or move s
 
 ## Alpha Release Roadmap
 * Experiment with string interning
-* Disallow calling main function
 * Performance
   * Returning from functions is a bottleneck due to popping the function 
   * Consider using raw arrays over vectors for the op and constant list
-  * Or using vector iterators over indexes
 * Classes
   * Reference counting
   * Cyclic references handled through a "cyclic reference tracker" - if a cyclic reference is detected, start tracking the two objects, and when those objects' only reminaing references are eachother they can be safely destroyed 
