@@ -22,9 +22,9 @@
 
 static void Error(const std::string& message)
 {
-  fmt::print("Grace 0.0.1\n\n");
-  fmt::print(fmt::fg(fmt::color::red) | fmt::emphasis::bold, "ERROR: ");
-  fmt::print("{}\n", message);
+  fmt::print(stderr, "Grace 0.0.1\n\n");
+  fmt::print(stderr, fmt::fg(fmt::color::red) | fmt::emphasis::bold, "ERROR: ");
+  fmt::print(stderr, "{}\n", message);
 }
 
 static void Usage()
