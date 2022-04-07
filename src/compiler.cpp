@@ -40,7 +40,11 @@ void Grace::Compiler::Compile(std::string&& fileName, std::string&& code, bool v
     if (verbose) {
       auto end = steady_clock::now();
       auto duration = duration_cast<microseconds>(end - start).count();
-      fmt::print("Compilation succeeded in {} μs.\n", duration);
+      if (duration > 1000) {
+        fmt::print("Compilation succeeded in {} ms.\n", duration_cast<milliseconds>(end - start).count());
+      } else {
+        fmt::print("Compilation succeeded in {} μs.\n", duration);
+      }
     }
     compiler.Finalise(verbose);
   }
