@@ -1119,6 +1119,13 @@ void Compiler::Call(bool canAssign)
           Consume(TokenType::Comma, "Expected ',' after funcion call argument");
         }
       }
+
+      // TODO: in a script that is not being ran as the main script, 
+      // there may be a function called 'main' that you should be allowed to call
+      if (prevText == "main") {
+        Message(prev, "Cannot call the `main` function", LogLevel::Error);
+        return;
+      }
       
       auto hash = static_cast<std::int64_t>(m_Hasher(prevText));
       EmitConstant(hash);

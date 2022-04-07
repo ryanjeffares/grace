@@ -37,7 +37,6 @@ This will build the `grace` executable, which you can add to your path or move s
 
 ## Alpha Release Roadmap
 * Experiment with string interning
-* Investigate segfault in callstack.gr 
 * Disallow calling main function
 * Performance
   * Returning from functions is a bottleneck due to popping the function 
