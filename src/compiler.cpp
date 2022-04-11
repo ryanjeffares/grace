@@ -46,7 +46,7 @@ void Grace::Compiler::Compile(std::string&& fileName, std::string&& code, bool v
         fmt::print("Compilation succeeded in {} μs.\n", duration);
       }
     }
-    compiler.Finalise(verbose);
+    compiler.Finalise();
   }
 }
 
@@ -62,14 +62,16 @@ Compiler::Compiler(std::string&& fileName, std::string&& code, bool verbose)
 
 }
 
-void Compiler::Finalise(bool verbose)
+void Compiler::Finalise()
 {
 #ifdef GRACE_DEBUG
-  if (verbose) {
+  if (m_Verbose) {
     m_Vm.PrintOps();
   }
 #endif
-   m_Vm.Start(verbose);
+  if (m_Vm.CombineFunctions(m_Verbose)) {
+    m_Vm.Start(m_Verbose);
+  }
 }
 
 void Compiler::Advance()
@@ -282,6 +284,7 @@ void Compiler::FuncDeclaration()
 
   Consume(TokenType::Identifier, "Expected function name");
   auto name = std::string(m_Previous.value().GetText());
+  auto isMainFunction = name == "main";
 
   Consume(TokenType::LeftParen, "Expected '(' after function name");
 
@@ -314,7 +317,7 @@ void Compiler::FuncDeclaration()
 
   Consume(TokenType::Colon, "Expected ':' after function signature");
 
-  if (!m_Vm.AddFunction(name, m_Previous.value().GetLine(), static_cast<int>(parameters.size()))) {
+  if (!m_Vm.AddFunction(std::move(name), m_Previous.value().GetLine(), static_cast<int>(parameters.size()))) {
     MessageAtPrevious("Duplicate function definitions", LogLevel::Error);
     return;
   }
@@ -335,6 +338,9 @@ void Compiler::FuncDeclaration()
     EmitOp(Ops::Return, m_Previous.value().GetLine());
   }
   
+  if (isMainFunction) {
+    EmitOp(Ops::Exit, m_Previous.value().GetLine());
+  }
   m_Locals.clear();
   m_CurrentContext = previous;
 }
@@ -511,6 +517,7 @@ std::optional<std::string> TryParseInt(const Token& token, std::int64_t& result)
     return "Out of range";
   }
   GRACE_ASSERT(false, "Unhandled std::errc returned from TryParseInt()");
+  return "Unexpected error parsing int";
 }
 
 std::optional<std::exception> TryParseDouble(const Token& token, double& result)
