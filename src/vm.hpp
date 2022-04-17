@@ -123,7 +123,7 @@ namespace Grace
           std::vector<OpLine> m_OpList;
           std::vector<Value> m_ConstantList;
 
-          std::size_t m_OpIndexStart, m_ConstantIndexStart;
+          std::size_t m_OpIndexStart = 0, m_ConstantIndexStart = 0;
 
           Function(std::string&& name, std::int64_t nameHash, int arity, int line)
             : m_Name(std::move(name)), m_NameHash(nameHash), m_Line(line), m_Arity(arity)

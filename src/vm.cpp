@@ -37,7 +37,7 @@ static GRACE_INLINE Value Pop(std::vector<Value>& stack)
   return c;
 }
 
-static void PrintStack(std::vector<Value>& stack, const std::string& funcName)
+static void PrintStack(const std::vector<Value>& stack, const std::string& funcName)
 {
   fmt::print("{} STACK:\n", funcName);
   for (const auto& c : stack) {
@@ -50,6 +50,7 @@ static void PrintLocals(const std::vector<Value>& locals, const std::string& fun
 {
   fmt::print("{} LOCALS:\n", funcName);
   for (const auto& value : locals) {
+    fmt::print("\t");
     value.DebugPrint();
   }
 }
@@ -106,7 +107,6 @@ bool VM::CombineFunctions(bool verbose)
 
 void VM::Start(bool verbose)
 {
-  auto mainHash = static_cast<std::int64_t>(m_Hasher("main"));
   using namespace std::chrono;
   auto start = steady_clock::now();
   auto res = Run(verbose);
