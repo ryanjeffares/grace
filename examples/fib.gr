@@ -2,7 +2,7 @@ func fib(n):
   if n < 2:
     return n;
   end
-  return (fib(n - 2) + fib(n - 1));
+  return fib(n - 2) + fib(n - 1);
 end 
 
 func main():
@@ -11,5 +11,6 @@ func main():
   println(fib(20));
   println(fib(25));
   println(fib(30));
+  println(fib(35));
 end
 

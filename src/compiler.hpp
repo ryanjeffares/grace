@@ -76,7 +76,7 @@ namespace Grace
         bool Match(Scanner::TokenType expected);
 
         GRACE_INLINE bool HadError() const { return m_HadError; }
-        void Finalise(bool verbose);
+        void Finalise();
         GRACE_INLINE std::string GetCodeAtLine(int line) const
         {
           return m_Scanner.GetCodeAtLine(line);

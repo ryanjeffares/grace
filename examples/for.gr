@@ -6,10 +6,10 @@ func fib(n):
 end 
 
 func main():
-  for i in 0..30:
+  for i in 0..20:
     println(fib(i));
   end 
-
+  
   var min = 0;
   var max = 100;
   for i in min..max:
