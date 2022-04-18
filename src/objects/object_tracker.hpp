@@ -23,8 +23,8 @@ namespace Grace
   {
     public:
       
-      static void TrackObject(GraceObject* object);
-      static void StopTracking(GraceObject* object);
+      static void TrackObject(GraceObject* object, bool verbose = false);
+      static void StopTracking(GraceObject* object, bool verbose = false);
       static void Finalise();
 
     private:

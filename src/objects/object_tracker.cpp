@@ -18,24 +18,28 @@ using namespace Grace;
 
 std::vector<GraceObject*> ObjectTracker::m_TrackedObjects;
 
-void ObjectTracker::TrackObject(GraceObject* object)
+void ObjectTracker::TrackObject(GraceObject* object, bool verbose)
 {
   GRACE_ASSERT(object != nullptr, "Trying to track an object that is a nullptr");
   auto it = std::find(m_TrackedObjects.begin(), m_TrackedObjects.end(), object);
   GRACE_ASSERT(it == m_TrackedObjects.end(), "Object is already being tracked");
   m_TrackedObjects.push_back(object);
 
-  fmt::print("Starting tracking on object at {}: {}\n", fmt::ptr(object), object->ToString());  
+  if (verbose) {
+    fmt::print("Starting tracking on object at {}: {}\n", fmt::ptr(object), object->ToString());  
+  }
 }
 
-void ObjectTracker::StopTracking(GraceObject* object)
+void ObjectTracker::StopTracking(GraceObject* object, bool verbose)
 {
   GRACE_ASSERT(object != nullptr, "Trying to stop tracking an object that is a nullptr");
   auto it = std::find(m_TrackedObjects.begin(), m_TrackedObjects.end(), object);
   GRACE_ASSERT(it != m_TrackedObjects.end(), "Could not find object in tracked object list");
   m_TrackedObjects.erase(it);
   
-  fmt::print("Stopped tracking on object at {}: {}\n", fmt::ptr(object), object->ToString());  
+  if (verbose) {
+    fmt::print("Stopped tracking on object at {}: {}\n", fmt::ptr(object), object->ToString());  
+  }
 }
 
 void ObjectTracker::Finalise()

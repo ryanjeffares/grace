@@ -31,7 +31,7 @@ namespace Grace
     {
     public:
 
-      using NullValue = void*;
+      using NullValue = std::nullptr_t; 
 
       enum class Type : std::uint8_t 
       {
@@ -83,14 +83,15 @@ namespace Grace
 
       constexpr Value& operator=(const Value& other)
       {
-        if (this != &other)
-        {
+        if (this != &other) {
           if (m_Type == Type::String && m_Data.m_Str != nullptr) {
             delete m_Data.m_Str;
-          } else if (m_Type == Type::Object && m_Data.m_Object != nullptr) {
+          }
+
+          if (m_Type == Type::Object) {
             if (m_Data.m_Object->DecreaseRef() == 0) {
 #ifdef GRACE_DEBUG
-              ObjectTracker::StopTracking(m_Data.m_Object);
+              ObjectTracker::StopTracking(m_Data.m_Object); 
 #endif
               delete m_Data.m_Object;
             }
@@ -112,12 +113,25 @@ namespace Grace
       constexpr Value& operator=(Value&& other) GRACE_NOEXCEPT
       {
         if (this != &other) {
+          if (m_Type == Type::String && m_Data.m_Str != nullptr) {
+            delete m_Data.m_Str;
+          }
+          
+          if (m_Type == Type::Object) {
+            if (m_Data.m_Object->DecreaseRef() == 0) {
+#ifdef GRACE_DEBUG
+              ObjectTracker::StopTracking(m_Data.m_Object); 
+#endif
+              delete m_Data.m_Object;
+            }
+          }
+
           m_Type = other.m_Type;
           m_Data = other.m_Data;
-          if (other.m_Type == Type::String) {
-            other.m_Data.m_Str = nullptr;
-          } else if (other.m_Type == Type::Object) {
-            other.m_Data.m_Object = nullptr;
+
+          if (other.m_Type == Type::String || other.m_Type == Type::Object) {
+            other.m_Data.m_Null = nullptr;
+            other.m_Type = Type::Null;
           }
         }
         return *this;
@@ -135,10 +149,10 @@ namespace Grace
           delete m_Data.m_Str;
         }
 
-        if (m_Type == Type::Object && m_Data.m_Object != nullptr) {
+        if (m_Type == Type::Object) {
           if (m_Data.m_Object->DecreaseRef() == 0) {
 #ifdef GRACE_DEBUG
-            ObjectTracker::StopTracking(m_Data.m_Object);
+            ObjectTracker::StopTracking(m_Data.m_Object); 
 #endif
             delete m_Data.m_Object;
           }

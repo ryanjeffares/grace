@@ -21,7 +21,7 @@ namespace Grace
   class GraceList : public GraceObject
   {
     public:
-      GraceList();
+      GraceList() = default;
       GraceList(std::vector<VM::Value>&& items);
 
       GRACE_INLINE void Append(const VM::Value& value)
@@ -39,7 +39,7 @@ namespace Grace
         m_Data.emplace_back(value);
       }
 
-      void Insert(const std::vector<VM::Value>& items);
+      void Append(const std::vector<VM::Value>& items);
       void Remove(std::size_t index);
 
       void DebugPrint() const override;

@@ -17,16 +17,12 @@
 using namespace Grace;
 using namespace Grace::VM;
 
-GraceList::GraceList()
-{
-}
-
 GraceList::GraceList(std::vector<Value>&& items)
   : m_Data(std::move(items))
 {
 }
 
-void GraceList::Insert(const std::vector<Value>& items)
+void GraceList::Append(const std::vector<Value>& items)
 {
   m_Data.reserve(items.size());
   m_Data.insert(m_Data.end(), items.begin(), items.end());
@@ -39,7 +35,7 @@ void GraceList::Remove(std::size_t index)
 
 void GraceList::DebugPrint() const
 {
-  fmt::print("GraceList: [{}]", ToString());
+  fmt::print("GraceList: [{}]\n", ToString());
 }
 
 void GraceList::Print() const

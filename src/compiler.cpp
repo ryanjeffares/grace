@@ -322,8 +322,10 @@ void Compiler::FuncDeclaration()
     return;
   }
 
-  m_FunctionHadReturn = false;
   while (!Match(TokenType::End)) {
+    // set this to false before every delcaration
+    // so that we know if the last declaration was a return
+    m_FunctionHadReturn = false;
     Declaration();
     if (m_Current.value().GetType() == TokenType::EndOfFile) {
       MessageAtCurrent("Expected `end` after function", LogLevel::Error);
@@ -331,17 +333,21 @@ void Compiler::FuncDeclaration()
     }
   }
 
-  for (auto i = 0; i < m_Locals.size(); i++) {
-    EmitOp(Ops::PopLocal, m_Previous.value().GetLine());
-  }
-  m_Locals.clear();
+  // implicitly return if the user didn't write a return so the VM knows to return to the caller
+  // functions with no return will implicitly return null, so setting a call equal to a variable is valid
+  if (!m_FunctionHadReturn) {
+    for (auto i = 0; i < m_Locals.size(); i++) {
+      EmitOp(Ops::PopLocal, m_Previous.value().GetLine());
+    }
 
-  // implicitly return if the user didnt write a return so the VM knows to return to the caller
-  if (!m_FunctionHadReturn && m_Vm.GetLastFunctionName() != "main") {
-    EmitConstant((void*)nullptr);
-    EmitOp(Ops::LoadConstant, m_Previous.value().GetLine());
-    EmitOp(Ops::Return, m_Previous.value().GetLine());
+    if (!isMainFunction) {
+      EmitConstant(nullptr);
+      EmitOp(Ops::LoadConstant, m_Previous.value().GetLine());
+      EmitOp(Ops::Return, m_Previous.value().GetLine());
+    }
   }
+
+  m_Locals.clear(); 
   
   if (isMainFunction) {
     EmitOp(Ops::Exit, m_Previous.value().GetLine());
@@ -907,7 +913,7 @@ void Compiler::ReturnStatement()
   } 
 
   if (Match(TokenType::Semicolon)) {
-    EmitConstant((void*)nullptr);
+    EmitConstant(nullptr);
     EmitOp(Ops::LoadConstant, m_Previous.value().GetLine());
     EmitOp(Ops::Return, m_Previous.value().GetLine());
     return;
@@ -919,6 +925,13 @@ void Compiler::ReturnStatement()
   EmitOp(Ops::Return, m_Previous.value().GetLine());
   Consume(TokenType::Semicolon, "Expected ';' after expression");
   m_FunctionHadReturn = true;
+
+  // don't destroy these locals here in the compiler's list because this could be an early return
+  // that is handled at the end of `FuncDeclaration()`
+  // but the VM needs to destroy any locals made up until this point
+  for (auto i = 0; i < m_Locals.size(); i++) {
+    EmitOp(Ops::PopLocal, m_Previous.value().GetLine());
+  }
 }
 
 void Compiler::WhileStatement() 
@@ -1209,7 +1222,7 @@ void Compiler::Primary(bool canAssign)
     // do nothing, but consume the identifier and return
     // caller functions will handle it
   } else if (Match(TokenType::Null)) {
-    EmitConstant((void*)nullptr);
+    EmitConstant(nullptr);
     EmitOp(Ops::LoadConstant, m_Previous.value().GetLine());
   } else if (Match(TokenType::LeftParen)) {
     Expression(canAssign);

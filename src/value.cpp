@@ -11,6 +11,7 @@
 
 #include <type_traits>
 
+#include "grace.hpp"
 #include "objects/grace_list.hpp"
 #include "value.hpp"
 
@@ -39,10 +40,10 @@ Value::Value(Value&& other) GRACE_NOEXCEPT
 {
   m_Type = other.m_Type;
   m_Data = other.m_Data;
-  if (other.m_Type == Type::String) {
-    other.m_Data.m_Str = nullptr;
-  } else if (other.m_Type == Type::Object) {
-    other.m_Data.m_Object = nullptr;
+  
+  if (other.m_Type == Type::String || other.m_Type == Type::Object) {
+    other.m_Data.m_Null = nullptr;
+    other.m_Type = Type::Null;
   }
 }
 
@@ -50,7 +51,8 @@ Value::~Value()
 {
   if (m_Type == Type::String && m_Data.m_Str != nullptr) {
     delete m_Data.m_Str;
-  } else if (m_Type == Type::Object && m_Data.m_Object != nullptr) {
+  } 
+  if (m_Type == Type::Object) {
     if (m_Data.m_Object->DecreaseRef() == 0) {
 #ifdef GRACE_DEBUG
       ObjectTracker::StopTracking(m_Data.m_Object); 
@@ -240,7 +242,7 @@ std::tuple<bool, std::optional<std::string>> Value::AsDouble(double& result) con
         result = std::stod(*m_Data.m_Str);
         return {true, {}};
       } catch (const std::invalid_argument& e) {
-        return {false, fmt::format("Could not convert '{}' to int: {}", *m_Data.m_Str, e.what())};
+        return {false, fmt::format("Could not convert '{}' to float: {}", *m_Data.m_Str, e.what())};
       } catch (const std::out_of_range&) {
         return {false, "Float represented by string was out of range"};
       }

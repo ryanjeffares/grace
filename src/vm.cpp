@@ -374,7 +374,6 @@ InterpretResult VM::Run(bool verbose)
 
         localsOffsets.push(localsList.size());
         localsList.resize(localsList.size() + arity);
-        std::vector<Value> args(arity);
         for (auto i = 0; i < arity; i++) {
           localsList[arity - i - 1 + localsOffsets.top()] = Pop(valueStack);
         }
@@ -391,7 +390,7 @@ InterpretResult VM::Run(bool verbose)
       }
       case Ops::AssignLocal: {
         auto value = Pop(valueStack);
-        localsList[m_FullConstantList[constantCurrent++].Get<std::int64_t>() + localsOffsets.top()] = value;
+        localsList[m_FullConstantList[constantCurrent++].Get<std::int64_t>() + localsOffsets.top()] = std::move(value);
         break;
       }
       case Ops::DeclareLocal: {
@@ -427,7 +426,8 @@ InterpretResult VM::Run(bool verbose)
 
         constantCurrent = static_cast<std::size_t>(Pop(valueStack).Get<std::int64_t>());
         opCurrent = static_cast<std::size_t>(Pop(valueStack).Get<std::int64_t>());
-        valueStack.push_back(std::move(returnValue));
+
+        valueStack.emplace_back(std::move(returnValue));
         localsOffsets.pop();
 
 #ifdef GRACE_DEBUG
