@@ -18,6 +18,7 @@
 #include "grace.hpp"
 
 #include "compiler.hpp"
+#include "objects/grace_list.hpp"
 #include "vm.hpp"
 #include "objects/object_tracker.hpp"
 
@@ -776,6 +777,16 @@ bool VM::HandleMultiplication(const Value& c1, const Value& c2, std::vector<Valu
         }
         stack.emplace_back(res);
         return true;
+      }
+      return false;
+    }
+    case Value::Type::Object: {
+      if (auto list = dynamic_cast<GraceList*>(c1.GetObject())) {
+        if (c2.GetType() != Value::Type::Int) {
+          return false;
+        }
+        stack.emplace_back(Value::CreateList(*list, c2.Get<std::int64_t>()));
+        return true; 
       }
       return false;
     }

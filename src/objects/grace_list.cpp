@@ -22,6 +22,14 @@ GraceList::GraceList(std::vector<Value>&& items)
 {
 }
 
+GraceList::GraceList(const GraceList& other, std::int64_t multiple)
+{
+  m_Data.reserve(other.m_Data.size() * multiple);
+  for (auto i = 0; i < multiple; i++) {
+    m_Data.insert(m_Data.begin() + (i * other.m_Data.size()), other.m_Data.begin(), other.m_Data.end());
+  }
+}
+
 void GraceList::Append(const std::vector<Value>& items)
 {
   m_Data.reserve(items.size());

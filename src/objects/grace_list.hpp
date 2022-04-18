@@ -23,6 +23,7 @@ namespace Grace
     public:
       GraceList() = default;
       GraceList(std::vector<VM::Value>&& items);
+      GraceList(const GraceList& other, std::int64_t multiple);
 
       GRACE_INLINE void Append(const VM::Value& value)
       {
