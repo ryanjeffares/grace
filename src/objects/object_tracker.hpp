@@ -19,15 +19,10 @@ namespace Grace
 {
   class GraceObject;
 
-  class ObjectTracker
+  namespace ObjectTracker
   {
-    public:
-      
-      static void TrackObject(GraceObject* object, bool verbose = false);
-      static void StopTracking(GraceObject* object, bool verbose = false);
-      static void Finalise();
-
-    private:
-      static std::vector<GraceObject*> m_TrackedObjects;
-  };
+    void TrackObject(GraceObject* object, bool verbose = false);
+    void StopTracking(GraceObject* object, bool verbose = false);
+    void Finalise();
+  }
 }
