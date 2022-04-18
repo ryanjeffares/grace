@@ -11,6 +11,7 @@
 
 #include <cmath>
 #include <cstdlib>
+#include <iterator>
 #include <stack>
 #include <chrono>
 
@@ -18,6 +19,7 @@
 
 #include "compiler.hpp"
 #include "vm.hpp"
+#include "objects/object_tracker.hpp"
 
 using namespace Grace::VM;
 
@@ -493,6 +495,19 @@ InterpretResult VM::Run(bool verbose)
         valueStack.emplace_back(typeIdx == static_cast<std::int64_t>(Pop(valueStack).GetType()));
         break;
       }
+      case Ops::CreateList: {
+        auto numItems = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+        auto offset = valueStack.size() - numItems;
+        std::vector<Value> result;
+        result.insert(result.end(), std::make_move_iterator(valueStack.begin() + offset), std::make_move_iterator(valueStack.end()));
+        valueStack.erase(valueStack.begin() + offset, valueStack.end());
+        valueStack.emplace_back(Value::CreateList(std::move(result)));
+        break;
+      }
+      case Ops::CreateEmptyList: {
+        valueStack.emplace_back(Value::CreateList());
+        break;
+      }
       case Ops::Assert: {
         auto condition = Pop(valueStack);
         if (!condition.AsBool()) {
@@ -526,13 +541,14 @@ InterpretResult VM::Run(bool verbose)
     }
   }
 
+  localsList.clear();
+
 #ifdef GRACE_DEBUG 
   PRINT_LOCAL_MEMORY();
+  GRACE_ASSERT(valueStack.empty(), "Unhandled data on the stack");
+  ObjectTracker::Finalise();
 #endif
 
-  GRACE_ASSERT(valueStack.empty(), "Unhandled data on the stack");
-
-  localsList.clear();
   return InterpretResult::RuntimeOk;
 
 #undef PRINT_LOCAL_MEMORY

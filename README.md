@@ -36,7 +36,11 @@ cmake --build .
 This will build the `grace` executable, which you can add to your path or move somewhere that is on your path. Full install process as well as documentation is WIP.
 
 ## Alpha Release Roadmap
+* Fix for loop jump order
+* Fix locals not being popped
+* Fix list objects not being cleared
 * Experiment with string interning
+* Unicode strings over regular `std::string`
 * Performance
   * Returning from functions is a bottleneck due to popping the function 
   * Consider using raw arrays over vectors for the op and constant list

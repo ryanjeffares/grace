@@ -297,7 +297,7 @@ void Compiler::FuncDeclaration()
         MessageAtPrevious("Function parameters with the same name already defined", LogLevel::Error);
         return;
       }
-      m_Locals.insert(std::make_pair(p, std::make_pair(true, m_Locals.size())));
+      m_Locals.emplace_back(std::move(p), true, m_Locals.size());
       parameters.push_back(p);
     } else if (Match(TokenType::Identifier)) {
       auto p = std::string(m_Previous.value().GetText());
@@ -305,7 +305,7 @@ void Compiler::FuncDeclaration()
         MessageAtPrevious("Function parameters with the same name already defined", LogLevel::Error);
         return;
       }
-      m_Locals.insert(std::make_pair(p, std::make_pair(false, m_Locals.size())));
+      m_Locals.emplace_back(std::move(p), false, m_Locals.size());
       parameters.push_back(p);
     } else {
       if (!Match(TokenType::Comma)) {
@@ -331,6 +331,11 @@ void Compiler::FuncDeclaration()
     }
   }
 
+  for (auto i = 0; i < m_Locals.size(); i++) {
+    EmitOp(Ops::PopLocal, m_Previous.value().GetLine());
+  }
+  m_Locals.clear();
+
   // implicitly return if the user didnt write a return so the VM knows to return to the caller
   if (!m_FunctionHadReturn && m_Vm.GetLastFunctionName() != "main") {
     EmitConstant((void*)nullptr);
@@ -341,7 +346,7 @@ void Compiler::FuncDeclaration()
   if (isMainFunction) {
     EmitOp(Ops::Exit, m_Previous.value().GetLine());
   }
-  m_Locals.clear();
+
   m_CurrentContext = previous;
 }
 
@@ -353,7 +358,8 @@ void Compiler::VarDeclaration()
   }
 
   Consume(TokenType::Identifier, "Expected identifier after `var`");
-  if (m_Locals.find(std::string(m_Previous.value().GetText())) != m_Locals.end()) {
+  auto it = std::find_if(m_Locals.begin(), m_Locals.end(), [&] (const Local& l) { return l.m_Name == m_Previous.value().GetText(); });
+  if (it != m_Locals.end()) {
     MessageAtPrevious("A local variable with the same name already exists", LogLevel::Error);
     return;
   }
@@ -362,7 +368,7 @@ void Compiler::VarDeclaration()
   int line = m_Previous.value().GetLine();
 
   std::int64_t localId = m_Locals.size();
-  m_Locals.insert(std::make_pair(localName, std::make_pair(false, localId)));
+  m_Locals.emplace_back(std::move(localName), false, localId);
   EmitOp(Ops::DeclareLocal, line);
 
   if (Match(TokenType::Equal)) {
@@ -385,7 +391,8 @@ void Compiler::FinalDeclaration()
 
   Consume(TokenType::Identifier, "Expected identifier after `final`");
 
-  if (m_Locals.find(std::string(m_Previous.value().GetText())) != m_Locals.end()) {
+  auto it = std::find_if(m_Locals.begin(), m_Locals.end(), [&] (const Local& l) { return l.m_Name == m_Previous.value().GetText(); });
+  if (it != m_Locals.end()) {
     MessageAtPrevious("A local variable with the same name already exists", LogLevel::Error);
     return;
   }
@@ -394,7 +401,7 @@ void Compiler::FinalDeclaration()
   int line = m_Previous.value().GetLine();
 
   auto localId = static_cast<std::int64_t>(m_Locals.size());
-  m_Locals.insert(std::make_pair(localName, std::make_pair(true, localId)));
+  m_Locals.emplace_back(std::move(localName), true, localId);
   EmitOp(Ops::DeclareLocal, line);
 
   Consume(TokenType::Equal, "Must assign to `final` upon declaration");
@@ -432,12 +439,13 @@ void Compiler::Expression(bool canAssign)
       }
 
       auto localName = std::string(m_Previous.value().GetText());
-      if (m_Locals.find(localName) == m_Locals.end()) {
+      auto it = std::find_if(m_Locals.begin(), m_Locals.end(), [&](const Local& l) { return l.m_Name == localName; });
+      if (it == m_Locals.end()) {
         MessageAtPrevious(fmt::format("Cannot find variable '{}' in this scope", localName), LogLevel::Error);
         return;
       }
 
-      if (m_Locals.at(localName).first) {
+      if (it->m_Final) {
         MessageAtPrevious(fmt::format("Cannot reassign to final '{}'", m_Previous.value().GetText()), LogLevel::Error);
         return;
       }
@@ -454,7 +462,7 @@ void Compiler::Expression(bool canAssign)
       m_ShouldNotPopValue = false;
 
       int line = m_Previous.value().GetLine();
-      EmitConstant(m_Locals.at(localName).second);
+      EmitConstant(it->m_Index);
       EmitOp(Ops::AssignLocal, line);
     } else {
       bool shouldBreak = false;
@@ -490,6 +498,8 @@ void Compiler::Expression(bool canAssign)
           case TokenType::RightParen:
           case TokenType::Comma:
           case TokenType::Colon:
+          case TokenType::LeftSquareParen:
+          case TokenType::RightSquareParen:
             shouldBreak = true;
             break;
           default:
@@ -558,24 +568,22 @@ void Compiler::ForStatement()
 
   m_BreakIdxPairs.emplace();
 
-  std::vector<std::string> startLocalsList;
-  for (const auto& [name, _] : m_Locals) {
-    startLocalsList.push_back(name);
-  }
+  auto numLocalsStart = m_Locals.size();
 
   Consume(TokenType::Identifier, "Expected identifier after `for`");
   auto iteratorName = std::string(m_Previous.value().GetText());
   std::int64_t iteratorId;
-  if (m_Locals.find(iteratorName) == m_Locals.end()) {
+  auto it = std::find_if(m_Locals.begin(), m_Locals.end(), [&](const Local& l) { return l.m_Name == iteratorName; });
+  if (it == m_Locals.end()) {
     iteratorId = m_Locals.size();
-    m_Locals.insert(std::make_pair(iteratorName, std::make_pair(false, iteratorId)));
+    m_Locals.emplace_back(std::move(iteratorName), false, iteratorId);
     EmitOp(Ops::DeclareLocal, m_Previous.value().GetLine());
   } else {
-    if (m_Locals.at(iteratorName).first) {
+    if (it->m_Final) {
       MessageAtPrevious(fmt::format("Loop variable '{}' has already been declared as `final`", iteratorName), LogLevel::Error);
       return;
     }
-    iteratorId = m_Locals.at(iteratorName).second;
+    iteratorId = it->m_Index;
     if (m_Verbose) {
       MessageAtPrevious(fmt::format("There is already a local variable called '{}' in this scope which will be reassigned inside the `for` loop", iteratorName), 
           LogLevel::Warning);
@@ -609,11 +617,12 @@ void Compiler::ForStatement()
     EmitOp(Ops::AssignLocal, line);
   } else if (Match(TokenType::Identifier)) {
     auto localName = std::string(m_Previous.value().GetText());
-    if (m_Locals.find(localName) == m_Locals.end()) {
+    auto it = std::find_if(m_Locals.begin(), m_Locals.end(), [&](const Local& l) { return l.m_Name == localName; });
+    if (it == m_Locals.end()) {
       MessageAtPrevious(fmt::format("Cannot find variable '{}' in this scope.", localName), LogLevel::Error);
       return;
     }
-    auto localId = m_Locals.at(localName).second;
+    auto localId = it->m_Index;
     EmitConstant(localId);
     EmitOp(Ops::LoadLocal, line);
     EmitConstant(iteratorId);
@@ -645,11 +654,12 @@ void Compiler::ForStatement()
     max.emplace<1>(value);
   } else if (Match(TokenType::Identifier)) {
     auto localName = std::string(m_Previous.value().GetText());
-    if (m_Locals.find(localName) == m_Locals.end()) {
+    auto it = std::find_if(m_Locals.begin(), m_Locals.end(), [&](const Local& l) { return l.m_Name == localName; });
+    if (it == m_Locals.end()) {
       MessageAtPrevious(fmt::format("Cannot find variable '{}' in this scope.", localName), LogLevel::Error);
       return;
     }
-    auto localId = m_Locals.at(localName).second;
+    auto localId = it->m_Index;
     max.emplace<2>(localId);
   } else {
     MessageAtCurrent("Expected identifier or integer as range max", LogLevel::Error);
@@ -742,13 +752,10 @@ void Compiler::ForStatement()
     m_BreakIdxPairs.pop();
   }
 
-  for (auto it = m_Locals.begin(); it != m_Locals.end();) {
-    if (std::find(startLocalsList.begin(), startLocalsList.end(), it->first) == startLocalsList.end()) {
-      EmitOp(Ops::PopLocal, line);
-      it = m_Locals.erase(it);
-    } else {
-      it++;
-    }
+  auto numLocalsEnd = m_Locals.size();
+  for (auto i = 0; i < numLocalsEnd - numLocalsStart; i++) {
+    EmitOp(Ops::PopLocal, line);
+    m_Locals.pop_back();
   }
 
   m_CurrentContext = previousContext;
@@ -772,10 +779,7 @@ void Compiler::IfStatement()
   // constant index, op index
   std::vector<std::tuple<std::int64_t, std::int64_t>> endJumpIndexPairs;
 
-  std::vector<std::string> startLocalsList;
-  for (const auto& [name, _] : m_Locals) {
-    startLocalsList.push_back(name);
-  }
+  auto numLocalsStart = m_Locals.size();
 
   bool topJumpSet = false;
   bool elseBlockFound = false;
@@ -851,13 +855,10 @@ void Compiler::IfStatement()
   }
 
   auto line = m_Previous.value().GetLine();
-  for (auto it = m_Locals.begin(); it != m_Locals.end();) {
-    if (std::find(startLocalsList.begin(), startLocalsList.end(), it->first) == startLocalsList.end()) {
-      EmitOp(Ops::PopLocal, line);
-      it = m_Locals.erase(it);
-    } else {
-      it++;
-    }
+  auto numLocalsEnd = m_Locals.size();
+  for (auto i = 0; i < numLocalsEnd - numLocalsStart; i++) {
+    EmitOp(Ops::PopLocal, line);
+    m_Locals.pop_back();
   }
 }
 
@@ -944,10 +945,7 @@ void Compiler::WhileStatement()
 
   Consume(TokenType::Colon, "Expected ':' after expression");
 
-  std::vector<std::string> startLocalsList;
-  for (const auto& [name, _] : m_Locals) {
-    startLocalsList.push_back(name);
-  }
+  auto numLocalsStart = m_Locals.size();
 
   while (!Match(TokenType::End)) {
     Declaration();
@@ -975,16 +973,13 @@ void Compiler::WhileStatement()
     m_BreakJumpNeedsIndexes = !m_BreakIdxPairs.empty();
     m_BreakIdxPairs.pop();
   }
-  
-  for (auto it = m_Locals.begin(); it != m_Locals.end();) {
-    if (std::find(startLocalsList.begin(), startLocalsList.end(), it->first) == startLocalsList.end()) {
-      EmitOp(Ops::PopLocal, line);
-      it = m_Locals.erase(it);
-    } else {
-      it++;
-    }
-  }
 
+  auto numLocalsEnd = m_Locals.size();
+  for (auto i = 0; i < numLocalsEnd - numLocalsStart; i++) {
+    EmitOp(Ops::PopLocal, line);
+    m_Locals.pop_back();
+  }
+ 
   m_CurrentContext = previousContext;
 }
 
@@ -1158,11 +1153,12 @@ void Compiler::Call(bool canAssign)
       // if its not a reassignment, we are trying to load its value 
       // Primary() has already but the variable's id on the stack
       if (!Check(TokenType::Equal)) {
-        if (m_Locals.find(prevText) == m_Locals.end()) {
+        auto it = std::find_if(m_Locals.begin(), m_Locals.end(), [&](const Local& l){ return l.m_Name == prevText; });
+        if (it == m_Locals.end()) {
           MessageAtPrevious(fmt::format("Cannot find variable '{}' in this scope", prevText), LogLevel::Error);
           return;
         }
-        EmitConstant(m_Locals.at(prevText).second);
+        EmitConstant(it->m_Index);
         EmitOp(Ops::LoadLocal, prev.GetLine());
       }
     }
@@ -1222,6 +1218,8 @@ void Compiler::Primary(bool canAssign)
     InstanceOf();
   } else if (IsTypeIdent(m_Current.value())) {
     Cast();
+  } else if (Match(TokenType::LeftSquareParen)) {
+    List();
   } else {
     Expression(canAssign);
   }
@@ -1360,6 +1358,32 @@ void Compiler::Cast()
   if (!m_ShouldNotPopValue) {
     // pop unused return value
     EmitOp(Ops::Pop, m_Previous.value().GetLine());
+  }
+}
+
+void Compiler::List()
+{
+  std::int64_t numItems = 0;
+  while (true) {
+    if (Match(TokenType::RightSquareParen)) {
+      break;
+    }
+
+    Expression(false);
+    numItems++;
+    
+    if (Match(TokenType::RightSquareParen)) {
+      break;
+    }
+
+    Consume(TokenType::Comma, "Expected ',' between list items");
+  }
+
+  if (numItems > 0) {
+    EmitConstant(numItems);
+    EmitOp(Ops::CreateList, m_Previous.value().GetLine());
+  } else {
+    EmitOp(Ops::CreateEmptyList, m_Previous.value().GetLine());
   }
 }
 

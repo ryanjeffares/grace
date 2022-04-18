@@ -1,0 +1,36 @@
+func factorial(n):
+  if n < 2:
+    return 1;
+  end
+  return n + factorial(n - 1);
+end
+
+func make_list(n1, n2, n3):
+  return [n1, n2, n3];
+end
+
+func main():
+  println(factorial(10));
+  println(factorial(10));
+/*
+  var ls = [factorial(10)];
+  ls = ["hello"];
+  ls = ["goodbye"];
+  ls = ["unless"];
+  println(ls);
+//  var empty_list = [];
+//  println(empty_list);
+//
+//  var some_numbers = [69, 420, 1234];
+//  println(some_numbers);
+//
+//  final some_things = ["Ryan", true, '\t', 1.23 ** 3.14];
+//  println(some_things);
+//
+//  var result = make_list("Hello", 2**3, false);
+//  println(result);
+//
+  var factorials = [factorial(5), factorial(10), factorial(20), factorial(30)];
+  println(factorials);
+*/
+end

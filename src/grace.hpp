@@ -48,10 +48,6 @@
 # define GRACE_NOEXCEPT noexcept
 #endif
 
-#ifndef FMT_HEADER_ONLY
-# define FMT_HEADER_ONLY
-#endif
-
 #ifndef GRACE_UNREACHABLE
 
   #define GRACE_UNREACHABLE()                     \
@@ -80,3 +76,11 @@
 
 #endif
 
+#ifndef GRACE_ASSERT_FALSE
+
+  #define GRACE_ASSERT_FALSE()                    \
+    do {                                          \
+      assert(false);                              \
+    } while (false)                               \
+
+#endif
