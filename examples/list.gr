@@ -34,4 +34,8 @@ func main():
     final multiplied = multiply_list([false], i);
     println(multiplied);
   end
+
+  final str = "this is a string";
+  final list_of_lists = [[str], [true, false], [1, 2, 3]];
+  println(list_of_lists);
 end

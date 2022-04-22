@@ -574,9 +574,9 @@ void Compiler::ForStatement()
 
   m_BreakIdxPairs.emplace();
 
-  auto numLocalsStart = m_Locals.size();
-
+  // parse iterator variable
   Consume(TokenType::Identifier, "Expected identifier after `for`");
+  auto iteratorNeedsPop = false;
   auto iteratorName = std::string(m_Previous.value().GetText());
   std::int64_t iteratorId;
   auto it = std::find_if(m_Locals.begin(), m_Locals.end(), [&](const Local& l) { return l.m_Name == iteratorName; });
@@ -584,6 +584,7 @@ void Compiler::ForStatement()
     iteratorId = m_Locals.size();
     m_Locals.emplace_back(std::move(iteratorName), false, iteratorId);
     EmitOp(Ops::DeclareLocal, m_Previous.value().GetLine());
+    iteratorNeedsPop = true;
   } else {
     if (it->m_Final) {
       MessageAtPrevious(fmt::format("Loop variable '{}' has already been declared as `final`", iteratorName), LogLevel::Error);
@@ -596,8 +597,11 @@ void Compiler::ForStatement()
     }
   }
 
+  auto numLocalsStart = m_Locals.size();
+
   Consume(TokenType::In, "Expected `in` after identifier");
 
+  // parse min
   auto line = m_Previous.value().GetLine();
   if (Match(TokenType::Integer)) {
     std::int64_t value;
@@ -640,8 +644,8 @@ void Compiler::ForStatement()
 
   Consume(TokenType::DotDot, "Expected '..' after range min");
 
+  // parse max
   std::variant<std::int64_t, double, std::int64_t> max;
-
   if (Match(TokenType::Integer)) {
     std::int64_t value;
     auto result = TryParseInt(m_Previous.value(), value);
@@ -672,8 +676,8 @@ void Compiler::ForStatement()
     return;
   }
 
+  // parse increment
   std::variant<std::int64_t, double> increment;
-
   if (Match(TokenType::By)) {
     if (Match(TokenType::Integer)) {
       std::int64_t value;
@@ -701,30 +705,11 @@ void Compiler::ForStatement()
 
   Consume(TokenType::Colon, "Expected ':' after `for` statement");
 
-  auto constantIdx = static_cast<std::int64_t>(m_Vm.GetNumConstants());
-  auto opIdx = static_cast<std::int64_t>(m_Vm.GetNumOps());
+  // constant and op index to jump to after each iteration
+  auto startConstantIdx = static_cast<std::int64_t>(m_Vm.GetNumConstants());
+  auto startOpIdx = static_cast<std::int64_t>(m_Vm.GetNumOps());
 
-  while (!Match(TokenType::End)) {
-    Declaration();
-
-    if (Match(TokenType::EndOfFile)) {
-      MessageAtPrevious("Unterminated `for`", LogLevel::Error);
-      return;
-    }
-  }
-
-  EmitConstant(iteratorId);
-  EmitOp(Ops::LoadLocal, line);
-  if (increment.index() == 0) {
-    EmitConstant(std::get<0>(increment));
-  } else {
-    EmitConstant(std::get<1>(increment));
-  }
-  EmitOp(Ops::LoadConstant, line);
-  EmitOp(Ops::Add, line);
-  EmitConstant(iteratorId);
-  EmitOp(Ops::AssignLocal, line);
-
+  // evaluate the condition
   EmitConstant(iteratorId);
   EmitOp(Ops::LoadLocal, line);
 
@@ -743,12 +728,50 @@ void Compiler::ForStatement()
       break;
   }
 
-  EmitOp(Ops::GreaterEqual, line);
+  EmitOp(Ops::Less, line);
 
-  EmitConstant(constantIdx);
-  EmitConstant(opIdx);
+  auto endJumpConstantIndex = m_Vm.GetNumConstants();
+  EmitConstant(std::int64_t{});
+  auto endJumpOpIndex = m_Vm.GetNumConstants();
+  EmitConstant(std::int64_t{});
   EmitOp(Ops::JumpIfFalse, line);
 
+  // parse loop body
+  while (!Match(TokenType::End)) {
+    Declaration();
+
+    if (Match(TokenType::EndOfFile)) {
+      MessageAtPrevious("Unterminated `for`", LogLevel::Error);
+      return;
+    }
+  }
+
+  // increment iterator
+  EmitConstant(iteratorId);
+  EmitOp(Ops::LoadLocal, line);
+  if (increment.index() == 0) {
+    EmitConstant(std::get<0>(increment));
+  } else {
+    EmitConstant(std::get<1>(increment));
+  }
+  EmitOp(Ops::LoadConstant, line);
+  EmitOp(Ops::Add, line);
+  EmitConstant(iteratorId);
+  EmitOp(Ops::AssignLocal, line);
+
+  // pop any locals created within the loop scope
+  auto numLocalsEnd = m_Locals.size();
+  for (auto i = 0; i < numLocalsEnd - numLocalsStart; i++) {
+    EmitOp(Ops::PopLocal, line);
+    m_Locals.pop_back();
+  }
+
+  // always jump back to re-evaluate the condition
+  EmitConstant(startConstantIdx);
+  EmitConstant(startOpIdx);
+  EmitOp(Ops::Jump, line);
+
+  // set indexes for breaks and when the condition fails, the iterator variable will need to be popped (if its a new variable)
   if (m_BreakJumpNeedsIndexes) {
     for (auto& p : m_BreakIdxPairs.top()) {
       m_Vm.SetConstantAtIndex(p.first, static_cast<std::int64_t>(m_Vm.GetNumConstants()));
@@ -758,12 +781,14 @@ void Compiler::ForStatement()
     m_BreakIdxPairs.pop();
   }
 
-  auto numLocalsEnd = m_Locals.size();
-  for (auto i = 0; i < numLocalsEnd - numLocalsStart; i++) {
-    EmitOp(Ops::PopLocal, line);
-    m_Locals.pop_back();
-  }
+  m_Vm.SetConstantAtIndex(endJumpConstantIndex, static_cast<std::int64_t>(m_Vm.GetNumConstants()));
+  m_Vm.SetConstantAtIndex(endJumpOpIndex, static_cast<std::int64_t>(m_Vm.GetNumOps()));
 
+  if (iteratorNeedsPop) {
+    m_Locals.pop_back();
+    EmitOp(Ops::PopLocal, line);
+  }
+  
   m_CurrentContext = previousContext;
 }
 

@@ -32,6 +32,18 @@
 # error "C++17 is required"
 #endif
 
+#ifndef GRACE_MAJOR_VERSION
+# define GRACE_MAJOR_VERSION  0
+#endif
+
+#ifndef GRACE_MINOR_VERSION
+# define GRACE_MINOR_VERSION  0
+#endif
+
+#ifndef GRACE_PATCH_NUMBER
+# define GRACE_PATCH_NUMBER   1
+#endif
+
 #ifndef GRACE_INLINE
 # if defined(__clang__) || defined(__GNUC__)
 #  define GRACE_INLINE __attribute__((always_inline))

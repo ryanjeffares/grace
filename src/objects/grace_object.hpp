@@ -31,14 +31,12 @@ namespace Grace
 
       GRACE_INLINE std::uint32_t IncreaseRef()
       {
-        m_RefCount++;
-        return m_RefCount;
+        return ++m_RefCount;
       }
 
       GRACE_INLINE std::uint32_t DecreaseRef()
       {
-        m_RefCount--;
-        return m_RefCount;
+        return --m_RefCount;
       }
 
       GRACE_NODISCARD GRACE_INLINE std::uint32_t RefCount() const { return m_RefCount; }
