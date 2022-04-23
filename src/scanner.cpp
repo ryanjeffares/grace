@@ -10,6 +10,8 @@
  *  For licensing information, see grace.hpp
  */
 
+#include <unordered_map>
+
 #include "scanner.hpp"
 
 using namespace Grace::Scanner;
@@ -60,11 +62,6 @@ static std::unordered_map<std::string, TokenType> s_KeywordLookup =
   std::make_pair("string", TokenType::StringIdent),
   std::make_pair("char", TokenType::CharIdent),
 };
-
-static Token EndOfFileToken()
-{
-  return Token(TokenType::EndOfFile, 0, 0, 0, 0, "");
-}
 
 static bool IsIdentifierChar(char c)
 {
@@ -128,8 +125,9 @@ Token Scanner::ScanToken()
   m_Start = m_Current;
 
   auto c = Advance();
+
   if (IsAtEnd()) {
-    return EndOfFileToken();
+    return Token(TokenType::EndOfFile, 0, 0, m_Line - 1, m_Column - 1, "");
   }
 
   if (std::isalpha(c) || c == '_') {

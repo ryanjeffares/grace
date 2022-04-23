@@ -187,7 +187,6 @@ namespace Grace
         std::vector<Local> m_Locals;
         std::hash<std::string> m_Hasher;
 
-        bool m_ShouldNotPopValue = false;
         bool m_FunctionHadReturn = false;
         bool m_PanicMode = false, m_HadError = false;
         bool m_Verbose;

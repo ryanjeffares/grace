@@ -18,6 +18,8 @@
 using namespace Grace::Scanner;
 using namespace Grace::VM;
 
+static bool s_UsingExpressionResult = false;
+
 void Grace::Compiler::Compile(std::string&& fileName, std::string&& code, bool verbose)
 {
   using namespace std::chrono;
@@ -224,9 +226,9 @@ void Compiler::Declaration()
     auto line = m_Previous.value().GetLine();
 
     Consume(TokenType::LeftParen, "Expected '(' after `assert`");
-    m_ShouldNotPopValue = true; 
+    s_UsingExpressionResult = true; 
     Expression(false);
-    m_ShouldNotPopValue = false; 
+    s_UsingExpressionResult = false; 
 
     if (Match(TokenType::Comma)) {
       Consume(TokenType::String, "Expected message");
@@ -378,9 +380,9 @@ void Compiler::VarDeclaration()
   EmitOp(Ops::DeclareLocal, line);
 
   if (Match(TokenType::Equal)) {
-    m_ShouldNotPopValue = true;
+    s_UsingExpressionResult = true;
     Expression(false);
-    m_ShouldNotPopValue = false;
+    s_UsingExpressionResult = false;
     line = m_Previous.value().GetLine();
     EmitConstant(localId);
     EmitOp(Ops::AssignLocal, line);
@@ -411,9 +413,9 @@ void Compiler::FinalDeclaration()
   EmitOp(Ops::DeclareLocal, line);
 
   Consume(TokenType::Equal, "Must assign to `final` upon declaration");
-  m_ShouldNotPopValue = true;
+  s_UsingExpressionResult = true;
   Expression(false);
-  m_ShouldNotPopValue = false;
+  s_UsingExpressionResult = false;
   line = m_Previous.value().GetLine();
   EmitConstant(localId);
   EmitOp(Ops::AssignLocal, line);
@@ -438,13 +440,7 @@ void Compiler::Expression(bool canAssign)
 
   if (Check(TokenType::Identifier)) {
     Call(canAssign);
-    
-    if (Match(TokenType::Semicolon)) {
-      MessageAtPrevious("Expected expression", LogLevel::Error);
-      return;
-    }
-
-    if (Check(TokenType::Equal)) {
+    if (Check(TokenType::Equal)) {  
       if (m_Previous.value().GetType() != TokenType::Identifier) {
         MessageAtCurrent("Only identifiers can be assigned to", LogLevel::Error);
         return;
@@ -469,9 +465,9 @@ void Compiler::Expression(bool canAssign)
         return;
       }
 
-      m_ShouldNotPopValue = true;
+      s_UsingExpressionResult = true;
       Expression(false); // disallow x = y = z...
-      m_ShouldNotPopValue = false;
+      s_UsingExpressionResult = false;
 
       int line = m_Previous.value().GetLine();
       EmitConstant(it->m_Index);
@@ -801,9 +797,9 @@ void Compiler::ForStatement()
 
 void Compiler::IfStatement() 
 {
-  m_ShouldNotPopValue = true;
+  s_UsingExpressionResult = true;
   Expression(false);
-  m_ShouldNotPopValue = false;
+  s_UsingExpressionResult = false;
   Consume(TokenType::Colon, "Expected ':' after condition");
   
   // store indexes of constant and instruction indexes to jump
@@ -906,9 +902,9 @@ void Compiler::PrintStatement()
   if (Match(TokenType::RightParen)) {
     EmitOp(Ops::PrintTab, m_Current.value().GetLine());
   } else {
-    m_ShouldNotPopValue = true;
+    s_UsingExpressionResult = true;
     Expression(false);
-    m_ShouldNotPopValue = false;
+    s_UsingExpressionResult = false;
     EmitOp(Ops::Print, m_Current.value().GetLine());
     EmitOp(Ops::Pop, m_Current.value().GetLine());
     Consume(TokenType::RightParen, "Expected ')' after expression");
@@ -922,9 +918,9 @@ void Compiler::PrintLnStatement()
   if (Match(TokenType::RightParen)) {
     EmitOp(Ops::PrintEmptyLine, m_Current.value().GetLine());
   } else {
-    m_ShouldNotPopValue = true;
+    s_UsingExpressionResult = true;
     Expression(false);
-    m_ShouldNotPopValue = false;
+    s_UsingExpressionResult = false;
     EmitOp(Ops::PrintLn, m_Current.value().GetLine());
     EmitOp(Ops::Pop, m_Current.value().GetLine());
     Consume(TokenType::RightParen, "Expected ')' after expression");
@@ -951,9 +947,9 @@ void Compiler::ReturnStatement()
     return;
   }
 
-  m_ShouldNotPopValue = true;
+  s_UsingExpressionResult = true;
   Expression(false);
-  m_ShouldNotPopValue = false;
+  s_UsingExpressionResult = false;
   EmitOp(Ops::Return, m_Previous.value().GetLine());
   Consume(TokenType::Semicolon, "Expected ';' after expression");
   m_FunctionHadReturn = true;
@@ -976,9 +972,9 @@ void Compiler::WhileStatement()
   auto constantIdx = static_cast<std::int64_t>(m_Vm.GetNumConstants());
   auto opIdx = static_cast<std::int64_t>(m_Vm.GetNumOps());
 
-  m_ShouldNotPopValue = true;
+  s_UsingExpressionResult = true;
   Expression(false);
-  m_ShouldNotPopValue = false;
+  s_UsingExpressionResult = false;
 
   auto line = m_Previous.value().GetLine();
 
@@ -1187,7 +1183,7 @@ void Compiler::Call(bool canAssign)
       EmitConstant(numArgs);
       EmitOp(Ops::Call, m_Previous.value().GetLine());
 
-      if (!m_ShouldNotPopValue) {
+      if (!s_UsingExpressionResult) {
         // pop unused return value
         EmitOp(Ops::Pop, m_Previous.value().GetLine());
       }
@@ -1252,6 +1248,7 @@ void Compiler::Primary(bool canAssign)
   } else if (Match(TokenType::Char)) {
     Char();
   } else if (Match(TokenType::Identifier)) {
+    // TODO: warn against use of __, we'll need to know if we're in a std library file
     // do nothing, but consume the identifier and return
     // caller functions will handle it
   } else if (Match(TokenType::Null)) {
@@ -1390,7 +1387,7 @@ void Compiler::InstanceOf()
   Advance();  // Consume the type ident
   Consume(TokenType::RightParen, "Expected ')'");
 
-  if (!m_ShouldNotPopValue) {
+  if (!s_UsingExpressionResult) {
     // pop unused return value
     EmitOp(Ops::Pop, m_Previous.value().GetLine());
   }
@@ -1404,7 +1401,7 @@ void Compiler::Cast()
   Expression(false);
   EmitOp(s_CastOps[type], m_Current.value().GetLine());
   Consume(TokenType::RightParen, "Expected ')' after expression");
-  if (!m_ShouldNotPopValue) {
+  if (!s_UsingExpressionResult) {
     // pop unused return value
     EmitOp(Ops::Pop, m_Previous.value().GetLine());
   }

@@ -1,0 +1,16 @@
+func sqrti(n):
+  assert(instanceof(n, int), "Argument for `sqrt` must be an int");
+  return __NATIVE_SQRT_INT(n);
+end
+
+func sqrtf(n):
+  assert(instanceof(n, float), "Argument for `sqrtf` must be a float");
+  return __NATIVE_SQRT_FLOAT(n);
+end
+
+func main():
+  println(sqrti(4));
+  println(sqrti(81));
+  println(sqrtf(41.3434));
+  // println(sqrtf("hello"));
+end
