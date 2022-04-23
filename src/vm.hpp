@@ -23,6 +23,7 @@
 #include <fmt/format.h>
 
 #include "grace.hpp"
+#include "native_function.hpp"
 #include "value.hpp"
 
 namespace Grace
@@ -134,11 +135,7 @@ namespace Grace
           }
         };
         
-        VM(Compiler::Compiler& compiler) : m_Compiler(compiler)
-        {
-    
-        }
-
+        VM(Compiler::Compiler& compiler);
         VM(const VM&) = delete;
         VM(VM&&) = delete;
 
@@ -191,6 +188,7 @@ namespace Grace
 
       private:
 
+        void RegisterNatives();
         InterpretResult Run(bool verbose);
         void RuntimeError(const std::string& message, InterpretError errorType, int line, const CallStack& callStack);
 
@@ -232,6 +230,7 @@ namespace Grace
       private:
 
         std::unordered_map<std::int64_t, Function> m_FunctionList;
+        std::unordered_map<std::int64_t, Native::NativeFunction> m_NativeFunctions;
 
         std::vector<OpLine> m_FullOpList;
         std::vector<Value> m_FullConstantList;
