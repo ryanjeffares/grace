@@ -9,7 +9,8 @@
  *  For licensing information, see grace.hpp
  */
 
-#pragma once
+#ifndef GRACE_VALUE_HPP
+#define GRACE_VALUE_HPP
 
 #include <optional>
 #include <string>
@@ -279,3 +280,5 @@ struct fmt::formatter<Grace::VM::Value> : fmt::formatter<std::string_view>
     return fmt::formatter<std::string_view>::format(res, context);
   }
 };
+
+#endif  // ifndef GRACE_VALUE_HPP

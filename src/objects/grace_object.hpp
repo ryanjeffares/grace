@@ -9,7 +9,8 @@
  *  For licensing information, see grace.hpp
  */
 
-#pragma once
+#ifndef GRACE_OBJECT_HPP
+#define GRACE_OBJECT_HPP
 
 #include <cstdint>
 #include <string>
@@ -45,3 +46,5 @@ namespace Grace
       std::uint32_t m_RefCount = 0;
   };
 }
+
+#endif  // ifndef GRACE_OBJECT_HPP

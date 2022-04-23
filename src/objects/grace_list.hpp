@@ -9,7 +9,8 @@
  *  For licensing information, see grace.hpp
  */
 
-#pragma once
+#ifndef GRACE_LIST_HPP
+#define GRACE_LIST_HPP
 
 #include <vector>
 
@@ -63,3 +64,5 @@ namespace Grace
       std::vector<VM::Value> m_Data;
   };
 }
+
+#endif  // ifndef GRACE_LIST_HPP

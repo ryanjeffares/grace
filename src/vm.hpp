@@ -9,7 +9,8 @@
  *  For licensing information, see grace.hpp
  */
 
-#pragma once
+#ifndef GRACE_VM_HPP
+#define GRACE_VM_HPP
 
 #include <cstdint>
 #include <exception>
@@ -320,3 +321,4 @@ struct fmt::formatter<Grace::VM::InterpretError> : fmt::formatter<std::string_vi
   }
 };
 
+#endif  // ifndef GRACE_VM_HPP

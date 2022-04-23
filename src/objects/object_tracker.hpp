@@ -9,7 +9,8 @@
  *  For licensing information, see grace.hpp
  */
 
-#pragma once
+#ifndef GRACE_OBJECT_TRACKER_HPP
+#define GRACE_OBJECT_TRACKER_HPP
 
 #include <vector>
 
@@ -26,3 +27,5 @@ namespace Grace
     void Finalise();
   }
 }
+
+#endif  // ifndef GRACE_OBJECT_TRACKER_HPP

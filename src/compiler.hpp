@@ -9,7 +9,8 @@
  *  For licensing information, see grace.hpp
  */
 
-#pragma once
+#ifndef GRACE_COMPILER_HPP
+#define GRACE_COMPILER_HPP
 
 #include <stack>
 #include <string>
@@ -198,3 +199,4 @@ namespace Grace
   }
 }
 
+#endif  // ifndef GRACE_COMPILER_HPP
