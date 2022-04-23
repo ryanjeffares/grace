@@ -80,7 +80,8 @@ bool VM::CombineFunctions(bool verbose)
   auto mainHash = static_cast<std::int64_t>(m_Hasher("main"));
   auto it = m_FunctionList.find(mainHash);
   if (it == m_FunctionList.end()) {
-    RuntimeError("Could not find `main` function", InterpretError::FunctionNotFound, 1, {});
+    fmt::print(stderr, fmt::fg(fmt::color::red) | fmt::emphasis::bold, "ERROR: ");
+    fmt::print(stderr, "Could not find `main` function in file, execution cannot proceed.\n");
     return false;
   }
 

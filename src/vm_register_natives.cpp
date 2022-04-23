@@ -24,23 +24,23 @@ void VM::RegisterNatives()
   } while (false)                                                         \
 
   // Math functions
-  REGISTER_NATIVE("__NATIVE_SQRT_FLOAT", 1, [](std::vector<Value> args) {
+  REGISTER_NATIVE("__NATIVE_SQRT_FLOAT", 1, [](const std::vector<Value>& args) {
         return Value(std::sqrt(args[0].Get<double>()));
       });
-  REGISTER_NATIVE("__NATIVE_SQRT_INT", 1, [](std::vector<Value> args) {
+  REGISTER_NATIVE("__NATIVE_SQRT_INT", 1, [](const std::vector<Value>& args) {
         return Value(std::sqrt(args[0].Get<std::int64_t>()));
       });
 
   // Time functions
 #define GET_TIME(division) std::chrono::duration_cast<std::chrono::division>(std::chrono::steady_clock::now().time_since_epoch()).count()
 
-  REGISTER_NATIVE("__NATIVE_TIME_S", 0, [](std::vector<Value> args) {
+  REGISTER_NATIVE("__NATIVE_TIME_S", 0, [](const std::vector<Value>& args) {
         return Value(GET_TIME(seconds));
       });
-  REGISTER_NATIVE("__NATIVE_TIME_MS", 0, [](std::vector<Value> args) {
+  REGISTER_NATIVE("__NATIVE_TIME_MS", 0, [](const std::vector<Value>& args) {
         return Value(GET_TIME(milliseconds));
       });
-  REGISTER_NATIVE("__NATIVE_TIME_NS", 0, [](std::vector<Value> args) {
+  REGISTER_NATIVE("__NATIVE_TIME_NS", 0, [](const std::vector<Value>& args) {
         return Value(GET_TIME(nanoseconds));
       });
 
