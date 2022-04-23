@@ -438,6 +438,12 @@ void Compiler::Expression(bool canAssign)
 
   if (Check(TokenType::Identifier)) {
     Call(canAssign);
+    
+    if (Match(TokenType::Semicolon)) {
+      MessageAtPrevious("Expected expression", LogLevel::Error);
+      return;
+    }
+
     if (Check(TokenType::Equal)) {
       if (m_Previous.value().GetType() != TokenType::Identifier) {
         MessageAtCurrent("Only identifiers can be assigned to", LogLevel::Error);
@@ -561,6 +567,7 @@ void Compiler::ExpressionStatement()
 {
   if (IsLiteral(m_Current.value()) || IsOperator(m_Current.value().GetType())) {
     MessageAtCurrent("Expected identifier or keyword at start of expression", LogLevel::Error);
+    Advance();  // consume illegal token
     return;
   }
   Expression(true);
@@ -975,6 +982,7 @@ void Compiler::WhileStatement()
 
   auto line = m_Previous.value().GetLine();
 
+  // evaluate the condition
   auto endConstantJumpIdx = m_Vm.GetNumConstants();
   EmitConstant(std::int64_t{});
   auto endOpJumpIdx = m_Vm.GetNumConstants();
@@ -1365,6 +1373,9 @@ void Compiler::InstanceOf()
       break;
     case TokenType::Null:
       EmitConstant(std::int64_t(4));
+      if (m_Verbose) {
+        MessageAtCurrent("Prefer comparison `== null` over `instanceof` call for `null` check", LogLevel::Warning);
+      }
       break;
     case TokenType::StringIdent:
       EmitConstant(std::int64_t(5));

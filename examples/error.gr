@@ -1,1 +1,6 @@
 /
+
+func main():
+  var a;
+  a;
+end

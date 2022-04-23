@@ -1,0 +1,4 @@
+func main():
+  var a = null;
+  println(instanceof(a, null));
+end

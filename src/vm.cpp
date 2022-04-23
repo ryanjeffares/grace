@@ -561,7 +561,7 @@ void VM::RuntimeError(const std::string& message, InterpretError errorType, int 
 {
   fmt::print(stderr, "\n");
   
-  fmt::print(stderr, "Call stack:\n");
+  fmt::print(stderr, "Call stack (most recent call last):\n");
 
   auto callStackSize = callStack.size();
   if (callStackSize > 15) {
