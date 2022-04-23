@@ -60,7 +60,7 @@ namespace Grace
         std::uint32_t m_Arity;
         FuncDecl m_Function;
     };
-  }
-}
+  } // namespace Native
+} // namespace Grace
 
 #endif  // ifndef GRACE_NATIVE_FUNCTION_HPP

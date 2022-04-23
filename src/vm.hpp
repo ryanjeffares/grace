@@ -240,8 +240,8 @@ namespace Grace
         Compiler::Compiler& m_Compiler;
         std::hash<std::string> m_Hasher;
     };
-  }
-}
+  } // namespace VM
+} // namespace Grace
 
 template<>
 struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>

@@ -245,8 +245,8 @@ namespace Grace
         std::string* m_Str;
       } m_Data;
     };
-  }
-}
+  } // namespace VM
+} // namespace Grace
 
 template<>
 struct fmt::formatter<Grace::VM::Value::Type> : fmt::formatter<std::string_view>

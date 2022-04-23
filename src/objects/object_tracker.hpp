@@ -26,6 +26,6 @@ namespace Grace
     void StopTracking(GraceObject* object, bool verbose = false);
     void Finalise();
   }
-}
+} // namespace Grace
 
 #endif  // ifndef GRACE_OBJECT_TRACKER_HPP

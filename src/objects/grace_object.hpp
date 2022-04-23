@@ -45,6 +45,6 @@ namespace Grace
     private:
       std::uint32_t m_RefCount = 0;
   };
-}
+} // namespace Grace
 
 #endif  // ifndef GRACE_OBJECT_HPP

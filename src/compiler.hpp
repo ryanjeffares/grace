@@ -196,7 +196,7 @@ namespace Grace
         // const idx, op idx
         std::stack<std::vector<std::pair<std::int64_t, std::int64_t>>> m_BreakIdxPairs;
     };
-  }
-}
+  } // namespace Compiler
+} // namespace Grace
 
 #endif  // ifndef GRACE_COMPILER_HPP

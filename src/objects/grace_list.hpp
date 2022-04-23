@@ -63,6 +63,6 @@ namespace Grace
     private:
       std::vector<VM::Value> m_Data;
   };
-}
+} // namespace Grace
 
 #endif  // ifndef GRACE_LIST_HPP
