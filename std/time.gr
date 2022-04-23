@@ -1,0 +1,11 @@
+func time_s():
+  return __NATIVE_TIME_S();
+end
+
+func time_ms():
+  return __NATIVE_TIME_MS();
+end
+
+func time_ns():
+  return __NATIVE_TIME_NS();
+end

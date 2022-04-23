@@ -1,1 +1,9 @@
-/
+func get():
+  return 1;
+end
+
+func main():
+  var a = int(get());
+  a;
+  /
+end

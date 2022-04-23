@@ -13,21 +13,27 @@
 
 #include <optional>
 #include <string>
+#include <type_traits>
+#include <vector>
 
 #include <fmt/core.h>
 #include <fmt/format.h>
 
 #include "grace.hpp"
+#include "objects/grace_object.hpp"
+#include "objects/object_tracker.hpp"
 
 namespace Grace
 {
+  class GraceList;
+
   namespace VM
   {
     class Value final 
     {
     public:
 
-      using NullValue = void*;
+      using NullValue = std::nullptr_t; 
 
       enum class Type : std::uint8_t 
       {
@@ -36,16 +42,18 @@ namespace Grace
         Double,
         Int,
         Null,
+        Object,
         String,
       };
 
       template<typename T>
-      explicit constexpr Value(const T& value)
+      GRACE_INLINE explicit constexpr Value(const T& value)
       {
         static_assert(std::is_same<T, std::int64_t>::value || std::is_same<T, double>::value
             || std::is_same<T, bool>::value || std::is_same<T, char>::value
-            || std::is_same<T, std::string>::value || std::is_same<T, NullValue>::value,
-            "Invalid type for Constant<T>");
+            || std::is_same<T, std::string>::value || std::is_same<T, NullValue>::value, 
+            "Invalid type for Value<T>");
+
         if constexpr (std::is_same<T, std::int64_t>::value) {
           m_Type = Type::Int;
           m_Data.m_Int = value;
@@ -67,48 +75,37 @@ namespace Grace
         }
       }
 
-      Value()
-      {
-        m_Type = Type::Null;
-        m_Data.m_Null = nullptr;
-      }
+      Value();
+      Value(const Value& other);
+      Value(Value&& other) GRACE_NOEXCEPT;
+      ~Value();
 
-      Value(const Value& other)
-      {
-        m_Type = other.m_Type;
-        if (other.m_Type == Type::String) {
-          m_Data.m_Str = new std::string(*other.m_Data.m_Str);
-        } else {
-          m_Data = other.m_Data;
-        }
-      }
-
-      Value(Value&& other) GRACE_NOEXCEPT
-      {
-        m_Type = other.m_Type;
-        m_Data = other.m_Data;
-        if (other.m_Type == Type::String) {
-          other.m_Data.m_Str = nullptr;
-        }
-      }
-
-      ~Value()
-      {
-        if (m_Type == Type::String && m_Data.m_Str != nullptr) {
-          delete m_Data.m_Str;
-        }
-      }
+      static Value CreateList();
+      static Value CreateList(std::vector<Value>&& items);
+      static Value CreateList(const GraceList& list, std::int64_t multiple);
 
       constexpr Value& operator=(const Value& other)
       {
-        if (this != &other)
-        {
+        if (this != &other) {
           if (m_Type == Type::String && m_Data.m_Str != nullptr) {
             delete m_Data.m_Str;
           }
+
+          if (m_Type == Type::Object) {
+            if (m_Data.m_Object->DecreaseRef() == 0) {
+#ifdef GRACE_DEBUG
+              ObjectTracker::StopTracking(m_Data.m_Object); 
+#endif
+              delete m_Data.m_Object;
+            }
+          }
+
           m_Type = other.m_Type;
           if (other.m_Type == Type::String) {
             m_Data.m_Str = new std::string(*other.m_Data.m_Str);
+          } else if (other.m_Type == Type::Object) {
+            m_Data.m_Object = other.m_Data.m_Object;
+            m_Data.m_Object->IncreaseRef();
           } else {
             m_Data = other.m_Data;
           }
@@ -119,10 +116,25 @@ namespace Grace
       constexpr Value& operator=(Value&& other) GRACE_NOEXCEPT
       {
         if (this != &other) {
+          if (m_Type == Type::String && m_Data.m_Str != nullptr) {
+            delete m_Data.m_Str;
+          }
+          
+          if (m_Type == Type::Object) {
+            if (m_Data.m_Object->DecreaseRef() == 0) {
+#ifdef GRACE_DEBUG
+              ObjectTracker::StopTracking(m_Data.m_Object); 
+#endif
+              delete m_Data.m_Object;
+            }
+          }
+
           m_Type = other.m_Type;
           m_Data = other.m_Data;
-          if (other.m_Type == Type::String) {
-            other.m_Data.m_Str = nullptr;
+
+          if (other.m_Type == Type::String || other.m_Type == Type::Object) {
+            other.m_Data.m_Null = nullptr;
+            other.m_Type = Type::Null;
           }
         }
         return *this;
@@ -134,10 +146,19 @@ namespace Grace
         static_assert(std::is_same<T, std::int64_t>::value || std::is_same<T, double>::value
             || std::is_same<T, bool>::value || std::is_same<T, char>::value
             || std::is_same<T, std::string>::value || std::is_same<T, NullValue>::value,
-            "Invalid type for Constant<T>::operator=");
+            "Invalid type for Value<T>::operator=");
 
         if (m_Type == Type::String && m_Data.m_Str != nullptr) {
           delete m_Data.m_Str;
+        }
+
+        if (m_Type == Type::Object) {
+          if (m_Data.m_Object->DecreaseRef() == 0) {
+#ifdef GRACE_DEBUG
+            ObjectTracker::StopTracking(m_Data.m_Object); 
+#endif
+            delete m_Data.m_Object;
+          }
         }
 
         if constexpr (std::is_same<T, std::int64_t>::value) {
@@ -173,12 +194,13 @@ namespace Grace
       GRACE_NODISCARD std::tuple<bool, std::optional<std::string>> AsChar(char& result) const;
 
       template<typename T> 
-      constexpr GRACE_INLINE T Get() const
+      GRACE_NODISCARD constexpr GRACE_INLINE T Get() const
       {
         static_assert(std::is_same<T, std::int64_t>::value || std::is_same<T, double>::value
             || std::is_same<T, bool>::value || std::is_same<T, char>::value
             || std::is_same<T, std::string>::value || std::is_same<T, NullValue>::value,
-            "Invalid type for Constant<T>::Get<T>()");
+            "Invalid type for Value::Get<T>()");
+
         if constexpr (std::is_same<T, std::int64_t>::value) {
           return m_Data.m_Int;
         } else if constexpr (std::is_same<T, double>::value) {
@@ -194,8 +216,15 @@ namespace Grace
         }
       }
 
-      GRACE_NODISCARD
-      constexpr GRACE_INLINE Type GetType() const
+      GRACE_NODISCARD constexpr GRACE_INLINE GraceObject* GetObject() const
+      {
+        if (m_Type == Type::Object) {
+          return m_Data.m_Object;
+        }
+        return nullptr;
+      }
+
+      GRACE_NODISCARD constexpr GRACE_INLINE Type GetType() const
       {
         return m_Type;
       }
@@ -210,8 +239,9 @@ namespace Grace
         char m_Char;
         double m_Double;
         std::int64_t m_Int;
-        std::string* m_Str;
         NullValue m_Null;
+        GraceObject* m_Object;
+        std::string* m_Str;
       } m_Data;
     };
   }
@@ -232,8 +262,20 @@ struct fmt::formatter<Grace::VM::Value::Type> : fmt::formatter<std::string_view>
       case Value::Type::Double: name = "Type::Float"; break;
       case Value::Type::Int: name = "Type::Int"; break;
       case Value::Type::Null: name = "Type::Null"; break;
+      case Value::Type::Object: name = "Type::Object"; break;
       case Value::Type::String: name = "Type::String"; break;
     }
     return fmt::formatter<std::string_view>::format(name, context);
+  }
+};
+
+template<>
+struct fmt::formatter<Grace::VM::Value> : fmt::formatter<std::string_view>
+{
+  template<typename FormatContext>
+  auto format(const Grace::VM::Value& value, FormatContext& context) const -> decltype(context.out())
+  {
+    std::string res = value.AsString();
+    return fmt::formatter<std::string_view>::format(res, context);
   }
 };
