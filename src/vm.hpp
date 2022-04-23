@@ -48,6 +48,8 @@ namespace Grace
       CastAsString,
       CastAsChar,
       CheckType,
+      CreateList,
+      CreateEmptyList,
       DeclareLocal,
       Divide,
       Equal,
@@ -263,6 +265,8 @@ struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
       case Ops::CastAsString: name = "Ops::CastAsString"; break;
       case Ops::CastAsChar: name = "Ops::CastAsChar"; break;
       case Ops::CheckType: name = "Ops::CheckType"; break;
+      case Ops::CreateList: name = "Ops::CreateList"; break;
+      case Ops::CreateEmptyList: name = "Ops::CreateEmptyList"; break;
       case Ops::DeclareLocal: name = "Ops::DeclareLocal"; break;
       case Ops::Divide: name = "Ops::Divide"; break;
       case Ops::Equal: name = "Ops::Equal"; break;

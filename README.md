@@ -37,6 +37,7 @@ This will build the `grace` executable, which you can add to your path or move s
 
 ## Alpha Release Roadmap
 * Experiment with string interning
+* Unicode strings over regular `std::string`
 * Performance
   * Returning from functions is a bottleneck due to popping the function 
   * Consider using raw arrays over vectors for the op and constant list

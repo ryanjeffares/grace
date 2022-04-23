@@ -69,7 +69,8 @@ factor        -> unary ( ( "/" | "*" ) unary )* ;
 unary         -> ( "!" | "-" ) unary | call ;
 call          -> primary ( "(" arguments? ")" | "." IDENTIFIER )* ;
 primary       -> "true" | "false" | "this" | instanceof | cast
-               | NUMBER | STRING | IDENTIFIER | "(" expression ")" ;
+               | NUMBER | STRING | IDENTIFIER | "(" expression ")" 
+               | LIST ;
 
 instanceof    -> "instanceof" "(" expression "," TYPE ")" ; 
 cast          -> TYPE "(" expression ")" ;
@@ -81,6 +82,7 @@ cast          -> TYPE "(" expression ")" ;
 function      -> IDENTIFIER "(" parameters? ")" ":" block "end" ;
 parameters    -> IDENTIFIER ( "," IDENTIFIER )* ;
 arguments     -> expression ( "," expression )* ;
+list_items    -> expression ( ";" INTEGER ) ( "," expression ( ";" INTEGER ) )* ;
 ```
 
 ## Lexical Grammar
@@ -95,6 +97,7 @@ ALPHA         -> "a" ... "z" | "A" ... "Z" | "_" ;
 DIGIT         -> "0" ... "9" ;
 TYPE          -> "int" | "float" | "bool" | "string" | "char" ;
 RANGE         -> ( NUMBER | IDENTIFIER ) ".." ( NUMBER | IDENTIFIER ) ;
+LIST          -> "[" list_items "]" ;
 ```
 
 ## Keywords

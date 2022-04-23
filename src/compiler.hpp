@@ -145,6 +145,7 @@ namespace Grace
         void String();
         void InstanceOf();
         void Cast();
+        void List();
 
         enum class LogLevel
         {
@@ -165,12 +166,25 @@ namespace Grace
           Loop,
         } m_CurrentContext;
 
+        struct Local
+        {
+          std::string m_Name;
+          bool m_Final;
+          std::int64_t m_Index;
+
+          Local(std::string&& name, bool final, std::int64_t index)
+            : m_Name(std::move(name)), m_Final(final), m_Index(index)
+          {
+
+          }
+        };
+
         Scanner::Scanner m_Scanner;
         VM::VM m_Vm;
 
         std::optional<Scanner::Token> m_Current, m_Previous;
         std::string m_CurrentFileName;
-        std::unordered_map<std::string, std::pair<bool, std::int64_t>> m_Locals;
+        std::vector<Local> m_Locals;
         std::hash<std::string> m_Hasher;
 
         bool m_ShouldNotPopValue = false;

@@ -46,6 +46,8 @@ namespace Grace
       Semicolon,
       LeftParen,
       RightParen,
+      LeftSquareParen,
+      RightSquareParen,
       Comma,
       Dot,
       DotDot,
@@ -179,6 +181,8 @@ struct fmt::formatter<Grace::Scanner::TokenType> : fmt::formatter<std::string_vi
         case TokenType::Semicolon: name = "TokenType::Semicolon"; break;
         case TokenType::LeftParen: name = "TokenType::LeftParen"; break;
         case TokenType::RightParen: name = "TokenType::RightParen"; break;
+        case TokenType::LeftSquareParen: name = "TokenType::LeftSquareParen"; break;
+        case TokenType::RightSquareParen: name = "TokenType::RightSquareParen"; break;
         case TokenType::Comma: name = "TokenType::Comma"; break;
         case TokenType::Dot: name = "TokenType::Dot"; break;
         case TokenType::DotDot: name = "TokenType::DotDot"; break;

@@ -32,6 +32,18 @@
 # error "C++17 is required"
 #endif
 
+#ifndef GRACE_MAJOR_VERSION
+# define GRACE_MAJOR_VERSION  0
+#endif
+
+#ifndef GRACE_MINOR_VERSION
+# define GRACE_MINOR_VERSION  0
+#endif
+
+#ifndef GRACE_PATCH_NUMBER
+# define GRACE_PATCH_NUMBER   1
+#endif
+
 #ifndef GRACE_INLINE
 # if defined(__clang__) || defined(__GNUC__)
 #  define GRACE_INLINE __attribute__((always_inline))
@@ -46,10 +58,6 @@
 
 #ifndef GRACE_NOEXCEPT
 # define GRACE_NOEXCEPT noexcept
-#endif
-
-#ifndef FMT_HEADER_ONLY
-# define FMT_HEADER_ONLY
 #endif
 
 #ifndef GRACE_UNREACHABLE
@@ -80,3 +88,11 @@
 
 #endif
 
+#ifndef GRACE_ASSERT_FALSE
+
+  #define GRACE_ASSERT_FALSE()                    \
+    do {                                          \
+      assert(false);                              \
+    } while (false)                               \
+
+#endif

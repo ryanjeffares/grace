@@ -11,13 +11,16 @@
 
 #include <cmath>
 #include <cstdlib>
+#include <iterator>
 #include <stack>
 #include <chrono>
 
 #include "grace.hpp"
 
 #include "compiler.hpp"
+#include "objects/grace_list.hpp"
 #include "vm.hpp"
+#include "objects/object_tracker.hpp"
 
 using namespace Grace::VM;
 
@@ -372,7 +375,6 @@ InterpretResult VM::Run(bool verbose)
 
         localsOffsets.push(localsList.size());
         localsList.resize(localsList.size() + arity);
-        std::vector<Value> args(arity);
         for (auto i = 0; i < arity; i++) {
           localsList[arity - i - 1 + localsOffsets.top()] = Pop(valueStack);
         }
@@ -389,7 +391,7 @@ InterpretResult VM::Run(bool verbose)
       }
       case Ops::AssignLocal: {
         auto value = Pop(valueStack);
-        localsList[m_FullConstantList[constantCurrent++].Get<std::int64_t>() + localsOffsets.top()] = value;
+        localsList[m_FullConstantList[constantCurrent++].Get<std::int64_t>() + localsOffsets.top()] = std::move(value);
         break;
       }
       case Ops::DeclareLocal: {
@@ -425,7 +427,8 @@ InterpretResult VM::Run(bool verbose)
 
         constantCurrent = static_cast<std::size_t>(Pop(valueStack).Get<std::int64_t>());
         opCurrent = static_cast<std::size_t>(Pop(valueStack).Get<std::int64_t>());
-        valueStack.push_back(std::move(returnValue));
+
+        valueStack.emplace_back(std::move(returnValue));
         localsOffsets.pop();
 
 #ifdef GRACE_DEBUG
@@ -493,6 +496,19 @@ InterpretResult VM::Run(bool verbose)
         valueStack.emplace_back(typeIdx == static_cast<std::int64_t>(Pop(valueStack).GetType()));
         break;
       }
+      case Ops::CreateList: {
+        auto numItems = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+        auto offset = valueStack.size() - numItems;
+        std::vector<Value> result;
+        result.insert(result.end(), std::make_move_iterator(valueStack.begin() + offset), std::make_move_iterator(valueStack.end()));
+        valueStack.erase(valueStack.begin() + offset, valueStack.end());
+        valueStack.emplace_back(Value::CreateList(std::move(result)));
+        break;
+      }
+      case Ops::CreateEmptyList: {
+        valueStack.emplace_back(Value::CreateList());
+        break;
+      }
       case Ops::Assert: {
         auto condition = Pop(valueStack);
         if (!condition.AsBool()) {
@@ -526,13 +542,14 @@ InterpretResult VM::Run(bool verbose)
     }
   }
 
+  localsList.clear();
+
 #ifdef GRACE_DEBUG 
   PRINT_LOCAL_MEMORY();
+  GRACE_ASSERT(valueStack.empty(), "Unhandled data on the stack");
+  ObjectTracker::Finalise();
 #endif
 
-  GRACE_ASSERT(valueStack.empty(), "Unhandled data on the stack");
-
-  localsList.clear();
   return InterpretResult::RuntimeOk;
 
 #undef PRINT_LOCAL_MEMORY
@@ -544,7 +561,7 @@ void VM::RuntimeError(const std::string& message, InterpretError errorType, int 
 {
   fmt::print(stderr, "\n");
   
-  fmt::print(stderr, "Call stack:\n");
+  fmt::print(stderr, "Call stack (most recent call last):\n");
 
   auto callStackSize = callStack.size();
   if (callStackSize > 15) {
@@ -760,6 +777,16 @@ bool VM::HandleMultiplication(const Value& c1, const Value& c2, std::vector<Valu
         }
         stack.emplace_back(res);
         return true;
+      }
+      return false;
+    }
+    case Value::Type::Object: {
+      if (auto list = dynamic_cast<GraceList*>(c1.GetObject())) {
+        if (c2.GetType() != Value::Type::Int) {
+          return false;
+        }
+        stack.emplace_back(Value::CreateList(*list, c2.Get<std::int64_t>()));
+        return true; 
       }
       return false;
     }

@@ -11,9 +11,56 @@
 
 #include <type_traits>
 
+#include "grace.hpp"
+#include "objects/grace_list.hpp"
 #include "value.hpp"
 
 using namespace Grace::VM;
+
+Value::Value()
+{
+  m_Type = Type::Null;
+  m_Data.m_Null = nullptr;
+}
+
+Value::Value(const Value& other)
+{
+  m_Type = other.m_Type;
+  if (other.m_Type == Type::String) {
+    m_Data.m_Str = new std::string(*other.m_Data.m_Str);
+  } else if (other.m_Type == Type::Object) {
+    m_Data.m_Object = other.m_Data.m_Object;
+    m_Data.m_Object->IncreaseRef();
+  } else {
+    m_Data = other.m_Data;
+  }
+}
+
+Value::Value(Value&& other) GRACE_NOEXCEPT
+{
+  m_Type = other.m_Type;
+  m_Data = other.m_Data;
+  
+  if (other.m_Type == Type::String || other.m_Type == Type::Object) {
+    other.m_Data.m_Null = nullptr;
+    other.m_Type = Type::Null;
+  }
+}
+
+Value::~Value()
+{
+  if (m_Type == Type::String && m_Data.m_Str != nullptr) {
+    delete m_Data.m_Str;
+  } 
+  if (m_Type == Type::Object) {
+    if (m_Data.m_Object->DecreaseRef() == 0) {
+#ifdef GRACE_DEBUG
+      ObjectTracker::StopTracking(m_Data.m_Object); 
+#endif
+      delete m_Data.m_Object;
+    }
+  }
+}
 
 void Value::PrintLn() const
 {
@@ -32,6 +79,9 @@ void Value::PrintLn() const
       break;
     case Type::Null:
       fmt::print("null\n");
+      break;
+    case Type::Object:
+      m_Data.m_Object->PrintLn();
       break;
     case Type::String:
       fmt::print("{}\n", *m_Data.m_Str);
@@ -57,6 +107,9 @@ void Value::Print() const
     case Type::Null:
       fmt::print("null");
       break;
+    case Type::Object:
+      m_Data.m_Object->Print();
+      break;
     case Type::String:
       fmt::print("{}", *m_Data.m_Str);
       break;
@@ -81,6 +134,9 @@ void Value::DebugPrint() const
     case Type::Null:
       fmt::print("{}: null\n", m_Type);
       break;
+    case Type::Object:
+      m_Data.m_Object->DebugPrint();
+      break;
     case Type::String:
       fmt::print("{}: {}\n", m_Type, *m_Data.m_Str);
       break;
@@ -101,10 +157,10 @@ std::string Value::AsString() const
       return fmt::format("{}", m_Data.m_Int);
     case Type::Null:
       return "null";
+    case Type::Object:
+      return m_Data.m_Object->ToString();
     case Type::String:
       return fmt::format("{}", *m_Data.m_Str);
-    default:
-      return "Invalid type";
   }
 }
 
@@ -124,8 +180,8 @@ bool Value::AsBool() const
       return false;
     case Type::String:
       return m_Data.m_Str->length() > 0;
-    default:
-      return false;
+    case Type::Object:
+      return m_Data.m_Object->AsBool();
   }
 }
  
@@ -161,6 +217,8 @@ std::tuple<bool, std::optional<std::string>> Value::AsInt(std::int64_t& result) 
     case Type::Null: {
       return {false, "Cannot convert `null` to int"};
     }
+    default:
+      return {false, "Cannot convert object to int"};
   }
 }
  
@@ -184,7 +242,7 @@ std::tuple<bool, std::optional<std::string>> Value::AsDouble(double& result) con
         result = std::stod(*m_Data.m_Str);
         return {true, {}};
       } catch (const std::invalid_argument& e) {
-        return {false, fmt::format("Could not convert '{}' to int: {}", *m_Data.m_Str, e.what())};
+        return {false, fmt::format("Could not convert '{}' to float: {}", *m_Data.m_Str, e.what())};
       } catch (const std::out_of_range&) {
         return {false, "Float represented by string was out of range"};
       }
@@ -196,6 +254,8 @@ std::tuple<bool, std::optional<std::string>> Value::AsDouble(double& result) con
     case Type::Null: {
       return {false, "Cannot convert `null` to float"};
     }
+    default:
+      return {false, "Cannot convert object to float"};
   } 
 }
  
@@ -229,6 +289,43 @@ std::tuple<bool, std::optional<std::string>> Value::AsChar(char& result) const
     case Type::Null: {
       return {false, "Cannot convert `null` to char"};
     }
+    default:
+      return {false, "Cannot convert object to char"};
   } 
 }
 
+Value Value::CreateList()
+{
+  Value value;
+  value.m_Type = Type::Object;
+  value.m_Data.m_Object = new GraceList();
+  value.m_Data.m_Object->IncreaseRef();
+#ifdef GRACE_DEBUG
+  ObjectTracker::TrackObject(value.m_Data.m_Object); 
+#endif
+  return value;
+}
+
+Value Value::CreateList(std::vector<Value>&& items)
+{
+  Value value;
+  value.m_Type = Type::Object;
+  value.m_Data.m_Object = new GraceList(std::move(items));
+  value.m_Data.m_Object->IncreaseRef();
+#ifdef GRACE_DEBUG
+  ObjectTracker::TrackObject(value.m_Data.m_Object); 
+#endif
+  return value;
+}
+
+Value Value::CreateList(const GraceList& list, std::int64_t multiple)
+{
+  Value value;
+  value.m_Type = Type::Object;
+  value.m_Data.m_Object = new GraceList(list, multiple);
+  value.m_Data.m_Object->IncreaseRef();
+#ifdef GRACE_DEBUG
+  ObjectTracker::TrackObject(value.m_Data.m_Object); 
+#endif
+  return value;
+}
