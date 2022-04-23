@@ -36,7 +36,6 @@ cmake --build .
 This will build the `grace` executable, which you can add to your path or move somewhere that is on your path. Full install process as well as documentation is WIP.
 
 ## Alpha Release Roadmap
-* Disallow expressions such as `some_variable;`
 * Experiment with string interning
 * Unicode strings over regular `std::string`
 * Performance
