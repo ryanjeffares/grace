@@ -1,0 +1,21 @@
+func is_divisible(n):
+  for i in 1..21:
+    final div = float(n) / float(i);
+    if div != int(div):
+      return false;
+    end
+  end
+  return true;
+end
+
+func main():
+  var i = 1;
+  while true:
+    if is_divisible(i):
+      println(i);
+      break;
+    end
+    i = i + 1;
+  end
+  assert(i == 232792560);
+end

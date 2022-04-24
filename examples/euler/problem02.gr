@@ -1,0 +1,19 @@
+func main():
+  var x = 0;
+  var y = 1;
+  var z;
+
+  var sum = 0;
+  while x < 4000000:
+    if x % 2 == 0:
+      sum = sum + x;
+    end
+
+    z = x + y;
+    x = y;
+    y = z;
+  end
+
+  assert(sum == 4613732);
+  println(sum);
+end

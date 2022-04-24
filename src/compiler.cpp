@@ -19,6 +19,7 @@ using namespace Grace::Scanner;
 using namespace Grace::VM;
 
 static bool s_UsingExpressionResult = false;
+static bool s_InsideFunction = false;
 
 void Grace::Compiler::Compile(std::string&& fileName, std::string&& code, bool verbose)
 {
@@ -281,6 +282,12 @@ void Compiler::ClassDeclaration()
 
 void Compiler::FuncDeclaration() 
 {
+  if (s_InsideFunction) {
+    MessageAtPrevious("Nested functions are not permitted, prefer lambdas", LogLevel::Error);
+    return;
+  }
+
+  s_InsideFunction = true;
   auto previous = m_CurrentContext;
   m_CurrentContext = Context::Function;  
 
@@ -356,6 +363,7 @@ void Compiler::FuncDeclaration()
   }
 
   m_CurrentContext = previous;
+  s_InsideFunction = false;
 }
 
 void Compiler::VarDeclaration() 
@@ -930,7 +938,7 @@ void Compiler::PrintLnStatement()
 
 void Compiler::ReturnStatement() 
 {
-  if (m_CurrentContext != Context::Function) {
+  if (!s_InsideFunction) {
     MessageAtPrevious("`return` only allowed inside functions", LogLevel::Error);
     return;
   }

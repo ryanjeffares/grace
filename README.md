@@ -59,7 +59,7 @@ This will build the `grace` executable, which you can add to your path or move s
 * Filesystem handling
 * Install process 
 * Tests 
-* Documentation 
+* Documentation + comments 
 
 ## Long Term Goals 
 * Optional type annotations for use by a static analyzer
