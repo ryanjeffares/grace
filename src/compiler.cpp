@@ -19,16 +19,8 @@ using namespace Grace::Scanner;
 using namespace Grace::VM;
 
 static bool s_UsingExpressionResult = false;
-static bool s_InsideFunction = false;
 static bool s_Verbose = false;
 static bool s_WarningsError = false;
-
-enum class Context
-{
-  TopLevel,
-  Function,
-  Loop,
-} s_CurrentContext = Context::TopLevel;
 
 void Grace::Compiler::Compile(std::string&& fileName, std::string&& code, bool verbose, bool warningsError)
 {
@@ -74,7 +66,7 @@ Compiler::Compiler(std::string&& fileName, std::string&& code)
   m_Scanner(std::move(code)),
   m_Vm(*this)
 {
-
+  m_ContextStack.emplace_back(Context::TopLevel);
 }
 
 void Compiler::Finalise()
@@ -222,7 +214,7 @@ void Compiler::Declaration()
   } else if (Match(TokenType::Final)) {
     FinalDeclaration();
   } else if (Match(TokenType::Break)) {
-    if (s_CurrentContext != Context::Loop) {
+    if (m_ContextStack.back() != Context::Loop) {
       // don't return early from here, so the compiler can synchronize...
       MessageAtPrevious("`break` only allowed inside `for` and `while` loops", LogLevel::Error);
     } else {
@@ -265,7 +257,7 @@ void Compiler::Declaration()
 
 void Compiler::Statement()
 {
-  if (s_CurrentContext == Context::TopLevel) {
+  if (m_ContextStack.back() == Context::TopLevel) {
     MessageAtCurrent("Only functions and classes are allowed at top level", LogLevel::Error);
     return;
   }
@@ -294,14 +286,14 @@ void Compiler::ClassDeclaration()
 
 void Compiler::FuncDeclaration() 
 {
-  if (s_InsideFunction) {
-    MessageAtPrevious("Nested functions are not permitted, prefer lambdas", LogLevel::Error);
-    return;
+  for (auto it = m_ContextStack.crbegin(); it != m_ContextStack.crend(); ++it) {
+    if (*it == Context::Function) {
+      MessageAtPrevious("Nested functions are not permitted, prefer lambdas", LogLevel::Error);
+      return;
+    }
   }
 
-  s_InsideFunction = true;
-  auto previous = s_CurrentContext;
-  s_CurrentContext = Context::Function;  
+  m_ContextStack.emplace_back(Context::Function);
 
   Consume(TokenType::Identifier, "Expected function name");
   auto name = std::string(m_Previous.value().GetText());
@@ -374,13 +366,12 @@ void Compiler::FuncDeclaration()
     EmitOp(Ops::Exit, m_Previous.value().GetLine());
   }
 
-  s_CurrentContext = previous;
-  s_InsideFunction = false;
+  m_ContextStack.pop_back();
 }
 
 void Compiler::VarDeclaration() 
 {
-  if (s_CurrentContext == Context::TopLevel) {
+  if (m_ContextStack.back() == Context::TopLevel) {
     MessageAtPrevious("Only functions and classes are allowed at top level", LogLevel::Error);
     return;
   }
@@ -412,7 +403,7 @@ void Compiler::VarDeclaration()
 
 void Compiler::FinalDeclaration() 
 {
-  if (s_CurrentContext == Context::TopLevel) {
+  if (m_ContextStack.back() == Context::TopLevel) {
     MessageAtPrevious("Only functions and classes are allowed at top level", LogLevel::Error);
     return;
   } 
@@ -592,8 +583,7 @@ void Compiler::ExpressionStatement()
 
 void Compiler::ForStatement() 
 {
-  auto previousContext = s_CurrentContext;
-  s_CurrentContext = Context::Loop;
+  m_ContextStack.emplace_back(Context::Loop);
 
   m_BreakIdxPairs.emplace();
 
@@ -815,7 +805,7 @@ void Compiler::ForStatement()
     EmitOp(Ops::PopLocal, line);
   }
   
-  s_CurrentContext = previousContext;
+  m_ContextStack.pop_back();
 }
 
 void Compiler::IfStatement() 
@@ -953,7 +943,14 @@ void Compiler::PrintLnStatement()
 
 void Compiler::ReturnStatement() 
 {
-  if (!s_InsideFunction) {
+  bool insideFunction = false;
+  for (auto it = m_ContextStack.crbegin(); it != m_ContextStack.crend(); ++it) {
+    if (*it == Context::Function) {
+      insideFunction = true;
+      break;
+    }
+  }
+  if (!insideFunction) {
     MessageAtPrevious("`return` only allowed inside functions", LogLevel::Error);
     return;
   }
@@ -987,8 +984,7 @@ void Compiler::ReturnStatement()
 
 void Compiler::WhileStatement() 
 {
-  auto previousContext = s_CurrentContext;
-  s_CurrentContext = Context::Loop;
+  m_ContextStack.emplace_back(Context::Loop);
 
   m_BreakIdxPairs.emplace();
 
@@ -1045,7 +1041,7 @@ void Compiler::WhileStatement()
     m_Locals.pop_back();
   }
  
-  s_CurrentContext = previousContext;
+  m_ContextStack.pop_back();
 }
 
 void Compiler::Or(bool canAssign, bool skipFirst)

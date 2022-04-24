@@ -176,7 +176,15 @@ namespace Grace
 
           }
         };
-        
+
+        enum class Context
+        {
+          TopLevel,
+          Function,
+          Loop,
+        };
+
+        std::vector<Context> m_ContextStack;
         std::string m_CurrentFileName;
 
         Scanner::Scanner m_Scanner;

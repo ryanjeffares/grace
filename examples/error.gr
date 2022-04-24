@@ -1,4 +1,5 @@
 func get():
+  // func illegal():end
   return 1;
 end
 
