@@ -31,11 +31,12 @@ namespace Grace
     /*
      *  Starts the compilation process.
      *
-     *  @param fileName  Name of the file to be read
-     *  @param code      The code to be compiled.
-     *  @param verbose   Verbose mode (display compilation time).
+     *  @param fileName         Name of the file to be read
+     *  @param code             The code to be compiled.
+     *  @param verbose          Verbose mode (display compilation time and compiler warnings).
+     *  @param warningsError    Display compiler warnings, warnings result in errors 
      */
-    void Compile(std::string&& fileName, std::string&& code, bool verbose);
+    void Compile(std::string&& fileName, std::string&& code, bool verbose, bool warningsError);
 
     /*
      *  The main Compiler class.
@@ -51,7 +52,7 @@ namespace Grace
          *  @param fileName     The file to be read
          *  @param code         The code to be compiled.
          */
-        explicit Compiler(std::string&& fileName, std::string&& code, bool verbose);
+        explicit Compiler(std::string&& fileName, std::string&& code);
         ~Compiler() = default;
 
         Compiler(const Compiler&) = delete;
@@ -77,7 +78,10 @@ namespace Grace
         bool Match(Scanner::TokenType expected);
 
         GRACE_INLINE bool HadError() const { return m_HadError; }
+        GRACE_INLINE bool HadWarning() const { return m_HadWarning; }
+
         void Finalise();
+        
         GRACE_INLINE std::string GetCodeAtLine(int line) const
         {
           return m_Scanner.GetCodeAtLine(line);
@@ -183,8 +187,7 @@ namespace Grace
         std::hash<std::string> m_Hasher;
 
         bool m_FunctionHadReturn = false;
-        bool m_PanicMode = false, m_HadError = false;
-        bool m_Verbose;
+        bool m_PanicMode = false, m_HadError = false, m_HadWarning = false;
 
         bool m_BreakJumpNeedsIndexes = false;
         // const idx, op idx
