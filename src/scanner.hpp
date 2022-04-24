@@ -9,6 +9,9 @@
  *  For licensing information, see grace.hpp
  */
 
+#ifndef GRACE_SCANNER_HPP
+#define GRACE_SCANNER_HPP
+
 #include <string>
 #include <string_view>
 #include <vector>
@@ -153,7 +156,7 @@ namespace Grace
         std::size_t m_Start = 0, m_Current = 0;
         int m_Line = 1, m_Column = 1;
     };
-  } // namespace scanner
+  } // namespace Scanner
 } // namespace Grace
 
 template<>
@@ -229,3 +232,4 @@ struct fmt::formatter<Grace::Scanner::TokenType> : fmt::formatter<std::string_vi
   }
 };
 
+#endif  // ifndef GRACE_SCANNER_HPP

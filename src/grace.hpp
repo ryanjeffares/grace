@@ -24,7 +24,8 @@
  *  SOFTWARE.
  */
 
-#pragma once
+#ifndef GRACE_GRACE_HPP
+#define GRACE_GRACE_HPP
 
 #include <cassert>
 
@@ -96,3 +97,5 @@
     } while (false)                               \
 
 #endif
+
+#endif  // ifndef GRACE_GRACE_HPP

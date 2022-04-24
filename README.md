@@ -12,6 +12,10 @@ An important aspiration of Grace is to be unambiguous and predictable. By keepin
 
 Performance is pertinent, and should stay predictable due to the use of reference counting over garbage collection.
 
+## Spec and Guidelines
+
+The specification of the language and its standard library and grammar, as well as styling guidelines, can be found [here](https://github.com/ryanjeffares/gracelang).
+
 ## Contributing
 
 As Grace is still very much in its infancy, I am not open to pull requests at the moment. But, if you do end up trying Grace out and come across a bug, or notice something wrong in the source code, please do not hesitate to open an issue!
@@ -59,7 +63,7 @@ This will build the `grace` executable, which you can add to your path or move s
 * Filesystem handling
 * Install process 
 * Tests 
-* Documentation 
+* Documentation + comments 
 
 ## Long Term Goals 
 * Optional type annotations for use by a static analyzer

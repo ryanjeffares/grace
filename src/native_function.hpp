@@ -9,7 +9,8 @@
  *  For licensing information, see grace.hpp
  */
 
-#pragma once
+#ifndef GRACE_NATIVE_FUNCTION_HPP
+#define GRACE_NATIVE_FUNCTION_HPP
 
 #include <cstdint>
 #include <functional>
@@ -59,5 +60,7 @@ namespace Grace
         std::uint32_t m_Arity;
         FuncDecl m_Function;
     };
-  }
-}
+  } // namespace Native
+} // namespace Grace
+
+#endif  // ifndef GRACE_NATIVE_FUNCTION_HPP

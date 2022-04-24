@@ -9,7 +9,8 @@
  *  For licensing information, see grace.hpp
  */
 
-#pragma once
+#ifndef GRACE_OBJECT_TRACKER_HPP
+#define GRACE_OBJECT_TRACKER_HPP
 
 #include <vector>
 
@@ -25,4 +26,6 @@ namespace Grace
     void StopTracking(GraceObject* object, bool verbose = false);
     void Finalise();
   }
-}
+} // namespace Grace
+
+#endif  // ifndef GRACE_OBJECT_TRACKER_HPP

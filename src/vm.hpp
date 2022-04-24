@@ -9,7 +9,8 @@
  *  For licensing information, see grace.hpp
  */
 
-#pragma once
+#ifndef GRACE_VM_HPP
+#define GRACE_VM_HPP
 
 #include <cstdint>
 #include <exception>
@@ -239,8 +240,8 @@ namespace Grace
         Compiler::Compiler& m_Compiler;
         std::hash<std::string> m_Hasher;
     };
-  }
-}
+  } // namespace VM
+} // namespace Grace
 
 template<>
 struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
@@ -320,3 +321,4 @@ struct fmt::formatter<Grace::VM::InterpretError> : fmt::formatter<std::string_vi
   }
 };
 
+#endif  // ifndef GRACE_VM_HPP

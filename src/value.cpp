@@ -145,8 +145,7 @@ void Value::DebugPrint() const
 
 std::string Value::AsString() const
 {
-  switch (m_Type)
-  {
+  switch (m_Type) {
     case Type::Bool:
       return fmt::format("{}", m_Data.m_Bool);
     case Type::Char:
@@ -161,13 +160,15 @@ std::string Value::AsString() const
       return m_Data.m_Object->ToString();
     case Type::String:
       return fmt::format("{}", *m_Data.m_Str);
+    default:
+      GRACE_ASSERT(false, "Value::m_Type was not set");
+      return "unknown";
   }
 }
 
 bool Value::AsBool() const
 {
-  switch (m_Type)
-  {
+  switch (m_Type) {
     case Type::Bool:
       return m_Data.m_Bool;
     case Type::Char:
@@ -182,6 +183,9 @@ bool Value::AsBool() const
       return m_Data.m_Str->length() > 0;
     case Type::Object:
       return m_Data.m_Object->AsBool();
+    default:
+      GRACE_ASSERT(false, "Value::m_Type was not set");
+      return false;
   }
 }
  
