@@ -45,20 +45,38 @@
 # define GRACE_PATCH_NUMBER   1
 #endif
 
-#ifndef GRACE_INLINE
+#ifndef GRACE_MSC
+# ifdef _MSC_VER
+#   define GRACE_MSC          _MSC_VER
+# endif
+#endif
+
+#ifndef GRACE_GCC_CLANG
 # if defined(__clang__) || defined(__GNUC__)
-#  define GRACE_INLINE __attribute__((always_inline))
+#   define GRACE_GCC_CLANG
+# endif
+#endif
+
+#ifndef GRACE_INLINE
+# ifdef GRACE_MSC 
+#   define GRACE_INLINE       __forceinline
+# elifdef GRACE_GCC_CLANG 
+#   define GRACE_INLINE       __attribute__((always_inline))
 # else
-#  define GRACE_INLINE inline
+#   define GRACE_INLINE       inline
 # endif
 #endif
 
 #ifndef GRACE_NODISCARD
-# define GRACE_NODISCARD [[nodiscard]]
+# define GRACE_NODISCARD      [[nodiscard]]
+#endif
+
+#ifndef GRACE_UNUSED
+# define GRACE_UNUSED         [[maybe_unused]]
 #endif
 
 #ifndef GRACE_NOEXCEPT
-# define GRACE_NOEXCEPT noexcept
+# define GRACE_NOEXCEPT       noexcept
 #endif
 
 #ifndef GRACE_UNREACHABLE

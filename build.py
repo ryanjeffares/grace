@@ -12,12 +12,17 @@ def main(config: str):
     if not os.path.isdir('build'):
         os.mkdir('build')
 
+    print('INFO: Generating cmake project\n')
+
     if config == 'debug':
         os.system('cmake -DCMAKE_BUILD_TYPE=Debug -S . -B build')
     elif config == 'release':
         os.system('cmake -DCMAKE_BUILD_TYPE=Release -S . -B build')
     else:
         raise ValueError('config must match "debug" or "release"')
+
+    print()
+    print('INFO: Building\n')
 
     os.system('cmake --build build')
 

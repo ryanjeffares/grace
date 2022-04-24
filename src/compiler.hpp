@@ -160,13 +160,6 @@ namespace Grace
 
       private:
 
-        enum class Context
-        {
-          TopLevel,
-          Function,
-          Loop,
-        } m_CurrentContext;
-
         struct Local
         {
           std::string m_Name;
@@ -179,12 +172,13 @@ namespace Grace
 
           }
         };
+        
+        std::string m_CurrentFileName;
 
         Scanner::Scanner m_Scanner;
         VM::VM m_Vm;
 
         std::optional<Scanner::Token> m_Current, m_Previous;
-        std::string m_CurrentFileName;
         std::vector<Local> m_Locals;
         std::hash<std::string> m_Hasher;
 

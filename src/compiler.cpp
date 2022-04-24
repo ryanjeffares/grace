@@ -21,6 +21,13 @@ using namespace Grace::VM;
 static bool s_UsingExpressionResult = false;
 static bool s_InsideFunction = false;
 
+enum class Context
+{
+  TopLevel,
+  Function,
+  Loop,
+} s_CurrentContext = Context::TopLevel;
+
 void Grace::Compiler::Compile(std::string&& fileName, std::string&& code, bool verbose)
 {
   using namespace std::chrono;
@@ -56,9 +63,8 @@ void Grace::Compiler::Compile(std::string&& fileName, std::string&& code, bool v
 using namespace Grace::Compiler;
 
 Compiler::Compiler(std::string&& fileName, std::string&& code, bool verbose) 
-  : m_Scanner(std::move(code)), 
-  m_CurrentFileName(std::move(fileName)),
-  m_CurrentContext(Context::TopLevel),
+  : m_CurrentFileName(std::move(fileName)),
+  m_Scanner(std::move(code)),
   m_Vm(*this),
   m_Verbose(verbose)
 {
@@ -210,7 +216,7 @@ void Compiler::Declaration()
   } else if (Match(TokenType::Final)) {
     FinalDeclaration();
   } else if (Match(TokenType::Break)) {
-    if (m_CurrentContext != Context::Loop) {
+    if (s_CurrentContext != Context::Loop) {
       // don't return early from here, so the compiler can synchronize...
       MessageAtPrevious("`break` only allowed inside `for` and `while` loops", LogLevel::Error);
     } else {
@@ -253,7 +259,7 @@ void Compiler::Declaration()
 
 void Compiler::Statement()
 {
-  if (m_CurrentContext == Context::TopLevel) {
+  if (s_CurrentContext == Context::TopLevel) {
     MessageAtCurrent("Only functions and classes are allowed at top level", LogLevel::Error);
     return;
   }
@@ -288,8 +294,8 @@ void Compiler::FuncDeclaration()
   }
 
   s_InsideFunction = true;
-  auto previous = m_CurrentContext;
-  m_CurrentContext = Context::Function;  
+  auto previous = s_CurrentContext;
+  s_CurrentContext = Context::Function;  
 
   Consume(TokenType::Identifier, "Expected function name");
   auto name = std::string(m_Previous.value().GetText());
@@ -345,7 +351,7 @@ void Compiler::FuncDeclaration()
   // implicitly return if the user didn't write a return so the VM knows to return to the caller
   // functions with no return will implicitly return null, so setting a call equal to a variable is valid
   if (!m_FunctionHadReturn) {
-    for (auto i = 0; i < m_Locals.size(); i++) {
+    for (std::size_t i = 0; i < m_Locals.size(); i++) {
       EmitOp(Ops::PopLocal, m_Previous.value().GetLine());
     }
 
@@ -362,13 +368,13 @@ void Compiler::FuncDeclaration()
     EmitOp(Ops::Exit, m_Previous.value().GetLine());
   }
 
-  m_CurrentContext = previous;
+  s_CurrentContext = previous;
   s_InsideFunction = false;
 }
 
 void Compiler::VarDeclaration() 
 {
-  if (m_CurrentContext == Context::TopLevel) {
+  if (s_CurrentContext == Context::TopLevel) {
     MessageAtPrevious("Only functions and classes are allowed at top level", LogLevel::Error);
     return;
   }
@@ -400,7 +406,7 @@ void Compiler::VarDeclaration()
 
 void Compiler::FinalDeclaration() 
 {
-  if (m_CurrentContext == Context::TopLevel) {
+  if (s_CurrentContext == Context::TopLevel) {
     MessageAtPrevious("Only functions and classes are allowed at top level", LogLevel::Error);
     return;
   } 
@@ -580,8 +586,8 @@ void Compiler::ExpressionStatement()
 
 void Compiler::ForStatement() 
 {
-  auto previousContext = m_CurrentContext;
-  m_CurrentContext = Context::Loop;
+  auto previousContext = s_CurrentContext;
+  s_CurrentContext = Context::Loop;
 
   m_BreakIdxPairs.emplace();
 
@@ -772,7 +778,7 @@ void Compiler::ForStatement()
 
   // pop any locals created within the loop scope
   auto numLocalsEnd = m_Locals.size();
-  for (auto i = 0; i < numLocalsEnd - numLocalsStart; i++) {
+  for (std::size_t i = 0; i < numLocalsEnd - numLocalsStart; i++) {
     EmitOp(Ops::PopLocal, line);
     m_Locals.pop_back();
   }
@@ -800,7 +806,7 @@ void Compiler::ForStatement()
     EmitOp(Ops::PopLocal, line);
   }
   
-  m_CurrentContext = previousContext;
+  s_CurrentContext = previousContext;
 }
 
 void Compiler::IfStatement() 
@@ -898,7 +904,7 @@ void Compiler::IfStatement()
 
   auto line = m_Previous.value().GetLine();
   auto numLocalsEnd = m_Locals.size();
-  for (auto i = 0; i < numLocalsEnd - numLocalsStart; i++) {
+  for (std::size_t i = 0; i < numLocalsEnd - numLocalsStart; i++) {
     EmitOp(Ops::PopLocal, line);
     m_Locals.pop_back();
   }
@@ -965,15 +971,15 @@ void Compiler::ReturnStatement()
   // don't destroy these locals here in the compiler's list because this could be an early return
   // that is handled at the end of `FuncDeclaration()`
   // but the VM needs to destroy any locals made up until this point
-  for (auto i = 0; i < m_Locals.size(); i++) {
+  for (std::size_t i = 0; i < m_Locals.size(); i++) {
     EmitOp(Ops::PopLocal, m_Previous.value().GetLine());
   }
 }
 
 void Compiler::WhileStatement() 
 {
-  auto previousContext = m_CurrentContext;
-  m_CurrentContext = Context::Loop;
+  auto previousContext = s_CurrentContext;
+  s_CurrentContext = Context::Loop;
 
   m_BreakIdxPairs.emplace();
 
@@ -1025,12 +1031,12 @@ void Compiler::WhileStatement()
   }
 
   auto numLocalsEnd = m_Locals.size();
-  for (auto i = 0; i < numLocalsEnd - numLocalsStart; i++) {
+  for (std::size_t i = 0; i < numLocalsEnd - numLocalsStart; i++) {
     EmitOp(Ops::PopLocal, line);
     m_Locals.pop_back();
   }
  
-  m_CurrentContext = previousContext;
+  s_CurrentContext = previousContext;
 }
 
 void Compiler::Or(bool canAssign, bool skipFirst)
@@ -1335,7 +1341,7 @@ void Compiler::String()
 {
   auto text = m_Previous.value().GetText();
   std::string res;
-  for (auto i = 1; i < text.length() - 1; i++) {
+  for (std::size_t i = 1; i < text.length() - 1; i++) {
     if (text[i] == '\\') {
       i++;
       if (i == text.length() - 2) {
@@ -1482,10 +1488,10 @@ void Compiler::Message(const std::optional<Token>& token, const std::string& mes
   fmt::print(stderr, "        |\n");
   fmt::print(stderr, "{:>7} | {}\n", lineNo, m_Scanner.GetCodeAtLine(lineNo));
   fmt::print(stderr, "        | ");
-  for (auto i = 0; i < column; i++) {
+  for (std::size_t i = 0; i < column; i++) {
     fmt::print(stderr, " ");
   }
-  for (auto i = 0; i < token.value().GetLength(); i++) {
+  for (std::size_t i = 0; i < token.value().GetLength(); i++) {
     fmt::print(stderr, colour, "^");
   }
   fmt::print("\n\n");

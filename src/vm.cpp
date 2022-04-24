@@ -372,7 +372,7 @@ InterpretResult VM::Run(bool verbose)
           }
 
           std::vector<Value> args(arity);
-          for (auto i = 0; i < arity; i++) {
+          for (std::uint32_t i = 0; i < arity; i++) {
             args[arity - i - 1] = Pop(valueStack);
           }
 
@@ -596,7 +596,7 @@ void VM::RuntimeError(const std::string& message, InterpretError errorType, int 
   auto callStackSize = callStack.size();
   if (callStackSize > 15) {
     if (auto showFull = std::getenv("GRACE_SHOW_FULL_CALLSTACK")) {
-      for (auto i = 1; i < callStack.size(); i++) {
+      for (std::size_t i = 1; i < callStack.size(); i++) {
         const auto& [caller, callee, ln] = callStack[i];
         fmt::print(stderr, "line {}, in {}:\n", ln, m_FunctionList.at(caller).m_Name);
         fmt::print(stderr, "{:>4}\n", m_Compiler.GetCodeAtLine(ln));
@@ -610,7 +610,7 @@ void VM::RuntimeError(const std::string& message, InterpretError errorType, int 
       }
     }
   } else {
-    for (auto i = 1; i < callStack.size(); i++) {
+    for (std::size_t i = 1; i < callStack.size(); i++) {
       const auto& [caller, callee, ln] = callStack[i];
       fmt::print(stderr, "line {}, in {}:\n", ln, m_FunctionList.at(caller).m_Name);
       fmt::print(stderr, "{:>4}\n", m_Compiler.GetCodeAtLine(ln));
