@@ -26,15 +26,18 @@ Grace is licensed under the MIT License.
 
 ## Getting Started 
 
-Grace's only dependency is [fmtlib](https://github.com/fmtlib/fmt) which is used in header only mode and included as a submodule in this repository, so building is simple, all you need is a C++ compiler that supports C++17 and cmake. In a terminal, simply run
+Grace's only dependency is [fmtlib](https://github.com/fmtlib/fmt) which is used in header only mode and included as a submodule in this repository, so building is simple
+
+### Prerequisites:
+* Python >= 3.2
+* CMake >= 3.8
+* C++ compiler
+* C++17
 
 ```bash
 git clone --recursive https://github.com/ryanjeffares/grace.git 
 cd grace 
-mkdir build 
-cd build 
-cmake ..
-cmake --build .
+python3 build.py <release/debug>
 ```
 
 This will build the `grace` executable, which you can add to your path or move somewhere that is on your path. Full install process as well as documentation is WIP.
