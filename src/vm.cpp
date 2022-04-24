@@ -41,6 +41,7 @@ static GRACE_INLINE Value Pop(std::vector<Value>& stack)
   return c;
 }
 
+#ifdef GRACE_DEBUG
 static void PrintStack(const std::vector<Value>& stack, const std::string& funcName)
 {
   fmt::print("{} STACK:\n", funcName);
@@ -58,6 +59,7 @@ static void PrintLocals(const std::vector<Value>& locals, const std::string& fun
     value.DebugPrint();
   }
 }
+#endif
 
 VM::VM(Compiler::Compiler& compiler) : m_Compiler(compiler)
 {
@@ -75,7 +77,7 @@ bool VM::AddFunction(std::string&& name, int line, int arity)
   return false;
 }
 
-bool VM::CombineFunctions(bool verbose)
+bool VM::CombineFunctions(GRACE_MAYBE_UNUSED bool verbose)
 {
   auto mainHash = static_cast<std::int64_t>(m_Hasher("main"));
   auto it = m_FunctionList.find(mainHash);
@@ -133,7 +135,7 @@ void VM::Start(bool verbose)
   }
 }
 
-InterpretResult VM::Run(bool verbose)
+InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
 {
 #define PRINT_LOCAL_MEMORY()                                          \
   do {                                                                \

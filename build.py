@@ -5,7 +5,7 @@ import os
 parser = argparse.ArgumentParser(
     description='Build the Grace interpreter from source'
 )
-parser.add_argument('config', type=str, help='Configuration (release/debug)')
+parser.add_argument('config', type=str, help='Configuration (Release/Debug)')
 
 
 def main(config: str):
@@ -14,12 +14,10 @@ def main(config: str):
 
     print('INFO: Generating cmake project\n')
 
-    if config == 'debug':
-        os.system('cmake -DCMAKE_BUILD_TYPE=Debug -S . -B build')
-    elif config == 'release':
-        os.system('cmake -DCMAKE_BUILD_TYPE=Release -S . -B build')
-    else:
-        raise ValueError('config must match "debug" or "release"')
+    if config != 'Release' and config != 'Debug':
+        raise ValueError('config must match "Debug" or "Release"')
+
+    os.system(f'cmake -DCMAKE_BUILD_TYPE={config} -S . -B build')
 
     print()
     print('INFO: Building\n')

@@ -71,8 +71,8 @@
 # define GRACE_NODISCARD      [[nodiscard]]
 #endif
 
-#ifndef GRACE_UNUSED
-# define GRACE_UNUSED         [[maybe_unused]]
+#ifndef GRACE_MAYBE_UNUSED
+# define GRACE_MAYBE_UNUSED   [[maybe_unused]]
 #endif
 
 #ifndef GRACE_NOEXCEPT
