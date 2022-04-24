@@ -4,11 +4,6 @@ project(grace)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-if (NOT CMAKE_BUILD_TYPE MATCHES Release)
-  add_compile_definitions(GRACE_DEBUG)
-endif(NOT CMAKE_BUILD_TYPE MATCHES Release)
-
-add_compile_definitions(FMT_HEADER_ONLY)
 add_executable(grace 
   src/main.cpp 
   src/compiler.cpp 
@@ -19,4 +14,16 @@ add_executable(grace
   src/value.cpp 
   src/objects/grace_list.cpp 
   src/objects/object_tracker.cpp)
+
 target_include_directories(grace PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/deps/fmt/include)
+
+if (NOT CMAKE_BUILD_TYPE MATCHES Release)
+  add_compile_definitions(GRACE_DEBUG)
+endif(NOT CMAKE_BUILD_TYPE MATCHES Release)
+
+add_compile_definitions(FMT_HEADER_ONLY)
+if(MSVC)
+  target_compile_options(grace PRIVATE /W4 /WX)
+else()
+  target_compile_options(grace PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
