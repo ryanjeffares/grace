@@ -22,9 +22,11 @@ namespace Grace
 
   namespace ObjectTracker
   {
+#ifdef GRACE_DEBUG  // these functions should not be called in Debug
     void TrackObject(GraceObject* object, bool verbose = false);
     void StopTracking(GraceObject* object, bool verbose = false);
     void Finalise();
+#endif
   }
 } // namespace Grace
 
