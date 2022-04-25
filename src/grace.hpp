@@ -39,7 +39,7 @@
 # endif
 #endif
 
-#ifdef GRACE_MSC
+#ifdef GRACE_MSC    // __cplusplus isn't always set correctly on MSVC
 # if (_MSVC_LANG < 201703L)
 #   error "C++17 is required"
 # endif

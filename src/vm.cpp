@@ -19,7 +19,7 @@
 #include "grace.hpp"
 
 #ifdef GRACE_MSC
-# include <stdlib.h>
+# include <stdlib.h>    // getenv_s
 #endif
 
 #include "compiler.hpp"
@@ -602,6 +602,7 @@ void VM::RuntimeError(const std::string& message, InterpretError errorType, int 
   auto callStackSize = callStack.size();
   if (callStackSize > 15) {
 #ifdef GRACE_MSC
+    // std::getenv() produces a warning on Windows, therefore error with /W4 /WX
     std::size_t size;
     getenv_s(&size, NULL, 0, "GRACE_SHOW_FULL_CALLSTACK");
     if (size != 0) {
