@@ -1,8 +1,14 @@
 cmake_minimum_required(VERSION 3.8)
 project(grace)
 
-set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+if(MSVC)
+  message("HELLO")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++17")
+else(MSVC)
+  set(CMAKE_CXX_STANDARD 17)
+endif(MSVC)
 
 add_executable(grace 
   src/main.cpp 
