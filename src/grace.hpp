@@ -29,9 +29,9 @@
 
 #include <cassert>
 
-#if (__cplusplus < 201703L)
-# error "C++17 is required"
-#endif
+//#if (__cplusplus < 201703L)
+//# error "C++17 is required"
+//#endif
 
 #ifndef GRACE_MAJOR_VERSION
 # define GRACE_MAJOR_VERSION  0
@@ -58,13 +58,13 @@
 #endif
 
 #ifndef GRACE_INLINE
-# ifdef GRACE_MSC 
-#   define GRACE_INLINE       __forceinline
-# elifdef GRACE_GCC_CLANG 
-#   define GRACE_INLINE       __attribute__((always_inline))
-# else
-#   define GRACE_INLINE       inline
-# endif
+    # ifdef GRACE_MSC 
+    #   define GRACE_INLINE       __forceinline
+    #elif defined GRACE_GCC_CLANG
+    #   define GRACE_INLINE       __attribute__((always_inline))
+    # else
+    #   define GRACE_INLINE       inline
+    #endif
 #endif
 
 #ifndef GRACE_NODISCARD
