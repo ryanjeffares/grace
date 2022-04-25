@@ -29,8 +29,24 @@
 
 #include <cassert>
 
-#if (__cplusplus < 201703L)
-# error "C++17 is required"
+#ifdef _MSC_VER
+# ifndef GRACE_MSC
+#   define GRACE_MSC          _MSC_VER
+# endif
+#elif defined(__clang__) || defined(__GNUC__)
+# ifndef GRACE_GCC_CLANG
+#   define GRACE_GCC_CLANG
+# endif
+#endif
+
+#ifdef GRACE_MSC    // __cplusplus isn't always set correctly on MSVC
+# if (_MSVC_LANG < 201703L)
+#   error "C++17 is required"
+# endif
+#else
+# if (__cplusplus < 201703L)
+#   error "C++17 is required"
+# endif
 #endif
 
 #ifndef GRACE_MAJOR_VERSION
@@ -45,22 +61,10 @@
 # define GRACE_PATCH_NUMBER   1
 #endif
 
-#ifndef GRACE_MSC
-# ifdef _MSC_VER
-#   define GRACE_MSC          _MSC_VER
-# endif
-#endif
-
-#ifndef GRACE_GCC_CLANG
-# if defined(__clang__) || defined(__GNUC__)
-#   define GRACE_GCC_CLANG
-# endif
-#endif
-
 #ifndef GRACE_INLINE
 # ifdef GRACE_MSC 
 #   define GRACE_INLINE       __forceinline
-# elifdef GRACE_GCC_CLANG 
+# elif defined GRACE_GCC_CLANG
 #   define GRACE_INLINE       __attribute__((always_inline))
 # else
 #   define GRACE_INLINE       inline

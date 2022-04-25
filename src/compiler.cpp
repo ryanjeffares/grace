@@ -643,12 +643,12 @@ void Compiler::ForStatement()
     EmitOp(Ops::AssignLocal, line);
   } else if (Match(TokenType::Identifier)) {
     auto localName = std::string(m_Previous.value().GetText());
-    auto it = std::find_if(m_Locals.begin(), m_Locals.end(), [&](const Local& l) { return l.m_Name == localName; });
-    if (it == m_Locals.end()) {
+    auto localIt = std::find_if(m_Locals.begin(), m_Locals.end(), [&](const Local& l) { return l.m_Name == localName; });
+    if (localIt == m_Locals.end()) {
       MessageAtPrevious(fmt::format("Cannot find variable '{}' in this scope.", localName), LogLevel::Error);
       return;
     }
-    auto localId = it->m_Index;
+    auto localId = localIt->m_Index;
     EmitConstant(localId);
     EmitOp(Ops::LoadLocal, line);
     EmitConstant(iteratorId);
@@ -680,12 +680,12 @@ void Compiler::ForStatement()
     max.emplace<1>(value);
   } else if (Match(TokenType::Identifier)) {
     auto localName = std::string(m_Previous.value().GetText());
-    auto it = std::find_if(m_Locals.begin(), m_Locals.end(), [&](const Local& l) { return l.m_Name == localName; });
-    if (it == m_Locals.end()) {
+    auto localIt = std::find_if(m_Locals.begin(), m_Locals.end(), [&](const Local& l) { return l.m_Name == localName; });
+    if (localIt == m_Locals.end()) {
       MessageAtPrevious(fmt::format("Cannot find variable '{}' in this scope.", localName), LogLevel::Error);
       return;
     }
-    auto localId = it->m_Index;
+    auto localId = localIt->m_Index;
     max.emplace<2>(localId);
   } else {
     MessageAtCurrent("Expected identifier or integer as range max", LogLevel::Error);

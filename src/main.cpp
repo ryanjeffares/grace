@@ -87,6 +87,6 @@ int main(int argc, const char* argv[])
     return 1;
   }
 
-  Grace::Compiler::Compile(inPath.filename(), inStream.str(), verbose, warningsError);
+  Grace::Compiler::Compile(inPath.filename().string(), inStream.str(), verbose, warningsError);
 }
 

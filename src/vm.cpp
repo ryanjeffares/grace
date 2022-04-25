@@ -18,6 +18,10 @@
 
 #include "grace.hpp"
 
+#ifdef GRACE_MSC
+# include <stdlib.h>    // getenv_s
+#endif
+
 #include "compiler.hpp"
 #include "objects/grace_list.hpp"
 #include "vm.hpp"
@@ -597,7 +601,14 @@ void VM::RuntimeError(const std::string& message, InterpretError errorType, int 
 
   auto callStackSize = callStack.size();
   if (callStackSize > 15) {
+#ifdef GRACE_MSC
+    // std::getenv() produces a warning on Windows, therefore error with /W4 /WX
+    std::size_t size;
+    getenv_s(&size, NULL, 0, "GRACE_SHOW_FULL_CALLSTACK");
+    if (size != 0) {
+#else
     if (auto showFull = std::getenv("GRACE_SHOW_FULL_CALLSTACK")) {
+#endif
       for (std::size_t i = 1; i < callStack.size(); i++) {
         const auto& [caller, callee, ln] = callStack[i];
         fmt::print(stderr, "line {}, in {}:\n", ln, m_FunctionList.at(caller).m_Name);
@@ -626,4 +637,3 @@ void VM::RuntimeError(const std::string& message, InterpretError errorType, int 
   fmt::print(stderr, fmt::fg(fmt::color::red) | fmt::emphasis::bold, "ERROR: ");
   fmt::print(stderr, "[line {}] {}: {}. Stopping execution.\n", line, errorType, message);
 }
-

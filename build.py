@@ -22,7 +22,8 @@ def main(config: str):
     print()
     print('INFO: Building\n')
 
-    os.system('cmake --build build')
+    # -DCMAKE_BUILD_TYPE is ignored on Windows, need to add config arg here
+    os.system(f'cmake --build build --config {config}')
 
 
 if __name__ == "__main__":
