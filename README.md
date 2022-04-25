@@ -42,6 +42,8 @@ python3 build.py <release/debug>
 
 This will build the `grace` executable, which you can add to your path or move somewhere that is on your path. Full install process as well as documentation is WIP.
 
+**Note for Windows users:** Cmake won't always set the C++ standard to be C++17 correctly in the generated Visual Studio project. Opening the `.sln` and changing the standard in the project settings will fix this.
+
 ## Alpha Release Roadmap
 * Experiment with string interning
 * `continue` statement
