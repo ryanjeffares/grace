@@ -22,56 +22,71 @@
 
 static void Error(const std::string& message)
 {
-  fmt::print(stderr, "Grace 0.0.1\n\n");
+  fmt::print(stderr, "Grace {}.{}.{}\n\n", GRACE_MAJOR_VERSION, GRACE_MINOR_VERSION, GRACE_PATCH_NUMBER);
   fmt::print(stderr, fmt::fg(fmt::color::red) | fmt::emphasis::bold, "ERROR: ");
   fmt::print(stderr, "{}\n", message);
 }
 
 static void Usage()
 {
-  fmt::print("Grace 0.0.1\n\nUsage: grace <file> [--verbose/-v]\n");
+  fmt::print("Grace {}.{}.{}\n\n", GRACE_MAJOR_VERSION, GRACE_MINOR_VERSION, GRACE_PATCH_NUMBER);
+  fmt::print("USAGE:\n");
+  fmt::print("    grace <filename> [OPTIONS]\n\n");
+  fmt::print("OPTIONS:\n");
+  fmt::print("    -V, --version                 Print version info and exit\n");
+  fmt::print("    -v, --verbose                 Enable verbose mode - print compilation and run times, print compiler warnings\n");
+  fmt::print("    -we, --warnings-error         Show compiler warnings, warnings result in errors\n");
 }
 
 int main(int argc, const char* argv[])
 {
+  if (argc < 2) {
+    Usage();
+    return 1;
+  }
+
   std::vector<std::string> args;
   for (auto i = 0; i < argc; i++) {
     args.push_back(argv[i]);
   }
 
   bool verbose = false;
-  switch (argc) {
-    case 1:
+  bool warningsError = false;
+
+  for (auto i = 2; i < argc; i++) {
+    if (args[i] == "--version" || args[i] == "-V") {
+      fmt::print("Grace {}.{}.{}\n", GRACE_MAJOR_VERSION, GRACE_MINOR_VERSION, GRACE_PATCH_NUMBER);
+      return 0;
+    } else if (args[i] == "--verbose" || args[i] == "-v") {
+      verbose = true;
+    } else if (args[i] == "--warnings-error" || args[i] == "-we") {
+      warningsError = true;
+    } else {
+      Error(fmt::format("Unrecognised argument {}\n", args[i]));
       Usage();
       return 1;
-    case 3:
-      if (args[2] == "-v" || args[2] == "--verbose") {
-        verbose = true;
-      } else {
-        Usage();
-        return 1;
-      } 
-    case 2:
-      std::filesystem::path inPath(args[1]);
-      if (inPath.extension() != ".gr") {
-        Error(fmt::format("provided file `{}` was not a `.gr` file.", inPath.string()));
-        return 1;
-      }
-      if (!std::filesystem::exists(inPath)) {
-        Error(fmt::format("provided file `{}` does not exist", inPath.string()));
-        return 1; 
-      }
-
-      std::stringstream inStream;
-      try {
-        std::ifstream inFile(args[1]);
-        inStream << inFile.rdbuf();
-      } catch (const std::exception& e) {
-        Error(e.what());
-        return 1;
-      }
-      Grace::Compiler::Compile(inPath.filename(), inStream.str(), verbose);
-      break;
+    }
   }
+
+  std::filesystem::path inPath(args[1]);
+  if (inPath.extension() != ".gr") {
+    Error(fmt::format("provided file `{}` was not a `.gr` file.", inPath.string()));
+    return 1;
+  }
+  if (!std::filesystem::exists(inPath)) {
+    Error(fmt::format("provided file `{}` does not exist", inPath.string()));
+    return 1; 
+  }
+
+  std::stringstream inStream;
+  try {
+    std::ifstream inFile(args[1]);
+    inStream << inFile.rdbuf();
+  } catch (const std::exception& e) {
+    Error(e.what());
+    return 1;
+  }
+
+  Grace::Compiler::Compile(inPath.filename(), inStream.str(), verbose, warningsError);
 }
 

@@ -18,6 +18,7 @@ using namespace Grace;
 
 static std::vector<GraceObject*> s_TrackedObjects;
 
+#ifdef GRACE_DEBUG
 void ObjectTracker::TrackObject(GraceObject* object, bool verbose)
 {
   GRACE_ASSERT(object != nullptr, "Trying to track an object that is a nullptr");
@@ -52,3 +53,4 @@ void ObjectTracker::Finalise()
     GRACE_ASSERT_FALSE();
   }
 }
+#endif

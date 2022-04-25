@@ -34,13 +34,13 @@ void VM::RegisterNatives()
   // Time functions
 #define GET_TIME(division) std::chrono::duration_cast<std::chrono::division>(std::chrono::steady_clock::now().time_since_epoch()).count()
 
-  REGISTER_NATIVE("__NATIVE_TIME_S", 0, [](GRACE_UNUSED const std::vector<Value>& args) {
+  REGISTER_NATIVE("__NATIVE_TIME_S", 0, [](GRACE_MAYBE_UNUSED const std::vector<Value>& args) {
         return Value(GET_TIME(seconds));
       });
-  REGISTER_NATIVE("__NATIVE_TIME_MS", 0, [](GRACE_UNUSED const std::vector<Value>& args) {
+  REGISTER_NATIVE("__NATIVE_TIME_MS", 0, [](GRACE_MAYBE_UNUSED const std::vector<Value>& args) {
         return Value(GET_TIME(milliseconds));
       });
-  REGISTER_NATIVE("__NATIVE_TIME_NS", 0, [](GRACE_UNUSED const std::vector<Value>& args) {
+  REGISTER_NATIVE("__NATIVE_TIME_NS", 0, [](GRACE_MAYBE_UNUSED const std::vector<Value>& args) {
         return Value(GET_TIME(nanoseconds));
       });
 

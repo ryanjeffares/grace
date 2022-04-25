@@ -19,22 +19,19 @@ using namespace Grace::Scanner;
 using namespace Grace::VM;
 
 static bool s_UsingExpressionResult = false;
-static bool s_InsideFunction = false;
+static bool s_Verbose = false;
+static bool s_WarningsError = false;
 
-enum class Context
-{
-  TopLevel,
-  Function,
-  Loop,
-} s_CurrentContext = Context::TopLevel;
-
-void Grace::Compiler::Compile(std::string&& fileName, std::string&& code, bool verbose)
+void Grace::Compiler::Compile(std::string&& fileName, std::string&& code, bool verbose, bool warningsError)
 {
   using namespace std::chrono;
 
+  s_Verbose = verbose;
+  s_WarningsError = warningsError;
+
   auto start = steady_clock::now();
  
-  Compiler compiler(std::move(fileName), std::move(code), verbose);
+  Compiler compiler(std::move(fileName), std::move(code));
   compiler.Advance();
   
   while (!compiler.Match(TokenType::EndOfFile)) {
@@ -46,6 +43,8 @@ void Grace::Compiler::Compile(std::string&& fileName, std::string&& code, bool v
 
   if (compiler.HadError()) {
     fmt::print(stderr, "Terminating process due to compilation errors.\n");
+  } else if (compiler.HadWarning() && s_WarningsError) {
+    fmt::print(stderr, "Terminating process due to compilation warnings treated as errors.\n");
   } else {
     if (verbose) {
       auto end = steady_clock::now();
@@ -62,24 +61,23 @@ void Grace::Compiler::Compile(std::string&& fileName, std::string&& code, bool v
 
 using namespace Grace::Compiler;
 
-Compiler::Compiler(std::string&& fileName, std::string&& code, bool verbose) 
+Compiler::Compiler(std::string&& fileName, std::string&& code) 
   : m_CurrentFileName(std::move(fileName)),
   m_Scanner(std::move(code)),
-  m_Vm(*this),
-  m_Verbose(verbose)
+  m_Vm(*this)
 {
-
+  m_ContextStack.emplace_back(Context::TopLevel);
 }
 
 void Compiler::Finalise()
 {
 #ifdef GRACE_DEBUG
-  if (m_Verbose) {
+  if (s_Verbose) {
     m_Vm.PrintOps();
   }
 #endif
-  if (m_Vm.CombineFunctions(m_Verbose)) {
-    m_Vm.Start(m_Verbose);
+  if (m_Vm.CombineFunctions(s_Verbose)) {
+    m_Vm.Start(s_Verbose);
   }
 }
 
@@ -89,7 +87,7 @@ void Compiler::Advance()
   m_Current = m_Scanner.ScanToken();
 
 #ifdef GRACE_DEBUG
-  if (m_Verbose) {
+  if (s_Verbose) {
     fmt::print("{}\n", m_Current.value().ToString());
   }
 #endif 
@@ -216,7 +214,7 @@ void Compiler::Declaration()
   } else if (Match(TokenType::Final)) {
     FinalDeclaration();
   } else if (Match(TokenType::Break)) {
-    if (s_CurrentContext != Context::Loop) {
+    if (m_ContextStack.back() != Context::Loop) {
       // don't return early from here, so the compiler can synchronize...
       MessageAtPrevious("`break` only allowed inside `for` and `while` loops", LogLevel::Error);
     } else {
@@ -259,7 +257,7 @@ void Compiler::Declaration()
 
 void Compiler::Statement()
 {
-  if (s_CurrentContext == Context::TopLevel) {
+  if (m_ContextStack.back() == Context::TopLevel) {
     MessageAtCurrent("Only functions and classes are allowed at top level", LogLevel::Error);
     return;
   }
@@ -288,14 +286,14 @@ void Compiler::ClassDeclaration()
 
 void Compiler::FuncDeclaration() 
 {
-  if (s_InsideFunction) {
-    MessageAtPrevious("Nested functions are not permitted, prefer lambdas", LogLevel::Error);
-    return;
+  for (auto it = m_ContextStack.crbegin(); it != m_ContextStack.crend(); ++it) {
+    if (*it == Context::Function) {
+      MessageAtPrevious("Nested functions are not permitted, prefer lambdas", LogLevel::Error);
+      return;
+    }
   }
 
-  s_InsideFunction = true;
-  auto previous = s_CurrentContext;
-  s_CurrentContext = Context::Function;  
+  m_ContextStack.emplace_back(Context::Function);
 
   Consume(TokenType::Identifier, "Expected function name");
   auto name = std::string(m_Previous.value().GetText());
@@ -368,13 +366,12 @@ void Compiler::FuncDeclaration()
     EmitOp(Ops::Exit, m_Previous.value().GetLine());
   }
 
-  s_CurrentContext = previous;
-  s_InsideFunction = false;
+  m_ContextStack.pop_back();
 }
 
 void Compiler::VarDeclaration() 
 {
-  if (s_CurrentContext == Context::TopLevel) {
+  if (m_ContextStack.back() == Context::TopLevel) {
     MessageAtPrevious("Only functions and classes are allowed at top level", LogLevel::Error);
     return;
   }
@@ -406,7 +403,7 @@ void Compiler::VarDeclaration()
 
 void Compiler::FinalDeclaration() 
 {
-  if (s_CurrentContext == Context::TopLevel) {
+  if (m_ContextStack.back() == Context::TopLevel) {
     MessageAtPrevious("Only functions and classes are allowed at top level", LogLevel::Error);
     return;
   } 
@@ -586,8 +583,7 @@ void Compiler::ExpressionStatement()
 
 void Compiler::ForStatement() 
 {
-  auto previousContext = s_CurrentContext;
-  s_CurrentContext = Context::Loop;
+  m_ContextStack.emplace_back(Context::Loop);
 
   m_BreakIdxPairs.emplace();
 
@@ -608,9 +604,12 @@ void Compiler::ForStatement()
       return;
     }
     iteratorId = it->m_Index;
-    if (m_Verbose) {
+    if (s_Verbose || s_WarningsError) {
       MessageAtPrevious(fmt::format("There is already a local variable called '{}' in this scope which will be reassigned inside the `for` loop", iteratorName), 
           LogLevel::Warning);
+      if (s_WarningsError) {
+        return;
+      }
     }
   }
 
@@ -806,7 +805,7 @@ void Compiler::ForStatement()
     EmitOp(Ops::PopLocal, line);
   }
   
-  s_CurrentContext = previousContext;
+  m_ContextStack.pop_back();
 }
 
 void Compiler::IfStatement() 
@@ -944,7 +943,14 @@ void Compiler::PrintLnStatement()
 
 void Compiler::ReturnStatement() 
 {
-  if (!s_InsideFunction) {
+  bool insideFunction = false;
+  for (auto it = m_ContextStack.crbegin(); it != m_ContextStack.crend(); ++it) {
+    if (*it == Context::Function) {
+      insideFunction = true;
+      break;
+    }
+  }
+  if (!insideFunction) {
     MessageAtPrevious("`return` only allowed inside functions", LogLevel::Error);
     return;
   }
@@ -978,8 +984,7 @@ void Compiler::ReturnStatement()
 
 void Compiler::WhileStatement() 
 {
-  auto previousContext = s_CurrentContext;
-  s_CurrentContext = Context::Loop;
+  m_ContextStack.emplace_back(Context::Loop);
 
   m_BreakIdxPairs.emplace();
 
@@ -1036,7 +1041,7 @@ void Compiler::WhileStatement()
     m_Locals.pop_back();
   }
  
-  s_CurrentContext = previousContext;
+  m_ContextStack.pop_back();
 }
 
 void Compiler::Or(bool canAssign, bool skipFirst)
@@ -1384,8 +1389,11 @@ void Compiler::InstanceOf()
       break;
     case TokenType::Null:
       EmitConstant(std::int64_t(4));
-      if (m_Verbose) {
+      if (s_Verbose || s_WarningsError) {
         MessageAtCurrent("Prefer comparison `== null` over `instanceof` call for `null` check", LogLevel::Warning);
+        if (s_WarningsError) {
+          return;
+        }
       }
       break;
     case TokenType::StringIdent:
@@ -1459,7 +1467,7 @@ void Compiler::MessageAtPrevious(const std::string& message, LogLevel level)
 
 void Compiler::Message(const std::optional<Token>& token, const std::string& message, LogLevel level)
 {
-  if (level == LogLevel::Error) {
+  if (level == LogLevel::Error || s_WarningsError) {
     if (m_PanicMode) return;
     m_PanicMode = true;
   }
@@ -1498,6 +1506,9 @@ void Compiler::Message(const std::optional<Token>& token, const std::string& mes
 
   if (level == LogLevel::Error) {
     m_HadError = true;
+  }
+  if (level == LogLevel::Warning) {
+    m_HadWarning = true;
   }
 }
 
