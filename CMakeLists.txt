@@ -3,12 +3,6 @@ project(grace)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-if(MSVC)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++17")
-else(MSVC)
-  set(CMAKE_CXX_STANDARD 17)
-endif(MSVC)
-
 add_executable(grace 
   src/main.cpp 
   src/compiler.cpp 
@@ -22,6 +16,8 @@ add_executable(grace
 )
 
 target_include_directories(grace PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/deps/fmt/include)
+
+set_property(TARGET grace PROPERTY CXX_STANDARD 17)
 
 if (NOT CMAKE_BUILD_TYPE MATCHES Release)
   add_compile_definitions(GRACE_DEBUG)
