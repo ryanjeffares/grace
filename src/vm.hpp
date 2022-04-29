@@ -93,6 +93,7 @@ namespace Grace
       AssertionFailed,
       FunctionNotFound,
       IncorrectArgCount,
+      InvalidArgument,
       InvalidCast,
       InvalidOperand,
       InvalidType,
@@ -312,6 +313,7 @@ struct fmt::formatter<Grace::VM::InterpretError> : fmt::formatter<std::string_vi
       case InterpretError::AssertionFailed: name = "AssertionFailed"; break;
       case InterpretError::FunctionNotFound: name = "FunctionNotFound"; break;
       case InterpretError::IncorrectArgCount: name = "IncorrectArgCount"; break;
+      case InterpretError::InvalidArgument: name = "InvalidArgument"; break;
       case InterpretError::InvalidCast: name = "InvalidCast"; break;
       case InterpretError::InvalidOperand: name = "InvalidOperand"; break;
       case InterpretError::InvalidType: name = "InvalidType"; break;

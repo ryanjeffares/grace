@@ -1,4 +1,5 @@
-func fib(n):
+func fib(final n):
+  assert(instanceof(n, int));
   if n < 2:
     return n;
   end
@@ -11,6 +12,6 @@ func main():
   println(fib(20));
   println(fib(25));
   println(fib(30));
-  println(fib(35));
+  // println(fib(35));
 end
 

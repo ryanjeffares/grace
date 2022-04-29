@@ -184,6 +184,34 @@ namespace Grace
         return *this;
       }
 
+      GRACE_NODISCARD bool operator==(const Value& other) const
+      {
+        if (other.m_Type != m_Type) {
+          return false;
+        }
+        switch (m_Type) {
+          case Type::Bool:
+            return m_Data.m_Bool == other.m_Data.m_Bool;
+          case Type::Char:
+            return m_Data.m_Char == other.m_Data.m_Char;
+          case Type::Double:
+            return m_Data.m_Double == other.m_Data.m_Double;
+          case Type::Int:
+            return m_Data.m_Int == other.m_Data.m_Int;
+          case Type::Null:
+            return true;
+          case Type::Object:
+            return m_Data.m_Object == other.m_Data.m_Object;
+          case Type::String:
+            return *m_Data.m_Str == *other.m_Data.m_Str;
+        }
+      }
+
+      GRACE_NODISCARD bool operator!=(const Value& other) const
+      {
+        return !(*this == other);
+      }
+
       void PrintLn() const;
       void Print() const;
       void DebugPrint() const;

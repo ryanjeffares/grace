@@ -23,8 +23,8 @@
 #endif
 
 #include "compiler.hpp"
-#include "objects/grace_list.hpp"
 #include "vm.hpp"
+#include "objects/grace_list.hpp"
 #include "objects/object_tracker.hpp"
 
 using namespace Grace::VM;
@@ -408,14 +408,13 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
           RETURN_ERR();
         }
 
-        callStack.emplace_back(funcNameHash, calleeNameHash, line);
-
         localsOffsets.push(localsList.size());
         localsList.resize(localsList.size() + arity);
         for (auto i = 0; i < arity; i++) {
           localsList[arity - i - 1 + localsOffsets.top()] = Pop(valueStack);
         }
 
+        callStack.emplace_back(funcNameHash, calleeNameHash, line);
         valueStack.emplace_back(static_cast<std::int64_t>(opCurrent));
         valueStack.emplace_back(static_cast<std::int64_t>(constantCurrent));
 
@@ -458,7 +457,7 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
 #ifdef GRACE_DEBUG
         PRINT_LOCAL_MEMORY();
 #endif
-        
+
         funcNameHash = std::get<0>(callStack.back());
         callStack.pop_back();
 
