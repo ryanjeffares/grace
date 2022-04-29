@@ -193,9 +193,12 @@ static bool IsOperator(TokenType type)
     TokenType::GreaterEqual,
   };
 
-  return std::any_of(symbols.begin(), symbols.end(), [type](TokenType t) {
-      return t == type;
-  });
+  for (auto t : symbols) {
+    if (type == t) {
+      return true;
+    }
+  }
+  return false;
 }
 
 void Compiler::EmitOp(VM::Ops op, int line)
@@ -312,6 +315,10 @@ void Compiler::FuncDeclaration()
       }
       m_Locals.emplace_back(std::move(p), true, m_Locals.size());
       parameters.push_back(p);
+
+      if (!Check(TokenType::RightParen)) {
+        Consume(TokenType::Comma, "Expected ',' after function parameter");
+      }
     } else if (Match(TokenType::Identifier)) {
       auto p = std::string(m_Previous.value().GetText());
       if (std::find(parameters.begin(), parameters.end(), p) != parameters.end()) {
@@ -320,12 +327,14 @@ void Compiler::FuncDeclaration()
       }
       m_Locals.emplace_back(std::move(p), false, m_Locals.size());
       parameters.push_back(p);
-    } else {
-      if (!Match(TokenType::Comma)) {
-        MessageAtCurrent("Expected ',' after function parameter", LogLevel::Error);
-        return;
+
+      if (!Check(TokenType::RightParen)) {
+        Consume(TokenType::Comma, "Expected ',' after function parameter");
       }
-    }
+    } else {
+      MessageAtCurrent("Expected identifier or `final`", LogLevel::Error);
+      return;
+    } 
   }
 
   Consume(TokenType::Colon, "Expected ':' after function signature");
@@ -1148,6 +1157,7 @@ static std::unordered_map<TokenType, Ops> s_CastOps = {
   std::make_pair(TokenType::BoolIdent, Ops::CastAsBool),
   std::make_pair(TokenType::StringIdent, Ops::CastAsString),
   std::make_pair(TokenType::CharIdent, Ops::CastAsChar),
+  std::make_pair(TokenType::ListIdent, Ops::CastAsList),
 };
 
 void Compiler::Unary(bool canAssign)
@@ -1168,6 +1178,7 @@ void Compiler::Unary(bool canAssign)
 void Compiler::Call(bool canAssign)
 {
   Primary(canAssign);
+
   auto prev = m_Previous.value();
   auto prevText = std::string(m_Previous.value().GetText());
 
@@ -1231,7 +1242,7 @@ static bool IsTypeIdent(const Token& token)
   auto type = token.GetType();
   return type == TokenType::IntIdent || type == TokenType::FloatIdent 
     || type == TokenType::BoolIdent || type == TokenType::StringIdent 
-    || type == TokenType::CharIdent;
+    || type == TokenType::CharIdent || type == TokenType::ListIdent;
 }
 
 void Compiler::Primary(bool canAssign)
@@ -1399,6 +1410,9 @@ void Compiler::InstanceOf()
     case TokenType::StringIdent:
       EmitConstant(std::int64_t(5));
       break;
+    case TokenType::ListIdent:
+      EmitConstant(std::int64_t(6));
+      break;
     default:
       MessageAtCurrent("Expected type as second argument for `instanceof`", LogLevel::Error);
       return;
@@ -1438,7 +1452,25 @@ void Compiler::List()
     }
 
     Expression(false);
-    numItems++;
+
+    if (Match(TokenType::Semicolon)) {
+      if (Match(TokenType::Integer)) {
+        std::int64_t value;
+        auto res = TryParseInt(m_Previous.value(), value);
+        if (res.has_value()) {
+          MessageAtPrevious(fmt::format("Error parsing integer: {}", res.value()), LogLevel::Error);
+          return;
+        }
+        numItems += value;
+        EmitConstant(value - 1);
+        EmitOp(Ops::Dup, m_Previous.value().GetLine());
+      } else {
+        MessageAtCurrent("Expected integer for list item repetition", LogLevel::Error);
+        return;
+      }
+    } else {
+      numItems++;
+    }
     
     if (Match(TokenType::RightSquareParen)) {
       break;

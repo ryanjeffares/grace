@@ -22,6 +22,17 @@ GraceList::GraceList(std::vector<Value>&& items)
 {
 }
 
+GraceList::GraceList(const Value& value)
+{
+  if (value.GetType() == Value::Type::String) {
+    for (const auto c : value.Get<std::string>()) {
+      m_Data.emplace_back(c);
+    }
+  } else {
+    m_Data.push_back(std::move(value));
+  }
+}
+
 GraceList::GraceList(const GraceList& other, std::int64_t multiple)
 {
   m_Data.reserve(other.m_Data.size() * multiple);

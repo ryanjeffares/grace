@@ -49,11 +49,13 @@ namespace Grace
       CastAsBool,
       CastAsString,
       CastAsChar,
+      CastAsList,
       CheckType,
       CreateList,
       CreateEmptyList,
       DeclareLocal,
       Divide,
+      Dup,
       Equal,
       Exit,
       Greater,
@@ -265,11 +267,13 @@ struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
       case Ops::CastAsBool: name = "Ops::CastAsBool"; break;
       case Ops::CastAsString: name = "Ops::CastAsString"; break;
       case Ops::CastAsChar: name = "Ops::CastAsChar"; break;
+      case Ops::CastAsList: name = "Ops::CastAsList"; break;
       case Ops::CheckType: name = "Ops::CheckType"; break;
       case Ops::CreateList: name = "Ops::CreateList"; break;
       case Ops::CreateEmptyList: name = "Ops::CreateEmptyList"; break;
       case Ops::DeclareLocal: name = "Ops::DeclareLocal"; break;
       case Ops::Divide: name = "Ops::Divide"; break;
+      case Ops::Dup: name = "Ops::Dup"; break;
       case Ops::Equal: name = "Ops::Equal"; break;
       case Ops::Exit: name = "Ops::Exit"; break;
       case Ops::Greater: name = "Ops::Greater"; break;

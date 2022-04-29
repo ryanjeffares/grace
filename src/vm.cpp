@@ -527,9 +527,31 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
         }
         break;
       }
+      case Ops::CastAsList: {
+        auto value = Pop(valueStack);
+        valueStack.emplace_back(Value::CreateList(value));
+        break;
+      }
       case Ops::CheckType: {
         auto typeIdx = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
-        valueStack.emplace_back(typeIdx == static_cast<std::int64_t>(Pop(valueStack).GetType()));
+        if (typeIdx < 6) {
+          valueStack.emplace_back(typeIdx == static_cast<std::int64_t>(Pop(valueStack).GetType()));
+        } else {
+          switch (typeIdx) {
+            case 6: {
+              auto l = dynamic_cast<GraceList*>(Pop(valueStack).GetObject());
+              valueStack.emplace_back(l != nullptr);
+              break;
+            }
+          }
+        }
+        break;
+      }
+      case Ops::Dup: {
+        auto numDups = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+        for (auto i = 0; i < numDups; i++) {
+          valueStack.emplace_back(valueStack.back());
+        }
         break;
       }
       case Ops::CreateList: {

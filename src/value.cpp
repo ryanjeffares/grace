@@ -333,3 +333,15 @@ Value Value::CreateList(const GraceList& list, std::int64_t multiple)
 #endif
   return value;
 }
+
+Value Value::CreateList(const Value& value)
+{
+  Value res;
+  res.m_Type = Type::Object;
+  res.m_Data.m_Object = new GraceList(value);
+  res.m_Data.m_Object->IncreaseRef();
+#ifdef GRACE_DEBUG
+  ObjectTracker::TrackObject(res.m_Data.m_Object);
+#endif
+  return res;
+}
