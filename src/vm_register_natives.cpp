@@ -12,6 +12,7 @@
 #include <chrono>
 
 #include "vm.hpp"
+#include "objects/grace_list.hpp"
 
 using namespace Grace::VM;
 
@@ -45,6 +46,23 @@ void VM::RegisterNatives()
       });
 
 #undef GET_TIME
+
+  // List functions
+  REGISTER_NATIVE("__NATIVE_APPEND_LIST", 2, [](const std::vector<Value>& args) {
+        dynamic_cast<GraceList*>(args[0].GetObject())->Append(args[1]);
+        return Value();
+      });
+  REGISTER_NATIVE("__NATIVE_SET_LIST_AT_INDEX", 3, [](const std::vector<Value>& args) {
+        auto l = dynamic_cast<GraceList*>(args[0].GetObject());
+        (*l)[args[1].Get<std::int64_t>()] = args[2];
+        return Value();
+      });
+  REGISTER_NATIVE("__NATIVE_GET_LIST_AT_INDEX", 2, [](const std::vector<Value>& args) {
+        return (*dynamic_cast<GraceList*>(args[0].GetObject()))[args[1].Get<std::int64_t>()];
+      });
+  REGISTER_NATIVE("__NATIVE_LIST_LENGTH", 1, [](const std::vector<Value>& args) {
+        return Value(static_cast<std::int64_t>(dynamic_cast<GraceList*>(args[0].GetObject())->Length()));
+      });
 
 #undef REGISTER_NATIVE
 }

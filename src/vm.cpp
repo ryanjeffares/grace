@@ -549,9 +549,9 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
       }
       case Ops::Dup: {
         auto numDups = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
-        for (auto i = 0; i < numDups; i++) {
-          valueStack.emplace_back(valueStack.back());
-        }
+        auto value = valueStack.back();
+        valueStack.reserve(numDups);
+        valueStack.insert(valueStack.end(), numDups, value);
         break;
       }
       case Ops::CreateList: {

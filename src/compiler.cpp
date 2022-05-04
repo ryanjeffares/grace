@@ -702,7 +702,7 @@ void Compiler::ForStatement()
   }
 
   // parse increment
-  std::variant<std::int64_t, double> increment;
+  std::variant<std::int64_t, double, std::int64_t> increment;
   if (Match(TokenType::By)) {
     if (Match(TokenType::Integer)) {
       std::int64_t value;
@@ -720,6 +720,15 @@ void Compiler::ForStatement()
         return;
       }
       increment.emplace<1>(value);
+    } else if (Match(TokenType::Identifier)) {
+      auto localName = std::string(m_Previous.value().GetText());
+      auto localIt = std::find_if(m_Locals.begin(), m_Locals.end(), [&](const Local& l) { return l.m_Name == localName; });
+      if (localIt == m_Locals.end()) {
+        MessageAtPrevious(fmt::format("Cannot find variable '{}' in this scope.", localName), LogLevel::Error);
+        return;
+      }
+      auto localId = localIt->m_Index;
+      increment.emplace<2>(localId);
     } else {
       MessageAtPrevious("Increment must be a number", LogLevel::Error);
       return;
@@ -776,10 +785,14 @@ void Compiler::ForStatement()
   EmitOp(Ops::LoadLocal, line);
   if (increment.index() == 0) {
     EmitConstant(std::get<0>(increment));
-  } else {
+    EmitOp(Ops::LoadConstant, line);
+  } else if (increment.index() == 1) {
     EmitConstant(std::get<1>(increment));
+    EmitOp(Ops::LoadConstant, line);
+  } else {
+    EmitConstant(std::get<2>(increment));
+    EmitOp(Ops::LoadLocal, line);
   }
-  EmitOp(Ops::LoadConstant, line);
   EmitOp(Ops::Add, line);
   EmitConstant(iteratorId);
   EmitOp(Ops::AssignLocal, line);

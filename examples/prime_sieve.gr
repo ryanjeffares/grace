@@ -1,0 +1,95 @@
+// ================================================================
+
+func list_get(l, index):
+  return __NATIVE_GET_LIST_AT_INDEX(l, index);
+end
+
+func list_set(l, index, value):
+  __NATIVE_SET_LIST_AT_INDEX(l, index, value); 
+end
+
+func list_length(l):
+  return __NATIVE_LIST_LENGTH(l);
+end
+
+func time_ms():
+  return __NATIVE_TIME_MS();
+end
+
+func sqrt(n):
+  if instanceof(n, int):
+    return __NATIVE_SQRT_INT(n);
+  else if instanceof(n, float):
+    return __NATIVE_SQRT_FLOAT(n);
+  end
+  assert(false, "Arg for `sqrt` should be `int` or `float`");
+end
+
+// ================================================================
+
+func reset(bits):
+  final len = list_length(bits);
+  for i in 0..len:
+    list_set(bits, i, true);
+  end
+end
+
+func get_bit(bits, i):
+  return i % 2 > 0 and list_get(bits, i / 2);
+end
+
+func clear_bit(bits, i):
+  list_set(bits, i / 2, false);
+end
+
+func run_sieve(bits):
+  final max = int(sqrt(1000000));
+  var factor = 3;
+
+  while factor < max:
+    for i in factor..1000000:
+      if get_bit(bits, i):
+        factor = i;
+        break;
+      end
+    end
+
+    final min = factor * 3;
+    final jump = factor * 2;
+    for i in min..1000000 by jump:
+      clear_bit(bits, i);
+    end
+
+    factor = factor + 2;
+  end
+end
+
+func main():
+  final sieve_count = 1000000;
+  final bit_count = (sieve_count + 1) / 2;
+  final correct_count = 78498;
+
+  var passes = 0;
+
+  final start = time_ms();
+
+  var bits;
+  while (time_ms() - start) < 5000:
+    bits = [true; 500000];
+    run_sieve(bits);
+    passes = passes + 1;
+  end
+
+  var count = 0;
+  for i in 0..500000:
+    if list_get(bits, i):
+      count = count + 1;
+    end
+  end
+
+  if count == correct_count:
+    println("Found " + count + " primes in " + passes + " passes!");
+  else:
+    println("Found incorrect number of primes " + count);
+  end
+end

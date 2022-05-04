@@ -44,6 +44,10 @@ namespace Grace
 
       void Append(const std::vector<VM::Value>& items);
       void Remove(std::size_t index);
+      GRACE_INLINE std::size_t Length() const 
+      {
+        return m_Data.size();
+      }
 
       void DebugPrint() const override;
       void Print() const override;
