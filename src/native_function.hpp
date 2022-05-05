@@ -47,7 +47,8 @@ namespace Grace
         }
 
         /*
-         *  Call the inner function. The length of the args list is expected to match the function's arity
+         *  Call the inner function. The length of the args list is expected to match the function's arity,
+         *  and the types are expected to be correct
          */
         VM::Value operator()(const std::vector<VM::Value>& args) 
         {

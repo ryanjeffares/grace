@@ -163,6 +163,8 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
 
   auto funcNameHash = m_Hasher("main");
   std::vector<Value> valueStack, localsList;
+  valueStack.reserve(16);
+  localsList.reserve(16);
 
   std::size_t opCurrent = 0, constantCurrent = 0;
   std::stack<std::size_t> localsOffsets;
@@ -214,7 +216,7 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
       case Ops::Mod: {
         auto [c1, c2] = PopLastTwo(valueStack);
         if (!HandleMod(c1, c2, valueStack)) {
-          RuntimeError(fmt::format("cannot multiply `{}` by `{}`", c1.GetType(), c2.GetType()), 
+          RuntimeError(fmt::format("cannot mod `{}` by `{}`", c1.GetType(), c2.GetType()), 
               InterpretError::InvalidOperand, line, callStack);
 #ifdef GRACE_DEBUG
           PRINT_LOCAL_MEMORY();
@@ -333,12 +335,11 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
         break;
       }
       case Ops::LoadConstant:
-        // hot path here
         valueStack.push_back(m_FullConstantList[constantCurrent++]);
         break;
       case Ops::LoadLocal: {
         auto id = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
-        auto value = localsList[id + localsOffsets.top()];
+        auto& value = localsList[id + localsOffsets.top()];
         valueStack.push_back(value);
         break;
       }
