@@ -300,7 +300,11 @@ void Compiler::FuncDeclaration()
 
   Consume(TokenType::Identifier, "Expected function name");
   auto name = std::string(m_Previous.value().GetText());
+#ifdef GRACE_CPP_20
   if (name.starts_with("__")) {
+#else
+  if (name.substr(0, 2) == "__") {
+#endif
     MessageAtPrevious("Function names beginning with double underscore `__` are reserved for internal use", LogLevel::Error);
     return;
   }
@@ -1207,7 +1211,11 @@ void Compiler::Call(bool canAssign)
   if (prev.GetType() == TokenType::Identifier) {
     if (Match(TokenType::LeftParen)) {
       auto hash = static_cast<std::int64_t>(m_Hasher(prevText));
+#ifdef GRACE_CPP_20
       auto nativeCall = prevText.starts_with("__");
+#else
+      auto nativeCall = prevText.substr(0, 2) == "__";
+#endif
       std::size_t nativeIndex;
       if (nativeCall) {
         auto [exists, index] = m_Vm.HasNativeFunction(prevText);

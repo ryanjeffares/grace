@@ -23,7 +23,7 @@ if (NOT CMAKE_BUILD_TYPE MATCHES Release)
   add_compile_definitions(GRACE_DEBUG)
 endif(NOT CMAKE_BUILD_TYPE MATCHES Release)
 
-add_compile_definitions(FMT_HEADER_ONLY)
+target_compile_definitions(grace PRIVATE FMT_HEADER_ONLY)
 
 if(MSVC)
   target_compile_options(grace PRIVATE /W4 /WX)
