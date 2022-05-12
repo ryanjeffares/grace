@@ -345,3 +345,15 @@ Value Value::CreateList(const Value& value)
 #endif
   return res;
 }
+
+Value Value::CreateList(const Value& value, std::int64_t repeats)
+{
+  Value res;
+  res.m_Type = Type::Object;
+  res.m_Data.m_Object = new GraceList(value, repeats);
+  res.m_Data.m_Object->IncreaseRef();
+#ifdef GRACE_DEBUG
+  ObjectTracker::TrackObject(res.m_Data.m_Object);
+#endif
+  return res;
+}

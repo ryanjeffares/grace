@@ -52,6 +52,7 @@ namespace Grace
       CastAsList,
       CheckType,
       CreateList,
+      CreateRepeatingList,
       CreateEmptyList,
       DeclareLocal,
       Divide,
@@ -68,6 +69,7 @@ namespace Grace
       LoadLocal,
       Mod,
       Multiply,
+      NativeCall,
       Negate,
       Not,
       NotEqual,
@@ -187,6 +189,17 @@ namespace Grace
         }
 
         bool AddFunction(std::string&& name, int line, int arity);
+
+        GRACE_INLINE std::tuple<bool, std::size_t> HasNativeFunction(const std::string& name)
+        {
+          auto it = std::find_if(m_NativeFunctions.begin(), m_NativeFunctions.end(), 
+              [name](const Native::NativeFunction& fn) { return fn.GetName() == name;});
+          if (it == m_NativeFunctions.end()) {
+            return {false, 0};
+          }
+          return {true, it - m_NativeFunctions.begin()};
+        }
+
         bool CombineFunctions(bool verbose);
         void Start(bool verbose);
 
@@ -234,7 +247,7 @@ namespace Grace
       private:
 
         std::unordered_map<std::int64_t, Function> m_FunctionList;
-        std::unordered_map<std::int64_t, Native::NativeFunction> m_NativeFunctions;
+        std::vector<Native::NativeFunction> m_NativeFunctions;
 
         std::vector<OpLine> m_FullOpList;
         std::vector<Value> m_FullConstantList;
@@ -270,6 +283,7 @@ struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
       case Ops::CastAsList: name = "Ops::CastAsList"; break;
       case Ops::CheckType: name = "Ops::CheckType"; break;
       case Ops::CreateList: name = "Ops::CreateList"; break;
+      case Ops::CreateRepeatingList: name = "Ops::CreateRepeatingList"; break;
       case Ops::CreateEmptyList: name = "Ops::CreateEmptyList"; break;
       case Ops::DeclareLocal: name = "Ops::DeclareLocal"; break;
       case Ops::Divide: name = "Ops::Divide"; break;
@@ -286,6 +300,7 @@ struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
       case Ops::LoadLocal: name = "Ops::LoadLocal"; break;
       case Ops::Mod: name = "Ops::Mod"; break;
       case Ops::Multiply: name = "Ops::Multiply"; break;
+      case Ops::NativeCall: name = "Ops::NativeCall"; break;
       case Ops::Negate: name = "Ops::Negate"; break;
       case Ops::Not: name = "Ops::Not"; break;
       case Ops::NotEqual: name = "Ops::NotEqual"; break;

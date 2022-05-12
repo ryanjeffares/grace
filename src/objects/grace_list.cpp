@@ -33,6 +33,11 @@ GraceList::GraceList(const Value& value)
   }
 }
 
+GraceList::GraceList(const Value& value, std::int64_t repeats)
+{
+  m_Data.insert(m_Data.begin(), repeats, value);
+}
+
 GraceList::GraceList(const GraceList& other, std::int64_t multiple)
 {
   m_Data.reserve(other.m_Data.size() * multiple);

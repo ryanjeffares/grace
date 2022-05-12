@@ -42,13 +42,14 @@ python3 build.py <release/debug>
 
 This will build the `grace` executable, which you can add to your path or move somewhere that is on your path. Full install process as well as documentation is WIP.
 
-**Note for Windows users:** Cmake won't always set the C++ standard to be C++17 correctly in the generated Visual Studio project. Opening the `.sln` and changing the standard in the project settings will fix this.
+Grace will also build with C++20, and uses some features such as `[[likely]]` and `[[unlikely]]`
 
 ## Alpha Release Roadmap
 * Experiment with string interning
 * `continue` statement
 * Make unused expression results illegal 
 * Unicode support for `char`s 
+* Store call info on constant list
 * Performance
   * Returning from functions is a bottleneck due to popping the function 
   * Consider using raw arrays over vectors for the op and constant list

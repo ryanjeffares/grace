@@ -300,6 +300,10 @@ void Compiler::FuncDeclaration()
 
   Consume(TokenType::Identifier, "Expected function name");
   auto name = std::string(m_Previous.value().GetText());
+  if (name.starts_with("__")) {
+    MessageAtPrevious("Function names beginning with double underscore `__` are reserved for internal use", LogLevel::Error);
+    return;
+  }
   auto isMainFunction = name == "main";
 
   Consume(TokenType::LeftParen, "Expected '(' after function name");
@@ -1202,6 +1206,19 @@ void Compiler::Call(bool canAssign)
 
   if (prev.GetType() == TokenType::Identifier) {
     if (Match(TokenType::LeftParen)) {
+      auto hash = static_cast<std::int64_t>(m_Hasher(prevText));
+      auto nativeCall = prevText.starts_with("__");
+      std::size_t nativeIndex;
+      if (nativeCall) {
+        auto [exists, index] = m_Vm.HasNativeFunction(prevText);
+        if (!exists) {
+          MessageAtPrevious(fmt::format("No native function matching the given signature `{}` was found", prevText), LogLevel::Error);
+          return;
+        } else {
+          nativeIndex = index;
+        }
+      }
+
       std::int64_t numArgs = 0;
       if (!Match(TokenType::RightParen)) {
         while (true) {        
@@ -1221,10 +1238,13 @@ void Compiler::Call(bool canAssign)
         return;
       }
       
-      auto hash = static_cast<std::int64_t>(m_Hasher(prevText));
-      EmitConstant(hash);
+      EmitConstant(nativeCall ? static_cast<std::int64_t>(nativeIndex) : hash);
       EmitConstant(numArgs);
-      EmitOp(Ops::Call, m_Previous.value().GetLine());
+      if (nativeCall) {
+        EmitOp(Ops::NativeCall, m_Previous.value().GetLine());     
+      } else {
+        EmitOp(Ops::Call, m_Previous.value().GetLine());
+      }
 
       if (!s_UsingExpressionResult) {
         // pop unused return value
@@ -1458,6 +1478,7 @@ void Compiler::Cast()
 
 void Compiler::List()
 {
+  bool singleItemParsed = false, repeatItemParsed = false;
   std::int64_t numItems = 0;
   while (true) {
     if (Match(TokenType::RightSquareParen)) {
@@ -1468,6 +1489,15 @@ void Compiler::List()
 
     if (Match(TokenType::Semicolon)) {
       if (Match(TokenType::Integer)) {
+        if (singleItemParsed) {
+          MessageAtPrevious("Cannot mix repeated items and single items in list declaration", LogLevel::Error);
+          return;
+        }
+        if (repeatItemParsed) {
+          MessageAtPrevious("Cannot have multiple repeated items in list declaration", LogLevel::Error);
+          return;
+        }
+
         std::int64_t value;
         auto res = TryParseInt(m_Previous.value(), value);
         if (res.has_value()) {
@@ -1475,14 +1505,18 @@ void Compiler::List()
           return;
         }
         numItems += value;
-        EmitConstant(value - 1);
-        EmitOp(Ops::Dup, m_Previous.value().GetLine());
+        repeatItemParsed = true;
       } else {
         MessageAtCurrent("Expected integer for list item repetition", LogLevel::Error);
         return;
       }
     } else {
+      if (repeatItemParsed) {
+        MessageAtPrevious("Cannot mix repeated items and single items in list declaration", LogLevel::Error);
+        return;
+      }
       numItems++;
+      singleItemParsed = true;
     }
     
     if (Match(TokenType::RightSquareParen)) {
@@ -1494,7 +1528,11 @@ void Compiler::List()
 
   if (numItems > 0) {
     EmitConstant(numItems);
-    EmitOp(Ops::CreateList, m_Previous.value().GetLine());
+    if (repeatItemParsed) {
+      EmitOp(Ops::CreateRepeatingList, m_Previous.value().GetLine());
+    } else {
+      EmitOp(Ops::CreateList, m_Previous.value().GetLine());
+    }
   } else {
     EmitOp(Ops::CreateEmptyList, m_Previous.value().GetLine());
   }
