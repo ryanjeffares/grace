@@ -1308,6 +1308,7 @@ void Compiler::Call(bool canAssign)
       if (nativeCall) {
         EmitOp(Ops::NativeCall, m_Previous.value().GetLine());     
       } else {
+        EmitConstant(prevText);
         EmitOp(Ops::Call, m_Previous.value().GetLine());
       }
 

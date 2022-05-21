@@ -14,6 +14,7 @@
 #include "grace.hpp"
 #include "objects/grace_list.hpp"
 #include "value.hpp"
+#include "exception.hpp"
 
 using namespace Grace::VM;
 
@@ -60,6 +61,524 @@ Value::~Value()
       delete m_Data.m_Object;
     }
   }
+}
+
+Value Value::operator+(const Value& other) const
+{
+  switch (m_Type) {
+    case Type::Int: {
+      switch (other.m_Type) {
+        case Type::Int: {
+          return Value(m_Data.m_Int + other.m_Data.m_Int);
+        }
+        case Type::Double: {
+          return Value(static_cast<double>(m_Data.m_Int) + other.m_Data.m_Double);
+        }
+        default: break;
+      }
+      break;
+    }
+    case Type::Double: {
+      switch (other.m_Type) {
+        case Type::Int: {
+          return Value(m_Data.m_Double + static_cast<double>(other.m_Data.m_Int));
+        }
+        case Type::Double: {
+          return Value(m_Data.m_Double + other.m_Data.m_Double);
+        }
+        default: break;
+      }
+      break;
+    }
+    case Type::Char: {
+      if (other.m_Type == Type::Char) {
+        std::string res;
+        res.push_back(m_Data.m_Char);
+        res.push_back(other.m_Data.m_Char);
+        return Value(res);
+      }
+      break;
+    }
+    case Type::String: {
+      switch (other.m_Type) {
+        case Type::String: {
+          return Value(Get<std::string>() + other.Get<std::string>());
+        }
+        case Type::Char: {
+          return Value(Get<std::string>() + other.m_Data.m_Char);
+        }
+        default: {
+          return Value(Get<std::string>() + other.AsString());
+        }
+      }
+      break;
+    }
+    default: break;
+  }
+  throw GraceException(
+    GraceException::Type::InvalidOperand,
+    fmt::format("Cannot add {} to {}", other.m_Type, m_Type)
+  );
+}
+
+Value Value::operator-(const Value& other) const
+{
+  switch (m_Type) {
+    case Type::Int: {
+      switch (other.m_Type) {
+        case Type::Int: {
+          return Value(m_Data.m_Int - other.m_Data.m_Int);
+        }
+        case Type::Double: {
+          return Value(static_cast<double>(m_Data.m_Int) - other.m_Data.m_Double);
+        }
+        default: break;
+      }
+      break;
+    }
+    case Type::Double: {
+      switch (other.m_Type) {
+        case Type::Int: {
+          return Value(m_Data.m_Double - static_cast<double>(other.m_Data.m_Int));
+        }
+        case Type::Double: {
+          return Value(m_Data.m_Double - other.m_Data.m_Double);
+        }
+        default: break;
+      }
+      break;
+    }
+    default: break;
+  }
+  throw GraceException(
+    GraceException::Type::InvalidOperand,
+    fmt::format("Cannot subtract {} from {}", other.m_Type, m_Type)
+  );
+}
+
+Value Value::operator/(const Value& other) const
+{
+  switch (m_Type) {
+    case Type::Int: {
+      switch (other.m_Type) {
+        case Type::Int: {
+          return Value(m_Data.m_Int / other.m_Data.m_Int);
+        }
+        case Type::Double: {
+          return Value(static_cast<double>(m_Data.m_Int) / other.m_Data.m_Double);
+        }
+        default: break;
+      }
+      break;
+    }
+    case Type::Double: {
+      switch (other.m_Type) {
+        case Type::Int: {
+          return Value(m_Data.m_Double / static_cast<double>(other.m_Data.m_Int));
+        }
+        case Type::Double: {
+          return Value(m_Data.m_Double / other.m_Data.m_Double);
+        }
+        default: break;
+      }
+      break;
+    }
+    default: break;
+  }
+  throw GraceException(
+    GraceException::Type::InvalidOperand,
+    fmt::format("Cannot divide {} by {}", m_Type, other.m_Type)
+  );
+}
+
+Value Value::operator*(const Value& other) const
+{
+  switch (m_Type) {
+    case Type::Int: {
+      switch (other.m_Type) {
+        case Type::Int: {
+          return Value(m_Data.m_Int * other.m_Data.m_Int);
+        }
+        case Type::Double: {
+          return Value(static_cast<double>(m_Data.m_Int) * other.m_Data.m_Double);
+        }
+        default: break;
+      }
+      break;
+    }
+    case Type::Double: {
+      switch (other.m_Type) {
+        case Type::Int: {
+          return Value(m_Data.m_Double * static_cast<double>(other.m_Data.m_Int));
+        }
+        case Type::Double: {
+          return Value(m_Data.m_Double * other.m_Data.m_Double);
+        }
+        default: break;
+      }
+      break;
+    }
+    case Type::Char: {
+      if (other.m_Type == Type::Int) {
+        return Value(std::string(other.m_Data.m_Int, m_Data.m_Char));
+      }
+      break;
+    }
+    case Type::String: {
+      if (other.m_Type == Type::Int) {
+        std::string res;
+        if (other.m_Data.m_Int > 0) {
+          for (auto i = 0; i < other.m_Data.m_Int; i++) {
+            res += Get<std::string>();
+          }
+        }
+        return Value(res);
+      }
+      break;
+    }
+    case Type::Object: {
+      if (auto list = dynamic_cast<GraceList*>(GetObject())) {
+        if (other.m_Type == Type::Int) {
+          return Value(CreateList(*list, other.m_Data.m_Int));
+        }
+      }
+      break;
+    }
+    default: break;
+  }
+  throw GraceException(
+    GraceException::Type::InvalidOperand,
+    fmt::format("Cannot multiple {} by {}", m_Type, other.m_Type)
+  );
+}
+
+Value Value::operator%(const Value& other) const
+{
+  switch (m_Type) {
+    case Type::Int: {
+      switch (other.m_Type) {
+        case Type::Int: {
+          return Value(m_Data.m_Int % other.m_Data.m_Int);
+        }
+        case Type::Double: {
+          return Value(std::fmod(static_cast<double>(m_Data.m_Int), other.m_Data.m_Double));
+        }
+        default: break;
+      }
+      break;
+    }
+    case Type::Double: {
+      switch (other.m_Type) {
+        case Type::Int: {
+          return Value(std::fmod(m_Data.m_Double, static_cast<double>(other.m_Data.m_Int)));
+        }
+        case Type::Double: {
+          return Value(std::fmod(m_Data.m_Double, other.m_Data.m_Double));
+        }
+        default: break;
+      }
+      break;
+    }
+    default: break;
+  }
+  throw GraceException(
+    GraceException::Type::InvalidOperand,
+    fmt::format("Cannot mod {} by {}", m_Type, other.m_Type)
+  );
+}
+
+Value Value::operator==(const Value& other) const
+{
+  switch (m_Type) {
+    case Type::Int: {
+      switch (other.m_Type) {
+        case Type::Double: {
+          return Value(static_cast<double>(m_Data.m_Int) == other.m_Data.m_Double);
+        }
+        case Type::Int: {
+          return Value(m_Data.m_Int == other.m_Data.m_Int);
+        }
+        default: break;
+      }
+      break;
+    }
+    case Type::Double: {
+      switch (other.m_Type) {
+        case Type::Int: {
+          return Value(m_Data.m_Double == static_cast<double>(other.m_Data.m_Int));
+        }
+        case Type::Double: {
+          return Value(m_Data.m_Double == other.m_Data.m_Double);
+        }
+        default: break;
+      }
+      break;
+    }
+    case Type::Bool: {
+      if (other.m_Type == Type::Bool) {
+        return Value(m_Data.m_Bool == other.m_Data.m_Bool);
+      }
+      break;
+    }
+    case Type::Char: {
+      switch (other.m_Type) {
+        case Type::String: {
+          return Value(other.Get<std::string>().length() == 1 && m_Data.m_Char == other.Get<std::string>()[0]);
+        }
+        case Type::Char: {
+          return Value(m_Data.m_Char == other.m_Data.m_Char);
+        }
+        default: break;
+      }
+      break;
+    }
+    case Type::String: {
+      switch (other.m_Type) {
+        case Type::String: {
+          return Value(Get<std::string>() == other.Get<std::string>());
+        }
+        case Type::Char: {
+          return Value(Get<std::string>().length() == 1 && Get<std::string>()[0] == other.m_Data.m_Char);
+        }
+        default: break;
+      }
+      break;
+    }
+    case Type::Null: {
+      if (other.m_Type == Type::Null) {
+        return Value(true);
+      }
+      break;
+    }
+    default: break;
+  }
+  return Value(false);
+}
+
+Value Value::operator!=(const Value& other) const
+{
+  return !(*this == other);
+}
+
+Value Value::operator<(const Value& other) const
+{
+  switch (m_Type) {
+    case Type::Int: {
+      switch (other.m_Type) {
+        case Type::Double: {                                          
+          return Value(static_cast<double>(m_Data.m_Int) < other.m_Data.m_Double);
+        }
+        case Type::Int: {
+          return Value(m_Data.m_Int < other.m_Data.m_Int);
+        }
+        default: break;
+      }
+      break;
+    }
+    case Type::Double: {
+      switch (other.m_Type) {
+        case Type::Int: {
+          return Value(m_Data.m_Double < static_cast<double>(other.m_Data.m_Int));
+        }
+        case Type::Double: {
+          return Value(m_Data.m_Double < other.m_Data.m_Double);
+        }
+        default: break;
+      }
+      break;
+    }
+    case Type::Char: {
+      if (other.m_Type == Type::Char) {
+        return Value(m_Data.m_Char < other.m_Data.m_Char);
+      }
+      break;
+    }
+    default: break;
+  }
+  throw GraceException(
+    GraceException::Type::InvalidOperand,
+    fmt::format("Cannot compare {} with {}", m_Type, other.m_Type)
+  );
+}
+
+Value Value::operator<=(const Value& other) const
+{
+  switch (m_Type) {
+    case Type::Int: {
+      switch (other.m_Type) {
+        case Type::Double: {                                          
+          return Value(static_cast<double>(m_Data.m_Int) <= other.m_Data.m_Double);
+        }
+        case Type::Int: {
+          return Value(m_Data.m_Int <= other.m_Data.m_Int);
+        }
+        default: break;
+      }
+      break;
+    }
+    case Type::Double: {
+      switch (other.m_Type) {
+        case Type::Int: {
+          return Value(m_Data.m_Double <= static_cast<double>(other.m_Data.m_Int));
+        }
+        case Type::Double: {
+          return Value(m_Data.m_Double <= other.m_Data.m_Double);
+        }
+        default: break;
+      }
+      break;
+    }
+    case Type::Char: {
+      if (other.m_Type == Type::Char) {
+        return Value(m_Data.m_Char <= other.m_Data.m_Char);
+      }
+      break;
+    }
+    default: break;
+  }
+  throw GraceException(
+    GraceException::Type::InvalidOperand,
+    fmt::format("Cannot compare {} with {}", m_Type, other.m_Type)
+  );
+}
+
+Value Value::operator>(const Value& other) const
+{
+  switch (m_Type) {
+    case Type::Int: {
+      switch (other.m_Type) {
+        case Type::Double: {                                          
+          return Value(static_cast<double>(m_Data.m_Int) > other.m_Data.m_Double);
+        }
+        case Type::Int: {
+          return Value(m_Data.m_Int > other.m_Data.m_Int);
+        }
+        default: break;
+      }
+      break;
+    }
+    case Type::Double: {
+      switch (other.m_Type) {
+        case Type::Int: {
+          return Value(m_Data.m_Double > static_cast<double>(other.m_Data.m_Int));
+        }
+        case Type::Double: {
+          return Value(m_Data.m_Double > other.m_Data.m_Double);
+        }
+        default: break;
+      }
+      break;
+    }
+    case Type::Char: {
+      if (other.m_Type == Type::Char) {
+        return Value(m_Data.m_Char > other.m_Data.m_Char);
+      }
+      break;
+    }
+    default: break;
+  }
+  throw GraceException(
+    GraceException::Type::InvalidOperand,
+    fmt::format("Cannot compare {} with {}", m_Type, other.m_Type)
+  );
+}
+
+Value Value::operator>=(const Value& other) const
+{
+  switch (m_Type) {
+    case Type::Int: {
+      switch (other.m_Type) {
+        case Type::Double: {                                          
+          return Value(static_cast<double>(m_Data.m_Int) >= other.m_Data.m_Double);
+        }
+        case Type::Int: {
+          return Value(m_Data.m_Int >= other.m_Data.m_Int);
+        }
+        default: break;
+      }
+      break;
+    }
+    case Type::Double: {
+      switch (other.m_Type) {
+        case Type::Int: {
+          return Value(m_Data.m_Double >= static_cast<double>(other.m_Data.m_Int));
+        }
+        case Type::Double: {
+          return Value(m_Data.m_Double >= other.m_Data.m_Double);
+        }
+        default: break;
+      }
+      break;
+    }
+    case Type::Char: {
+      if (other.m_Type == Type::Char) {
+        return Value(m_Data.m_Char >= other.m_Data.m_Char);
+      }
+      break;
+    }
+    default: break;
+  }
+  throw GraceException(
+    GraceException::Type::InvalidOperand,
+    fmt::format("Cannot compare {} with {}", m_Type, other.m_Type)
+  );
+}
+
+Value Value::operator!() const
+{
+  return Value(!AsBool());
+}
+
+Value Value::operator-() const
+{
+  switch (m_Type) {
+    case Type::Int: {      
+      return Value(-(m_Data.m_Int));
+    }
+    case Type::Double: {
+      return Value(-(m_Data.m_Double));
+    }
+    default: break;
+  }
+  throw GraceException(
+    GraceException::Type::InvalidType,
+    fmt::format("Cannot negate type {}", m_Type)
+  );
+}
+
+Value Value::Pow(const Value& other) const
+{
+  switch (m_Type) {
+    case Type::Int: {
+      switch (other.m_Type) {
+        case Type::Int: {
+          return Value(std::pow(m_Data.m_Int, other.m_Data.m_Int));
+        }
+        case Type::Double: {
+          return Value(std::pow(static_cast<double>(m_Data.m_Int), other.m_Data.m_Double));
+        }
+        default: break;
+      }
+      break;
+    }
+    case Type::Double: {
+      switch (other.m_Type) {
+        case Type::Int: {
+          return Value(std::pow(m_Data.m_Double, static_cast<double>(other.m_Data.m_Int)));
+        }
+        case Type::Double: {
+          return Value(std::pow(m_Data.m_Double, other.m_Data.m_Double));
+        }
+        default: break;
+      }
+      break;
+    }
+    default: break;
+  }
+  throw GraceException(
+    GraceException::Type::InvalidOperand,
+    fmt::format("Cannot exponentiate {} with {}", m_Type, other.m_Type)
+  );
 }
 
 void Value::PrintLn() const
@@ -113,6 +632,9 @@ void Value::Print() const
     case Type::String:
       fmt::print("{}", *m_Data.m_Str);
       break;
+    default:
+      GRACE_ASSERT(false, "Value::m_Type was not set");
+      break;
   }
 }
 
@@ -139,6 +661,9 @@ void Value::DebugPrint() const
       break;
     case Type::String:
       fmt::print("{}: {}\n", m_Type, *m_Data.m_Str);
+      break;
+    default:
+      GRACE_ASSERT(false, "Value::m_Type was not set");
       break;
   }
 }

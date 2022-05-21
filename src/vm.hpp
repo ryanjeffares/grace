@@ -26,6 +26,7 @@
 #include "grace.hpp"
 #include "native_function.hpp"
 #include "value.hpp"
+#include "exception.hpp"
 
 namespace Grace
 {
@@ -87,18 +88,6 @@ namespace Grace
       RuntimeOk,
     };
 
-    enum class InterpretError
-    {
-      AssertionFailed,
-      FunctionNotFound,
-      IncorrectArgCount,
-      InvalidArgument,
-      InvalidCast,
-      InvalidOperand,
-      InvalidType,
-      CallstackDepthExceeded,
-    };
-
     class VM
     {
       public:
@@ -156,7 +145,7 @@ namespace Grace
         }
 
         template<typename T>
-        constexpr GRACE_INLINE void PushConstant(T value)
+        constexpr GRACE_INLINE void PushConstant(const T& value)
         {
           m_FunctionList.at(m_LastFunctionHash).m_ConstantList.emplace_back(value);
         }
@@ -172,7 +161,7 @@ namespace Grace
         }
 
         template<typename T>
-        constexpr GRACE_INLINE void SetConstantAtIndex(std::size_t index, T value)
+        constexpr GRACE_INLINE void SetConstantAtIndex(std::size_t index, const T& value)
         {
           m_FunctionList.at(m_LastFunctionHash).m_ConstantList[index] = value;
         }
@@ -202,42 +191,7 @@ namespace Grace
 
         void RegisterNatives();
         InterpretResult Run(bool verbose);
-        void RuntimeError(const std::string& message, InterpretError errorType, int line, const CallStack& callStack);
-
-        GRACE_NODISCARD
-        static bool HandleAddition(const Value& c1, const Value& c2, std::vector<Value>& stack);
-
-        GRACE_NODISCARD
-        static bool HandleSubtraction(const Value& c1, const Value& c2, std::vector<Value>& stack);
-
-        GRACE_NODISCARD
-        static bool HandleDivision(const Value& c1, const Value& c2, std::vector<Value>& stack);
-
-        GRACE_NODISCARD
-        static bool HandleMultiplication(const Value& c1, const Value& c2, std::vector<Value>& stack);
-
-        GRACE_NODISCARD
-        static bool HandleMod(const Value& c1, const Value& c2, std::vector<Value>& stack);
-
-        static void HandleEquality(const Value& c1, const Value& c2, std::vector<Value>& stack, bool equal);
-
-        GRACE_NODISCARD
-        static bool HandleLessThan(const Value& c1, const Value& c2, std::vector<Value>& stack);
-        
-        GRACE_NODISCARD
-        static bool HandleLessEqual(const Value& c1, const Value& c2, std::vector<Value>& stack);
-
-        GRACE_NODISCARD
-        static bool HandleGreaterThan(const Value& c1, const Value& c2, std::vector<Value>& stack);
-
-        GRACE_NODISCARD
-        static bool HandleGreaterEqual(const Value& c1, const Value& c2, std::vector<Value>& stack);
-
-        GRACE_NODISCARD
-        static bool HandlePower(const Value& c1, const Value& c2, std::vector<Value>& stack);
-
-        GRACE_NODISCARD
-        static bool HandleNegate(const Value& c, std::vector<Value>& stack);
+        void RuntimeError(const GraceException& exception, int line, const CallStack& callStack);
 
       private:
 
@@ -303,29 +257,6 @@ struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
       case Ops::PrintTab: name = "Ops::PrintTab"; break;
       case Ops::Return: name = "Ops::Return"; break;
       case Ops::Subtract: name = "Ops::Subtract"; break;
-    }
-    return fmt::formatter<std::string_view>::format(name, context);
-  }
-};
-
-template<>
-struct fmt::formatter<Grace::VM::InterpretError> : fmt::formatter<std::string_view>
-{
-  template<typename FormatContext>
-  auto format(Grace::VM::InterpretError type, FormatContext& context) -> decltype(context.out())
-  {
-    using namespace Grace::VM;
-
-    std::string_view name = "unknown";
-    switch (type) {
-      case InterpretError::AssertionFailed: name = "AssertionFailed"; break;
-      case InterpretError::FunctionNotFound: name = "FunctionNotFound"; break;
-      case InterpretError::IncorrectArgCount: name = "IncorrectArgCount"; break;
-      case InterpretError::InvalidArgument: name = "InvalidArgument"; break;
-      case InterpretError::InvalidCast: name = "InvalidCast"; break;
-      case InterpretError::InvalidOperand: name = "InvalidOperand"; break;
-      case InterpretError::InvalidType: name = "InvalidType"; break;
-      case InterpretError::CallstackDepthExceeded: name = "CallstackDepthExceeded"; break;
     }
     return fmt::formatter<std::string_view>::format(name, context);
   }

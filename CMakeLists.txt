@@ -8,9 +8,9 @@ add_executable(grace
   src/compiler.cpp 
   src/scanner.cpp 
   src/vm.cpp 
-  src/vm_handlers.cpp 
   src/vm_register_natives.cpp 
   src/value.cpp 
+  src/exception.cpp
   src/objects/grace_list.cpp 
   src/objects/object_tracker.cpp
 )

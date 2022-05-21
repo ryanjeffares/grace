@@ -5,6 +5,7 @@ end
 
 func main():
   var a = int(get());
-  a;
-  /
+  var b = null;
+  function_that_doesnt_exist();
+  println(a + b);
 end

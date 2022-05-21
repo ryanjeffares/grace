@@ -46,6 +46,8 @@ Grace will also build with C++20, and uses some features such as `[[likely]]` an
 
 ## Alpha Release Roadmap
 * Exception system
+  * In progress - throw exceptions in operator overloads in the Value class instead of Handlers
+  * `throw` keyword for the language itself
 * Experiment with string interning
 * Make unused expression results illegal 
 * Unicode support for `char`s 
