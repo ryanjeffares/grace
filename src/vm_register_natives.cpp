@@ -11,58 +11,86 @@
 
 #include <chrono>
 
+#include "grace.hpp"
 #include "vm.hpp"
 #include "objects/grace_list.hpp"
 
 using namespace Grace::VM;
 
+static Value SqrtFloat(const std::vector<Value>& args);
+static Value SqrtInt(const std::vector<Value>& args);
+
+static Value TimeSeconds(GRACE_MAYBE_UNUSED const std::vector<Value>& args);
+static Value TimeMilliSeconds(GRACE_MAYBE_UNUSED const std::vector<Value>& args);
+static Value TimeNanoSeconds(GRACE_MAYBE_UNUSED const std::vector<Value>& args);
+
+static Value AppendList(const std::vector<Value>& args);
+static Value SetListAtIndex(const std::vector<Value>& args);
+static Value GetListAtIndex(const std::vector<Value>& args);
+static Value ListLength(const std::vector<Value>& args);
+
 void VM::RegisterNatives()
 {
-#define REGISTER_NATIVE(name, arity, function)                            \
-  do {                                                                    \
-    m_NativeFunctions.emplace(static_cast<std::int64_t>(m_Hasher(name)),  \
-        Native::NativeFunction(name, arity, function));                   \
-  } while (false)                                                         \
-
   // Math functions
-  REGISTER_NATIVE("__NATIVE_SQRT_FLOAT", 1, [](const std::vector<Value>& args) {
-        return Value(std::sqrt(args[0].Get<double>()));
-      });
-  REGISTER_NATIVE("__NATIVE_SQRT_INT", 1, [](const std::vector<Value>& args) {
-        return Value(std::sqrt(args[0].Get<std::int64_t>()));
-      });
+  m_NativeFunctions.emplace_back("__NATIVE_SQRT_FLOAT", 1, &SqrtFloat);
+  m_NativeFunctions.emplace_back("__NATIVE_SQRT_INT", 1, &SqrtInt);
 
   // Time functions
-#define GET_TIME(division) std::chrono::duration_cast<std::chrono::division>(std::chrono::steady_clock::now().time_since_epoch()).count()
-
-  REGISTER_NATIVE("__NATIVE_TIME_S", 0, [](GRACE_MAYBE_UNUSED const std::vector<Value>& args) {
-        return Value(GET_TIME(seconds));
-      });
-  REGISTER_NATIVE("__NATIVE_TIME_MS", 0, [](GRACE_MAYBE_UNUSED const std::vector<Value>& args) {
-        return Value(GET_TIME(milliseconds));
-      });
-  REGISTER_NATIVE("__NATIVE_TIME_NS", 0, [](GRACE_MAYBE_UNUSED const std::vector<Value>& args) {
-        return Value(GET_TIME(nanoseconds));
-      });
-
-#undef GET_TIME
+  m_NativeFunctions.emplace_back("__NATIVE_TIME_S", 0, &TimeSeconds);
+  m_NativeFunctions.emplace_back("__NATIVE_TIME_MS", 0, &TimeMilliSeconds);
+  m_NativeFunctions.emplace_back("__NATIVE_TIME_NS", 0, &TimeNanoSeconds);
 
   // List functions
-  REGISTER_NATIVE("__NATIVE_APPEND_LIST", 2, [](const std::vector<Value>& args) {
-        dynamic_cast<GraceList*>(args[0].GetObject())->Append(args[1]);
-        return Value();
-      });
-  REGISTER_NATIVE("__NATIVE_SET_LIST_AT_INDEX", 3, [](const std::vector<Value>& args) {
-        auto l = dynamic_cast<GraceList*>(args[0].GetObject());
-        (*l)[args[1].Get<std::int64_t>()] = args[2];
-        return Value();
-      });
-  REGISTER_NATIVE("__NATIVE_GET_LIST_AT_INDEX", 2, [](const std::vector<Value>& args) {
-        return (*dynamic_cast<GraceList*>(args[0].GetObject()))[args[1].Get<std::int64_t>()];
-      });
-  REGISTER_NATIVE("__NATIVE_LIST_LENGTH", 1, [](const std::vector<Value>& args) {
-        return Value(static_cast<std::int64_t>(dynamic_cast<GraceList*>(args[0].GetObject())->Length()));
-      });
+  m_NativeFunctions.emplace_back("__NATIVE_APPEND_LIST", 2, &AppendList);
+  m_NativeFunctions.emplace_back("__NATIVE_SET_LIST_AT_INDEX", 3, &SetListAtIndex);
+  m_NativeFunctions.emplace_back("__NATIVE_GET_LIST_AT_INDEX", 2, &GetListAtIndex);
+  m_NativeFunctions.emplace_back("__NATIVE_LIST_LENGTH", 1, &ListLength);
+}
 
-#undef REGISTER_NATIVE
+static Value SqrtFloat(const std::vector<Value>& args)
+{
+  return Value(std::sqrt(args[0].Get<double>()));
+}
+
+static Value SqrtInt(const std::vector<Value>& args)
+{
+  return Value(std::sqrt(args[0].Get<std::int64_t>()));
+}
+
+static Value TimeSeconds(GRACE_MAYBE_UNUSED const std::vector<Value>& args)
+{
+  return Value(std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now().time_since_epoch()).count());
+}
+
+static Value TimeMilliSeconds(GRACE_MAYBE_UNUSED const std::vector<Value>& args)
+{
+  return Value(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count());
+}
+
+static Value TimeNanoSeconds(GRACE_MAYBE_UNUSED const std::vector<Value>& args)
+{
+  return Value(std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count());
+}
+
+static Value AppendList(const std::vector<Value>& args)
+{
+  dynamic_cast<Grace::GraceList*>(args[0].GetObject())->Append(std::move(args[1]));
+  return Value();
+}
+
+static Value SetListAtIndex(const std::vector<Value>& args)
+{
+  auto l = dynamic_cast<Grace::GraceList*>(args[0].GetObject());
+  (*l)[args[1].Get<std::int64_t>()] = args[2];
+  return Value();
+}
+
+static Value GetListAtIndex(const std::vector<Value>& args)
+{
+  return (*dynamic_cast<Grace::GraceList*>(args[0].GetObject()))[args[1].Get<std::int64_t>()];
+}
+
+static Value ListLength(const std::vector<Value>& args)
+{
+  return Value(static_cast<std::int64_t>(dynamic_cast<Grace::GraceList*>(args[0].GetObject())->Length()));
 }

@@ -167,6 +167,15 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
   localsList.reserve(16);
 
   std::size_t opCurrent = 0, constantCurrent = 0;
+  
+  auto& mainFunc = m_FunctionList.at(funcNameHash);
+
+  std::vector<std::size_t> opOffsets, constantOffsets;
+  opOffsets.reserve(32);
+  opOffsets.push_back(mainFunc.m_OpIndexStart);
+  constantOffsets.reserve(32);
+  constantOffsets.push_back(mainFunc.m_ConstantIndexStart);
+
   std::stack<std::size_t> localsOffsets;
   localsOffsets.push(0);
 
@@ -363,32 +372,8 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
         break;
       case Ops::Call: {
         auto calleeNameHash = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
-
-        if (m_NativeFunctions.find(calleeNameHash) != m_NativeFunctions.end()) {
-          auto& calleeFunc = m_NativeFunctions.at(calleeNameHash);
-          auto arity = calleeFunc.GetArity();
-          auto numArgsGiven = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
-
-          if (numArgsGiven != arity) {
-            RuntimeError(fmt::format("Incorrect number of arguments given to function '{}', expected {} but got {}", calleeFunc.GetName(), arity, numArgsGiven), 
-                InterpretError::IncorrectArgCount, line, callStack);
-#ifdef GRACE_DEBUG
-            PRINT_LOCAL_MEMORY();
-#endif
-            RETURN_ERR();
-          }
-
-          std::vector<Value> args(arity);
-          for (std::uint32_t i = 0; i < arity; i++) {
-            args[arity - i - 1] = Pop(valueStack);
-          }
-
-          auto res = calleeFunc(args);
-          valueStack.push_back(std::move(res));
-          break;
-        }
-
-        if (m_FunctionList.find(calleeNameHash) == m_FunctionList.end()) {
+        auto it = m_FunctionList.find(calleeNameHash);
+        if (it == m_FunctionList.end()) {
           RuntimeError("Function not found", InterpretError::FunctionNotFound, line, callStack);
 #ifdef GRACE_DEBUG
           PRINT_LOCAL_MEMORY();
@@ -396,7 +381,7 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
           RETURN_ERR();
         }
 
-        auto& calleeFunc = m_FunctionList.at(calleeNameHash);
+        auto& calleeFunc = it->second;
         int arity = calleeFunc.m_Arity;
         auto numArgsGiven = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
 
@@ -421,9 +406,34 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
 
         opCurrent = calleeFunc.m_OpIndexStart;
         constantCurrent = calleeFunc.m_ConstantIndexStart; 
+        opOffsets.push_back(opCurrent);
+        constantOffsets.push_back(constantCurrent);
         
         funcNameHash = calleeNameHash;
+        break;
+      }
+      case Ops::NativeCall: {
+        auto calleeIndex = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+        auto& calleeFunc = m_NativeFunctions[calleeIndex];
+        auto arity = calleeFunc.GetArity();
+        auto numArgsGiven = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
 
+        if (numArgsGiven != arity) {
+          RuntimeError(fmt::format("Incorrect number of arguments given to function '{}', expected {} but got {}", calleeFunc.GetName(), arity, numArgsGiven), 
+              InterpretError::IncorrectArgCount, line, callStack);
+#ifdef GRACE_DEBUG
+          PRINT_LOCAL_MEMORY();
+#endif
+          RETURN_ERR();
+        }
+
+        std::vector<Value> args(arity);
+        for (std::uint32_t i = 0; i < arity; i++) {
+          args[arity - i - 1] = Pop(valueStack);
+        }
+
+        auto res = calleeFunc(args);
+        valueStack.push_back(std::move(res));
         break;
       }
       case Ops::AssignLocal: {
@@ -438,8 +448,8 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
       case Ops::Jump: {
         auto constIdx = m_FullConstantList[constantCurrent++].Get<std::int64_t>(); 
         auto opIdx = m_FullConstantList[constantCurrent++].Get<std::int64_t>(); 
-        opCurrent = opIdx + m_FunctionList.at(funcNameHash).m_OpIndexStart;
-        constantCurrent = constIdx + m_FunctionList.at(funcNameHash).m_ConstantIndexStart;
+        opCurrent = opIdx + opOffsets.back();
+        constantCurrent = constIdx + constantOffsets.back();
         break;
       }
       case Ops::JumpIfFalse: {
@@ -447,8 +457,8 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
         auto opIdx = m_FullConstantList[constantCurrent++].Get<std::int64_t>(); 
         auto condition = Pop(valueStack);
         if (!condition.AsBool()) {
-          opCurrent = opIdx + m_FunctionList.at(funcNameHash).m_OpIndexStart;
-          constantCurrent = constIdx + m_FunctionList.at(funcNameHash).m_ConstantIndexStart;
+          opCurrent = opIdx + opOffsets.back();
+          constantCurrent = constIdx + constantOffsets.back();
         }
         break;
       }
@@ -467,6 +477,8 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
 
         valueStack.emplace_back(std::move(returnValue));
         localsOffsets.pop();
+        opOffsets.pop_back();
+        constantOffsets.pop_back();
 
 #ifdef GRACE_DEBUG
         PRINT_LOCAL_MEMORY();
@@ -557,15 +569,21 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
       }
       case Ops::CreateList: {
         auto numItems = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
-        auto offset = valueStack.size() - numItems;
         std::vector<Value> result;
-        result.insert(result.end(), std::make_move_iterator(valueStack.begin() + offset), std::make_move_iterator(valueStack.end()));
-        valueStack.erase(valueStack.begin() + offset, valueStack.end());
-        valueStack.emplace_back(Value::CreateList(std::move(result)));
+        for (auto i = 0; i < numItems; i++) {
+          result.push_back(Pop(valueStack));
+        }
+        valueStack.push_back(Value::CreateList(std::move(result)));
         break;
       }
       case Ops::CreateEmptyList: {
-        valueStack.emplace_back(Value::CreateList());
+        valueStack.push_back(Value::CreateList());
+        break;
+      }
+      case Ops::CreateRepeatingList: {
+        auto numItems = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+        auto value = Pop(valueStack);
+        valueStack.push_back(Value::CreateList(value, numItems));
         break;
       }
       case Ops::Assert: {

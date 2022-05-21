@@ -28,10 +28,10 @@ namespace Grace
     {
       public:
 
-        using FuncDecl = std::function<VM::Value(const std::vector<VM::Value>&)>;
+        using FuncDecl = VM::Value (*)(const std::vector<VM::Value>&);
 
-        NativeFunction(std::string&& name, std::uint32_t arity, FuncDecl&& func)
-          : m_Name(std::move(name)), m_Arity(arity), m_Function(std::move(func))
+        NativeFunction(std::string&& name, std::uint32_t arity, FuncDecl func)
+          : m_Name(std::move(name)), m_Arity(arity), m_Function(func)
         {
 
         }

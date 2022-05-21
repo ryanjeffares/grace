@@ -49,6 +49,12 @@
 # endif
 #endif
 
+#ifndef GRACE_CPP_20
+# if (__cplusplus >= 202002L)
+#   define GRACE_CPP_20
+# endif
+#endif
+
 #ifndef GRACE_MAJOR_VERSION
 # define GRACE_MAJOR_VERSION  0
 #endif
@@ -59,6 +65,22 @@
 
 #ifndef GRACE_PATCH_NUMBER
 # define GRACE_PATCH_NUMBER   1
+#endif
+
+#ifndef GRACE_LIKELY
+# ifdef GRACE_CPP_20
+#   define GRACE_LIKELY       [[likely]]
+# else
+#   define GRACE_LIKELY
+# endif
+#endif
+
+#ifndef GRACE_UNLIKELY
+# ifdef GRACE_CPP_20
+#   define GRACE_UNLIKELY     [[unlikely]]
+# else
+#   define GRACE_UNLIKELY
+# endif
 #endif
 
 #ifndef GRACE_INLINE

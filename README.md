@@ -42,16 +42,23 @@ python3 build.py <release/debug>
 
 This will build the `grace` executable, which you can add to your path or move somewhere that is on your path. Full install process as well as documentation is WIP.
 
-**Note for Windows users:** Cmake won't always set the C++ standard to be C++17 correctly in the generated Visual Studio project. Opening the `.sln` and changing the standard in the project settings will fix this.
+Grace will also build with C++20, and uses some features such as `[[likely]]` and `[[unlikely]]`
 
 ## Alpha Release Roadmap
 * Experiment with string interning
 * `continue` statement
+* `break` should be treated as a statement, not declaration in the compiler
 * Make unused expression results illegal 
 * Unicode support for `char`s 
+* Don't need different ops for every cast
+* Store call info on constant list
+  * Would it be jank to require forward declaration of functions? Could provide more optimisation of the bytecode
+  * What would that like in classes...
+* For the sake of tidiness, do binary ops as operator overloads in the Value class, we can try/catch with negligible performance overhead
 * Performance
-  * Returning from functions is a bottleneck due to popping the function 
   * Consider using raw arrays over vectors for the op and constant list
+  * Preallocate stack space for each function
+  * Register machine?
 * Classes
   * Reference counting
   * Cyclic references handled through a "cyclic reference tracker" - if a cyclic reference is detected, start tracking the two objects, and when those objects' only reminaing references are eachother they can be safely destroyed 

@@ -17,13 +17,13 @@ add_executable(grace
 
 target_include_directories(grace PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/deps/fmt/include)
 
-set_property(TARGET grace PROPERTY CXX_STANDARD 17)
+set_property(TARGET grace PROPERTY CXX_STANDARD 20)
 
 if (NOT CMAKE_BUILD_TYPE MATCHES Release)
   add_compile_definitions(GRACE_DEBUG)
 endif(NOT CMAKE_BUILD_TYPE MATCHES Release)
 
-add_compile_definitions(FMT_HEADER_ONLY)
+target_compile_definitions(grace PRIVATE FMT_HEADER_ONLY)
 
 if(MSVC)
   target_compile_options(grace PRIVATE /W4 /WX)

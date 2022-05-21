@@ -85,6 +85,7 @@ namespace Grace
       static Value CreateList(std::vector<Value>&& items);
       static Value CreateList(const GraceList& list, std::int64_t multiple);
       static Value CreateList(const Value& value);
+      static Value CreateList(const Value& value, std::int64_t repeats);
 
       constexpr Value& operator=(const Value& other)
       {
