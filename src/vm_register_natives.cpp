@@ -31,28 +31,20 @@ static Value ListLength(const std::vector<Value>& args);
 
 void VM::RegisterNatives()
 {
-#define REGISTER_NATIVE(name, arity, function)                            \
-  do {                                                                    \
-    m_NativeFunctions.emplace_back(name, arity, function);                \
-  } while (false)                                                         \
-
   // Math functions
-  REGISTER_NATIVE("__NATIVE_SQRT_FLOAT", 1, &SqrtFloat);
-  REGISTER_NATIVE("__NATIVE_SQRT_INT", 1, &SqrtInt);
+  m_NativeFunctions.emplace_back("__NATIVE_SQRT_FLOAT", 1, &SqrtFloat);
+  m_NativeFunctions.emplace_back("__NATIVE_SQRT_INT", 1, &SqrtInt);
 
   // Time functions
-
-  REGISTER_NATIVE("__NATIVE_TIME_S", 0, &TimeSeconds);
-  REGISTER_NATIVE("__NATIVE_TIME_MS", 0, &TimeMilliSeconds);
-  REGISTER_NATIVE("__NATIVE_TIME_NS", 0, &TimeNanoSeconds);
+  m_NativeFunctions.emplace_back("__NATIVE_TIME_S", 0, &TimeSeconds);
+  m_NativeFunctions.emplace_back("__NATIVE_TIME_MS", 0, &TimeMilliSeconds);
+  m_NativeFunctions.emplace_back("__NATIVE_TIME_NS", 0, &TimeNanoSeconds);
 
   // List functions
-  REGISTER_NATIVE("__NATIVE_APPEND_LIST", 2, &AppendList);
-  REGISTER_NATIVE("__NATIVE_SET_LIST_AT_INDEX", 3, &SetListAtIndex);
-  REGISTER_NATIVE("__NATIVE_GET_LIST_AT_INDEX", 2, &GetListAtIndex);
-  REGISTER_NATIVE("__NATIVE_LIST_LENGTH", 1, &ListLength);
-
-#undef REGISTER_NATIVE
+  m_NativeFunctions.emplace_back("__NATIVE_APPEND_LIST", 2, &AppendList);
+  m_NativeFunctions.emplace_back("__NATIVE_SET_LIST_AT_INDEX", 3, &SetListAtIndex);
+  m_NativeFunctions.emplace_back("__NATIVE_GET_LIST_AT_INDEX", 2, &GetListAtIndex);
+  m_NativeFunctions.emplace_back("__NATIVE_LIST_LENGTH", 1, &ListLength);
 }
 
 static Value SqrtFloat(const std::vector<Value>& args)

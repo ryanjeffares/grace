@@ -174,7 +174,7 @@ static bool IsKeyword(TokenType type, std::string& outKeyword)
 
 static bool IsOperator(TokenType type)
 {
-  static const std::vector<TokenType> symbols = {
+  static const std::vector<TokenType> symbols {
     TokenType::Colon,
     TokenType::Semicolon,
     TokenType::RightParen,
@@ -193,12 +193,9 @@ static bool IsOperator(TokenType type)
     TokenType::GreaterEqual,
   };
 
-  for (auto t : symbols) {
-    if (type == t) {
-      return true;
-    }
-  }
-  return false;
+  return std::any_of(symbols.begin(), symbols.end(), [type](TokenType t) {
+    return t == type;
+  });
 }
 
 void Compiler::EmitOp(VM::Ops op, int line)
@@ -579,17 +576,24 @@ std::optional<std::exception> TryParseDouble(const Token& token, double& result)
   }
 }
 
-static bool IsLiteral(const Token& token)
+static bool IsLiteral(TokenType token)
 {
-  auto type = token.GetType();
-  return type == TokenType::True || type == TokenType::False
-    || type == TokenType::Integer || type == TokenType::Double
-    || type == TokenType::String || type == TokenType::Char;
+  static const std::vector<TokenType> literalTypes{
+    TokenType::True,
+    TokenType::False,
+    TokenType::Integer,
+    TokenType::Double,
+    TokenType::String,
+    TokenType::Char
+  };
+  return std::any_of(literalTypes.begin(), literalTypes.end(), [token](TokenType t) {
+    return t == token;
+  });
 }
 
 void Compiler::ExpressionStatement() 
 {
-  if (IsLiteral(m_Current.value()) || IsOperator(m_Current.value().GetType())) {
+  if (IsLiteral(m_Current.value().GetType()) || IsOperator(m_Current.value().GetType())) {
     MessageAtCurrent("Expected identifier or keyword at start of expression", LogLevel::Error);
     Advance();  // consume illegal token
     return;
@@ -1278,12 +1282,19 @@ void Compiler::Call(bool canAssign)
   }
 }
 
-static bool IsTypeIdent(const Token& token)
+static bool IsTypeIdent(TokenType type)
 {
-  auto type = token.GetType();
-  return type == TokenType::IntIdent || type == TokenType::FloatIdent 
-    || type == TokenType::BoolIdent || type == TokenType::StringIdent 
-    || type == TokenType::CharIdent || type == TokenType::ListIdent;
+  static const std::vector<TokenType> typeIdents {
+    TokenType::IntIdent,
+    TokenType::FloatIdent,
+    TokenType::BoolIdent,
+    TokenType::StringIdent,
+    TokenType::CharIdent,
+    TokenType::ListIdent
+  };
+  return std::any_of(typeIdents.begin(), typeIdents.end(), [type](TokenType t) {
+    return t == type;
+  });
 }
 
 void Compiler::Primary(bool canAssign)
@@ -1330,7 +1341,7 @@ void Compiler::Primary(bool canAssign)
     Consume(TokenType::RightParen, "Expected ')'");
   } else if (Match(TokenType::InstanceOf)) {
     InstanceOf();
-  } else if (IsTypeIdent(m_Current.value())) {
+  } else if (IsTypeIdent(m_Current.value().GetType())) {
     Cast();
   } else if (Match(TokenType::LeftSquareParen)) {
     List();
@@ -1347,7 +1358,7 @@ static const std::unordered_map<char, char> s_EscapeCharsLookup = {
   std::make_pair('n', '\n'),
   std::make_pair('f', '\f'),
   std::make_pair('\'', '\''),
-  std::make_pair('"', '\"'),
+  std::make_pair('"', '\"'),  // we need to escape this because it might be in a string
   std::make_pair('\\', '\\'),
 };
 

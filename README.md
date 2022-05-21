@@ -47,12 +47,18 @@ Grace will also build with C++20, and uses some features such as `[[likely]]` an
 ## Alpha Release Roadmap
 * Experiment with string interning
 * `continue` statement
+* `break` should be treated as a statement, not declaration in the compiler
 * Make unused expression results illegal 
 * Unicode support for `char`s 
+* Don't need different ops for every cast
 * Store call info on constant list
+  * Would it be jank to require forward declaration of functions? Could provide more optimisation of the bytecode
+  * What would that like in classes...
+* For the sake of tidiness, do binary ops as operator overloads in the Value class, we can try/catch with negligible performance overhead
 * Performance
-  * Returning from functions is a bottleneck due to popping the function 
   * Consider using raw arrays over vectors for the op and constant list
+  * Preallocate stack space for each function
+  * Register machine?
 * Classes
   * Reference counting
   * Cyclic references handled through a "cyclic reference tracker" - if a cyclic reference is detected, start tracking the two objects, and when those objects' only reminaing references are eachother they can be safely destroyed 
