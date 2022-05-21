@@ -45,10 +45,10 @@ This will build the `grace` executable, which you can add to your path or move s
 Grace will also build with C++20, and uses some features such as `[[likely]]` and `[[unlikely]]`
 
 ## Alpha Release Roadmap
+* Exception system
 * Experiment with string interning
 * Make unused expression results illegal 
 * Unicode support for `char`s 
-* Don't need different ops for every cast
 * Store call info on constant list
   * Would it be jank to require forward declaration of functions? Could provide more optimisation of the bytecode
   * What would that like in classes...
@@ -66,6 +66,8 @@ Grace will also build with C++20, and uses some features such as `[[likely]]` an
 * Extension methods
 * Collections
   * Lists 
+    * Have lists, but should implement our own dynamic collection
+    * Proper iterators etc to do nice move semantics
   * Hash table 
   * Immutable set 
   * Need iteration
