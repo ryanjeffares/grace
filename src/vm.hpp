@@ -44,12 +44,7 @@ namespace Grace
       AssertWithMessage,
       AssignLocal,
       Call,
-      CastAsInt,
-      CastAsFloat,
-      CastAsBool,
-      CastAsString,
-      CastAsChar,
-      CastAsList,
+      Cast,
       CheckType,
       CreateList,
       CreateRepeatingList,
@@ -274,12 +269,7 @@ struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
       case Ops::AssertWithMessage: name = "Ops::AssertWithMessage"; break;
       case Ops::AssignLocal: name = "Ops::AssignLocal"; break;
       case Ops::Call: name = "Ops::Call"; break;
-      case Ops::CastAsInt: name = "Ops::CastAsInt"; break;
-      case Ops::CastAsFloat: name = "Ops::CastAsFloat"; break;
-      case Ops::CastAsBool: name = "Ops::CastAsBool"; break;
-      case Ops::CastAsString: name = "Ops::CastAsString"; break;
-      case Ops::CastAsChar: name = "Ops::CastAsChar"; break;
-      case Ops::CastAsList: name = "Ops::CastAsList"; break;
+      case Ops::Cast: name = "Ops::Cast"; break;
       case Ops::CheckType: name = "Ops::CheckType"; break;
       case Ops::CreateList: name = "Ops::CreateList"; break;
       case Ops::CreateRepeatingList: name = "Ops::CreateRepeatingList"; break;

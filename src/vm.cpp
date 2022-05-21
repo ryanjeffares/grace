@@ -183,7 +183,7 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
   CallStack callStack;
   callStack.emplace_back(static_cast<std::int64_t>(m_Hasher("file")), funcNameHash, 1);
 
-  while (opCurrent < m_FullOpList.size()) {
+  while (true) {
     auto [op, line] = m_FullOpList[opCurrent++];
 
     switch (op) {
@@ -486,64 +486,62 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
 #endif
         break;
       }
-      case Ops::CastAsInt: {
+      case Ops::Cast: {
         auto value = Pop(valueStack);
-        std::int64_t result;
-        auto [success, message] = value.AsInt(result);
-        if (success) {
-          valueStack.emplace_back(result);
-        } else {
-          RuntimeError(message.value(), InterpretError::InvalidCast, line, callStack);
+        auto type = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+        switch (type) {
+          case 0: {
+            std::int64_t result;
+            auto [success, message] = value.AsInt(result);
+            if (success) {
+              valueStack.emplace_back(result);
+            } else {
+              RuntimeError(message.value(), InterpretError::InvalidCast, line, callStack);
 #ifdef GRACE_DEBUG
-          PRINT_LOCAL_MEMORY();
+              PRINT_LOCAL_MEMORY();
 #endif
-          RETURN_ERR();
-        }
-        break;
-      }
-      case Ops::CastAsFloat: {
-        auto value = Pop(valueStack);
-        double result;
-        auto [success, message] = value.AsDouble(result);
-        if (success) {
-          valueStack.emplace_back(result);
-        } else {
-          RuntimeError(message.value(), InterpretError::InvalidCast, line, callStack);
+              RETURN_ERR();
+            }
+            break;
+          }
+          case 1: {
+            double result;
+            auto [success, message] = value.AsDouble(result);
+            if (success) {
+              valueStack.emplace_back(result);
+            } else {
+              RuntimeError(message.value(), InterpretError::InvalidCast, line, callStack);
 #ifdef GRACE_DEBUG
-          PRINT_LOCAL_MEMORY();
+              PRINT_LOCAL_MEMORY();
 #endif
-          RETURN_ERR();
-        }
-        break;
-      }
-      case Ops::CastAsBool: {
-        auto value = Pop(valueStack);
-        valueStack.emplace_back(value.AsBool());
-        break;
-      }
-      case Ops::CastAsString: {
-        auto value = Pop(valueStack);
-        valueStack.emplace_back(value.AsString());
-        break;
-      }
-      case Ops::CastAsChar: {
-        auto value = Pop(valueStack);
-        char result;
-        auto [success, message] = value.AsChar(result);
-        if (success) {
-          valueStack.emplace_back(result);
-        } else {
-          RuntimeError(message.value(), InterpretError::InvalidCast, line, callStack);
+              RETURN_ERR();
+            }
+            break;
+          }
+          case 2:
+            valueStack.emplace_back(value.AsBool());
+            break;
+          case 3:
+            valueStack.emplace_back(value.AsString());
+            break;
+          case 4: {
+            char result;
+            auto [success, message] = value.AsChar(result);
+            if (success) {
+              valueStack.emplace_back(result);
+            } else {
+              RuntimeError(message.value(), InterpretError::InvalidCast, line, callStack);
 #ifdef GRACE_DEBUG
-          PRINT_LOCAL_MEMORY();
+              PRINT_LOCAL_MEMORY();
 #endif
-          RETURN_ERR();
+              RETURN_ERR();
+            }
+            break;
+          }
+          case 5:
+            valueStack.emplace_back(Value::CreateList(value));
+            break;
         }
-        break;
-      }
-      case Ops::CastAsList: {
-        auto value = Pop(valueStack);
-        valueStack.emplace_back(Value::CreateList(value));
         break;
       }
       case Ops::CheckType: {
@@ -611,14 +609,15 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
         break;
       }
       case Ops::Exit: {
-        opCurrent = m_FullOpList.size();
-        break;
+        goto exit;
       }
       default:
         GRACE_UNREACHABLE();
         break;
     }
   }
+
+exit:
 
   localsList.clear();
 

@@ -1229,13 +1229,13 @@ void Compiler::Factor(bool canAssign, bool skipFirst)
   }
 }
 
-static std::unordered_map<TokenType, Ops> s_CastOps = {
-  std::make_pair(TokenType::IntIdent, Ops::CastAsInt),
-  std::make_pair(TokenType::FloatIdent, Ops::CastAsFloat),
-  std::make_pair(TokenType::BoolIdent, Ops::CastAsBool),
-  std::make_pair(TokenType::StringIdent, Ops::CastAsString),
-  std::make_pair(TokenType::CharIdent, Ops::CastAsChar),
-  std::make_pair(TokenType::ListIdent, Ops::CastAsList),
+static std::unordered_map<TokenType, std::int64_t> s_CastOps = {
+  std::make_pair(TokenType::IntIdent, 0),
+  std::make_pair(TokenType::FloatIdent, 1),
+  std::make_pair(TokenType::BoolIdent, 2),
+  std::make_pair(TokenType::StringIdent, 3),
+  std::make_pair(TokenType::CharIdent, 4),
+  std::make_pair(TokenType::ListIdent, 5),
 };
 
 void Compiler::Unary(bool canAssign)
@@ -1540,7 +1540,8 @@ void Compiler::Cast()
   Advance();
   Consume(TokenType::LeftParen, "Expected '(' after type ident");
   Expression(false);
-  EmitOp(s_CastOps[type], m_Current.value().GetLine());
+  EmitConstant(s_CastOps[type]);
+  EmitOp(Ops::Cast, m_Current.value().GetLine());
   Consume(TokenType::RightParen, "Expected ')' after expression");
   if (!s_UsingExpressionResult) {
     // pop unused return value
