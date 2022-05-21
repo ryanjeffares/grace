@@ -62,10 +62,9 @@ void Grace::Compiler::Compile(std::string&& fileName, std::string&& code, bool v
 using namespace Grace::Compiler;
 
 Compiler::Compiler(std::string&& fileName, std::string&& code) 
-  : m_CurrentFileName(std::move(fileName)),
-  m_Scanner(std::move(code)),
-  m_Vm(*this)
+  : m_CurrentFileName(std::move(fileName))
 {
+  Scanner::InitScanner(std::move(code));
   m_ContextStack.emplace_back(Context::TopLevel);
 }
 
@@ -84,7 +83,7 @@ void Compiler::Finalise()
 void Compiler::Advance()
 {
   m_Previous = m_Current;
-  m_Current = m_Scanner.ScanToken();
+  m_Current = Scanner::ScanToken();
 
 #ifdef GRACE_DEBUG
   if (s_Verbose) {
@@ -212,40 +211,7 @@ void Compiler::Declaration()
   } else if (Match(TokenType::Var)) {
     VarDeclaration();
   } else if (Match(TokenType::Final)) {
-    FinalDeclaration();
-  } else if (Match(TokenType::Break)) {
-    if (m_ContextStack.back() != Context::Loop) {
-      // don't return early from here, so the compiler can synchronize...
-      MessageAtPrevious("`break` only allowed inside `for` and `while` loops", LogLevel::Error);
-    } else {
-      m_BreakJumpNeedsIndexes = true;
-      auto constIdx = static_cast<std::int64_t>(m_Vm.GetNumConstants());
-      EmitConstant(std::int64_t{});
-      auto opIdx = static_cast<std::int64_t>(m_Vm.GetNumConstants());
-      EmitConstant(std::int64_t{});
-      EmitOp(Ops::Jump, m_Previous.value().GetLine());
-      m_BreakIdxPairs.top().push_back(std::make_pair(constIdx, opIdx));
-      Consume(TokenType::Semicolon, "Expected ';' after `break`");
-    }
-  } else if (Match(TokenType::Assert)) {
-    auto line = m_Previous.value().GetLine();
-
-    Consume(TokenType::LeftParen, "Expected '(' after `assert`");
-    s_UsingExpressionResult = true; 
-    Expression(false);
-    s_UsingExpressionResult = false; 
-
-    if (Match(TokenType::Comma)) {
-      Consume(TokenType::String, "Expected message");
-      EmitConstant(std::string(m_Previous.value().GetText()));
-      EmitOp(Ops::AssertWithMessage, line);
-      Consume(TokenType::RightParen, "Expected ')'");
-    } else {
-      EmitOp(Ops::Assert, line); 
-      Consume(TokenType::RightParen, "Expected ')'");
-    }
-
-    Consume(TokenType::Semicolon, "Expected ';' after `assert` expression");
+    FinalDeclaration();    
   } else {
     Statement();
   }
@@ -274,6 +240,12 @@ void Compiler::Statement()
     ReturnStatement();
   } else if (Match(TokenType::While)) {
     WhileStatement();
+  } else if (Match(TokenType::Assert)) {
+    AssertStatement();
+  } else if (Match(TokenType::Break)) {
+    BreakStatement();
+  } else if (Match(TokenType::Continue)) {
+    ContinueStatement();
   } else {
     ExpressionStatement();
   }
@@ -602,11 +574,68 @@ void Compiler::ExpressionStatement()
   Consume(TokenType::Semicolon, "Expected ';' after expression");
 }
 
+void Compiler::AssertStatement()
+{
+  auto line = m_Previous.value().GetLine();
+
+  Consume(TokenType::LeftParen, "Expected '(' after `assert`");
+  s_UsingExpressionResult = true; 
+  Expression(false);
+  s_UsingExpressionResult = false; 
+
+  if (Match(TokenType::Comma)) {
+    Consume(TokenType::String, "Expected message");
+    EmitConstant(std::string(m_Previous.value().GetText()));
+    EmitOp(Ops::AssertWithMessage, line);
+    Consume(TokenType::RightParen, "Expected ')'");
+  } else {
+    EmitOp(Ops::Assert, line); 
+    Consume(TokenType::RightParen, "Expected ')'");
+  }
+
+  Consume(TokenType::Semicolon, "Expected ';' after `assert` expression");
+}
+
+void Compiler::BreakStatement()
+{
+  if (m_ContextStack.back() != Context::Loop) {
+    // don't return early from here, so the compiler can synchronize...
+    MessageAtPrevious("`break` only allowed inside `for` and `while` loops", LogLevel::Error);
+  } else {
+    m_BreakJumpNeedsIndexes = true;
+    auto constIdx = static_cast<std::int64_t>(m_Vm.GetNumConstants());
+    EmitConstant(std::int64_t{});
+    auto opIdx = static_cast<std::int64_t>(m_Vm.GetNumConstants());
+    EmitConstant(std::int64_t{});
+    EmitOp(Ops::Jump, m_Previous.value().GetLine());
+    m_BreakIdxPairs.top().push_back(std::make_pair(constIdx, opIdx));
+    Consume(TokenType::Semicolon, "Expected ';' after `break`");
+  }
+}
+
+void Compiler::ContinueStatement()
+{
+  if (m_ContextStack.back() != Context::Loop) {
+    // don't return early from here, so the compiler can synchronize...
+    MessageAtPrevious("`continue` only allowed inside `for` and `while` loops", LogLevel::Error);
+  } else {
+    m_ContinueJumpNeedsIndexes = true;
+    auto constIdx = static_cast<std::int64_t>(m_Vm.GetNumConstants());
+    EmitConstant(std::int64_t{});
+    auto opIdx = static_cast<std::int64_t>(m_Vm.GetNumConstants());
+    EmitConstant(std::int64_t{});
+    EmitOp(Ops::Jump, m_Previous.value().GetLine());
+    m_ContinueIdxPairs.top().push_back(std::make_pair(constIdx, opIdx));
+    Consume(TokenType::Semicolon, "Expected ';' after `break`");
+  }
+}
+
 void Compiler::ForStatement() 
 {
   m_ContextStack.emplace_back(Context::Loop);
 
   m_BreakIdxPairs.emplace();
+  m_ContinueIdxPairs.emplace();
 
   // parse iterator variable
   Consume(TokenType::Identifier, "Expected identifier after `for`");
@@ -792,6 +821,16 @@ void Compiler::ForStatement()
     }
   }
 
+  // 'continue' statements bring us here so the iterator is incremented and we hit the jump
+  if (m_ContinueJumpNeedsIndexes) {
+    for (auto& p : m_ContinueIdxPairs.top()) {
+      m_Vm.SetConstantAtIndex(p.first, static_cast<std::int64_t>(m_Vm.GetNumConstants()));
+      m_Vm.SetConstantAtIndex(p.second, static_cast<std::int64_t>(m_Vm.GetNumOps()));
+    }
+    m_ContinueIdxPairs.pop();
+    m_ContinueJumpNeedsIndexes = !m_ContinueIdxPairs.empty();
+  }
+
   // increment iterator
   EmitConstant(iteratorId);
   EmitOp(Ops::LoadLocal, line);
@@ -827,8 +866,8 @@ void Compiler::ForStatement()
       m_Vm.SetConstantAtIndex(p.first, static_cast<std::int64_t>(m_Vm.GetNumConstants()));
       m_Vm.SetConstantAtIndex(p.second, static_cast<std::int64_t>(m_Vm.GetNumOps()));
     }
-    m_BreakJumpNeedsIndexes = !m_BreakIdxPairs.empty();
     m_BreakIdxPairs.pop();
+    m_BreakJumpNeedsIndexes = !m_BreakIdxPairs.empty();
   }
 
   m_Vm.SetConstantAtIndex(endJumpConstantIndex, static_cast<std::int64_t>(m_Vm.GetNumConstants()));
@@ -1021,6 +1060,7 @@ void Compiler::WhileStatement()
   m_ContextStack.emplace_back(Context::Loop);
 
   m_BreakIdxPairs.emplace();
+  m_ContinueIdxPairs.emplace();
 
   auto constantIdx = static_cast<std::int64_t>(m_Vm.GetNumConstants());
   auto opIdx = static_cast<std::int64_t>(m_Vm.GetNumOps());
@@ -1050,13 +1090,26 @@ void Compiler::WhileStatement()
     }
   }
 
+  auto numConstants = static_cast<std::int64_t>(m_Vm.GetNumConstants());
+  auto numOps = static_cast<std::int64_t>(m_Vm.GetNumOps());
+
+  if (m_ContinueJumpNeedsIndexes) {
+    for (auto& p : m_ContinueIdxPairs.top()) {
+      m_Vm.SetConstantAtIndex(p.first, numConstants);
+      m_Vm.SetConstantAtIndex(p.second, numOps);
+    }
+    m_ContinueIdxPairs.pop();
+    m_ContinueJumpNeedsIndexes = !m_ContinueIdxPairs.empty();
+  }
+
   // jump back up to the expression so it can be re-evaluated
   EmitConstant(constantIdx);
   EmitConstant(opIdx);
   EmitOp(Ops::Jump, line);
 
-  auto numConstants = static_cast<std::int64_t>(m_Vm.GetNumConstants());
-  auto numOps = static_cast<std::int64_t>(m_Vm.GetNumOps());
+  numConstants = static_cast<std::int64_t>(m_Vm.GetNumConstants());
+  numOps = static_cast<std::int64_t>(m_Vm.GetNumOps());
+
   m_Vm.SetConstantAtIndex(endConstantJumpIdx, numConstants);
   m_Vm.SetConstantAtIndex(endOpJumpIdx, numOps);
 
@@ -1065,8 +1118,8 @@ void Compiler::WhileStatement()
       m_Vm.SetConstantAtIndex(p.first, numConstants);
       m_Vm.SetConstantAtIndex(p.second, numOps);
     }
-    m_BreakJumpNeedsIndexes = !m_BreakIdxPairs.empty();
     m_BreakIdxPairs.pop();
+    m_BreakJumpNeedsIndexes = !m_BreakIdxPairs.empty();
   }
 
   auto numLocalsEnd = m_Locals.size();
@@ -1596,7 +1649,7 @@ void Compiler::Message(const std::optional<Token>& token, const std::string& mes
   auto column = token.value().GetColumn() - token.value().GetLength();  // need the START of the token
   fmt::print(stderr, "       --> {}:{}:{}\n", m_CurrentFileName, lineNo, column + 1); 
   fmt::print(stderr, "        |\n");
-  fmt::print(stderr, "{:>7} | {}\n", lineNo, m_Scanner.GetCodeAtLine(lineNo));
+  fmt::print(stderr, "{:>7} | {}\n", lineNo, Scanner::GetCodeAtLine(lineNo));
   fmt::print(stderr, "        | ");
   for (std::size_t i = 0; i < column; i++) {
     fmt::print(stderr, " ");

@@ -46,8 +46,6 @@ Grace will also build with C++20, and uses some features such as `[[likely]]` an
 
 ## Alpha Release Roadmap
 * Experiment with string interning
-* `continue` statement
-* `break` should be treated as a statement, not declaration in the compiler
 * Make unused expression results illegal 
 * Unicode support for `char`s 
 * Don't need different ops for every cast

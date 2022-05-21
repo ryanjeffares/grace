@@ -22,6 +22,7 @@
 # include <stdlib.h>    // getenv_s
 #endif
 
+#include "scanner.hpp"
 #include "compiler.hpp"
 #include "vm.hpp"
 #include "objects/grace_list.hpp"
@@ -65,7 +66,7 @@ static void PrintLocals(const std::vector<Value>& locals, const std::string& fun
 }
 #endif
 
-VM::VM(Compiler::Compiler& compiler) : m_Compiler(compiler)
+VM::VM()
 {
   RegisterNatives();
 }
@@ -652,26 +653,26 @@ void VM::RuntimeError(const std::string& message, InterpretError errorType, int 
       for (std::size_t i = 1; i < callStack.size(); i++) {
         const auto& [caller, callee, ln] = callStack[i];
         fmt::print(stderr, "line {}, in {}:\n", ln, m_FunctionList.at(caller).m_Name);
-        fmt::print(stderr, "{:>4}\n", m_Compiler.GetCodeAtLine(ln));
+        fmt::print(stderr, "{:>4}\n", Scanner::GetCodeAtLine(ln));
       }
     } else {
       fmt::print(stderr, "{} more calls before - set environment variable `GRACE_SHOW_FULL_CALLSTACK` to see full callstack\n", callStackSize - 15);
       for (auto i = callStackSize - 15; i < callStackSize; i++) {
         const auto& [caller, callee, ln] = callStack[i];
         fmt::print(stderr, "line {}, in {}:\n", ln, m_FunctionList.at(caller).m_Name);
-        fmt::print(stderr, "{:>4}\n", m_Compiler.GetCodeAtLine(ln));
+        fmt::print(stderr, "{:>4}\n", Scanner::GetCodeAtLine(ln));
       }
     }
   } else {
     for (std::size_t i = 1; i < callStack.size(); i++) {
       const auto& [caller, callee, ln] = callStack[i];
       fmt::print(stderr, "line {}, in {}:\n", ln, m_FunctionList.at(caller).m_Name);
-      fmt::print(stderr, "{:>4}\n", m_Compiler.GetCodeAtLine(ln));
+      fmt::print(stderr, "{:>4}\n", Scanner::GetCodeAtLine(ln));
     }
   }
 
   fmt::print(stderr, "line {}, in {}:\n", line, m_FunctionList.at(std::get<1>(callStack.back())).m_Name);
-  fmt::print(stderr, "{:>4}\n", m_Compiler.GetCodeAtLine(line));
+  fmt::print(stderr, "{:>4}\n", Scanner::GetCodeAtLine(line));
 
   fmt::print(stderr, "\n");
   fmt::print(stderr, fmt::fg(fmt::color::red) | fmt::emphasis::bold, "ERROR: ");

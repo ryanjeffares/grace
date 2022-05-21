@@ -23,4 +23,12 @@ func main():
     println("Hello, " + first_name + " " + last_name);
     println("x" + i);
   end
+
+  for i in 100..200:
+    if i % 2 == 0:
+      continue;
+      println("This should never print!");
+    end
+    println(string(i) + " is odd");
+  end
 end

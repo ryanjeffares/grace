@@ -141,7 +141,7 @@ namespace Grace
           }
         };
         
-        VM(Compiler::Compiler& compiler);
+        VM();
         VM(const VM&) = delete;
         VM(VM&&) = delete;
 
@@ -252,8 +252,7 @@ namespace Grace
         std::vector<OpLine> m_FullOpList;
         std::vector<Value> m_FullConstantList;
 
-        std::int64_t m_LastFunctionHash;
-        Compiler::Compiler& m_Compiler;
+        std::int64_t m_LastFunctionHash;        
         std::hash<std::string> m_Hasher;
     };
   } // namespace VM

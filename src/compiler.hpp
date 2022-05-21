@@ -84,7 +84,7 @@ namespace Grace
         
         GRACE_INLINE std::string GetCodeAtLine(int line) const
         {
-          return m_Scanner.GetCodeAtLine(line);
+          return Scanner::GetCodeAtLine(line);
         }
 
       private:
@@ -129,6 +129,9 @@ namespace Grace
 
         void Expression(bool canAssign);
         void ExpressionStatement();
+        void AssertStatement();
+        void BreakStatement();
+        void ContinueStatement();
         void ForStatement();
         void IfStatement();
         void PrintStatement();
@@ -186,8 +189,7 @@ namespace Grace
 
         std::vector<Context> m_ContextStack;
         std::string m_CurrentFileName;
-
-        Scanner::Scanner m_Scanner;
+        
         VM::VM m_Vm;
 
         std::optional<Scanner::Token> m_Current, m_Previous;
@@ -197,9 +199,11 @@ namespace Grace
         bool m_FunctionHadReturn = false;
         bool m_PanicMode = false, m_HadError = false, m_HadWarning = false;
 
+        bool m_ContinueJumpNeedsIndexes = false;
         bool m_BreakJumpNeedsIndexes = false;
         // const idx, op idx
-        std::stack<std::vector<std::pair<std::int64_t, std::int64_t>>> m_BreakIdxPairs;
+        using IndexStack = std::stack<std::vector<std::pair<std::int64_t, std::int64_t>>>;
+        IndexStack m_BreakIdxPairs, m_ContinueIdxPairs;
     };
   } // namespace Compiler
 } // namespace Grace

@@ -12,6 +12,6 @@ func main():
   println(sqrti(4));
   println(sqrti(81));
   println(sqrtf(41.3434));
-  println((2*2) + (3*3));
-  // println(sqrtf("hello"));
+  println((2 * 2) + (3 * 3));
+  // println(sqrtf("hello")); // will fail assertion at runtime
 end
