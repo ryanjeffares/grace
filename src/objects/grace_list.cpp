@@ -59,22 +59,45 @@ void GraceList::Remove(std::size_t index)
 
 void GraceList::DebugPrint() const
 {
-  fmt::print("GraceList: [{}]\n", ToString());
+  fmt::print("GraceList: {}\n", ToString());
 }
 
 void GraceList::Print() const
 {
-  fmt::print("[{}]", fmt::join(m_Data, ", "));
+  fmt::print("{}", ToString());
 }
 
 void GraceList::PrintLn() const
 {
-  fmt::print("[{}]\n", fmt::join(m_Data, ", "));
+  fmt::print("{}\n", ToString());
 }
 
 std::string GraceList::ToString() const
 {
-  return fmt::format("[{}]", fmt::join(m_Data, ", "));
+  std::string res = "[";
+  for (std::size_t i = 0; i < m_Data.size(); i++) {
+    const auto& el = m_Data[i];
+    switch (el.GetType()) {
+      case Value::Type::Char:
+        res.push_back('\'');
+        res.push_back(el.Get<char>());
+        res.push_back('\'');
+        break;
+      case Value::Type::String:
+        res.push_back('"');
+        res.append(el.Get<std::string>());
+        res.push_back('"');
+        break;
+      default:
+        res.append(el.AsString());
+        break;
+    }
+    if (i < m_Data.size() - 1) {
+      res.append(", ");
+    }
+  }
+  res.push_back(']');
+  return res;
 }
 
 bool GraceList::AsBool() const
