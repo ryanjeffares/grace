@@ -340,9 +340,9 @@ void Compiler::FuncDeclaration()
   // implicitly return if the user didn't write a return so the VM knows to return to the caller
   // functions with no return will implicitly return null, so setting a call equal to a variable is valid
   if (!m_FunctionHadReturn) {
-    for (std::size_t i = 0; i < m_Locals.size(); i++) {
-      EmitOp(Ops::PopLocal, m_Previous.value().GetLine());
-    }
+    EmitConstant(true);
+    EmitConstant(std::int64_t{0});
+    EmitOp(Ops::PopLocals, m_Previous.value().GetLine());
 
     if (!isMainFunction) {
       EmitConstant(nullptr);
@@ -682,7 +682,7 @@ void Compiler::ForStatement()
     }
   }
 
-  auto numLocalsStart = m_Locals.size();
+  auto numLocalsStart = static_cast<std::int64_t>(m_Locals.size());
 
   Consume(TokenType::In, "Expected `in` after identifier");
 
@@ -868,11 +868,9 @@ void Compiler::ForStatement()
   EmitOp(Ops::AssignLocal, line);
 
   // pop any locals created within the loop scope
-  auto numLocalsEnd = m_Locals.size();
-  for (std::size_t i = 0; i < numLocalsEnd - numLocalsStart; i++) {
-    EmitOp(Ops::PopLocal, line);
-    m_Locals.pop_back();
-  }
+  EmitConstant(true);
+  EmitConstant(numLocalsStart);
+  EmitOp(Ops::PopLocals, line);
 
   // always jump back to re-evaluate the condition
   EmitConstant(startConstantIdx);
@@ -887,10 +885,21 @@ void Compiler::ForStatement()
     }
     m_BreakIdxPairs.pop();
     m_BreakJumpNeedsIndexes = !m_BreakIdxPairs.empty();
+
+    EmitConstant(true);
+  } else {
+    EmitConstant(false);
   }
+
+  EmitConstant(numLocalsStart);
+  EmitOp(Ops::PopLocals, line);
 
   m_Vm.SetConstantAtIndex(endJumpConstantIndex, static_cast<std::int64_t>(m_Vm.GetNumConstants()));
   m_Vm.SetConstantAtIndex(endJumpOpIndex, static_cast<std::int64_t>(m_Vm.GetNumOps()));
+
+  while (m_Locals.size() != static_cast<std::size_t>(numLocalsStart)) {
+    m_Locals.pop_back();
+  }
 
   if (iteratorNeedsPop) {
     m_Locals.pop_back();
@@ -920,7 +929,7 @@ void Compiler::IfStatement()
   // constant index, op index
   std::vector<std::tuple<std::int64_t, std::int64_t>> endJumpIndexPairs;
 
-  auto numLocalsStart = m_Locals.size();
+  auto numLocalsStart = static_cast<std::int64_t>(m_Locals.size());
 
   bool topJumpSet = false;
   bool elseBlockFound = false;
@@ -995,12 +1004,14 @@ void Compiler::IfStatement()
     m_Vm.SetConstantAtIndex(topOpIdxToJump, numOps);
   }
 
-  auto line = m_Previous.value().GetLine();
-  auto numLocalsEnd = m_Locals.size();
-  for (std::size_t i = 0; i < numLocalsEnd - numLocalsStart; i++) {
-    EmitOp(Ops::PopLocal, line);
+  while (m_Locals.size() != static_cast<std::size_t>(numLocalsStart)) {
     m_Locals.pop_back();
   }
+
+  auto line = m_Previous.value().GetLine();
+  EmitConstant(true);
+  EmitConstant(numLocalsStart);
+  EmitOp(Ops::PopLocals, line);
 
   m_ContextStack.pop_back();
 }
@@ -1084,7 +1095,13 @@ void Compiler::TryStatement()
 
   Consume(TokenType::Colon, "Expected `:` after `try`");
 
-  auto numLocalsStart = m_Locals.size();
+  auto numLocalsStart = static_cast<std::int64_t>(m_Locals.size());
+
+  auto catchOpJumpIdx = m_Vm.GetNumConstants();
+  EmitConstant(std::int64_t{});
+  auto catchConstJumpIdx = m_Vm.GetNumConstants();
+  EmitConstant(std::int64_t{});
+  EmitOp(Ops::EnterTry, m_Previous.value().GetLine());
 
   while (!Match(TokenType::Catch)) {
     Declaration();
@@ -1094,45 +1111,60 @@ void Compiler::TryStatement()
     }
   }
 
-  auto numLocalsEnd = m_Locals.size();
-  for (std::size_t i = 0; i < numLocalsEnd - numLocalsStart; i++) {
-    EmitOp(Ops::PopLocal, m_Previous.value().GetLine());
-    m_Locals.pop_back();
+  // if we made it this far without the exception, pop locals...
+  EmitConstant(numLocalsStart);
+  EmitOp(Ops::PopLocals, m_Previous.value().GetLine());
+
+  // then jump to after the catch block
+  auto skipCatchConstJumpIdx = m_Vm.GetNumConstants();
+  EmitConstant(std::int64_t{});
+  auto skipCatchOpJumpIdx = m_Vm.GetNumConstants();
+  EmitConstant(std::int64_t{});
+  EmitOp(Ops::Jump, m_Previous.value().GetLine());
+
+  // but if there was an exception, jump here, and also pop the locals but continue into the catch block
+  m_Vm.SetConstantAtIndex(catchOpJumpIdx, static_cast<std::int64_t>(m_Vm.GetNumOps()));
+  m_Vm.SetConstantAtIndex(catchConstJumpIdx, static_cast<std::int64_t>(m_Vm.GetNumConstants()));
+
+  EmitConstant(numLocalsStart);
+  EmitOp(Ops::PopLocals, m_Previous.value().GetLine());
+
+  if (!Match(TokenType::Identifier)) {
+    MessageAtCurrent("Expected identifier after `catch`", LogLevel::Error);
+    return;
   }
 
-  if (Match(TokenType::Identifier)) {
-    auto exceptionVarName = std::string(m_Previous.value().GetText());
-    std::int64_t exceptionVarId;
-    auto it = std::find_if(m_Locals.begin(), m_Locals.end(), [&](const Local& l) { return l.m_Name == exceptionVarName; });
-    if (it == m_Locals.end()) {
-      exceptionVarId = static_cast<std::int64_t>(m_Locals.size());
-      m_Locals.emplace_back(std::move(exceptionVarName), false, exceptionVarId);
-      EmitOp(Ops::DeclareLocal, m_Previous.value().GetLine());
-    } else {
-      if (it->m_Final) {
-        MessageAtPrevious(fmt::format("Exception variable '{}' has already been declared as `final`", exceptionVarName), LogLevel::Error);
+  numLocalsStart = m_Locals.size();
+
+  auto exceptionVarName = std::string(m_Previous.value().GetText());
+  std::int64_t exceptionVarId;
+  auto it = std::find_if(m_Locals.begin(), m_Locals.end(), [&](const Local& l) { return l.m_Name == exceptionVarName; });
+  if (it == m_Locals.end()) {
+    exceptionVarId = static_cast<std::int64_t>(m_Locals.size());
+    m_Locals.emplace_back(std::move(exceptionVarName), false, exceptionVarId);
+    EmitOp(Ops::DeclareLocal, m_Previous.value().GetLine());
+  } else {
+    if (it->m_Final) {
+      MessageAtPrevious(fmt::format("Exception variable '{}' has already been declared as `final`", exceptionVarName), LogLevel::Error);
+      return;
+    }
+    exceptionVarId = it->m_Index;
+    if (s_Verbose || s_WarningsError) {
+      MessageAtPrevious(fmt::format("There is already a local variable called '{}' in this scope which will be reassigned inside the `catch` block", exceptionVarName), 
+          LogLevel::Warning);
+      if (s_WarningsError) {
         return;
       }
-      exceptionVarId = it->m_Index;
-      if (s_Verbose || s_WarningsError) {
-        MessageAtPrevious(fmt::format("There is already a local variable called '{}' in this scope which will be reassigned inside the `catch` block", exceptionVarName), 
-            LogLevel::Warning);
-        if (s_WarningsError) {
-          return;
-        }
-      }
     }
-    EmitConstant(exceptionVarId);
-    EmitOp(Ops::AssignException, m_Previous.value().GetLine());
   }
+  
+  EmitConstant(exceptionVarId);
+  EmitOp(Ops::AssignLocal, m_Previous.value().GetLine());
 
   Consume(TokenType::Colon, "Expected `:` after `catch` statement");
 
-
   m_ContextStack.pop_back();
   m_ContextStack.emplace_back(Context::Catch);
-
-  numLocalsStart = m_Locals.size();
 
   while (!Match(TokenType::End)) {
     Declaration();
@@ -1142,11 +1174,15 @@ void Compiler::TryStatement()
     }
   }
 
-  numLocalsEnd = m_Locals.size();
-  for (std::size_t i = 0; i < numLocalsEnd - numLocalsStart; i++) {
-    EmitOp(Ops::PopLocal, m_Previous.value().GetLine());
+  EmitConstant(numLocalsStart);
+  EmitOp(Ops::PopLocals, m_Previous.value().GetLine());
+
+  while (m_Locals.size() != static_cast<std::size_t>(numLocalsStart)) {
     m_Locals.pop_back();
   }
+
+  m_Vm.SetConstantAtIndex(skipCatchConstJumpIdx, static_cast<std::int64_t>(m_Vm.GetNumConstants()));
+  m_Vm.SetConstantAtIndex(skipCatchOpJumpIdx, static_cast<std::int64_t>(m_Vm.GetNumOps()));
 
   m_ContextStack.pop_back();
 }
@@ -1176,7 +1212,7 @@ void Compiler::WhileStatement()
 
   Consume(TokenType::Colon, "Expected ':' after expression");
 
-  auto numLocalsStart = m_Locals.size();
+  auto numLocalsStart = static_cast<std::int64_t>(m_Locals.size());
 
   while (!Match(TokenType::End)) {
     Declaration();
@@ -1198,6 +1234,10 @@ void Compiler::WhileStatement()
     m_ContinueJumpNeedsIndexes = !m_ContinueIdxPairs.empty();
   }
 
+  EmitConstant(true);
+  EmitConstant(numLocalsStart);
+  EmitOp(Ops::PopLocals, line);
+
   // jump back up to the expression so it can be re-evaluated
   EmitConstant(constantIdx);
   EmitConstant(opIdx);
@@ -1216,14 +1256,21 @@ void Compiler::WhileStatement()
     }
     m_BreakIdxPairs.pop();
     m_BreakJumpNeedsIndexes = !m_BreakIdxPairs.empty();
-  }
 
-  auto numLocalsEnd = m_Locals.size();
-  for (std::size_t i = 0; i < numLocalsEnd - numLocalsStart; i++) {
-    EmitOp(Ops::PopLocal, line);
+    // if we broke, we missed the PopLocals instruction before the end of the loop
+    // so tell the VM to still pop those locals IF we broke
+    EmitConstant(true);
+  } else {
+    EmitConstant(false);
+  }
+  
+  EmitConstant(numLocalsStart);
+  EmitOp(Ops::PopLocals, line);
+ 
+  while (m_Locals.size() != static_cast<std::size_t>(numLocalsStart)) {
     m_Locals.pop_back();
   }
- 
+  
   m_ContextStack.pop_back();
 }
 

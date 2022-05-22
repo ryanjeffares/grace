@@ -43,7 +43,6 @@ namespace Grace
       And,
       Assert,
       AssertWithMessage,
-      AssignException,
       AssignLocal,
       Call,
       Cast,
@@ -54,6 +53,7 @@ namespace Grace
       DeclareLocal,
       Divide,
       Dup,
+      EnterTry,
       Equal,
       Exit,
       Greater,
@@ -73,6 +73,7 @@ namespace Grace
       Or,
       Pop,
       PopLocal,
+      PopLocals,
       Pow,
       Print,
       PrintEmptyLine,
@@ -222,7 +223,6 @@ struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
       case Ops::And: name = "Ops::And"; break;
       case Ops::Assert: name = "Ops::Assert"; break;
       case Ops::AssertWithMessage: name = "Ops::AssertWithMessage"; break;
-      case Ops::AssignException: name = "Ops::AssignException"; break;
       case Ops::AssignLocal: name = "Ops::AssignLocal"; break;
       case Ops::Call: name = "Ops::Call"; break;
       case Ops::Cast: name = "Ops::Cast"; break;
@@ -233,6 +233,7 @@ struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
       case Ops::DeclareLocal: name = "Ops::DeclareLocal"; break;
       case Ops::Divide: name = "Ops::Divide"; break;
       case Ops::Dup: name = "Ops::Dup"; break;
+      case Ops::EnterTry: name = "Ops::EnterTry"; break;
       case Ops::Equal: name = "Ops::Equal"; break;
       case Ops::Exit: name = "Ops::Exit"; break;
       case Ops::Greater: name = "Ops::Greater"; break;
@@ -252,6 +253,7 @@ struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
       case Ops::Or: name = "Ops::Or"; break;
       case Ops::Pop: name = "Ops::Pop"; break;
       case Ops::PopLocal: name = "Ops::PopLocal"; break;
+      case Ops::PopLocals: name = "Ops::PopLocals"; break;
       case Ops::Pow: name = "Ops::Pow"; break;
       case Ops::Print: name = "Ops::Print"; break;
       case Ops::PrintEmptyLine: name = "Ops::PrintEmptyLine"; break;

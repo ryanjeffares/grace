@@ -169,7 +169,15 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
   CallStack callStack;
   callStack.emplace_back(static_cast<std::int64_t>(m_Hasher("file")), funcNameHash, 1);
 
+  std::stack<std::pair<std::int64_t, std::int64_t>> tryBlockJumpIndexes;
+
   bool inTryBlock = false;
+
+#ifdef GRACE_DEBUG
+  if (verbose) {
+    ObjectTracker::EnableVerbose();
+  }
+#endif
 
   while (true) {
     auto [op, line] = m_FullOpList[opCurrent++];
@@ -272,6 +280,17 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
         case Ops::PopLocal:
           localsList.pop_back();
           break;
+        case Ops::PopLocals: {
+          auto shouldPop = m_FullConstantList[constantCurrent++].Get<bool>();
+          if (!shouldPop) {
+            break;
+          }
+          auto targetNumLocals = m_FullConstantList[constantCurrent++].Get<std::int64_t>() + localsOffsets.top();
+          while (localsList.size() != targetNumLocals) {
+            localsList.pop_back();
+          }
+          break;
+        }
         case Ops::Print:
           valueStack.back().Print();
           break;
@@ -522,6 +541,13 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
           }
           break;
         }
+        case Ops::EnterTry: {
+          inTryBlock = true;
+          auto opIdx = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+          auto constIdx = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+          tryBlockJumpIndexes.emplace(opIdx, constIdx);
+          break;
+        }
         case Ops::Exit: {
           goto exit;
         }
@@ -532,8 +558,16 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
 
     } catch(const GraceException& ge) {
       if (inTryBlock) {
+        // jump to the catch block and put the exception on the stack to be assigned
+        auto [opIdx, constIdx] = tryBlockJumpIndexes.top();
+        tryBlockJumpIndexes.pop();
+        inTryBlock = !tryBlockJumpIndexes.empty();
 
+        opCurrent = opIdx;
+        constantCurrent = constIdx;
+        valueStack.push_back(Value::CreateException(ge));
       } else {
+        // exception unhandled, report the error and quit
         RuntimeError(ge, line, callStack);
 #ifdef GRACE_DEBUG
         PRINT_LOCAL_MEMORY();

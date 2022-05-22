@@ -21,6 +21,7 @@
 #include <fmt/format.h>
 
 #include "grace.hpp"
+#include "objects/grace_exception.hpp"
 #include "objects/grace_object.hpp"
 #include "objects/object_tracker.hpp"
 
@@ -86,6 +87,8 @@ namespace Grace
       static Value CreateList(const GraceList& list, std::int64_t multiple);
       static Value CreateList(const Value& value);
       static Value CreateList(const Value& value, std::int64_t repeats);
+
+      static Value CreateException(const GraceException& e);
 
       constexpr Value& operator=(const Value& other)
       {

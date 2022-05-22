@@ -1,0 +1,27 @@
+func main():
+  for i in 0..10:
+    println("hello! " + i);
+  end
+
+  try:
+    try:
+      try:
+        function();
+      catch e:
+        println("Caught exception e: " + e);
+        function2();
+      end
+    catch f:
+      println("here f");
+      println("Caught exception f: " + string(f));
+      function3();
+    end
+  catch g:
+    println("here g");
+    println("Caught exception g: " + string(g));
+  end
+
+  println("here");
+
+  println("you've made it this far solider, thanks to the trusty try/catch");
+end

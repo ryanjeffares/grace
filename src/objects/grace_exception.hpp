@@ -42,6 +42,18 @@ namespace Grace::VM
 
       }
 
+      GraceException(const GraceException& other)
+        : m_Type(other.m_Type), m_Message(other.m_Message)
+      {
+
+      }
+
+      GraceException(GraceException&& other)
+        : m_Type(other.m_Type), m_Message(std::move(other.m_Message))
+      {
+
+      }
+
       const char* what() const noexcept override
       {
         return s_ExceptionMessages.at(m_Type);

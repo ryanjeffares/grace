@@ -27,22 +27,22 @@ std::unordered_map<GraceException::Type, const char*> GraceException::s_Exceptio
 
 void GraceException::DebugPrint() const
 {
-  fmt::print("GraceException: {}: {}", m_Type, m_Message);
+  fmt::print("GraceException: {}: {}\n", what(), m_Message);
 }
 
 void GraceException::Print() const
 {
-  fmt::print("{}: {}", m_Type, m_Message);
+  fmt::print("{}: {}", what(), m_Message);
 }
 
 void GraceException::PrintLn() const
 {
-  fmt::print("{}: {}\n", m_Type, m_Message);
+  fmt::print("{}: {}\n", what(), m_Message);
 }
 
 std::string GraceException::ToString() const
 {
-  return fmt::format("{}: {}", m_Type, m_Message);
+  return fmt::format("{}: {}", what(), m_Message);
 }
 
 bool GraceException::AsBool() const

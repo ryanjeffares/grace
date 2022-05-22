@@ -13,7 +13,6 @@
 
 #include "grace.hpp"
 #include "value.hpp"
-#include "objects/grace_exception.hpp"
 #include "objects/grace_list.hpp"
 
 using namespace Grace::VM;
@@ -56,7 +55,7 @@ Value::~Value()
   if (m_Type == Type::Object) {
     if (m_Data.m_Object->DecreaseRef() == 0) {
 #ifdef GRACE_DEBUG
-      ObjectTracker::StopTracking(m_Data.m_Object); 
+      ObjectTracker::StopTracking(m_Data.m_Object);
 #endif
       delete m_Data.m_Object;
     }
@@ -876,6 +875,18 @@ Value Value::CreateList(const Value& value, std::int64_t repeats)
   Value res;
   res.m_Type = Type::Object;
   res.m_Data.m_Object = new GraceList(value, repeats);
+  res.m_Data.m_Object->IncreaseRef();
+#ifdef GRACE_DEBUG
+  ObjectTracker::TrackObject(res.m_Data.m_Object);
+#endif
+  return res;
+}
+
+Value Value::CreateException(const GraceException& e)
+{
+  Value res;
+  res.m_Type = Type::Object;
+  res.m_Data.m_Object = new GraceException(e);
   res.m_Data.m_Object->IncreaseRef();
 #ifdef GRACE_DEBUG
   ObjectTracker::TrackObject(res.m_Data.m_Object);
