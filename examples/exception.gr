@@ -9,12 +9,12 @@ func main():
         function();
       catch e:
         println("Caught exception e: " + e);
-        function2();
+        throw("I'm an exception");
       end
     catch f:
       println("here f");
       println("Caught exception f: " + string(f));
-      function3();
+      println(null * 5);
     end
   catch g:
     println("here g");

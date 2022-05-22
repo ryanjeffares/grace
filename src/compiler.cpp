@@ -154,16 +154,21 @@ static bool IsKeyword(TokenType type, std::string& outKeyword)
 {
   switch (type) {
     case TokenType::And: outKeyword = "and"; return true;
+    case TokenType::By: outKeyword = "by"; return true;
+    case TokenType::Catch: outKeyword = "catch"; return true;
     case TokenType::Class: outKeyword = "class"; return true;
     case TokenType::End: outKeyword = "end"; return true;
     case TokenType::Final: outKeyword = "final"; return true;
     case TokenType::For: outKeyword = "for"; return true;
     case TokenType::Func: outKeyword = "func"; return true;
     case TokenType::If: outKeyword = "if"; return true;
+    case TokenType::In: outKeyword = "in"; return true;
     case TokenType::Or: outKeyword = "or"; return true;
     case TokenType::Print: outKeyword = "print"; return true;
     case TokenType::PrintLn: outKeyword = "println"; return true;
     case TokenType::Return: outKeyword = "return"; return true;
+    case TokenType::Throw: outKeyword = "throw"; return true;
+    case TokenType::Try: outKeyword = "try"; return true;
     case TokenType::Var: outKeyword = "var"; return true;
     case TokenType::While: outKeyword = "while"; return true;
     default:
@@ -179,6 +184,7 @@ static bool IsOperator(TokenType type)
     TokenType::RightParen,
     TokenType::Comma,
     TokenType::Dot,
+    TokenType::DotDot,
     TokenType::Plus,
     TokenType::Slash,
     TokenType::Star,
@@ -242,6 +248,8 @@ void Compiler::Statement()
     WhileStatement();
   } else if (Match(TokenType::Try)) {
     TryStatement();
+  } else if (Match(TokenType::Throw)) {
+    ThrowStatement();
   } else if (Match(TokenType::Assert)) {
     AssertStatement();
   } else if (Match(TokenType::Break)) {
@@ -1185,6 +1193,16 @@ void Compiler::TryStatement()
   m_Vm.SetConstantAtIndex(skipCatchOpJumpIdx, static_cast<std::int64_t>(m_Vm.GetNumOps()));
 
   m_ContextStack.pop_back();
+}
+
+void Compiler::ThrowStatement()
+{
+  Consume(TokenType::LeftParen, "Expected '(' after `throw`");
+  Consume(TokenType::String, "Expected string inside `throw` statement");
+  EmitConstant(std::string(m_Previous.value().GetText()));
+  EmitOp(Ops::Throw, m_Previous.value().GetLine());
+  Consume(TokenType::RightParen, "Expected ')' after `throw` message");
+  Consume(TokenType::Semicolon, "Expected ';' after `throw` statement");
 }
 
 void Compiler::WhileStatement() 

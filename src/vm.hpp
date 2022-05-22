@@ -81,6 +81,7 @@ namespace Grace
       PrintTab,
       Return,
       Subtract,
+      Throw,
     };
 
     enum class InterpretResult
@@ -261,6 +262,7 @@ struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
       case Ops::PrintTab: name = "Ops::PrintTab"; break;
       case Ops::Return: name = "Ops::Return"; break;
       case Ops::Subtract: name = "Ops::Subtract"; break;
+      case Ops::Throw: name = "Ops::Throw"; break;
     }
     return fmt::formatter<std::string_view>::format(name, context);
   }

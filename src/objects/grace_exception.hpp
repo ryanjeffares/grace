@@ -34,6 +34,7 @@ namespace Grace::VM
         InvalidCast,
         InvalidOperand,
         InvalidType,
+        RuntimeException,
       };
 
       GraceException(Type type, std::string&& message)
@@ -94,6 +95,7 @@ struct fmt::formatter<Grace::VM::GraceException::Type> : fmt::formatter<std::str
       case GraceException::Type::InvalidCast: name = "InvalidCast"; break;
       case GraceException::Type::InvalidOperand: name = "InvalidOperand"; break;
       case GraceException::Type::InvalidType: name = "InvalidType"; break;
+      case GraceException::Type::RuntimeException: name = "RuntimeException"; break;
     }
     return fmt::formatter<std::string_view>::format(name, context);
   }

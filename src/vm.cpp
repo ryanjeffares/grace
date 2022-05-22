@@ -548,6 +548,10 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
           tryBlockJumpIndexes.emplace(opIdx, constIdx);
           break;
         }
+        case Ops::Throw: {
+          auto message = m_FullConstantList[constantCurrent++].Get<std::string>();
+          throw GraceException(GraceException::Type::RuntimeException, std::move(message));
+        }
         case Ops::Exit: {
           goto exit;
         }

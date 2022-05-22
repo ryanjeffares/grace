@@ -21,8 +21,9 @@ std::unordered_map<GraceException::Type, const char*> GraceException::s_Exceptio
   {GraceException::Type::IncorrectArgCount, "Incorrect argument count"},
   {GraceException::Type::InvalidArgument, "Invalid argument"},
   {GraceException::Type::InvalidCast, "Invalid cast"},
-  {GraceException::Type::InvalidOperand, "Invalid operaned"},
+  {GraceException::Type::InvalidOperand, "Invalid operand"},
   {GraceException::Type::InvalidType, "Invalid type"},
+  {GraceException::Type::RuntimeException, "Runtime exception"},
 };
 
 void GraceException::DebugPrint() const

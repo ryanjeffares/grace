@@ -131,6 +131,7 @@ namespace Grace::Compiler
       void PrintLnStatement();
       void ReturnStatement();
       void TryStatement();
+      void ThrowStatement();
       void WhileStatement();
 
       void Or(bool canAssign, bool skipFirst);
