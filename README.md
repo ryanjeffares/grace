@@ -2,7 +2,7 @@
 
 [![Total alerts](https://img.shields.io/lgtm/alerts/g/ryanjeffares/grace.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/ryanjeffares/grace/alerts/) [![Language grade: C/C++](https://img.shields.io/lgtm/grade/cpp/g/ryanjeffares/grace.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/ryanjeffares/grace/context:cpp)
 
-Grace is a dynamically typed, bytecode interpreted programming language, written with C++17. Still a work in progress, Grace will support object oriented and precedural programming, use reference counting as opposed to a garbage collector, and features a concise syntax inspired by Python and Ruby.
+Grace is a dynamically typed, bytecode interpreted programming language, written with C++20. Still a work in progress, Grace will support object oriented and precedural programming, use reference counting as opposed to a garbage collector, and features a concise syntax inspired by Python and Ruby.
 
 ## Aspirations
 
@@ -32,7 +32,7 @@ Grace's only dependency is [fmtlib](https://github.com/fmtlib/fmt) which is used
 * Python >= 3.2
 * CMake >= 3.8
 * C++ compiler
-* C++17
+* C++20
 
 ```bash
 git clone --recursive https://github.com/ryanjeffares/grace.git 
@@ -40,9 +40,7 @@ cd grace
 python3 build.py <Release/Debug>
 ```
 
-This will build the `grace` executable, which you can add to your path or move somewhere that is on your path. Full install process as well as documentation is WIP.
-
-Grace will also build with C++20, and uses some features such as `[[likely]]` and `[[unlikely]]`
+This will build the `grace` executable, which you can add to your path or move somewhere that is on your path. Full installation process as well as documentation is WIP.
 
 ## Alpha Release Roadmap
 * Exception system
