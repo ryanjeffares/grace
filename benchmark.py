@@ -7,7 +7,7 @@ def main():
 
     for i in range(0, 50):
         single_start = time.time()
-        os.system("./build/grace ./examples/for.gr")
+        os.system("./build/Release/grace ./examples/for.gr")
         single_end = time.time()
         total += single_end - single_start
 
