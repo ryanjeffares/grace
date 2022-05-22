@@ -74,15 +74,15 @@ static Value TimeNanoSeconds(GRACE_MAYBE_UNUSED const std::vector<Value>& args)
 
 static Value AppendList(const std::vector<Value>& args)
 {
-  dynamic_cast<Grace::GraceList*>(args[0].GetObject())->Append(std::move(args[1]));
-  return Value();
+  dynamic_cast<Grace::GraceList*>(args[0].GetObject())->Append(args[1]);
+  return {};
 }
 
 static Value SetListAtIndex(const std::vector<Value>& args)
 {
   auto l = dynamic_cast<Grace::GraceList*>(args[0].GetObject());
   (*l)[args[1].Get<std::int64_t>()] = args[2];
-  return Value();
+  return {};
 }
 
 static Value GetListAtIndex(const std::vector<Value>& args)

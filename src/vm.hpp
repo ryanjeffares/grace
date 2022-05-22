@@ -151,12 +151,12 @@ namespace Grace
           m_FunctionList.at(m_LastFunctionHash).m_ConstantList.emplace_back(value);
         }
 
-        GRACE_INLINE std::size_t GetNumConstants() const
+        GRACE_NODISCARD GRACE_INLINE std::size_t GetNumConstants() const
         {
           return m_FunctionList.at(m_LastFunctionHash).m_ConstantList.size();
         }
 
-        GRACE_INLINE std::size_t GetNumOps() const 
+        GRACE_NODISCARD GRACE_INLINE std::size_t GetNumOps() const
         {
           return m_FunctionList.at(m_LastFunctionHash).m_OpList.size();
         }
@@ -202,7 +202,7 @@ namespace Grace
         std::vector<OpLine> m_FullOpList;
         std::vector<Value> m_FullConstantList;
 
-        std::int64_t m_LastFunctionHash;        
+        std::int64_t m_LastFunctionHash{};
         std::hash<std::string> m_Hasher;
     };
   } // namespace VM

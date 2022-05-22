@@ -740,7 +740,7 @@ std::tuple<bool, std::optional<std::string>> Value::AsInt(std::int64_t& result) 
       }
     }
     case Type::Char: {
-      result = static_cast<std::int64_t>(m_Data.m_Char);
+      result = static_cast<std::int64_t>(static_cast<unsigned char>(m_Data.m_Char));
       return {true, {}};
     }
     case Type::Null: {

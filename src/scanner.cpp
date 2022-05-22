@@ -11,6 +11,7 @@
  */
 
 #include <unordered_map>
+#include <utility>
 
 #include "scanner.hpp"
 
@@ -92,8 +93,8 @@ static bool IsSingleCharToken(TokenType type)
 Token::Token(TokenType type,
   std::size_t start, 
   std::size_t length, 
-  int line, 
-  int column,
+  std::size_t line,
+  std::size_t column,
   const std::string& code
 ) : m_Type(type), m_Start(start), m_Line(line), 
   m_Text(code.c_str() + start, length)
@@ -107,8 +108,8 @@ Token::Token(TokenType type,
   }
 }
 
-Token::Token(TokenType type, int line, int column, const std::string& errorMessage)
-  : m_Type(type), m_Start(0), m_Length(1), m_Line(line), m_Column(column), m_ErrorMessage(errorMessage)
+Token::Token(TokenType type, std::size_t line, std::size_t column, std::string&& errorMessage)
+  : m_Type(type), m_Start(0), m_Length(1), m_Line(line), m_Column(column), m_ErrorMessage(std::move(errorMessage))
 {
 
 }
@@ -127,7 +128,7 @@ GRACE_NODISCARD static char Peek();
 GRACE_NODISCARD static char PeekNext();
 GRACE_NODISCARD static char PeekPrevious();
 
-GRACE_NODISCARD static Token ErrorToken(const std::string& message);
+GRACE_NODISCARD static Token ErrorToken(std::string&& message);
 GRACE_NODISCARD static Token Identifier();
 GRACE_NODISCARD static Token Number();
 GRACE_NODISCARD static Token MakeToken(TokenType);
@@ -309,9 +310,9 @@ static char PeekPrevious()
   return s_ScannerCurrent == 0 ? '\0' : s_CodeString[s_ScannerCurrent - 1];
 }
 
-static Token ErrorToken(const std::string& message)
+static Token ErrorToken(std::string&& message)
 {
-  return Token(TokenType::Error, s_ScannerLine, s_ScannerColumn, message);
+  return Token(TokenType::Error, s_ScannerLine, s_ScannerColumn, std::move(message));
 }
 
 static Token Identifier()

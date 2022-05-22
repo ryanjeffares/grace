@@ -20,119 +20,116 @@
 
 #include "grace.hpp"
 
-namespace Grace
+namespace Grace::Scanner
 {
-  namespace Scanner
+  enum class TokenType
   {
-    enum class TokenType
-    {
-      // Lexical tokens
-      Char,
-      EndOfFile,
-      Error,
-      Double,
-      Identifier,
-      Integer,
-      String,
-      IntIdent,
-      FloatIdent,
-      BoolIdent,
-      StringIdent,
-      CharIdent,
-      ListIdent,
-      
-      // Symbols
-      Colon,
-      Semicolon,
-      LeftParen,
-      RightParen,
-      LeftSquareParen,
-      RightSquareParen,
-      Comma,
-      Dot,
-      DotDot,
-      Minus,
-      Mod,
-      Plus,
-      Slash,
-      Star,
-      StarStar,
-      Bang,
-      BangEqual,
-      Equal,
-      EqualEqual,
-      LessThan,
-      GreaterThan,
-      LessEqual,
-      GreaterEqual,
+    // Lexical tokens
+    Char,
+    EndOfFile,
+    Error,
+    Double,
+    Identifier,
+    Integer,
+    String,
+    IntIdent,
+    FloatIdent,
+    BoolIdent,
+    StringIdent,
+    CharIdent,
+    ListIdent,
 
-      // Keywords
-      And,
-      Assert,
-      Break,
-      By,
-      Catch,
-      Class,
-      Continue,
-      Else,
-      End, 
-      False,
-      Final,
-      For,
-      Func,
-      If,
-      In,
-      InstanceOf,
-      Null,
-      Or,
-      Print,
-      PrintLn,
-      Return,
-      This,
-      Throw,
-      True,
-      Try,
-      Var,
-      While,
-    };
+    // Symbols
+    Colon,
+    Semicolon,
+    LeftParen,
+    RightParen,
+    LeftSquareParen,
+    RightSquareParen,
+    Comma,
+    Dot,
+    DotDot,
+    Minus,
+    Mod,
+    Plus,
+    Slash,
+    Star,
+    StarStar,
+    Bang,
+    BangEqual,
+    Equal,
+    EqualEqual,
+    LessThan,
+    GreaterThan,
+    LessEqual,
+    GreaterEqual,
 
-    class Token
-    {
-      public:
-        
-        Token(TokenType, 
-            std::size_t start, 
-            std::size_t length, 
-            int line, 
-            int column,
-            const std::string& code
-        );
+    // Keywords
+    And,
+    Assert,
+    Break,
+    By,
+    Catch,
+    Class,
+    Continue,
+    Else,
+    End,
+    False,
+    Final,
+    For,
+    Func,
+    If,
+    In,
+    InstanceOf,
+    Null,
+    Or,
+    Print,
+    PrintLn,
+    Return,
+    This,
+    Throw,
+    True,
+    Try,
+    Var,
+    While,
+  };
 
-        Token(TokenType, int line, int column, const std::string& errorMessage);
+  class Token
+  {
+    public:
 
-        GRACE_NODISCARD std::string ToString() const;
-        GRACE_NODISCARD GRACE_INLINE TokenType GetType() const { return m_Type; }
-        GRACE_NODISCARD GRACE_INLINE int GetLine() const { return m_Line; }
-        GRACE_NODISCARD GRACE_INLINE int GetColumn() const { return m_Column; }
-        GRACE_NODISCARD GRACE_INLINE const std::string& GetErrorMessage() const { return m_ErrorMessage; }
-        GRACE_NODISCARD GRACE_INLINE std::size_t GetLength() const { return m_Length; }
-        GRACE_NODISCARD GRACE_INLINE const std::string_view GetText() const { return m_Text.substr(0, m_Length); }
-        GRACE_NODISCARD const char* GetData() const { return m_Text.data(); }
+      Token(TokenType,
+          std::size_t start,
+          std::size_t length,
+          std::size_t line,
+          std::size_t column,
+          const std::string& code
+      );
 
-      private:
+      Token(TokenType, std::size_t line, std::size_t column, std::string&& errorMessage);
 
-        TokenType m_Type;
-        std::size_t m_Start, m_Length;
-        int m_Line, m_Column;
-        std::string_view m_Text;
-        std::string m_ErrorMessage;
-    };
+      GRACE_NODISCARD std::string ToString() const;
+      GRACE_NODISCARD GRACE_INLINE TokenType GetType() const { return m_Type; }
+      GRACE_NODISCARD GRACE_INLINE std::size_t GetLine() const { return m_Line; }
+      GRACE_NODISCARD GRACE_INLINE std::size_t GetColumn() const { return m_Column; }
+      GRACE_NODISCARD GRACE_INLINE std::string GetErrorMessage() const { return m_ErrorMessage; }
+      GRACE_NODISCARD GRACE_INLINE std::size_t GetLength() const { return m_Length; }
+      GRACE_NODISCARD GRACE_INLINE std::string_view GetText() const { return m_Text.substr(0, m_Length); }
+      GRACE_NODISCARD const char* GetData() const { return m_Text.data(); }
 
-    void InitScanner(std::string&& code);
-    Token ScanToken();
-    std::string GetCodeAtLine(int line);
-  } // namespace Scanner
-} // namespace Grace
+    private:
+
+      TokenType m_Type;
+      std::size_t m_Start, m_Length;
+      std::size_t m_Line, m_Column;
+      std::string_view m_Text;
+      std::string m_ErrorMessage;
+  };
+
+  void InitScanner(std::string&& code);
+  Token ScanToken();
+  std::string GetCodeAtLine(int line);
+} // namespace Grace::Scanner
 
 template<>
 struct fmt::formatter<Grace::Scanner::TokenType> : fmt::formatter<std::string_view>

@@ -46,8 +46,9 @@ int main(int argc, const char* argv[])
   }
 
   std::vector<std::string> args;
+  args.reserve(argc);
   for (auto i = 0; i < argc; i++) {
-    args.push_back(argv[i]);
+    args.emplace_back(argv[i]);
   }
 
   std::filesystem::path filePath;

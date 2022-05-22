@@ -23,9 +23,9 @@ namespace Grace
   {
     public:
       GraceList() = default;
-      GraceList(const VM::Value&);
+      explicit GraceList(const VM::Value&);
+      explicit GraceList(std::vector<VM::Value>&& items);
       GraceList(const VM::Value&, std::int64_t repeats);
-      GraceList(std::vector<VM::Value>&& items);
       GraceList(const GraceList& other, std::int64_t multiple);
 
       GRACE_INLINE void Append(const VM::Value& value)
@@ -45,7 +45,8 @@ namespace Grace
 
       void Append(const std::vector<VM::Value>& items);
       void Remove(std::size_t index);
-      GRACE_INLINE std::size_t Length() const 
+
+      GRACE_NODISCARD GRACE_INLINE std::size_t Length() const
       {
         return m_Data.size();
       }
@@ -53,8 +54,8 @@ namespace Grace
       void DebugPrint() const override;
       void Print() const override;
       void PrintLn() const override;
-      std::string ToString() const override;
-      bool AsBool() const override; 
+      GRACE_NODISCARD std::string ToString() const override;
+      GRACE_NODISCARD bool AsBool() const override;
 
       GRACE_INLINE VM::Value& operator[](std::size_t index)
       {

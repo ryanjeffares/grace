@@ -29,7 +29,7 @@ GraceList::GraceList(const Value& value)
       m_Data.emplace_back(c);
     }
   } else {
-    m_Data.push_back(std::move(value));
+    m_Data.push_back(value);
   }
 }
 
@@ -41,7 +41,7 @@ GraceList::GraceList(const Value& value, std::int64_t repeats)
 GraceList::GraceList(const GraceList& other, std::int64_t multiple)
 {
   m_Data.reserve(other.m_Data.size() * multiple);
-  for (auto i = 0; i < multiple; i++) {
+  for (std::size_t i = 0; i < static_cast<std::size_t>(multiple); i++) {
     m_Data.insert(m_Data.begin() + (i * other.m_Data.size()), other.m_Data.begin(), other.m_Data.end());
   }
 }

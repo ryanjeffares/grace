@@ -278,11 +278,7 @@ void Compiler::FuncDeclaration()
 
   Consume(TokenType::Identifier, "Expected function name");
   auto name = std::string(m_Previous.value().GetText());
-#ifdef GRACE_CPP_20
   if (name.starts_with("__")) {
-#else
-  if (name.substr(0, 2) == "__") {
-#endif
     MessageAtPrevious("Function names beginning with double underscore `__` are reserved for internal use", LogLevel::Error);
     return;
   }
@@ -299,8 +295,8 @@ void Compiler::FuncDeclaration()
         MessageAtPrevious("Function parameters with the same name already defined", LogLevel::Error);
         return;
       }
-      m_Locals.emplace_back(std::move(p), true, m_Locals.size());
       parameters.push_back(p);
+      m_Locals.emplace_back(std::move(p), true, m_Locals.size());
 
       if (!Check(TokenType::RightParen)) {
         Consume(TokenType::Comma, "Expected ',' after function parameter");
@@ -311,8 +307,8 @@ void Compiler::FuncDeclaration()
         MessageAtPrevious("Function parameters with the same name already defined", LogLevel::Error);
         return;
       }
-      m_Locals.emplace_back(std::move(p), false, m_Locals.size());
       parameters.push_back(p);
+      m_Locals.emplace_back(std::move(p), false, m_Locals.size());
 
       if (!Check(TokenType::RightParen)) {
         Consume(TokenType::Comma, "Expected ',' after function parameter");
@@ -331,7 +327,7 @@ void Compiler::FuncDeclaration()
   }
 
   while (!Match(TokenType::End)) {
-    // set this to false before every delcaration
+    // set this to false before every declaration
     // so that we know if the last declaration was a return
     m_FunctionHadReturn = false;
     Declaration();
@@ -381,7 +377,7 @@ void Compiler::VarDeclaration()
   std::string localName(m_Previous.value().GetText());
   int line = m_Previous.value().GetLine();
 
-  std::int64_t localId = m_Locals.size();
+  auto localId = static_cast<std::int64_t>(m_Locals.size());
   m_Locals.emplace_back(std::move(localName), false, localId);
   EmitOp(Ops::DeclareLocal, line);
 
@@ -667,7 +663,7 @@ void Compiler::ForStatement()
   std::int64_t iteratorId;
   auto it = std::find_if(m_Locals.begin(), m_Locals.end(), [&](const Local& l) { return l.m_Name == iteratorName; });
   if (it == m_Locals.end()) {
-    iteratorId = m_Locals.size();
+    iteratorId = static_cast<std::int64_t>(m_Locals.size());
     m_Locals.emplace_back(std::move(iteratorName), false, iteratorId);
     EmitOp(Ops::DeclareLocal, m_Previous.value().GetLine());
     iteratorNeedsPop = true;
@@ -883,7 +879,7 @@ void Compiler::ForStatement()
   EmitConstant(startOpIdx);
   EmitOp(Ops::Jump, line);
 
-  // set indexes for breaks and when the condition fails, the iterator variable will need to be popped (if its a new variable)
+  // set indexes for breaks and when the condition fails, the iterator variable will need to be popped (if it's a new variable)
   if (m_BreakJumpNeedsIndexes) {
     for (auto& p : m_BreakIdxPairs.top()) {
       m_Vm.SetConstantAtIndex(p.first, static_cast<std::int64_t>(m_Vm.GetNumConstants()));
@@ -932,7 +928,7 @@ void Compiler::IfStatement()
   bool needsElseBlock = true;
   while (true) {
     if (Match(TokenType::Else)) {
-      // make any unreachables 'else' blocks a compiler error
+      // make any unreachable 'else' blocks a compiler error
       if (elseBlockFound) {
         MessageAtPrevious("Unreachable `else` due to previous `else`", LogLevel::Error);
         return;
@@ -1109,7 +1105,7 @@ void Compiler::TryStatement()
     std::int64_t exceptionVarId;
     auto it = std::find_if(m_Locals.begin(), m_Locals.end(), [&](const Local& l) { return l.m_Name == exceptionVarName; });
     if (it == m_Locals.end()) {
-      exceptionVarId = m_Locals.size();
+      exceptionVarId = static_cast<std::int64_t>(m_Locals.size());
       m_Locals.emplace_back(std::move(exceptionVarName), false, exceptionVarId);
       EmitOp(Ops::DeclareLocal, m_Previous.value().GetLine());
     } else {
@@ -1368,11 +1364,7 @@ void Compiler::Call(bool canAssign)
   if (prev.GetType() == TokenType::Identifier) {
     if (Match(TokenType::LeftParen)) {
       auto hash = static_cast<std::int64_t>(m_Hasher(prevText));
-#ifdef GRACE_CPP_20
       auto nativeCall = prevText.starts_with("__");
-#else
-      auto nativeCall = prevText.substr(0, 2) == "__";
-#endif
       std::size_t nativeIndex;
       if (nativeCall) {
         auto [exists, index] = m_Vm.HasNativeFunction(prevText);
@@ -1392,7 +1384,7 @@ void Compiler::Call(bool canAssign)
           if (Match(TokenType::RightParen)) {
             break;
           }
-          Consume(TokenType::Comma, "Expected ',' after funcion call argument");
+          Consume(TokenType::Comma, "Expected ',' after function call argument");
         }
       }
 
@@ -1421,7 +1413,7 @@ void Compiler::Call(bool canAssign)
     } else {
       // not a call or member access, so we are just trying to call on the value of the local
       // or reassign it 
-      // if its not a reassignment, we are trying to load its value 
+      // if it's not a reassignment, we are trying to load its value
       // Primary() has already but the variable's id on the stack
       if (!Check(TokenType::Equal)) {
         auto it = std::find_if(m_Locals.begin(), m_Locals.end(), [&](const Local& l){ return l.m_Name == prevText; });
@@ -1504,13 +1496,12 @@ void Compiler::Primary(bool canAssign)
   }
 }
 
-static const char s_EscapeChars[] = {'t', 'b', 'n', 'r', 'f', '\'', '"', '\\'};
+static const char s_EscapeChars[] = {'t', 'b', 'n', 'r', '\'', '"', '\\'};
 static const std::unordered_map<char, char> s_EscapeCharsLookup = {
   std::make_pair('t', '\t'),
   std::make_pair('b', '\b'),
   std::make_pair('r', '\r'),
   std::make_pair('n', '\n'),
-  std::make_pair('f', '\f'),
   std::make_pair('\'', '\''),
   std::make_pair('"', '\"'),  // we need to escape this because it might be in a string
   std::make_pair('\\', '\\'),

@@ -9,7 +9,6 @@
  *  For licensing information, see grace.hpp
  */
 
-#include <cmath>
 #include <cstdlib>
 #include <initializer_list>
 #include <iterator>
@@ -23,7 +22,6 @@
 #endif
 
 #include "scanner.hpp"
-#include "compiler.hpp"
 #include "vm.hpp"
 #include "objects/grace_list.hpp"
 #include "objects/object_tracker.hpp"
@@ -150,7 +148,7 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
     }                                                                 \
   } while (false)                                                     \
 
-  auto funcNameHash = m_Hasher("main");
+  auto funcNameHash = static_cast<std::int64_t>(m_Hasher("main"));
   std::vector<Value> valueStack, localsList;
   valueStack.reserve(16);
   localsList.reserve(16);
@@ -453,6 +451,9 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
             case 5:
               valueStack.emplace_back(Value::CreateList(value));
               break;
+            default:
+              GRACE_UNREACHABLE();
+              break;
           }
           break;
         }
@@ -467,6 +468,9 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
                 valueStack.emplace_back(l != nullptr);
                 break;
               }
+              default:
+                GRACE_UNREACHABLE();
+                break;
             }
           }
           break;
@@ -480,9 +484,9 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
         }
         case Ops::CreateList: {
           auto numItems = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
-          std::vector<Value> result;
+          std::vector<Value> result(numItems);
           for (auto i = 0; i < numItems; i++) {
-            result.push_back(Pop(valueStack));
+            result[i] = Pop(valueStack);
           }
           valueStack.push_back(Value::CreateList(std::move(result)));
           break;

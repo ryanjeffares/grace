@@ -200,7 +200,7 @@ namespace Grace
       GRACE_NODISCARD Value operator!() const;
       GRACE_NODISCARD Value operator-() const;
 
-      Value Pow(const Value&) const;
+      GRACE_NODISCARD Value Pow(const Value&) const;
 
       void PrintLn() const;
       void Print() const;
@@ -261,7 +261,7 @@ namespace Grace
         NullValue m_Null;
         GraceObject* m_Object;
         std::string* m_Str;
-      } m_Data;
+      } m_Data{};
     };
   } // namespace VM
 } // namespace Grace
