@@ -550,7 +550,7 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
         }
         case Ops::Throw: {
           auto message = m_FullConstantList[constantCurrent++].Get<std::string>();
-          throw GraceException(GraceException::Type::RuntimeException, std::move(message));
+          throw GraceException(GraceException::Type::ThrownException, std::move(message));
         }
         case Ops::Exit: {
           goto exit;
@@ -567,8 +567,8 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
         tryBlockJumpIndexes.pop();
         inTryBlock = !tryBlockJumpIndexes.empty();
 
-        opCurrent = opIdx;
-        constantCurrent = constIdx;
+        opCurrent = opIdx + opOffsets.back();
+        constantCurrent = constIdx + constantOffsets.back();
         valueStack.push_back(Value::CreateException(ge));
       } else {
         // exception unhandled, report the error and quit

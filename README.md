@@ -44,7 +44,7 @@ This will build the `grace` executable, which you can add to your path or move s
 
 ## Alpha Release Roadmap
 * Exception system
-  * In progress - need to jump to the catch block when an exception is thrown
+  * Nearly there - account for exceptions being thrown in a function and returning control to the caller
 * Experiment with string interning
 * Make unused expression results illegal 
 * Unicode support for `char`s 
