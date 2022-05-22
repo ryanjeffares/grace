@@ -18,11 +18,13 @@
 
 #include <fmt/format.h>
 
+#include "grace_object.hpp"
+
 namespace Grace
 {
   namespace VM
   {
-    class GraceException : public std::exception
+    class GraceException : public std::exception, public GraceObject
     {
       public:
         enum class Type
@@ -47,10 +49,16 @@ namespace Grace
           return s_ExceptionMessages.at(m_Type);
         }
 
-        std::string Message() const
+        GRACE_INLINE std::string Message() const
         {
           return m_Message;
         }
+
+        void DebugPrint() const override;
+        void Print() const override;
+        void PrintLn() const override;
+        std::string ToString() const override;
+        bool AsBool() const override;
 
       private:
         Type m_Type;

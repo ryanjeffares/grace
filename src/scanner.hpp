@@ -71,6 +71,7 @@ namespace Grace
       Assert,
       Break,
       By,
+      Catch,
       Class,
       Continue,
       Else,
@@ -88,7 +89,9 @@ namespace Grace
       PrintLn,
       Return,
       This,
+      Throw,
       True,
+      Try,
       Var,
       While,
     };
@@ -174,6 +177,7 @@ struct fmt::formatter<Grace::Scanner::TokenType> : fmt::formatter<std::string_vi
       case TokenType::Assert: name = "TokenType::Assert"; break;
       case TokenType::Break: name = "TokenType::Break"; break;
       case TokenType::By: name = "TokenType::By"; break;
+      case TokenType::Catch: name = "TokenType::Catch"; break;
       case TokenType::Class: name = "TokenType::Class"; break;
       case TokenType::Continue: name = "TokenType::Continue"; break;
       case TokenType::End: name = "TokenType::End"; break;
@@ -191,7 +195,9 @@ struct fmt::formatter<Grace::Scanner::TokenType> : fmt::formatter<std::string_vi
       case TokenType::PrintLn: name = "TokenType::PrintLn"; break;
       case TokenType::Return: name = "TokenType::Return"; break;
       case TokenType::This: name = "TokenType::This"; break;
+      case TokenType::Throw: name = "TokenType::Throw"; break;
       case TokenType::True: name = "TokenType::True"; break;
+      case TokenType::Try: name = "TokenType::Try"; break;
       case TokenType::Var: name = "TokenType::Var"; break;
       case TokenType::Or: name = "TokenType::Or"; break;
       case TokenType::And: name = "TokenType::And"; break;

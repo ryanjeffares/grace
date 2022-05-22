@@ -240,12 +240,21 @@ void Compiler::Statement()
     ReturnStatement();
   } else if (Match(TokenType::While)) {
     WhileStatement();
+  } else if (Match(TokenType::Try)) {
+    TryStatement();
   } else if (Match(TokenType::Assert)) {
     AssertStatement();
   } else if (Match(TokenType::Break)) {
     BreakStatement();
   } else if (Match(TokenType::Continue)) {
     ContinueStatement();
+  } else if (Check(TokenType::Catch)) {
+    if (m_ContextStack.back() != Context::Try) {
+      MessageAtCurrent("`catch` block only allowed after `try` block", LogLevel::Error);
+      return;
+    }
+    return; // catch is handled by the TryStatement function, so keep the catch token as current
+    // and return to caller without starting another recursive chain
   } else {
     ExpressionStatement();
   }
@@ -598,36 +607,50 @@ void Compiler::AssertStatement()
 
 void Compiler::BreakStatement()
 {
-  if (m_ContextStack.back() != Context::Loop) {
-    // don't return early from here, so the compiler can synchronize...
-    MessageAtPrevious("`break` only allowed inside `for` and `while` loops", LogLevel::Error);
-  } else {
-    m_BreakJumpNeedsIndexes = true;
-    auto constIdx = static_cast<std::int64_t>(m_Vm.GetNumConstants());
-    EmitConstant(std::int64_t{});
-    auto opIdx = static_cast<std::int64_t>(m_Vm.GetNumConstants());
-    EmitConstant(std::int64_t{});
-    EmitOp(Ops::Jump, m_Previous.value().GetLine());
-    m_BreakIdxPairs.top().push_back(std::make_pair(constIdx, opIdx));
-    Consume(TokenType::Semicolon, "Expected ';' after `break`");
+  bool insideLoop = false;
+  for (auto it = m_ContextStack.crbegin(); it != m_ContextStack.crend(); ++it) {
+    if (*it == Context::Loop) {
+      insideLoop = true;
+      break;
+    }
   }
+  if (!insideLoop) {
+    // don't return early from here, so the compiler can synchronize...
+    MessageAtPrevious("`break` only allowed inside loops", LogLevel::Error);
+  }
+
+  m_BreakJumpNeedsIndexes = true;
+  auto constIdx = static_cast<std::int64_t>(m_Vm.GetNumConstants());
+  EmitConstant(std::int64_t{});
+  auto opIdx = static_cast<std::int64_t>(m_Vm.GetNumConstants());
+  EmitConstant(std::int64_t{});
+  EmitOp(Ops::Jump, m_Previous.value().GetLine());
+  m_BreakIdxPairs.top().push_back(std::make_pair(constIdx, opIdx));
+  Consume(TokenType::Semicolon, "Expected ';' after `break`");
 }
 
 void Compiler::ContinueStatement()
 {
-  if (m_ContextStack.back() != Context::Loop) {
-    // don't return early from here, so the compiler can synchronize...
-    MessageAtPrevious("`continue` only allowed inside `for` and `while` loops", LogLevel::Error);
-  } else {
-    m_ContinueJumpNeedsIndexes = true;
-    auto constIdx = static_cast<std::int64_t>(m_Vm.GetNumConstants());
-    EmitConstant(std::int64_t{});
-    auto opIdx = static_cast<std::int64_t>(m_Vm.GetNumConstants());
-    EmitConstant(std::int64_t{});
-    EmitOp(Ops::Jump, m_Previous.value().GetLine());
-    m_ContinueIdxPairs.top().push_back(std::make_pair(constIdx, opIdx));
-    Consume(TokenType::Semicolon, "Expected ';' after `break`");
+  bool insideLoop = false;
+  for (auto it = m_ContextStack.crbegin(); it != m_ContextStack.crend(); ++it) {
+    if (*it == Context::Loop) {
+      insideLoop = true;
+      break;
+    }
   }
+  if (!insideLoop) {
+    // don't return early from here, so the compiler can synchronize...
+    MessageAtPrevious("`break` only allowed inside loops", LogLevel::Error);
+  }
+
+  m_ContinueJumpNeedsIndexes = true;
+  auto constIdx = static_cast<std::int64_t>(m_Vm.GetNumConstants());
+  EmitConstant(std::int64_t{});
+  auto opIdx = static_cast<std::int64_t>(m_Vm.GetNumConstants());
+  EmitConstant(std::int64_t{});
+  EmitOp(Ops::Jump, m_Previous.value().GetLine());
+  m_ContinueIdxPairs.top().push_back(std::make_pair(constIdx, opIdx));
+  Consume(TokenType::Semicolon, "Expected ';' after `break`");
 }
 
 void Compiler::ForStatement() 
@@ -883,6 +906,8 @@ void Compiler::ForStatement()
 
 void Compiler::IfStatement() 
 {
+  m_ContextStack.emplace_back(Context::If);
+
   s_UsingExpressionResult = true;
   Expression(false);
   s_UsingExpressionResult = false;
@@ -980,6 +1005,8 @@ void Compiler::IfStatement()
     EmitOp(Ops::PopLocal, line);
     m_Locals.pop_back();
   }
+
+  m_ContextStack.pop_back();
 }
 
 void Compiler::PrintStatement() 
@@ -1053,6 +1080,79 @@ void Compiler::ReturnStatement()
   for (std::size_t i = 0; i < m_Locals.size(); i++) {
     EmitOp(Ops::PopLocal, m_Previous.value().GetLine());
   }
+}
+
+void Compiler::TryStatement()
+{
+  m_ContextStack.emplace_back(Context::Try);
+
+  Consume(TokenType::Colon, "Expected `:` after `try`");
+
+  auto numLocalsStart = m_Locals.size();
+
+  while (!Match(TokenType::Catch)) {
+    Declaration();
+    if (Match(TokenType::EndOfFile)) {
+      MessageAtPrevious("Unterminated `try` block", LogLevel::Error);
+      return;
+    }
+  }
+
+  auto numLocalsEnd = m_Locals.size();
+  for (std::size_t i = 0; i < numLocalsEnd - numLocalsStart; i++) {
+    EmitOp(Ops::PopLocal, m_Previous.value().GetLine());
+    m_Locals.pop_back();
+  }
+
+  if (Match(TokenType::Identifier)) {
+    auto exceptionVarName = std::string(m_Previous.value().GetText());
+    std::int64_t exceptionVarId;
+    auto it = std::find_if(m_Locals.begin(), m_Locals.end(), [&](const Local& l) { return l.m_Name == exceptionVarName; });
+    if (it == m_Locals.end()) {
+      exceptionVarId = m_Locals.size();
+      m_Locals.emplace_back(std::move(exceptionVarName), false, exceptionVarId);
+      EmitOp(Ops::DeclareLocal, m_Previous.value().GetLine());
+    } else {
+      if (it->m_Final) {
+        MessageAtPrevious(fmt::format("Exception variable '{}' has already been declared as `final`", exceptionVarName), LogLevel::Error);
+        return;
+      }
+      exceptionVarId = it->m_Index;
+      if (s_Verbose || s_WarningsError) {
+        MessageAtPrevious(fmt::format("There is already a local variable called '{}' in this scope which will be reassigned inside the `catch` block", exceptionVarName), 
+            LogLevel::Warning);
+        if (s_WarningsError) {
+          return;
+        }
+      }
+    }
+    EmitConstant(exceptionVarId);
+    EmitOp(Ops::AssignException, m_Previous.value().GetLine());
+  }
+
+  Consume(TokenType::Colon, "Expected `:` after `catch` statement");
+
+
+  m_ContextStack.pop_back();
+  m_ContextStack.emplace_back(Context::Catch);
+
+  numLocalsStart = m_Locals.size();
+
+  while (!Match(TokenType::End)) {
+    Declaration();
+    if (Match(TokenType::EndOfFile)) {
+      MessageAtPrevious("Unterminated `catch` block", LogLevel::Error);
+      return;
+    }
+  }
+
+  numLocalsEnd = m_Locals.size();
+  for (std::size_t i = 0; i < numLocalsEnd - numLocalsStart; i++) {
+    EmitOp(Ops::PopLocal, m_Previous.value().GetLine());
+    m_Locals.pop_back();
+  }
+
+  m_ContextStack.pop_back();
 }
 
 void Compiler::WhileStatement() 

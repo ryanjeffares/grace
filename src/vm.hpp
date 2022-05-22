@@ -25,8 +25,8 @@
 
 #include "grace.hpp"
 #include "native_function.hpp"
+#include "objects/grace_exception.hpp"
 #include "value.hpp"
-#include "exception.hpp"
 
 namespace Grace
 {
@@ -43,6 +43,7 @@ namespace Grace
       And,
       Assert,
       AssertWithMessage,
+      AssignException,
       AssignLocal,
       Call,
       Cast,
@@ -221,6 +222,7 @@ struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
       case Ops::And: name = "Ops::And"; break;
       case Ops::Assert: name = "Ops::Assert"; break;
       case Ops::AssertWithMessage: name = "Ops::AssertWithMessage"; break;
+      case Ops::AssignException: name = "Ops::AssignException"; break;
       case Ops::AssignLocal: name = "Ops::AssignLocal"; break;
       case Ops::Call: name = "Ops::Call"; break;
       case Ops::Cast: name = "Ops::Cast"; break;

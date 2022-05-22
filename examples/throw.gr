@@ -1,0 +1,7 @@
+func main():
+  try:
+    function();
+  catch e:
+    println(e);
+  end
+end

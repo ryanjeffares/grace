@@ -289,7 +289,7 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
         case Ops::Call: {
           auto calleeNameHash = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
           auto numArgsGiven = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
-          
+
           auto it = m_FunctionList.find(calleeNameHash);
           if (it == m_FunctionList.end()) {
             throw GraceException(
@@ -596,5 +596,5 @@ void VM::RuntimeError(const GraceException& exception, int line, const CallStack
 
   fmt::print(stderr, "\n");
   fmt::print(stderr, fmt::fg(fmt::color::red) | fmt::emphasis::bold, "ERROR: ");
-  fmt::print(stderr, "[line {}] {}: {}. Stopping execution.\n", line, exception.what(), exception.Message());
+  fmt::print(stderr, "[line {}] {}. Stopping execution.\n", line, exception.ToString());
 }

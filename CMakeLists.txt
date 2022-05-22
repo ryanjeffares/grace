@@ -10,7 +10,7 @@ add_executable(grace
   src/vm.cpp 
   src/vm_register_natives.cpp 
   src/value.cpp 
-  src/exception.cpp
+  src/objects/grace_exception.cpp
   src/objects/grace_list.cpp 
   src/objects/object_tracker.cpp
 )

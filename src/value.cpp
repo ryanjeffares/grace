@@ -12,9 +12,9 @@
 #include <type_traits>
 
 #include "grace.hpp"
-#include "objects/grace_list.hpp"
 #include "value.hpp"
-#include "exception.hpp"
+#include "objects/grace_exception.hpp"
+#include "objects/grace_list.hpp"
 
 using namespace Grace::VM;
 

@@ -88,7 +88,7 @@ func main():
   end
 
   if count == correct_count:
-    println("Found " + count + " primes in " + passes + " passes!");
+    println("Found " + count + " primes under 1,000,000 in " + passes + " passes!");
   else:
     println("Found incorrect number of primes " + count);
   end

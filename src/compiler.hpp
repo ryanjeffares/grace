@@ -137,6 +137,7 @@ namespace Grace
         void PrintStatement();
         void PrintLnStatement();
         void ReturnStatement();
+        void TryStatement();
         void WhileStatement();
 
         void Or(bool canAssign, bool skipFirst);
@@ -182,9 +183,12 @@ namespace Grace
 
         enum class Context
         {
-          TopLevel,
+          Catch,
           Function,
+          If,
           Loop,
+          TopLevel,
+          Try,
         };
 
         std::vector<Context> m_ContextStack;

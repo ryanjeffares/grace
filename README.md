@@ -37,7 +37,7 @@ Grace's only dependency is [fmtlib](https://github.com/fmtlib/fmt) which is used
 ```bash
 git clone --recursive https://github.com/ryanjeffares/grace.git 
 cd grace 
-python3 build.py <release/debug>
+python3 build.py <Release/Debug>
 ```
 
 This will build the `grace` executable, which you can add to your path or move somewhere that is on your path. Full install process as well as documentation is WIP.
@@ -46,8 +46,7 @@ Grace will also build with C++20, and uses some features such as `[[likely]]` an
 
 ## Alpha Release Roadmap
 * Exception system
-  * In progress - throw exceptions in operator overloads in the Value class instead of Handlers
-  * `throw` keyword for the language itself
+  * In progress - need to jump to the catch block when an exception is thrown
 * Experiment with string interning
 * Make unused expression results illegal 
 * Unicode support for `char`s 
