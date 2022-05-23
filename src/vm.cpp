@@ -14,6 +14,7 @@
 #include <iterator>
 #include <stack>
 #include <chrono>
+#include <utility>
 
 #include "grace.hpp"
 
@@ -468,7 +469,7 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
               break;
             }
             case 5:
-              valueStack.emplace_back(Value::CreateList(value));
+              valueStack.emplace_back(Value::CreateObject<GraceList>(value));
               break;
             default:
               GRACE_UNREACHABLE();
@@ -507,17 +508,17 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
           for (auto i = 0; i < numItems; i++) {
             result[i] = Pop(valueStack);
           }
-          valueStack.push_back(Value::CreateList(std::move(result)));
+          valueStack.push_back(Value::CreateObject<GraceList>(std::move(result)));
           break;
         }
         case Ops::CreateEmptyList: {
-          valueStack.push_back(Value::CreateList());
+          valueStack.push_back(Value::CreateObject<GraceList>());
           break;
         }
         case Ops::CreateRepeatingList: {
           auto numItems = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
           auto value = Pop(valueStack);
-          valueStack.push_back(Value::CreateList(value, numItems));
+          valueStack.push_back(Value::CreateObject<GraceList>(value, numItems));
           break;
         }
         case Ops::Assert: {
@@ -569,7 +570,7 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
 
         opCurrent = opIdx + opOffsets.back();
         constantCurrent = constIdx + constantOffsets.back();
-        valueStack.push_back(Value::CreateException(ge));
+        valueStack.push_back(Value::CreateObject<GraceException>(ge));
       } else {
         // exception unhandled, report the error and quit
         RuntimeError(ge, line, callStack);

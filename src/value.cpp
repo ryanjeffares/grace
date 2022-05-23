@@ -238,7 +238,7 @@ Value Value::operator*(const Value& other) const
     case Type::Object: {
       if (auto list = dynamic_cast<GraceList*>(GetObject())) {
         if (other.m_Type == Type::Int) {
-          return Value(CreateList(*list, other.m_Data.m_Int));
+          return Value(CreateObject<GraceList>(*list, other.m_Data.m_Int));
         }
       }
       break;
@@ -820,76 +820,4 @@ std::tuple<bool, std::optional<std::string>> Value::AsChar(char& result) const
     default:
       return {false, "Cannot convert object to char"};
   } 
-}
-
-Value Value::CreateList()
-{
-  Value value;
-  value.m_Type = Type::Object;
-  value.m_Data.m_Object = new GraceList();
-  value.m_Data.m_Object->IncreaseRef();
-#ifdef GRACE_DEBUG
-  ObjectTracker::TrackObject(value.m_Data.m_Object); 
-#endif
-  return value;
-}
-
-Value Value::CreateList(std::vector<Value>&& items)
-{
-  Value value;
-  value.m_Type = Type::Object;
-  value.m_Data.m_Object = new GraceList(std::move(items));
-  value.m_Data.m_Object->IncreaseRef();
-#ifdef GRACE_DEBUG
-  ObjectTracker::TrackObject(value.m_Data.m_Object); 
-#endif
-  return value;
-}
-
-Value Value::CreateList(const GraceList& list, std::int64_t multiple)
-{
-  Value value;
-  value.m_Type = Type::Object;
-  value.m_Data.m_Object = new GraceList(list, multiple);
-  value.m_Data.m_Object->IncreaseRef();
-#ifdef GRACE_DEBUG
-  ObjectTracker::TrackObject(value.m_Data.m_Object); 
-#endif
-  return value;
-}
-
-Value Value::CreateList(const Value& value)
-{
-  Value res;
-  res.m_Type = Type::Object;
-  res.m_Data.m_Object = new GraceList(value);
-  res.m_Data.m_Object->IncreaseRef();
-#ifdef GRACE_DEBUG
-  ObjectTracker::TrackObject(res.m_Data.m_Object);
-#endif
-  return res;
-}
-
-Value Value::CreateList(const Value& value, std::int64_t repeats)
-{
-  Value res;
-  res.m_Type = Type::Object;
-  res.m_Data.m_Object = new GraceList(value, repeats);
-  res.m_Data.m_Object->IncreaseRef();
-#ifdef GRACE_DEBUG
-  ObjectTracker::TrackObject(res.m_Data.m_Object);
-#endif
-  return res;
-}
-
-Value Value::CreateException(const GraceException& e)
-{
-  Value res;
-  res.m_Type = Type::Object;
-  res.m_Data.m_Object = new GraceException(e);
-  res.m_Data.m_Object->IncreaseRef();
-#ifdef GRACE_DEBUG
-  ObjectTracker::TrackObject(res.m_Data.m_Object);
-#endif
-  return res;
 }

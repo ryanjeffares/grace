@@ -31,6 +31,9 @@ namespace Grace
 
   namespace VM
   {
+    template<class T>
+    concept DerivedGraceObject = std::is_base_of<GraceObject, T>::value;
+
     class Value final 
     {
     public:
@@ -82,13 +85,18 @@ namespace Grace
       Value(Value&& other) GRACE_NOEXCEPT;
       ~Value();
 
-      static Value CreateList();
-      static Value CreateList(std::vector<Value>&& items);
-      static Value CreateList(const GraceList& list, std::int64_t multiple);
-      static Value CreateList(const Value& value);
-      static Value CreateList(const Value& value, std::int64_t repeats);
-
-      static Value CreateException(const GraceException& e);
+      template<DerivedGraceObject T, typename... Args>
+      GRACE_NODISCARD static Value CreateObject(Args&&... args)
+      {
+        Value res;
+        res.m_Type = Type::Object;
+        res.m_Data.m_Object = new T(std::forward<Args>(args)...);
+        res.m_Data.m_Object->IncreaseRef();
+      #ifdef GRACE_DEBUG
+        ObjectTracker::TrackObject(res.m_Data.m_Object);
+      #endif
+        return res;
+      }
 
       constexpr Value& operator=(const Value& other)
       {
@@ -253,7 +261,7 @@ namespace Grace
 
     private:
 
-      Type m_Type;
+      Type m_Type{ Type::Null }; 
 
       union
       {
