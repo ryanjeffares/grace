@@ -1121,8 +1121,8 @@ void Compiler::TryStatement()
 
   // if we made it this far without the exception, pop locals...
   EmitConstant(numLocalsStart);
-  EmitOp(Ops::PopLocals, m_Previous.value().GetLine());
-
+  EmitOp(Ops::ExitTry, m_Previous.value().GetLine());
+  
   // then jump to after the catch block
   auto skipCatchConstJumpIdx = m_Vm.GetNumConstants();
   EmitConstant(std::int64_t{});
@@ -1135,7 +1135,8 @@ void Compiler::TryStatement()
   m_Vm.SetConstantAtIndex(catchConstJumpIdx, static_cast<std::int64_t>(m_Vm.GetNumConstants()));
 
   EmitConstant(numLocalsStart);
-  EmitOp(Ops::PopLocals, m_Previous.value().GetLine());
+  EmitOp(Ops::ExitTry, m_Previous.value().GetLine());
+
 
   if (!Match(TokenType::Identifier)) {
     MessageAtCurrent("Expected identifier after `catch`", LogLevel::Error);
@@ -1182,6 +1183,7 @@ void Compiler::TryStatement()
     }
   }
 
+  EmitConstant(true);
   EmitConstant(numLocalsStart);
   EmitOp(Ops::PopLocals, m_Previous.value().GetLine());
 

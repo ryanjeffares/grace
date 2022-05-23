@@ -1,6 +1,7 @@
 func recurse(i):
   if i > 100:
     throw("i is too big");
+    return;
   end
   recurse(i + 1);
 end

@@ -293,9 +293,7 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
             break;
           }
           auto targetNumLocals = m_FullConstantList[constantCurrent++].Get<std::int64_t>() + localsOffsets.top();
-          while (localsList.size() != targetNumLocals) {
-            localsList.pop_back();
-          }
+          localsList.resize(targetNumLocals);
           break;
         }
         case Ops::Print:
@@ -564,6 +562,13 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
           });
           break;
         }
+        case Ops::ExitTry: {
+          auto targetNumLocals = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+          localsList.resize(targetNumLocals);
+          vmStateStack.pop();
+          inTryBlock = !vmStateStack.empty();
+          break;
+        }
         case Ops::Throw: {
           auto message = m_FullConstantList[constantCurrent++].Get<std::string>();
           throw GraceException(GraceException::Type::ThrownException, std::move(message));
@@ -580,8 +585,6 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
       if (inTryBlock) {
         // jump to the catch block and put the exception on the stack to be assigned
         auto vmState = vmStateStack.top();
-        vmStateStack.pop();
-        inTryBlock = !vmStateStack.empty();
 
         // we need to "unwind" the call stack back to its state before we entered the try block...
         valueStack.resize(vmState.stackSize);

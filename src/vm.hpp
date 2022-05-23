@@ -56,6 +56,7 @@ namespace Grace
       EnterTry,
       Equal,
       Exit,
+      ExitTry,
       Greater,
       GreaterEqual,
       Jump,
@@ -237,6 +238,7 @@ struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
       case Ops::EnterTry: name = "Ops::EnterTry"; break;
       case Ops::Equal: name = "Ops::Equal"; break;
       case Ops::Exit: name = "Ops::Exit"; break;
+      case Ops::ExitTry: name = "Ops::ExitTry"; break;
       case Ops::Greater: name = "Ops::Greater"; break;
       case Ops::GreaterEqual: name = "Ops::GreaterEqual"; break;
       case Ops::Jump: name = "Ops::Jump"; break;
