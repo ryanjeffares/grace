@@ -1,4 +1,17 @@
+func recurse(i):
+  if i > 100:
+    throw("i is too big");
+  end
+  recurse(i + 1);
+end
+
 func main():
+  try:
+    recurse(1);
+  catch e:
+    println(e);
+  end
+
   for i in 0..10:
     println("hello! " + i);
   end

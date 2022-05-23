@@ -158,11 +158,9 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
   
   auto& mainFunc = m_FunctionList.at(funcNameHash);
 
-  std::vector<std::size_t> opOffsets, constantOffsets;
-  opOffsets.reserve(32);
-  opOffsets.push_back(mainFunc.m_OpIndexStart);
-  constantOffsets.reserve(32);
-  constantOffsets.push_back(mainFunc.m_ConstantIndexStart);
+  std::vector<std::pair<std::size_t, std::size_t>> opConstOffsets, constantOffsets;
+  opConstOffsets.reserve(32);
+  opConstOffsets.emplace_back(mainFunc.m_OpIndexStart, mainFunc.m_ConstantIndexStart);
 
   std::stack<std::size_t> localsOffsets;
   localsOffsets.push(0);
@@ -170,7 +168,15 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
   CallStack callStack;
   callStack.emplace_back(static_cast<std::int64_t>(m_Hasher("file")), funcNameHash, 1);
 
-  std::stack<std::pair<std::int64_t, std::int64_t>> tryBlockJumpIndexes;
+  // used to restore the "state" of the VM before entering a try block
+  // if an exception is caught
+  struct VMState
+  {
+    std::size_t stackSize{}, numLocals{}, callStackSize{}, opOffsetSize{}, localsOffsets{};
+    std::int64_t opIndexToJump{}, constIndexToJump{};
+  };
+
+  std::stack<VMState> vmStateStack;
 
   bool inTryBlock = false;
 
@@ -342,8 +348,7 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
 
           opCurrent = calleeFunc.m_OpIndexStart;
           constantCurrent = calleeFunc.m_ConstantIndexStart; 
-          opOffsets.push_back(opCurrent);
-          constantOffsets.push_back(constantCurrent);
+          opConstOffsets.emplace_back(opCurrent, constantCurrent);
           
           funcNameHash = calleeNameHash;
           break;
@@ -381,9 +386,10 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
         }
         case Ops::Jump: {
           auto constIdx = m_FullConstantList[constantCurrent++].Get<std::int64_t>(); 
-          auto opIdx = m_FullConstantList[constantCurrent++].Get<std::int64_t>(); 
-          opCurrent = opIdx + opOffsets.back();
-          constantCurrent = constIdx + constantOffsets.back();
+          auto opIdx = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+          auto [opOffset, constOffset] = opConstOffsets.back();
+          opCurrent = opIdx + opOffset;
+          constantCurrent = constIdx + constOffset;
           break;
         }
         case Ops::JumpIfFalse: {
@@ -391,8 +397,9 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
           auto opIdx = m_FullConstantList[constantCurrent++].Get<std::int64_t>(); 
           auto condition = Pop(valueStack);
           if (!condition.AsBool()) {
-            opCurrent = opIdx + opOffsets.back();
-            constantCurrent = constIdx + constantOffsets.back();
+            auto [opOffset, constOffset] = opConstOffsets.back();
+            opCurrent = opIdx + opOffset;
+            constantCurrent = constIdx + constOffset;
           }
           break;
         }
@@ -411,7 +418,7 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
 
           valueStack.emplace_back(std::move(returnValue));
           localsOffsets.pop();
-          opOffsets.pop_back();
+          opConstOffsets.pop_back();
           constantOffsets.pop_back();
 
 #ifdef GRACE_DEBUG
@@ -546,7 +553,15 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
           inTryBlock = true;
           auto opIdx = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
           auto constIdx = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
-          tryBlockJumpIndexes.emplace(opIdx, constIdx);
+          vmStateStack.push({
+            valueStack.size(),
+            localsList.size(),
+            callStack.size(),
+            opConstOffsets.size(),
+            localsOffsets.size(),
+            opIdx,
+            constIdx
+          });
           break;
         }
         case Ops::Throw: {
@@ -564,12 +579,26 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
     } catch(const GraceException& ge) {
       if (inTryBlock) {
         // jump to the catch block and put the exception on the stack to be assigned
-        auto [opIdx, constIdx] = tryBlockJumpIndexes.top();
-        tryBlockJumpIndexes.pop();
-        inTryBlock = !tryBlockJumpIndexes.empty();
+        auto vmState = vmStateStack.top();
+        vmStateStack.pop();
+        inTryBlock = !vmStateStack.empty();
 
-        opCurrent = opIdx + opOffsets.back();
-        constantCurrent = constIdx + constantOffsets.back();
+        // we need to "unwind" the call stack back to its state before we entered the try block...
+        valueStack.resize(vmState.stackSize);
+        localsList.resize(vmState.numLocals);
+        callStack.resize(vmState.callStackSize);
+        opConstOffsets.resize(vmState.opOffsetSize);
+
+        while (localsOffsets.size() != vmState.localsOffsets) {
+          localsOffsets.pop();
+        }
+
+        auto [opOffset, constOffset] = opConstOffsets.back();
+        opCurrent = vmState.opIndexToJump + opOffset;
+        constantCurrent = vmState.constIndexToJump + constOffset;
+
+        funcNameHash = std::get<1>(callStack.back());
+
         valueStack.push_back(Value::CreateObject<GraceException>(ge));
       } else {
         // exception unhandled, report the error and quit
