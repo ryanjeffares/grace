@@ -511,7 +511,7 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
           auto numItems = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
           std::vector<Value> result(numItems);
           for (auto i = 0; i < numItems; i++) {
-            result[i] = Pop(valueStack);
+            result[numItems - i - 1] = Pop(valueStack);
           }
           valueStack.push_back(Value::CreateObject<GraceList>(std::move(result)));
           break;
@@ -529,10 +529,12 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
         case Ops::Assert: {
           auto condition = Pop(valueStack);
           if (!condition.AsBool()) {
-            throw GraceException(
-              GraceException::Type::AssertionFailed,
-              "assertion failed"
-            );            
+            RuntimeError(GraceException(
+              GraceException::Type::AssertionFailed, "assertion failed"),
+              line,
+              callStack
+            );
+            goto exit;       
           }
           break;
         }
@@ -540,10 +542,12 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
           auto condition = Pop(valueStack);
           auto message = m_FullConstantList[constantCurrent++].Get<std::string>();
           if (!condition.AsBool()) {
-            throw GraceException(
-              GraceException::Type::AssertionFailed,
-              fmt::format("assertion failed: {}", message)
-            );            
+            RuntimeError(GraceException(
+              GraceException::Type::AssertionFailed, fmt::format("assertion failed: {}", message)),
+              line,
+              callStack
+            );
+            goto exit;
           }
           break;
         }
