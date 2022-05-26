@@ -38,10 +38,10 @@ func main():
   final str_as_chars = list(str);
   println(str_as_chars);
 
-  final list_repeat = ["hello"; 10];
-  println(list_repeat);
+  final list_range = [0..10 by 2];
+  println(list_range);
 
-  if instanceof(list_repeat, list):
+  if instanceof(list_range, list):
     println("local variable is indeed, a list");
   end
 end

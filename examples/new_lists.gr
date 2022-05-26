@@ -1,3 +1,6 @@
+func make_list():
+  return [];
+end
 
 func get_min():
   return 0;
@@ -9,7 +12,10 @@ func main():
   var inc = 0.2;
 
   final ls = [get_min()..max by get_min() + 0.5];
+  
+  make_list();
 
+  ls;
   println(ls);
 
   //for i in ls:

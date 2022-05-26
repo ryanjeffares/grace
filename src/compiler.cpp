@@ -151,6 +151,7 @@ VM::InterpretResult Grace::Compiler::Compile(std::string&& fileName, std::string
   
   compiler.warningsError = warningsError;
   compiler.verbose = verbose;
+  compiler.codeContextStack.emplace_back(CodeContext::TopLevel);
   
   Advance(compiler);
   
@@ -499,9 +500,10 @@ static void VarDeclaration(CompilerContext& compiler)
   EmitOp(VM::Ops::DeclareLocal, line);
 
   if (Match(Scanner::TokenType::Equal, compiler)) {
+    auto prevUsing = compiler.usingExpressionResult;
     compiler.usingExpressionResult = true;
     Expression(false, compiler);
-    compiler.usingExpressionResult = false;
+    compiler.usingExpressionResult = prevUsing;
     line = compiler.previous.value().GetLine();
     EmitConstant(localId);
     EmitOp(VM::Ops::AssignLocal, line);
@@ -532,9 +534,10 @@ static void FinalDeclaration(CompilerContext& compiler)
   EmitOp(VM::Ops::DeclareLocal, line);
 
   Consume(Scanner::TokenType::Equal, "Must assign to `final` upon declaration", compiler);
+  auto prevUsing = compiler.usingExpressionResult;
   compiler.usingExpressionResult = true;
   Expression(false, compiler);
-  compiler.usingExpressionResult = false;
+  compiler.usingExpressionResult = prevUsing;
   line = compiler.previous.value().GetLine();
   EmitConstant(localId);
   EmitOp(VM::Ops::AssignLocal, line);
@@ -584,9 +587,10 @@ static void Expression(bool canAssign, CompilerContext& compiler)
         return;
       }
 
+      auto prevUsing = compiler.usingExpressionResult;
       compiler.usingExpressionResult = true;
-      Expression(false, compiler); // disallow x = y = z., compiler..
-      compiler.usingExpressionResult = false;
+      Expression(false, compiler); // disallow x = y = z...
+      compiler.usingExpressionResult = prevUsing;
 
       int line = compiler.previous.value().GetLine();
       EmitConstant(it->index);
@@ -703,9 +707,10 @@ static void AssertStatement(CompilerContext& compiler)
   auto line = compiler.previous.value().GetLine();
 
   Consume(Scanner::TokenType::LeftParen, "Expected '(' after `assert`", compiler);
+  auto prevUsing = compiler.usingExpressionResult;
   compiler.usingExpressionResult = true; 
   Expression(false, compiler);
-  compiler.usingExpressionResult = false; 
+  compiler.usingExpressionResult = prevUsing;
 
   if (Match(Scanner::TokenType::Comma, compiler)) {
     Consume(Scanner::TokenType::String, "Expected message", compiler);
@@ -1032,9 +1037,10 @@ static void IfStatement(CompilerContext& compiler)
 {
   compiler.codeContextStack.emplace_back(CodeContext::If);
 
+  auto prevUsing = compiler.usingExpressionResult;
   compiler.usingExpressionResult = true;
   Expression(false, compiler);
-  compiler.usingExpressionResult = false;
+  compiler.usingExpressionResult = prevUsing;
   Consume(Scanner::TokenType::Colon, "Expected ':' after condition", compiler);
   
   // store indexes of constant and instruction indexes to jump
@@ -1141,9 +1147,10 @@ static void PrintStatement(CompilerContext& compiler)
   if (Match(Scanner::TokenType::RightParen, compiler)) {
     EmitOp(VM::Ops::PrintTab, compiler.current.value().GetLine());
   } else {
+    auto prevUsing = compiler.usingExpressionResult;
     compiler.usingExpressionResult = true;
     Expression(false, compiler);
-    compiler.usingExpressionResult = false;
+    compiler.usingExpressionResult = prevUsing;
     EmitOp(VM::Ops::Print, compiler.current.value().GetLine());
     EmitOp(VM::Ops::Pop, compiler.current.value().GetLine());
     Consume(Scanner::TokenType::RightParen, "Expected ')' after expression", compiler);
@@ -1157,9 +1164,10 @@ static void PrintLnStatement(CompilerContext& compiler)
   if (Match(Scanner::TokenType::RightParen, compiler)) {
     EmitOp(VM::Ops::PrintEmptyLine, compiler.current.value().GetLine());
   } else {
+    auto prevUsing = compiler.usingExpressionResult;
     compiler.usingExpressionResult = true;
     Expression(false, compiler);
-    compiler.usingExpressionResult = false;
+    compiler.usingExpressionResult = prevUsing;
     EmitOp(VM::Ops::PrintLn, compiler.current.value().GetLine());
     EmitOp(VM::Ops::Pop, compiler.current.value().GetLine());
     Consume(Scanner::TokenType::RightParen, "Expected ')' after expression", compiler);
@@ -1193,9 +1201,10 @@ static void ReturnStatement(CompilerContext& compiler)
     return;
   }
 
+  auto prevUsing = compiler.usingExpressionResult;
   compiler.usingExpressionResult = true;
   Expression(false, compiler);
-  compiler.usingExpressionResult = false;
+  compiler.usingExpressionResult = prevUsing;
   EmitOp(VM::Ops::Return, compiler.previous.value().GetLine());
   Consume(Scanner::TokenType::Semicolon, "Expected ';' after expression", compiler);
   compiler.functionHadReturn = true;
@@ -1328,9 +1337,10 @@ static void WhileStatement(CompilerContext& compiler)
   auto constantIdx = static_cast<std::int64_t>(VM::VM::GetInstance().GetNumConstants());
   auto opIdx = static_cast<std::int64_t>(VM::VM::GetInstance().GetNumOps());
 
+  auto prevUsing = compiler.usingExpressionResult;
   compiler.usingExpressionResult = true;
   Expression(false, compiler);
-  compiler.usingExpressionResult = false;
+  compiler.usingExpressionResult = prevUsing;
 
   auto line = compiler.previous.value().GetLine();
 
@@ -1557,8 +1567,11 @@ static void Call(bool canAssign, CompilerContext& compiler)
 
       std::int64_t numArgs = 0;
       if (!Match(Scanner::TokenType::RightParen, compiler)) {
-        while (true) {        
+        while (true) {
+          auto prev = compiler.usingExpressionResult;
+          compiler.usingExpressionResult = true;      
           Expression(false, compiler);
+          compiler.usingExpressionResult = prev;
           numArgs++;
           if (Match(Scanner::TokenType::RightParen, compiler)) {
             break;
@@ -1600,8 +1613,13 @@ static void Call(bool canAssign, CompilerContext& compiler)
           MessageAtPrevious(fmt::format("Cannot find variable '{}' in this scope", prevText), LogLevel::Error, compiler);
           return;
         }
-        EmitConstant(it->index);
-        EmitOp(VM::Ops::LoadLocal, prev.GetLine());
+        if (compiler.usingExpressionResult) {
+          EmitConstant(it->index);
+          EmitOp(VM::Ops::LoadLocal, prev.GetLine());
+        } else {
+          MessageAtPrevious("Expected expression", LogLevel::Error, compiler);
+          return;
+        }
       }
     }
   }
@@ -1822,7 +1840,7 @@ static void Cast(CompilerContext& compiler)
 
 static void List(CompilerContext& compiler)
 {
-  bool singleItemParsed = false;
+  bool singleItemParsed = false, parsedRangeExpression = false;
   std::int64_t numItems = 0;
 
   while (true) {
@@ -1854,6 +1872,8 @@ static void List(CompilerContext& compiler)
         return;
       }
 
+      parsedRangeExpression = true;
+
       break;
     } else {
       singleItemParsed = true;
@@ -1868,79 +1888,18 @@ static void List(CompilerContext& compiler)
   }
 
   auto line = compiler.previous.value().GetLine();
-  if (singleItemParsed) {
-    if (numItems > 0) {
-      EmitConstant(numItems);
-      EmitOp(VM::Ops::CreateList, line);
+
+  if (numItems == 0) {
+    if (parsedRangeExpression) {
+      EmitOp(VM::Ops::CreateRangeList, line);
     } else {
       EmitOp(VM::Ops::CreateEmptyList, line);
     }
   } else {
-    EmitOp(VM::Ops::CreateRangeList, line);
+    EmitConstant(numItems);
+    EmitOp(VM::Ops::CreateList, line); 
   }
 }
-
-/*static void List(CompilerContext& compiler)
-{
-  bool singleItemParsed = false, repeatItemParsed = false;
-  std::int64_t numItems = 0;
-  while (true) {
-    if (Match(Scanner::TokenType::RightSquareParen, compiler)) {
-      break;
-    }
-
-    Expression(false, compiler);
-
-    if (Match(Scanner::TokenType::Semicolon, compiler)) {
-      if (Match(Scanner::TokenType::Integer, compiler)) {
-        if (singleItemParsed) {
-          MessageAtPrevious("Cannot mix repeated items and single items in list declaration", LogLevel::Error, compiler);
-          return;
-        }
-        if (repeatItemParsed) {
-          MessageAtPrevious("Cannot have multiple repeated items in list declaration", LogLevel::Error, compiler);
-          return;
-        }
-
-        std::int64_t value;
-        auto res = TryParseInt(compiler.previous.value(), value);
-        if (res.has_value()) {
-          MessageAtPrevious(fmt::format("Error parsing integer: {}", res.value()), LogLevel::Error, compiler);
-          return;
-        }
-        numItems += value;
-        repeatItemParsed = true;
-      } else {
-        MessageAtCurrent("Expected integer for list item repetition", LogLevel::Error, compiler);
-        return;
-      }
-    } else {
-      if (repeatItemParsed) {
-        MessageAtPrevious("Cannot mix repeated items and single items in list declaration", LogLevel::Error, compiler);
-        return;
-      }
-      numItems++;
-      singleItemParsed = true;
-    }
-    
-    if (Match(Scanner::TokenType::RightSquareParen, compiler)) {
-      break;
-    }
-
-    Consume(Scanner::TokenType::Comma, "Expected ',' between list items", compiler);
-  }
-
-  if (numItems > 0) {
-    EmitConstant(numItems);
-    if (repeatItemParsed) {
-      EmitOp(VM::Ops::CreateRepeatingList, compiler.previous.value().GetLine());
-    } else {
-      EmitOp(VM::Ops::CreateList, compiler.previous.value().GetLine());
-    }
-  } else {
-    EmitOp(VM::Ops::CreateEmptyList, compiler.previous.value().GetLine());
-  }
-}*/
 
 static void MessageAtCurrent(const std::string& message, LogLevel level, CompilerContext& compiler)
 {
