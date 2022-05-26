@@ -87,43 +87,23 @@ namespace Grace::VM
   class VM
   {
     public:
-
-      // Caller, Callee, Line
-      typedef std::vector<std::tuple<std::int64_t, std::int64_t, int>> CallStack;
-
-      struct OpLine
-      {
-        Ops m_Op;
-        int m_Line;
-
-        OpLine(Ops op, int line) 
-          : m_Op(op), m_Line(line)
-        {
-
-        }
-      };
-
-      struct Function 
-      {
-        std::string m_Name;
-        std::int64_t m_NameHash;
-        int m_Line, m_Arity;
-
-        std::vector<OpLine> m_OpList;
-        std::vector<Value> m_ConstantList;
-
-        std::size_t m_OpIndexStart = 0, m_ConstantIndexStart = 0;
-
-        Function(std::string&& name, std::int64_t nameHash, int arity, int line)
-          : m_Name(std::move(name)), m_NameHash(nameHash), m_Line(line), m_Arity(arity)
-        {
-
-        }
-      };
       
-      VM();
       VM(const VM&) = delete;
       VM(VM&&) = delete;
+      VM& operator=(const VM&) = delete;
+      VM& operator=(VM&&) = delete;
+    
+    protected:
+
+      VM();
+
+    public:
+
+      GRACE_NODISCARD GRACE_INLINE static VM& GetInstance()
+      {
+        static VM vm;
+        return vm;
+      }
 
       GRACE_INLINE void PushOp(Ops op, int line)
       {
@@ -173,7 +153,7 @@ namespace Grace::VM
       GRACE_INLINE std::tuple<bool, std::size_t> HasNativeFunction(const std::string& name)
       {
         auto it = std::find_if(m_NativeFunctions.begin(), m_NativeFunctions.end(), 
-            [name](const Native::NativeFunction& fn) { return fn.GetName() == name;});
+            [&name](const Native::NativeFunction& fn) { return fn.GetName() == name;});
         if (it == m_NativeFunctions.end()) {
           return {false, 0};
         }
@@ -185,11 +165,43 @@ namespace Grace::VM
 
     private:
 
+      using CallStack = std::vector<std::tuple<std::int64_t, std::int64_t, int>>;
+
       void RegisterNatives();
       InterpretResult Run(bool verbose);
       void RuntimeError(const GraceException& exception, int line, const CallStack& callStack);
 
     private:
+
+      struct OpLine
+      {
+        Ops m_Op;
+        int m_Line;
+
+        OpLine(Ops op, int line) 
+          : m_Op(op), m_Line(line)
+        {
+
+        }
+      };
+
+      struct Function 
+      {
+        std::string m_Name;
+        std::int64_t m_NameHash;
+        int m_Line, m_Arity;
+
+        std::vector<OpLine> m_OpList;
+        std::vector<Value> m_ConstantList;
+
+        std::size_t m_OpIndexStart = 0, m_ConstantIndexStart = 0;
+
+        Function(std::string&& name, std::int64_t nameHash, int arity, int line)
+          : m_Name(std::move(name)), m_NameHash(nameHash), m_Line(line), m_Arity(arity)
+        {
+
+        }
+      };
 
       std::unordered_map<std::int64_t, Function> m_FunctionList;
       std::vector<Native::NativeFunction> m_NativeFunctions;
