@@ -22,7 +22,7 @@ static bool s_UsingExpressionResult = false;
 static bool s_Verbose = false;
 static bool s_WarningsError = false;
 
-void Grace::Compiler::Compile(std::string&& fileName, std::string&& code, bool verbose, bool warningsError)
+InterpretResult Grace::Compiler::Compile(std::string&& fileName, std::string&& code, bool verbose, bool warningsError)
 {
   using namespace std::chrono;
 
@@ -55,8 +55,10 @@ void Grace::Compiler::Compile(std::string&& fileName, std::string&& code, bool v
         fmt::print("Compilation succeeded in {} μs.\n", duration);
       }
     }
-    compiler.Finalise();
+    return compiler.Finalise();
   }
+
+  return InterpretResult::RuntimeError;
 }
 
 using namespace Grace::Compiler;
@@ -68,7 +70,7 @@ Compiler::Compiler(std::string&& fileName, std::string&& code)
   m_ContextStack.emplace_back(Context::TopLevel);
 }
 
-void Compiler::Finalise()
+InterpretResult Compiler::Finalise()
 {
 #ifdef GRACE_DEBUG
   if (s_Verbose) {
@@ -76,8 +78,9 @@ void Compiler::Finalise()
   }
 #endif
   if (m_Vm.CombineFunctions(s_Verbose)) {
-    m_Vm.Start(s_Verbose);
+    return m_Vm.Start(s_Verbose);
   }
+  return InterpretResult::RuntimeError;
 }
 
 void Compiler::Advance()
@@ -518,6 +521,7 @@ void Compiler::Expression(bool canAssign)
           case TokenType::Colon:
           case TokenType::LeftSquareParen:
           case TokenType::RightSquareParen:
+          case TokenType::DotDot:
             shouldBreak = true;
             break;
           default:
@@ -532,7 +536,7 @@ void Compiler::Expression(bool canAssign)
   }
 }
 
-std::optional<std::string> TryParseInt(const Token& token, std::int64_t& result)
+static std::optional<std::string> TryParseInt(const Token& token, std::int64_t& result)
 {
   auto [ptr, ec] = std::from_chars(token.GetData(), token.GetData() + token.GetLength(), result);
   if (ec == std::errc()) {
@@ -548,7 +552,7 @@ std::optional<std::string> TryParseInt(const Token& token, std::int64_t& result)
   return "Unexpected error parsing int";
 }
 
-std::optional<std::exception> TryParseDouble(const Token& token, double& result)
+static std::optional<std::exception> TryParseDouble(const Token& token, double& result)
 {
   try {
     std::string str(token.GetText());

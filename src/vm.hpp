@@ -87,9 +87,8 @@ namespace Grace
 
     enum class InterpretResult
     {
-      RuntimeAssertionFailed,
-      RuntimeError,
       RuntimeOk,
+      RuntimeError,
     };
 
     class VM
@@ -189,7 +188,7 @@ namespace Grace
         }
 
         bool CombineFunctions(bool verbose);
-        void Start(bool verbose);
+        InterpretResult Start(bool verbose);
 
       private:
 

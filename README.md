@@ -43,6 +43,8 @@ python3 build.py <Release/Debug>
 This will build the `grace` executable, which you can add to your path or move somewhere that is on your path. Full installation process as well as documentation is WIP.
 
 ## Alpha Release Roadmap
+* Make for loops only use a variable name or list literal
+  * Enhacen list syntax
 * Exception system
   * Nearly there - account for exceptions being thrown in a function and returning control to the caller
 * Experiment with string interning

@@ -121,7 +121,7 @@ bool VM::CombineFunctions(GRACE_MAYBE_UNUSED bool verbose)
   return true;
 }
 
-void VM::Start(bool verbose)
+InterpretResult VM::Start(bool verbose)
 {
   using namespace std::chrono;
   auto start = steady_clock::now();
@@ -137,6 +137,7 @@ void VM::Start(bool verbose)
       }
     }
   }
+  return res;
 }
 
 InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
