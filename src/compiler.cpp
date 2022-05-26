@@ -628,6 +628,7 @@ static void Expression(bool canAssign, CompilerContext& compiler)
           case Scanner::TokenType::LeftSquareParen:
           case Scanner::TokenType::RightSquareParen:
           case Scanner::TokenType::DotDot:
+          case Scanner::TokenType::By:
             shouldBreak = true;
             break;
           default:
@@ -1821,6 +1822,66 @@ static void Cast(CompilerContext& compiler)
 
 static void List(CompilerContext& compiler)
 {
+  bool singleItemParsed = false;
+  std::int64_t numItems = 0;
+
+  while (true) {
+    if (Match(Scanner::TokenType::RightSquareParen, compiler)) {
+      break;
+    }
+
+    Expression(false, compiler);
+
+    if (Match(Scanner::TokenType::DotDot, compiler)){
+      if (singleItemParsed) {
+        MessageAtPrevious("Cannot mix single items and range expressions in list declaration", LogLevel::Error, compiler);
+        return;
+      }
+
+      // max
+      Expression(false, compiler);
+
+      // check for custom increment
+      if (Match(Scanner::TokenType::By, compiler)) {
+        Expression(false, compiler);
+      } else {
+        EmitConstant(std::int64_t{1});
+        EmitOp(VM::Ops::LoadConstant, compiler.previous.value().GetLine());
+      }
+
+      if (!Match(Scanner::TokenType::RightSquareParen, compiler)) {
+        MessageAtCurrent("Expected `]` after range expression", LogLevel::Error, compiler);
+        return;
+      }
+
+      break;
+    } else {
+      singleItemParsed = true;
+      numItems++;
+    }
+
+    if (Match(Scanner::TokenType::RightSquareParen, compiler)) {
+      break;
+    }
+
+    Consume(Scanner::TokenType::Comma, "Expected `,` between list items", compiler);
+  }
+
+  auto line = compiler.previous.value().GetLine();
+  if (singleItemParsed) {
+    if (numItems > 0) {
+      EmitConstant(numItems);
+      EmitOp(VM::Ops::CreateList, line);
+    } else {
+      EmitOp(VM::Ops::CreateEmptyList, line);
+    }
+  } else {
+    EmitOp(VM::Ops::CreateRangeList, line);
+  }
+}
+
+/*static void List(CompilerContext& compiler)
+{
   bool singleItemParsed = false, repeatItemParsed = false;
   std::int64_t numItems = 0;
   while (true) {
@@ -1879,7 +1940,7 @@ static void List(CompilerContext& compiler)
   } else {
     EmitOp(VM::Ops::CreateEmptyList, compiler.previous.value().GetLine());
   }
-}
+}*/
 
 static void MessageAtCurrent(const std::string& message, LogLevel level, CompilerContext& compiler)
 {

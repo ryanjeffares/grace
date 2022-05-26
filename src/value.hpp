@@ -217,6 +217,11 @@ namespace Grace
       void Print() const;
       void DebugPrint() const;
 
+      GRACE_NODISCARD GRACE_INLINE bool IsNumber() const
+      {
+        return m_Type == Type::Int || m_Type == Type::Double;
+      }
+
       GRACE_NODISCARD std::string AsString() const;
       GRACE_NODISCARD bool AsBool() const;
       GRACE_NODISCARD std::tuple<bool, std::optional<std::string>> AsInt(std::int64_t& result) const;

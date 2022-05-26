@@ -521,10 +521,40 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
           valueStack.push_back(Value::CreateObject<GraceList>());
           break;
         }
-        case Ops::CreateRepeatingList: {
-          auto numItems = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
-          auto value = Pop(valueStack);
-          valueStack.push_back(Value::CreateObject<GraceList>(value, numItems));
+        // case Ops::CreateRepeatingList: {
+        //   auto numItems = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+        //   auto value = Pop(valueStack);
+        //   valueStack.push_back(Value::CreateObject<GraceList>(value, numItems));
+        //   break;
+        // }
+        case Ops::CreateRangeList: {
+          auto increment = Pop(valueStack);
+          auto max = Pop(valueStack);
+          auto min = Pop(valueStack);
+
+          if (!min.IsNumber()) {
+            throw GraceException(
+              GraceException::Type::InvalidType,
+              fmt::format("All values in range expression must be numbers, got: {}", min.GetType())
+            );
+          }
+
+          if (!max.IsNumber()) {
+            throw GraceException(
+              GraceException::Type::InvalidType,
+              fmt::format("All values in range expression must be numbers, got: {}", max.GetType())
+            );
+          }
+
+          if (!increment.IsNumber()) {
+            throw GraceException(
+              GraceException::Type::InvalidType,
+              fmt::format("All values in range expression must be numbers, got: {}", increment.GetType())
+            );
+          }
+
+          valueStack.push_back(Value::CreateObject<GraceList>(min, max, increment));
+
           break;
         }
         case Ops::Assert: {

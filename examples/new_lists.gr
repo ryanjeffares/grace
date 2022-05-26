@@ -1,0 +1,22 @@
+
+func get_min():
+  return 0;
+end
+
+func main():
+  
+  var max = 10;
+  var inc = 0.2;
+
+  final ls = [get_min()..max by get_min() + 0.5];
+
+  println(ls);
+
+  //for i in ls:
+  //end
+
+  //for i in [10..100 by 10]:
+
+  //end
+
+end

@@ -27,6 +27,7 @@ namespace Grace
       explicit GraceList(std::vector<VM::Value>&& items);
       GraceList(const VM::Value&, std::int64_t repeats);
       GraceList(const GraceList& other, std::int64_t multiple);
+      GraceList(const VM::Value& min, const VM::Value& max, const VM::Value& increment);
 
       GRACE_INLINE void Append(const VM::Value& value)
       {

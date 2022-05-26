@@ -46,6 +46,29 @@ GraceList::GraceList(const GraceList& other, std::int64_t multiple)
   }
 }
 
+GraceList::GraceList(const Value& min, const Value& max, const Value& increment)
+{
+  auto useDouble = false;
+  if (min.GetType() == Value::Type::Double || max.GetType() == Value::Type::Double
+    || increment.GetType() == Value::Type::Double) {
+    useDouble = true;
+  }
+
+  if (useDouble) {
+    auto minVal = min.GetType() == Value::Type::Double ? min.Get<double>() : static_cast<double>(min.Get<std::int64_t>());
+    auto maxVal = max.GetType() == Value::Type::Double ? max.Get<double>() : static_cast<double>(max.Get<std::int64_t>());
+    auto incVal = increment.GetType() == Value::Type::Double ? increment.Get<double>() : static_cast<double>(increment.Get<std::int64_t>());
+
+    for (auto i = minVal; i < maxVal; i += incVal) {
+      m_Data.emplace_back(i);
+    }
+  } else {
+    for (auto i = min.Get<std::int64_t>(); i < max.Get<std::int64_t>(); i += increment.Get<std::int64_t>()) {
+      m_Data.emplace_back(i);
+    }
+  }
+}
+
 void GraceList::Append(const std::vector<Value>& items)
 {
   m_Data.reserve(items.size());

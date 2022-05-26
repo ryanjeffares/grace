@@ -41,7 +41,7 @@ namespace Grace::VM
     Cast,
     CheckType,
     CreateList,
-    CreateRepeatingList,
+    CreateRangeList,
     CreateEmptyList,
     DeclareLocal,
     Divide,
@@ -233,7 +233,7 @@ struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
       case Ops::Cast: name = "Ops::Cast"; break;
       case Ops::CheckType: name = "Ops::CheckType"; break;
       case Ops::CreateList: name = "Ops::CreateList"; break;
-      case Ops::CreateRepeatingList: name = "Ops::CreateRepeatingList"; break;
+      case Ops::CreateRangeList: name = "Ops::CreateRangeList"; break;
       case Ops::CreateEmptyList: name = "Ops::CreateEmptyList"; break;
       case Ops::DeclareLocal: name = "Ops::DeclareLocal"; break;
       case Ops::Divide: name = "Ops::Divide"; break;
