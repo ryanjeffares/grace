@@ -148,7 +148,7 @@ namespace Grace::VM
         return m_FunctionList.at(m_LastFunctionHash).m_Name;
       }
 
-      bool AddFunction(std::string&& name, int line, int arity);
+      GRACE_NODISCARD bool AddFunction(std::string&& name, int line, int arity);
 
       GRACE_INLINE std::tuple<bool, std::size_t> HasNativeFunction(const std::string& name)
       {
@@ -160,15 +160,15 @@ namespace Grace::VM
         return {true, it - m_NativeFunctions.begin()};
       }
 
-      bool CombineFunctions(bool verbose);
-      InterpretResult Start(bool verbose);
+      GRACE_NODISCARD bool CombineFunctions(bool verbose);
+      GRACE_NODISCARD InterpretResult Start(bool verbose);
 
     private:
 
       using CallStack = std::vector<std::tuple<std::int64_t, std::int64_t, int>>;
 
       void RegisterNatives();
-      InterpretResult Run(bool verbose);
+      GRACE_NODISCARD InterpretResult Run(bool verbose);
       void RuntimeError(const GraceException& exception, int line, const CallStack& callStack);
 
     private:
