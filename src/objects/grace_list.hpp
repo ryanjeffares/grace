@@ -84,11 +84,23 @@ namespace Grace
       
       GRACE_INLINE VM::Value& operator[](std::size_t index)
       {
+        if (index >= m_Data.size()) {
+          throw GraceException(
+            GraceException::Type::IndexOutOfRange,
+            fmt::format("Given index is {} but the length of the List is {}", index, m_Data.size())
+          );
+        }
         return m_Data[index];
       }
 
       GRACE_INLINE const VM::Value& operator[](std::size_t index) const
       {
+        if (index >= m_Data.size()) {
+          throw GraceException(
+            GraceException::Type::IndexOutOfRange,
+            fmt::format("Given index is {} but the length of the List is {}", index, m_Data.size())
+          );
+        }
         return m_Data[index];
       }
 

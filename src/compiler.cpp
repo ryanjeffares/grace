@@ -1148,6 +1148,9 @@ static void TryStatement(CompilerContext& compiler)
     return;
   }
 
+  while (compiler.locals.size() != static_cast<std::size_t>(numLocalsStart)) {
+    compiler.locals.pop_back();
+  }
   numLocalsStart = compiler.locals.size();
 
   auto exceptionVarName = std::string(compiler.previous.value().GetText());

@@ -35,6 +35,7 @@ namespace Grace
         AssertionFailed,
         FunctionNotFound,
         IncorrectArgCount,
+        IndexOutOfRange,
         InvalidArgument,
         InvalidCast,
         InvalidIterator,
@@ -99,6 +100,7 @@ struct fmt::formatter<Grace::GraceException::Type> : fmt::formatter<std::string_
       case GraceException::Type::AssertionFailed: name = "AssertionFailed"; break;
       case GraceException::Type::FunctionNotFound: name = "FunctionNotFound"; break;
       case GraceException::Type::IncorrectArgCount: name = "IncorrectArgCount"; break;
+      case GraceException::Type::IndexOutOfRange: name = "IndexOutOfRange"; break;
       case GraceException::Type::InvalidArgument: name = "InvalidArgument"; break;
       case GraceException::Type::InvalidCast: name = "InvalidCast"; break;
       case GraceException::Type::InvalidIterator: name = "InvalidIterator"; break;
