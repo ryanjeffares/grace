@@ -32,6 +32,7 @@ namespace Grace::VM
         IncorrectArgCount,
         InvalidArgument,
         InvalidCast,
+        InvalidIterator,
         InvalidOperand,
         InvalidType,
         ThrownException,
@@ -68,8 +69,10 @@ namespace Grace::VM
       void DebugPrint() const override;
       void Print() const override;
       void PrintLn() const override;
-      std::string ToString() const override;
-      bool AsBool() const override;
+      GRACE_NODISCARD std::string ToString() const override;
+      GRACE_NODISCARD bool AsBool() const override;
+      GRACE_NODISCARD bool IsIteratable() const override;
+      GRACE_NODISCARD std::string ObjectName() const override;
 
     private:
       Type m_Type;
@@ -93,6 +96,7 @@ struct fmt::formatter<Grace::VM::GraceException::Type> : fmt::formatter<std::str
       case GraceException::Type::IncorrectArgCount: name = "IncorrectArgCount"; break;
       case GraceException::Type::InvalidArgument: name = "InvalidArgument"; break;
       case GraceException::Type::InvalidCast: name = "InvalidCast"; break;
+      case GraceException::Type::InvalidIterator: name = "InvalidIterator"; break;
       case GraceException::Type::InvalidOperand: name = "InvalidOperand"; break;
       case GraceException::Type::InvalidType: name = "InvalidType"; break;
       case GraceException::Type::ThrownException: name = "ThrownException"; break;

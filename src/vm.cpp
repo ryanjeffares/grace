@@ -24,6 +24,7 @@
 
 #include "scanner.hpp"
 #include "vm.hpp"
+#include "objects/grace_iterator.hpp"
 #include "objects/grace_list.hpp"
 #include "objects/object_tracker.hpp"
 
@@ -273,6 +274,23 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
           valueStack.push_back(!c);
           break;
         }
+        case Ops::Deref: {
+          auto value = Pop(valueStack);
+          if (value.GetType() == Value::Type::Object) {
+            if (auto it = dynamic_cast<GraceIterator*>(value.GetObject())) {
+              valueStack.push_back(it->GetValue());
+              break;
+            }
+            throw GraceException(
+              GraceException::Type::InvalidType,
+              fmt::format("Cannot dereference {}", value.GetObject()->ObjectName())
+            );
+          }
+          throw GraceException(
+            GraceException::Type::InvalidType,
+            fmt::format("Cannot dereference {}", value.GetTypeName())
+          );
+        }
         case Ops::LoadConstant:
           valueStack.push_back(m_FullConstantList[constantCurrent++]);
           break;
@@ -383,6 +401,24 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
           localsList.emplace_back();
           break;
         }
+        case Ops::AssignIteratorBegin: {
+          auto collection = Pop(valueStack);
+          auto iteratorId = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+          if (collection.GetType() != Value::Type::Object) {
+            throw GraceException(
+              GraceException::Type::InvalidType,
+              fmt::format("{} is not iterable", collection.GetTypeName())
+            );
+          }
+          localsList[iteratorId + localsOffsets.top()] = Value::CreateObject<GraceIterator>(collection.GetObject());
+          break;
+        }
+        case Ops::IncrementIterator: {
+          auto iteratorId = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+          auto& iterator = localsList[iteratorId + localsOffsets.top()];
+          dynamic_cast<GraceIterator*>(iterator.GetObject())->Increment();
+          break;
+        }
         case Ops::Jump: {
           auto constIdx = m_FullConstantList[constantCurrent++].Get<std::int64_t>(); 
           auto opIdx = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
@@ -437,7 +473,7 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
               } else {                
                 throw GraceException(
                   GraceException::Type::InvalidCast,
-                  fmt::format("cannot cast `{}` as `int`", value.GetType())
+                  fmt::format("cannot cast `{}` as `int`", value.GetTypeName())
                 );
               }
               break;
@@ -450,7 +486,7 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
               } else {
                 throw GraceException(
                   GraceException::Type::InvalidCast,
-                  fmt::format("cannot cast `{}` as `float`", value.GetType())
+                  fmt::format("cannot cast `{}` as `float`", value.GetTypeName())
                 );                
               }
               break;
@@ -469,7 +505,7 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
               } else {
                 throw GraceException(
                   GraceException::Type::InvalidCast,
-                  fmt::format("cannot cast `{}` as `char`", value.GetType())
+                  fmt::format("cannot cast `{}` as `char`", value.GetTypeName())
                 );                
               }
               break;
@@ -521,12 +557,6 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
           valueStack.push_back(Value::CreateObject<GraceList>());
           break;
         }
-        // case Ops::CreateRepeatingList: {
-        //   auto numItems = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
-        //   auto value = Pop(valueStack);
-        //   valueStack.push_back(Value::CreateObject<GraceList>(value, numItems));
-        //   break;
-        // }
         case Ops::CreateRangeList: {
           auto increment = Pop(valueStack);
           auto max = Pop(valueStack);
@@ -535,21 +565,21 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
           if (!min.IsNumber()) {
             throw GraceException(
               GraceException::Type::InvalidType,
-              fmt::format("All values in range expression must be numbers, got: {}", min.GetType())
+              fmt::format("All values in range expression must be numbers, got: {}", min.GetTypeName())
             );
           }
 
           if (!max.IsNumber()) {
             throw GraceException(
               GraceException::Type::InvalidType,
-              fmt::format("All values in range expression must be numbers, got: {}", max.GetType())
+              fmt::format("All values in range expression must be numbers, got: {}", max.GetTypeName())
             );
           }
 
           if (!increment.IsNumber()) {
             throw GraceException(
               GraceException::Type::InvalidType,
-              fmt::format("All values in range expression must be numbers, got: {}", increment.GetType())
+              fmt::format("All values in range expression must be numbers, got: {}", increment.GetTypeName())
             );
           }
 

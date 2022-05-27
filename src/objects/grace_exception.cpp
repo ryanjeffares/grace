@@ -20,6 +20,7 @@ std::unordered_map<GraceException::Type, const char*> GraceException::s_Exceptio
   {GraceException::Type::FunctionNotFound, "Function not found"},
   {GraceException::Type::IncorrectArgCount, "Incorrect argument count"},
   {GraceException::Type::InvalidArgument, "Invalid argument"},
+  {GraceException::Type::InvalidIterator, "Invalid iterator"},
   {GraceException::Type::InvalidCast, "Invalid cast"},
   {GraceException::Type::InvalidOperand, "Invalid operand"},
   {GraceException::Type::InvalidType, "Invalid type"},
@@ -49,4 +50,14 @@ std::string GraceException::ToString() const
 bool GraceException::AsBool() const
 {
   return true;
+}
+
+std::string GraceException::ObjectName() const
+{
+  return "Exception";
+}
+
+bool GraceException::IsIteratable() const
+{
+  return false;
 }

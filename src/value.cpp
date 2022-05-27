@@ -116,7 +116,7 @@ Value Value::operator+(const Value& other) const
   }
   throw GraceException(
     GraceException::Type::InvalidOperand,
-    fmt::format("Cannot add {} to {}", other.m_Type, m_Type)
+    fmt::format("Cannot add {} to {}", other.GetTypeName(), GetTypeName())
   );
 }
 
@@ -151,7 +151,7 @@ Value Value::operator-(const Value& other) const
   }
   throw GraceException(
     GraceException::Type::InvalidOperand,
-    fmt::format("Cannot subtract {} from {}", other.m_Type, m_Type)
+    fmt::format("Cannot subtract {} from {}", other.GetTypeName(), GetTypeName())
   );
 }
 
@@ -186,7 +186,7 @@ Value Value::operator/(const Value& other) const
   }
   throw GraceException(
     GraceException::Type::InvalidOperand,
-    fmt::format("Cannot divide {} by {}", m_Type, other.m_Type)
+    fmt::format("Cannot divide {} by {}", GetTypeName(), other.GetTypeName())
   );
 }
 
@@ -247,7 +247,7 @@ Value Value::operator*(const Value& other) const
   }
   throw GraceException(
     GraceException::Type::InvalidOperand,
-    fmt::format("Cannot multiple {} by {}", m_Type, other.m_Type)
+    fmt::format("Cannot multiple {} by {}", GetTypeName(), other.GetTypeName())
   );
 }
 
@@ -282,7 +282,7 @@ Value Value::operator%(const Value& other) const
   }
   throw GraceException(
     GraceException::Type::InvalidOperand,
-    fmt::format("Cannot mod {} by {}", m_Type, other.m_Type)
+    fmt::format("Cannot mod {} by {}", GetTypeName(), other.GetTypeName())
   );
 }
 
@@ -396,7 +396,7 @@ Value Value::operator<(const Value& other) const
   }
   throw GraceException(
     GraceException::Type::InvalidOperand,
-    fmt::format("Cannot compare {} with {}", m_Type, other.m_Type)
+    fmt::format("Cannot compare {} with {}", GetTypeName(), other.GetTypeName())
   );
 }
 
@@ -437,7 +437,7 @@ Value Value::operator<=(const Value& other) const
   }
   throw GraceException(
     GraceException::Type::InvalidOperand,
-    fmt::format("Cannot compare {} with {}", m_Type, other.m_Type)
+    fmt::format("Cannot compare {} with {}", GetTypeName(), other.GetTypeName())
   );
 }
 
@@ -478,7 +478,7 @@ Value Value::operator>(const Value& other) const
   }
   throw GraceException(
     GraceException::Type::InvalidOperand,
-    fmt::format("Cannot compare {} with {}", m_Type, other.m_Type)
+    fmt::format("Cannot compare {} with {}", GetTypeName(), other.GetTypeName())
   );
 }
 
@@ -519,7 +519,7 @@ Value Value::operator>=(const Value& other) const
   }
   throw GraceException(
     GraceException::Type::InvalidOperand,
-    fmt::format("Cannot compare {} with {}", m_Type, other.m_Type)
+    fmt::format("Cannot compare {} with {}", GetTypeName(), other.GetTypeName())
   );
 }
 
@@ -576,7 +576,7 @@ Value Value::Pow(const Value& other) const
   }
   throw GraceException(
     GraceException::Type::InvalidOperand,
-    fmt::format("Cannot exponentiate {} with {}", m_Type, other.m_Type)
+    fmt::format("Cannot exponentiate {} with {}", GetTypeName(), other.GetTypeName())
   );
 }
 

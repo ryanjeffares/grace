@@ -12,6 +12,7 @@
 #include <fmt/core.h>
 #include <fmt/format.h>
 
+#include "grace_iterator.hpp"
 #include "grace_list.hpp"
 
 using namespace Grace;
@@ -31,11 +32,6 @@ GraceList::GraceList(const Value& value)
   } else {
     m_Data.push_back(value);
   }
-}
-
-GraceList::GraceList(const Value& value, std::int64_t repeats)
-{
-  m_Data.insert(m_Data.begin(), repeats, value);
 }
 
 GraceList::GraceList(const GraceList& other, std::int64_t multiple)
@@ -73,6 +69,7 @@ void GraceList::Append(const std::vector<Value>& items)
 {
   m_Data.reserve(items.size());
   m_Data.insert(m_Data.end(), items.begin(), items.end());
+  InvalidateIterators();
 }
 
 void GraceList::Remove(std::size_t index)
@@ -126,4 +123,38 @@ std::string GraceList::ToString() const
 bool GraceList::AsBool() const
 {
   return !m_Data.empty();
+}
+
+std::string GraceList::ObjectName() const
+{
+  return "List";
+}
+
+bool GraceList::IsIteratable() const
+{
+  return true;
+}
+
+void GraceList::AddIterator(GraceIterator* iterator)
+{
+  m_ActiveIterators.push_back(iterator);
+}
+
+void GraceList::RemoveIterator(GraceIterator* iterator)
+{
+  auto it = std::find(m_ActiveIterators.begin(), m_ActiveIterators.end(), iterator);
+  if (it == m_ActiveIterators.end()) {
+#ifdef GRACE_DEBUG
+    GRACE_ASSERT(false, "Trying to remove an iterator that wasn't added");
+#endif
+    return;
+  }
+  m_ActiveIterators.erase(it);
+}
+
+void GraceList::InvalidateIterators()
+{
+  for (auto it : m_ActiveIterators) {
+    it->Invalidate();
+  }
 }

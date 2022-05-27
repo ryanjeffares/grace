@@ -1,28 +1,12 @@
-func make_list():
-  return [];
-end
-
-func get_min():
-  return 0;
+func append_list(l, value):
+  __NATIVE_APPEND_LIST(l, value);
 end
 
 func main():
-  
   var max = 10;
-  var inc = 0.2;
-
-  final ls = [get_min()..max by get_min() + 0.5];
-  
-  make_list();
-
-  ls;
-  println(ls);
-
-  //for i in ls:
-  //end
-
-  //for i in [10..100 by 10]:
-
-  //end
-
+  final ls = [9..10];
+  for i in ls:
+    append_list(ls, max);
+    max = max + 1;
+  end
 end

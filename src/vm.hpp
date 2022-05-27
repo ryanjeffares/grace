@@ -36,6 +36,7 @@ namespace Grace::VM
     And,
     Assert,
     AssertWithMessage,
+    AssignIteratorBegin,
     AssignLocal,
     Call,
     Cast,
@@ -44,6 +45,7 @@ namespace Grace::VM
     CreateRangeList,
     CreateEmptyList,
     DeclareLocal,
+    Deref,
     Divide,
     Dup,
     EnterTry,
@@ -52,6 +54,7 @@ namespace Grace::VM
     ExitTry,
     Greater,
     GreaterEqual,
+    IncrementIterator,
     Jump,
     JumpIfFalse,
     Less,
@@ -228,6 +231,7 @@ struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
       case Ops::And: name = "Ops::And"; break;
       case Ops::Assert: name = "Ops::Assert"; break;
       case Ops::AssertWithMessage: name = "Ops::AssertWithMessage"; break;
+      case Ops::AssignIteratorBegin: name = "Ops::AssignIteratorBegin"; break;
       case Ops::AssignLocal: name = "Ops::AssignLocal"; break;
       case Ops::Call: name = "Ops::Call"; break;
       case Ops::Cast: name = "Ops::Cast"; break;
@@ -236,6 +240,7 @@ struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
       case Ops::CreateRangeList: name = "Ops::CreateRangeList"; break;
       case Ops::CreateEmptyList: name = "Ops::CreateEmptyList"; break;
       case Ops::DeclareLocal: name = "Ops::DeclareLocal"; break;
+      case Ops::Deref: name = "Ops::Deref"; break;
       case Ops::Divide: name = "Ops::Divide"; break;
       case Ops::Dup: name = "Ops::Dup"; break;
       case Ops::EnterTry: name = "Ops::EnterTry"; break;
@@ -244,6 +249,7 @@ struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
       case Ops::ExitTry: name = "Ops::ExitTry"; break;
       case Ops::Greater: name = "Ops::Greater"; break;
       case Ops::GreaterEqual: name = "Ops::GreaterEqual"; break;
+      case Ops::IncrementIterator: name = "Ops::IncrementIterator"; break;
       case Ops::Jump: name = "Ops::Jump"; break;
       case Ops::JumpIfFalse: name = "Ops::JumpIfFalse"; break;
       case Ops::Less: name = "Ops::Less"; break;

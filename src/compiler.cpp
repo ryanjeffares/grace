@@ -302,7 +302,6 @@ static bool IsOperator(Scanner::TokenType type)
     Scanner::TokenType::DotDot,
     Scanner::TokenType::Plus,
     Scanner::TokenType::Slash,
-    Scanner::TokenType::Star,
     Scanner::TokenType::StarStar,
     Scanner::TokenType::BangEqual,
     Scanner::TokenType::Equal,
@@ -773,6 +772,15 @@ static void ContinueStatement(CompilerContext& compiler)
   Consume(Scanner::TokenType::Semicolon, "Expected ';' after `break`", compiler);
 }
 
+static std::unordered_map<Scanner::TokenType, std::int64_t> s_CastOps = {
+  std::make_pair(Scanner::TokenType::IntIdent, 0),
+  std::make_pair(Scanner::TokenType::FloatIdent, 1),
+  std::make_pair(Scanner::TokenType::BoolIdent, 2),
+  std::make_pair(Scanner::TokenType::StringIdent, 3),
+  std::make_pair(Scanner::TokenType::CharIdent, 4),
+  std::make_pair(Scanner::TokenType::ListIdent, 5),
+};
+
 static void ForStatement(CompilerContext& compiler)
 {
   compiler.codeContextStack.emplace_back(CodeContext::Loop);
@@ -810,118 +818,17 @@ static void ForStatement(CompilerContext& compiler)
 
   Consume(Scanner::TokenType::In, "Expected `in` after identifier", compiler);
 
-  // parse min
-  auto line = compiler.previous.value().GetLine();
-  if (Match(Scanner::TokenType::Integer, compiler)) {
-    std::int64_t value;
-    auto result = TryParseInt(compiler.previous.value(), value);
-    if (result.has_value()) {
-      MessageAtPrevious(fmt::format("Scanner::Token could not be parsed as integer: {}", result.value()), LogLevel::Error, compiler);
-      return;
-    }
-    EmitConstant(value);
-    EmitOp(VM::Ops::LoadConstant, line);
-    EmitConstant(iteratorId);
-    EmitOp(VM::Ops::AssignLocal, line);
-  } else if (Match(Scanner::TokenType::Double, compiler)) {
-    double value;
-    auto result = TryParseDouble(compiler.previous.value(), value);
-    if (result.has_value()) {
-      MessageAtPrevious(fmt::format("Scanner::Token could not be parsed as float: {}", result.value().what()), LogLevel::Error, compiler);
-      return;
-    }
-    EmitConstant(value);
-    EmitOp(VM::Ops::LoadConstant, line);
-    EmitConstant(iteratorId);
-    EmitOp(VM::Ops::AssignLocal, line);
-  } else if (Match(Scanner::TokenType::Identifier, compiler)) {
-    auto localName = std::string(compiler.previous.value().GetText());
-    auto localIt = std::find_if(compiler.locals.begin(), compiler.locals.end(), [&](const Local& l) { return l.name == localName; });
-    if (localIt == compiler.locals.end()) {
-      MessageAtPrevious(fmt::format("Cannot find variable '{}' in this scope.", localName), LogLevel::Error, compiler);
-      return;
-    }
-    auto localId = localIt->index;
-    EmitConstant(localId);
-    EmitOp(VM::Ops::LoadLocal, line);
-    EmitConstant(iteratorId);
-    EmitOp(VM::Ops::AssignLocal, line);
-  } else {
-    MessageAtCurrent("Expected identifier or number as range min", LogLevel::Error, compiler);
-    return;
-  }
-
-  Consume(Scanner::TokenType::DotDot, "Expected '..' after range min", compiler);
-
-  // parse max
-  std::variant<std::int64_t, double, std::int64_t> max;
-  if (Match(Scanner::TokenType::Integer, compiler)) {
-    std::int64_t value;
-    auto result = TryParseInt(compiler.previous.value(), value);
-    if (result.has_value()) {
-      MessageAtPrevious(fmt::format("Scanner::Token could not be parsed as integer: {}", result.value()), LogLevel::Error, compiler);
-      return;
-    }
-    max.emplace<0>(value);
-  } else if (Match(Scanner::TokenType::Double, compiler)) {
-    double value;
-    auto result = TryParseDouble(compiler.previous.value(), value);
-    if (result.has_value()) {
-      MessageAtPrevious(fmt::format("Scanner::Token could not be parsed as float: {}", result.value().what()), LogLevel::Error, compiler);
-      return;
-    }
-    max.emplace<1>(value);
-  } else if (Match(Scanner::TokenType::Identifier, compiler)) {
-    auto localName = std::string(compiler.previous.value().GetText());
-    auto localIt = std::find_if(compiler.locals.begin(), compiler.locals.end(), [&](const Local& l) { return l.name == localName; });
-    if (localIt == compiler.locals.end()) {
-      MessageAtPrevious(fmt::format("Cannot find variable '{}' in this scope.", localName), LogLevel::Error, compiler);
-      return;
-    }
-    auto localId = localIt->index;
-    max.emplace<2>(localId);
-  } else {
-    MessageAtCurrent("Expected identifier or integer as range max", LogLevel::Error, compiler);
-    return;
-  }
-
-  // parse increment
-  std::variant<std::int64_t, double, std::int64_t> increment;
-  if (Match(Scanner::TokenType::By, compiler)) {
-    if (Match(Scanner::TokenType::Integer, compiler)) {
-      std::int64_t value;
-      auto result = TryParseInt(compiler.previous.value(), value);
-      if (result.has_value()) {
-        MessageAtPrevious(fmt::format("Scanner::Token could not be parsed as integer: {}", result.value()), LogLevel::Error, compiler);
-        return;
-      }
-      increment.emplace<0>(value);
-    } else if (Match(Scanner::TokenType::Double, compiler)) {
-      double value;
-      auto result = TryParseDouble(compiler.previous.value(), value);
-      if (result.has_value()) {
-        MessageAtPrevious(fmt::format("Scanner::Token could not be parsed as float: {}", result.value().what()), LogLevel::Error, compiler);
-        return;
-      }
-      increment.emplace<1>(value);
-    } else if (Match(Scanner::TokenType::Identifier, compiler)) {
-      auto localName = std::string(compiler.previous.value().GetText());
-      auto localIt = std::find_if(compiler.locals.begin(), compiler.locals.end(), [&](const Local& l) { return l.name == localName; });
-      if (localIt == compiler.locals.end()) {
-        MessageAtPrevious(fmt::format("Cannot find variable '{}' in this scope.", localName), LogLevel::Error, compiler);
-        return;
-      }
-      auto localId = localIt->index;
-      increment.emplace<2>(localId);
-    } else {
-      MessageAtPrevious("Increment must be a number", LogLevel::Error, compiler);
-      return;
-    }
-  } else {
-    increment.emplace<0>(1);
-  }
+  auto prevUsing = compiler.usingExpressionResult;
+  compiler.usingExpressionResult = true;
+  Expression(false, compiler);
+  compiler.usingExpressionResult = prevUsing;
 
   Consume(Scanner::TokenType::Colon, "Expected ':' after `for` statement", compiler);
+
+  auto line = compiler.previous.value().GetLine();
+
+  EmitConstant(iteratorId);
+  EmitOp(VM::Ops::AssignIteratorBegin, line);
 
   // constant and op index to jump to after each iteration
   auto startConstantIdx = static_cast<std::int64_t>(VM::VM::GetInstance().GetNumConstants());
@@ -930,23 +837,8 @@ static void ForStatement(CompilerContext& compiler)
   // evaluate the condition
   EmitConstant(iteratorId);
   EmitOp(VM::Ops::LoadLocal, line);
-
-  switch (max.index()) {
-    case 0:
-      EmitConstant(std::get<0>(max));
-      EmitOp(VM::Ops::LoadConstant, line);
-      break;
-    case 1:
-      EmitConstant(std::get<1>(max));
-      EmitOp(VM::Ops::LoadConstant, line);
-      break;
-    case 2:
-      EmitConstant(std::get<2>(max));
-      EmitOp(VM::Ops::LoadLocal, line);
-      break;
-  }
-
-  EmitOp(VM::Ops::Less, line);
+  EmitConstant(s_CastOps[Scanner::TokenType::BoolIdent]);
+  EmitOp(VM::Ops::Cast, line);
 
   auto endJumpConstantIndex = VM::VM::GetInstance().GetNumConstants();
   EmitConstant(std::int64_t{});
@@ -976,20 +868,7 @@ static void ForStatement(CompilerContext& compiler)
 
   // increment iterator
   EmitConstant(iteratorId);
-  EmitOp(VM::Ops::LoadLocal, line);
-  if (increment.index() == 0) {
-    EmitConstant(std::get<0>(increment));
-    EmitOp(VM::Ops::LoadConstant, line);
-  } else if (increment.index() == 1) {
-    EmitConstant(std::get<1>(increment));
-    EmitOp(VM::Ops::LoadConstant, line);
-  } else {
-    EmitConstant(std::get<2>(increment));
-    EmitOp(VM::Ops::LoadLocal, line);
-  }
-  EmitOp(VM::Ops::Add, line);
-  EmitConstant(iteratorId);
-  EmitOp(VM::Ops::AssignLocal, line);
+  EmitOp(VM::Ops::IncrementIterator, line);
 
   // pop any locals created within the loop scope
   EmitConstant(true);
@@ -1028,9 +907,15 @@ static void ForStatement(CompilerContext& compiler)
   if (iteratorNeedsPop) {
     compiler.locals.pop_back();
     EmitOp(VM::Ops::PopLocal, line);
+  } else {
+    // set this iterator to be null after the collection is exhausted
+    EmitConstant(nullptr);
+    EmitOp(VM::Ops::LoadConstant, line);
+    EmitConstant(iteratorId);
+    EmitOp(VM::Ops::AssignLocal, line);
   }
   
-  compiler.codeContextStack.pop_back();
+  compiler.codeContextStack.pop_back();  
 }
 
 static void IfStatement(CompilerContext& compiler)
@@ -1513,15 +1398,6 @@ static void Factor(bool canAssign, bool skipFirst, CompilerContext& compiler)
   }
 }
 
-static std::unordered_map<Scanner::TokenType, std::int64_t> s_CastOps = {
-  std::make_pair(Scanner::TokenType::IntIdent, 0),
-  std::make_pair(Scanner::TokenType::FloatIdent, 1),
-  std::make_pair(Scanner::TokenType::BoolIdent, 2),
-  std::make_pair(Scanner::TokenType::StringIdent, 3),
-  std::make_pair(Scanner::TokenType::CharIdent, 4),
-  std::make_pair(Scanner::TokenType::ListIdent, 5),
-};
-
 static void Unary(bool canAssign, CompilerContext& compiler)
 {
   if (Match(Scanner::TokenType::Bang, compiler)) {
@@ -1532,6 +1408,10 @@ static void Unary(bool canAssign, CompilerContext& compiler)
     auto line = compiler.previous.value().GetLine();
     Unary(canAssign, compiler);
     EmitOp(VM::Ops::Negate, line);
+  } else if (Match(Scanner::TokenType::Star, compiler)) {
+    auto line = compiler.previous.value().GetLine();
+    Unary(canAssign, compiler);
+    EmitOp(VM::Ops::Deref, line);
   } else {
     Call(canAssign, compiler);
   }
