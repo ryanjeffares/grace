@@ -13,7 +13,7 @@ func main():
     println(e);
   end
 
-  for i in 0..10:
+  for i in [0..10]:
     println("hello! " + i);
   end
 

@@ -12,8 +12,9 @@
 #include <fmt/core.h>
 
 #include "grace_exception.hpp"
+#include "../value.hpp"
 
-using namespace Grace::VM;
+using namespace Grace;
 
 std::unordered_map<GraceException::Type, const char*> GraceException::s_ExceptionMessages = {
   {GraceException::Type::AssertionFailed, "Assertion failed"},
@@ -57,7 +58,10 @@ std::string GraceException::ObjectName() const
   return "Exception";
 }
 
-bool GraceException::IsIteratable() const
+VM::Value GraceException::Deref() const
 {
-  return false;
+  throw GraceException(
+    Type::InvalidType,
+    "Exception cannot be dereferenced"
+  );
 }

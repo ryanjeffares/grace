@@ -14,17 +14,13 @@
 
 #include <vector>
 
-#include "grace_object.hpp"
+#include "grace_exception.hpp"
+#include "grace_iterator.hpp"
 #include "../value.hpp"
 
 namespace Grace
 {
-  namespace VM
-  {
-    class GraceIterator;
-  }
-
-  class GraceList : public GraceObject
+  class GraceList : public GraceIterable<std::vector<VM::Value>::iterator>
   {
     public:
       using Iterator = std::vector<VM::Value>::iterator;
@@ -62,12 +58,12 @@ namespace Grace
         return m_Data.size();
       }
 
-      GRACE_NODISCARD GRACE_INLINE Iterator Begin()
+      GRACE_NODISCARD GRACE_INLINE Iterator Begin() override
       {
         return m_Data.begin();
       }
 
-      GRACE_NODISCARD GRACE_INLINE Iterator End()
+      GRACE_NODISCARD GRACE_INLINE Iterator End() override
       {
         return m_Data.end();
       }
@@ -77,8 +73,14 @@ namespace Grace
       void PrintLn() const override;
       GRACE_NODISCARD std::string ToString() const override;
       GRACE_NODISCARD bool AsBool() const override;
-      GRACE_NODISCARD bool IsIteratable() const override;
       GRACE_NODISCARD std::string ObjectName() const override;
+      VM::Value Deref() const override
+      {
+        throw GraceException(
+          GraceException::Type::InvalidType,
+          "List cannot be dereferenced"
+        );
+      }
       
       GRACE_INLINE VM::Value& operator[](std::size_t index)
       {
@@ -90,13 +92,12 @@ namespace Grace
         return m_Data[index];
       }
 
-      void AddIterator(VM::GraceIterator* iterator);
-      void RemoveIterator(VM::GraceIterator* iterator);
-      void InvalidateIterators();
+      void AddIterator(GraceIterator<Iterator>*) override;
+      void RemoveIterator(GraceIterator<Iterator>*) override;
+      void InvalidateIterators() override;
 
     private:
       std::vector<VM::Value> m_Data;
-      std::vector<VM::GraceIterator*> m_ActiveIterators;
   };
 } // namespace Grace
 

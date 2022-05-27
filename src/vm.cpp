@@ -277,14 +277,8 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
         case Ops::Deref: {
           auto value = Pop(valueStack);
           if (value.GetType() == Value::Type::Object) {
-            if (auto it = dynamic_cast<GraceIterator*>(value.GetObject())) {
-              valueStack.push_back(it->GetValue());
-              break;
-            }
-            throw GraceException(
-              GraceException::Type::InvalidType,
-              fmt::format("Cannot dereference {}", value.GetObject()->ObjectName())
-            );
+            valueStack.push_back(value.GetObject()->Deref());
+            break;
           }
           throw GraceException(
             GraceException::Type::InvalidType,
@@ -404,19 +398,29 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
         case Ops::AssignIteratorBegin: {
           auto collection = Pop(valueStack);
           auto iteratorId = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
-          if (collection.GetType() != Value::Type::Object) {
+          auto object = collection.GetObject();
+          if (auto list = dynamic_cast<GraceList*>(object)) {
+            localsList[iteratorId + localsOffsets.top()] = 
+              Value::CreateObject<GraceIterator<GraceList::Iterator>>(list);
+          } else {
             throw GraceException(
               GraceException::Type::InvalidType,
               fmt::format("{} is not iterable", collection.GetTypeName())
             );
           }
-          localsList[iteratorId + localsOffsets.top()] = Value::CreateObject<GraceIterator>(collection.GetObject());
           break;
         }
         case Ops::IncrementIterator: {
           auto iteratorId = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
-          auto& iterator = localsList[iteratorId + localsOffsets.top()];
-          dynamic_cast<GraceIterator*>(iterator.GetObject())->Increment();
+          auto iterator = localsList[iteratorId + localsOffsets.top()].GetObject();
+          if (auto listIterator = dynamic_cast<GraceIterator<GraceList::Iterator>*>(iterator)) {
+            listIterator->Increment();
+          } else {
+            throw GraceException(
+              GraceException::Type::InvalidType,
+              "Value was not an iterator"
+            );
+          }
           break;
         }
         case Ops::Jump: {

@@ -20,8 +20,13 @@
 
 #include "grace_object.hpp"
 
-namespace Grace::VM
+namespace Grace
 {
+  namespace VM
+  {
+    class Value;
+  }
+
   class GraceException : public std::exception, public GraceObject
   {
     public:
@@ -71,8 +76,8 @@ namespace Grace::VM
       void PrintLn() const override;
       GRACE_NODISCARD std::string ToString() const override;
       GRACE_NODISCARD bool AsBool() const override;
-      GRACE_NODISCARD bool IsIteratable() const override;
       GRACE_NODISCARD std::string ObjectName() const override;
+      VM::Value Deref() const override;
 
     private:
       Type m_Type;
@@ -82,12 +87,12 @@ namespace Grace::VM
 } // namespace Grace::VM
 
 template<>
-struct fmt::formatter<Grace::VM::GraceException::Type> : fmt::formatter<std::string_view>
+struct fmt::formatter<Grace::GraceException::Type> : fmt::formatter<std::string_view>
 {
   template<typename FormatContext>
-  auto format(Grace::VM::GraceException::Type type, FormatContext& context) -> decltype(context.out())
+  auto format(Grace::GraceException::Type type, FormatContext& context) -> decltype(context.out())
   {
-    using namespace Grace::VM;
+    using namespace Grace;
 
     std::string_view name = "unknown";
     switch (type) {

@@ -12,7 +12,6 @@
 #include <fmt/core.h>
 #include <fmt/format.h>
 
-#include "grace_iterator.hpp"
 #include "grace_list.hpp"
 
 using namespace Grace;
@@ -137,17 +136,12 @@ std::string GraceList::ObjectName() const
   return "List";
 }
 
-bool GraceList::IsIteratable() const
-{
-  return true;
-}
-
-void GraceList::AddIterator(GraceIterator* iterator)
+void GraceList::AddIterator(GraceIterator<Iterator>* iterator)
 {
   m_ActiveIterators.push_back(iterator);
 }
 
-void GraceList::RemoveIterator(GraceIterator* iterator)
+void GraceList::RemoveIterator(GraceIterator<Iterator>* iterator)
 {
   auto it = std::find(m_ActiveIterators.begin(), m_ActiveIterators.end(), iterator);
   if (it == m_ActiveIterators.end()) {
