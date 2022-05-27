@@ -35,6 +35,8 @@ namespace Grace
       GraceList(const GraceList& other, std::int64_t multiple);
       GraceList(const VM::Value& min, const VM::Value& max, const VM::Value& increment);
 
+      ~GraceList();
+
       GRACE_INLINE void Append(const VM::Value& value)
       {
         m_Data.push_back(value);

@@ -3,10 +3,7 @@ func append_list(l, value):
 end
 
 func main():
-  var max = 10;
-  final ls = [9..10];
-  for i in ls:
-    append_list(ls, max);
-    max = max + 1;
+  for i in [0..10]:
+    println(*i);
   end
 end

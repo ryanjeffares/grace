@@ -65,6 +65,13 @@ GraceList::GraceList(const Value& min, const Value& max, const Value& increment)
   }
 }
 
+GraceList::~GraceList()
+{
+  for (auto it : m_ActiveIterators) {
+    it->Invalidate();
+  }
+}
+
 void GraceList::Append(const std::vector<Value>& items)
 {
   m_Data.reserve(items.size());
