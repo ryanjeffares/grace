@@ -368,10 +368,9 @@ static void Statement(CompilerContext& compiler)
   } else if (Check(Scanner::TokenType::Catch, compiler)) {
     if (compiler.codeContextStack.back() != CodeContext::Try) {
       MessageAtCurrent("`catch` block only allowed after `try` block", LogLevel::Error, compiler);
+      Advance(compiler);  // consume illegal catch
       return;
     }
-    return; // catch is handled by the TryStatement function, so keep the catch token as current
-    // and return to caller without starting another recursive chain
   } else {
     ExpressionStatement(compiler);
   }

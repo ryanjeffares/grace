@@ -37,27 +37,14 @@ Grace's only dependency is [fmtlib](https://github.com/fmtlib/fmt) which is used
 ```bash
 git clone --recursive https://github.com/ryanjeffares/grace.git 
 cd grace 
-python3 build.py <Release/Debug>
+python3 build.py <Release/Debug/All>
 ```
 
 This will build the `grace` executable, which you can add to your path or move somewhere that is on your path. Full installation process as well as documentation is WIP.
 
 ## Alpha Release Roadmap
-* Make for loops only use a variable name or list literal
-  * Enhacen list syntax
-* Exception system
-  * Nearly there - account for exceptions being thrown in a function and returning control to the caller
 * Experiment with string interning
-* Make unused expression results illegal 
 * Unicode support for `char`s 
-* Store call info on constant list
-  * Would it be jank to require forward declaration of functions? Could provide more optimisation of the bytecode
-  * What would that like in classes...
-* For the sake of tidiness, do binary ops as operator overloads in the Value class, we can try/catch with negligible performance overhead
-* Performance
-  * Consider using raw arrays over vectors for the op and constant list
-  * Preallocate stack space for each function
-  * Register machine?
 * Classes
   * Reference counting
   * Cyclic references handled through a "cyclic reference tracker" - if a cyclic reference is detected, start tracking the two objects, and when those objects' only reminaing references are eachother they can be safely destroyed 
@@ -66,12 +53,7 @@ This will build the `grace` executable, which you can add to your path or move s
 * Imports 
 * Extension methods
 * Collections
-  * Lists 
-    * Have lists, but should implement our own dynamic collection
-    * Proper iterators etc to do nice move semantics
   * Hash table 
-  * Immutable set 
-  * Need iteration
 * Standard library
 * Filesystem handling
 * Install process 
