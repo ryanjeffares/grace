@@ -1,0 +1,19 @@
+func factorial(n):
+  if n < 2:
+    return 1;
+  end
+  return n * factorial(n - 1);
+end
+
+func main():
+
+  final l = ["hello", 42, l]; // l is still null here during the list declaration, so a null value is simply copied into the list
+  final dict = {
+    true: 1,
+    false: 0,
+    l: factorial(10) 
+  };
+
+  println(dict);
+
+end

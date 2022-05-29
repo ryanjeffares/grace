@@ -75,12 +75,12 @@ struct CompilerContext
 };
 
 GRACE_NODISCARD static bool Match(Scanner::TokenType expected, CompilerContext& compiler);
-GRACE_NODISCARD static bool Check(Scanner::TokenType type, CompilerContext& compiler);
+GRACE_NODISCARD static bool Check(Scanner::TokenType expected, CompilerContext& compiler);
 
 static void Consume(Scanner::TokenType expected, const std::string& message, CompilerContext& compiler);
 static void Synchronize(CompilerContext& compiler);
 
-GRACE_INLINE static void EmitOp(VM::Ops op, int line)
+GRACE_INLINE static void EmitOp(VM::Ops op, std::size_t line)
 {
   VM::VM::GetInstance().PushOp(op, line);
 }
@@ -129,6 +129,7 @@ static void String(CompilerContext& compiler);
 static void InstanceOf(CompilerContext& compiler);
 static void Cast(CompilerContext& compiler);
 static void List(CompilerContext& compiler);
+static void Dictionary(CompilerContext& compiler);
 
 enum class LogLevel
 {
@@ -629,6 +630,8 @@ static void Expression(bool canAssign, CompilerContext& compiler)
           case Scanner::TokenType::Colon:
           case Scanner::TokenType::LeftSquareParen:
           case Scanner::TokenType::RightSquareParen:
+          case Scanner::TokenType::LeftCurlyParen:
+          case Scanner::TokenType::RightCurlyParen:
           case Scanner::TokenType::DotDot:
           case Scanner::TokenType::By:
             shouldBreak = true;
@@ -1637,6 +1640,8 @@ static void Primary(bool canAssign, CompilerContext& compiler)
     Cast(compiler);
   } else if (Match(Scanner::TokenType::LeftSquareParen, compiler)) {
     List(compiler);
+  } else if (Match(Scanner::TokenType::LeftCurlyParen, compiler)) {
+    Dictionary(compiler);
   } else {
     Expression(canAssign, compiler);
   }
@@ -1848,6 +1853,37 @@ static void List(CompilerContext& compiler)
     EmitConstant(numItems);
     EmitOp(VM::Ops::CreateList, line); 
   }
+}
+
+static void Dictionary(CompilerContext& compiler)
+{
+  std::int64_t numItems = 0;
+
+  while (true) {
+    if (Match(Scanner::TokenType::RightCurlyParen, compiler)) {
+      break;
+    }
+
+    Expression(false, compiler);
+
+    if (!Match(Scanner::TokenType::Colon, compiler)) {
+      MessageAtCurrent("Expected ':' after key expression", LogLevel::Error, compiler);
+      return;
+    }
+
+    Expression(false, compiler);
+
+    numItems++;
+
+    if (Match(Scanner::TokenType::RightCurlyParen, compiler)) {
+      break;
+    }
+
+    Consume(Scanner::TokenType::Comma, "Expected `,` between dictionary pairs", compiler);
+  }
+
+  EmitConstant(numItems);
+  EmitOp(VM::Ops::CreateDictionary, compiler.previous.value().GetLine());
 }
 
 static void MessageAtCurrent(const std::string& message, LogLevel level, CompilerContext& compiler)

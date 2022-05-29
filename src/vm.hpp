@@ -41,6 +41,7 @@ namespace Grace::VM
     Call,
     Cast,
     CheckType,
+    CreateDictionary,
     CreateList,
     CreateRangeList,
     CreateEmptyList,
@@ -108,7 +109,7 @@ namespace Grace::VM
         return vm;
       }
 
-      GRACE_INLINE void PushOp(Ops op, int line)
+      GRACE_INLINE void PushOp(Ops op, std::size_t line)
       {
         m_FunctionList.at(m_LastFunctionHash).m_OpList.emplace_back(op, line);
       }
@@ -192,14 +193,14 @@ namespace Grace::VM
       {
         std::string m_Name;
         std::int64_t m_NameHash;
-        int m_Line, m_Arity;
+        std::size_t m_Line, m_Arity;
 
         std::vector<OpLine> m_OpList;
         std::vector<Value> m_ConstantList;
 
         std::size_t m_OpIndexStart = 0, m_ConstantIndexStart = 0;
 
-        Function(std::string&& name, std::int64_t nameHash, int arity, int line)
+        Function(std::string&& name, std::int64_t nameHash, std::size_t arity, std::size_t line)
           : m_Name(std::move(name)), m_NameHash(nameHash), m_Line(line), m_Arity(arity)
         {
 
@@ -236,6 +237,7 @@ struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
       case Ops::Call: name = "Ops::Call"; break;
       case Ops::Cast: name = "Ops::Cast"; break;
       case Ops::CheckType: name = "Ops::CheckType"; break;
+      case Ops::CreateDictionary: name = "Ops::CreateDictionary"; break;
       case Ops::CreateList: name = "Ops::CreateList"; break;
       case Ops::CreateRangeList: name = "Ops::CreateRangeList"; break;
       case Ops::CreateEmptyList: name = "Ops::CreateEmptyList"; break;

@@ -11,6 +11,7 @@ add_executable(grace
   src/objects/grace_exception.cpp
   src/objects/grace_list.cpp
   src/objects/object_tracker.cpp
+  src/objects/grace_dictionary.cpp
 )
 
 target_include_directories(grace PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/deps/fmt/include)

@@ -54,7 +54,7 @@ bool GraceException::AsBool() const
   return true;
 }
 
-VM::Value GraceException::Deref() const
+GRACE_NORETURN const VM::Value& GraceException::Deref() const
 {
   throw GraceException(
     Type::InvalidType,

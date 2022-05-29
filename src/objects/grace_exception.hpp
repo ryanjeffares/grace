@@ -62,12 +62,12 @@ namespace Grace
 
       }
 
-      const char* what() const noexcept override
+      GRACE_NODISCARD const char* what() const noexcept override
       {
         return s_ExceptionMessages.at(m_Type);
       }
 
-      GRACE_INLINE std::string Message() const
+      GRACE_NODISCARD GRACE_INLINE std::string Message() const
       {
         return m_Message;
       }
@@ -77,7 +77,7 @@ namespace Grace
       void PrintLn() const override;
       GRACE_NODISCARD std::string ToString() const override;
       GRACE_NODISCARD bool AsBool() const override;
-      VM::Value Deref() const override;
+      GRACE_NORETURN const VM::Value& Deref() const override;
       
       GRACE_NODISCARD GRACE_INLINE constexpr const char* ObjectName() const override
       {

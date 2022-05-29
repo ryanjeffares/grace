@@ -36,7 +36,7 @@ Value::Value(const Value& other)
   }
 }
 
-Value::Value(Value&& other) GRACE_NOEXCEPT
+Value::Value(Value&& other)
 {
   m_Type = other.m_Type;
   m_Data = other.m_Data;
@@ -820,4 +820,35 @@ std::tuple<bool, std::optional<std::string>> Value::AsChar(char& result) const
     default:
       return {false, "Cannot convert object to char"};
   } 
+}
+
+static std::hash<std::int64_t> s_IntHash{};
+static std::hash<double> s_DoubleHash{};
+static std::hash<char> s_CharHash{};
+static std::hash<bool> s_BoolHash{};
+static std::hash<std::string> s_StringHash{};
+static std::hash<Grace::GraceObject*> s_ObjectHash{};
+
+std::size_t std::hash<Grace::VM::Value>::operator()(const Grace::VM::Value& value) const
+{
+  using namespace Grace::VM;
+  switch (value.GetType()) {
+    case Value::Type::Bool:
+      return s_BoolHash(value.Get<bool>());
+    case Value::Type::Char:
+      return s_CharHash(value.Get<char>());
+    case Value::Type::Double:
+      return s_DoubleHash(value.Get<double>());
+    case Value::Type::Int:
+      return s_IntHash(value.Get<std::int64_t>());
+    case Value::Type::Null:
+      throw Grace::GraceException(
+        Grace::GraceException::Type::InvalidType,
+        "Cannot hash null value"
+      );
+    case Value::Type::Object:
+      return s_ObjectHash(value.GetObject());
+    case Value::Type::String:
+      return s_StringHash(value.Get<std::string>());
+  }
 }

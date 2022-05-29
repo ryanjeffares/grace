@@ -2,7 +2,7 @@ func factorial(n):
   if n < 2:
     return 1;
   end
-  return n + factorial(n - 1);
+  return n * factorial(n - 1);
 end
 
 func make_list(n1, n2, n3):
@@ -23,11 +23,11 @@ func main():
   var result = make_list("Hello", 2**3, false);
   println(result);
 
-  var factorials = [factorial(5), factorial(10), factorial(20), factorial(30), factorial(50)];
+  var factorials = [factorial(5), factorial(10), factorial(20), factorial(30), factorial(50)]; // ya like integer overflow
   println(factorials);
 
-  for i in 0..100 by 10:
-    final multiplied = multiply_list([false], i);
+  for i in [0..100 by 10]:
+    final multiplied = multiply_list([false], *i);
     println(multiplied);
   end
 

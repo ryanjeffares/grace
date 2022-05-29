@@ -25,6 +25,8 @@ static std::unordered_map<char, TokenType> s_SymbolLookup =
   std::make_pair(')', TokenType::RightParen),
   std::make_pair('[', TokenType::LeftSquareParen),
   std::make_pair(']', TokenType::RightSquareParen),
+  std::make_pair('{', TokenType::LeftCurlyParen),
+  std::make_pair('}', TokenType::RightCurlyParen),
   std::make_pair(',', TokenType::Comma),
   std::make_pair('-', TokenType::Minus),
   std::make_pair('%', TokenType::Mod),

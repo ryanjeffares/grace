@@ -12,6 +12,7 @@
 #ifndef GRACE_VALUE_HPP
 #define GRACE_VALUE_HPP
 
+#include <functional>
 #include <optional>
 #include <string>
 #include <type_traits>
@@ -82,7 +83,7 @@ namespace Grace
 
       Value();
       Value(const Value& other);
-      Value(Value&& other) GRACE_NOEXCEPT;
+      Value(Value&& other);
       ~Value();
 
       template<DerivedGraceObject T, typename... Args>
@@ -127,7 +128,7 @@ namespace Grace
         return *this;
       }
 
-      constexpr Value& operator=(Value&& other) GRACE_NOEXCEPT
+      constexpr Value& operator=(Value&& other)
       {
         if (this != &other) {
           if (m_Type == Type::String && m_Data.m_Str != nullptr) {
@@ -210,6 +211,11 @@ namespace Grace
       GRACE_NODISCARD Value operator>=(const Value&) const;
       GRACE_NODISCARD Value operator!() const;
       GRACE_NODISCARD Value operator-() const;
+
+      GRACE_NODISCARD GRACE_INLINE operator bool() const
+      {
+        return AsBool();
+      }
 
       GRACE_NODISCARD Value Pow(const Value&) const;
 
@@ -300,6 +306,7 @@ struct fmt::formatter<Grace::VM::Value::Type> : fmt::formatter<std::string_view>
 
     std::string_view name = "unknown";
     switch (type) {
+#ifdef GRACE_DEBUG
       case Value::Type::Bool: name = "Type::Bool"; break;
       case Value::Type::Char: name = "Type::Char"; break;
       case Value::Type::Double: name = "Type::Float"; break;
@@ -307,6 +314,15 @@ struct fmt::formatter<Grace::VM::Value::Type> : fmt::formatter<std::string_view>
       case Value::Type::Null: name = "Type::Null"; break;
       case Value::Type::Object: name = "Type::Object"; break;
       case Value::Type::String: name = "Type::String"; break;
+#else
+      case Value::Type::Bool: name = "Bool"; break;
+      case Value::Type::Char: name = "Char"; break;
+      case Value::Type::Double: name = "Float"; break;
+      case Value::Type::Int: name = "Int"; break;
+      case Value::Type::Null: name = "Null"; break;
+      case Value::Type::Object: name = "Object"; break;
+      case Value::Type::String: name = "String"; break;
+#endif
     }
     return fmt::formatter<std::string_view>::format(name, context);
   }
@@ -322,5 +338,14 @@ struct fmt::formatter<Grace::VM::Value> : fmt::formatter<std::string_view>
     return fmt::formatter<std::string_view>::format(res, context);
   }
 };
+
+namespace std
+{
+  template<>
+  struct hash<Grace::VM::Value>
+  {
+    std::size_t operator()(const Grace::VM::Value&) const;
+  };
+}
 
 #endif  // ifndef GRACE_VALUE_HPP

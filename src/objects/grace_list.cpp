@@ -130,27 +130,3 @@ bool GraceList::AsBool() const
 {
   return !m_Data.empty();
 }
-
-void GraceList::AddIterator(GraceIterator<Iterator>* iterator)
-{
-  m_ActiveIterators.push_back(iterator);
-}
-
-void GraceList::RemoveIterator(GraceIterator<Iterator>* iterator)
-{
-  auto it = std::find(m_ActiveIterators.begin(), m_ActiveIterators.end(), iterator);
-  if (it == m_ActiveIterators.end()) {
-#ifdef GRACE_DEBUG
-    GRACE_ASSERT(false, "Trying to remove an iterator that wasn't added");
-#endif
-    return;
-  }
-  m_ActiveIterators.erase(it);
-}
-
-void GraceList::InvalidateIterators()
-{
-  for (auto it : m_ActiveIterators) {
-    it->Invalidate();
-  }
-}

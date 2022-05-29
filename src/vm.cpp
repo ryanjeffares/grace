@@ -9,28 +9,28 @@
  *  For licensing information, see grace.hpp
  */
 
+#include <chrono>
 #include <cstdlib>
-#include <initializer_list>
 #include <iterator>
 #include <stack>
-#include <chrono>
 #include <utility>
-
-#include "grace.hpp"
 
 #ifdef GRACE_MSC
 # include <stdlib.h>    // getenv_s
 #endif
 
+#include "grace.hpp"
+
 #include "scanner.hpp"
 #include "vm.hpp"
 #include "objects/grace_iterator.hpp"
+#include "objects/grace_dictionary.hpp"
 #include "objects/grace_list.hpp"
 #include "objects/object_tracker.hpp"
 
 using namespace Grace::VM;
 
-static GRACE_INLINE std::tuple<Value, Value> PopLastTwo(std::vector<Value>& stack)
+static GRACE_INLINE std::pair<Value, Value> PopLastTwo(std::vector<Value>& stack)
 {
   auto c1 = std::move(stack[stack.size() - 2]);
   auto c2 = std::move(stack[stack.size() - 1]);
@@ -323,7 +323,7 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
           break;
         case Ops::Call: {
           auto calleeNameHash = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
-          auto numArgsGiven = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+          auto numArgsGiven = static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>());
 
           auto it = m_FunctionList.find(calleeNameHash);
           if (it == m_FunctionList.end()) {
@@ -338,7 +338,7 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
           constantCurrent++;
 
           auto& calleeFunc = it->second;
-          int arity = calleeFunc.m_Arity;          
+          auto arity = calleeFunc.m_Arity;
 
           if (numArgsGiven != arity) {            
             throw GraceException(
@@ -349,7 +349,7 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
 
           localsOffsets.push(localsList.size());
           localsList.resize(localsList.size() + arity);
-          for (auto i = 0; i < arity; i++) {
+          for (std::size_t i = 0; i < arity; i++) {
             localsList[arity - i - 1 + localsOffsets.top()] = Pop(valueStack);
           }
 
@@ -549,6 +549,19 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
           auto value = valueStack.back();
           valueStack.reserve(numDups);
           valueStack.insert(valueStack.end(), numDups, value);
+          break;
+        }
+        case Ops::CreateDictionary: {
+          auto numItems = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+          if (numItems == 0) {
+            valueStack.push_back(Value::CreateObject<GraceDictionary>());
+            break;
+          }
+          std::unordered_map<Value, Value> res;
+          for (std::int64_t i = 0; i < numItems; i++) {
+            res.emplace(PopLastTwo(valueStack));
+          }
+          valueStack.push_back(Value::CreateObject<GraceDictionary>(std::move(res)));
           break;
         }
         case Ops::CreateList: {

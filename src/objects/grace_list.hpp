@@ -31,7 +31,7 @@ namespace Grace
       GraceList(const GraceList& other, std::int64_t multiple);
       GraceList(const VM::Value& min, const VM::Value& max, const VM::Value& increment);
 
-      ~GraceList();
+      ~GraceList() override;
 
       GRACE_INLINE void Append(const VM::Value& value)
       {
@@ -84,7 +84,7 @@ namespace Grace
         return true;
       }
 
-      VM::Value Deref() const override
+      GRACE_NORETURN const VM::Value& Deref() const override
       {
         throw GraceException(
           GraceException::Type::InvalidType,
@@ -113,10 +113,6 @@ namespace Grace
         }
         return m_Data[index];
       }
-
-      void AddIterator(GraceIterator<Iterator>*) override;
-      void RemoveIterator(GraceIterator<Iterator>*) override;
-      void InvalidateIterators() override;
 
     private:
       std::vector<VM::Value> m_Data;

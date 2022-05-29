@@ -62,21 +62,11 @@
 #endif
 
 #ifndef GRACE_LIKELY
-# define GRACE_LIKELY       [[likely]]
+# define GRACE_LIKELY         [[likely]]
 #endif
 
 #ifndef GRACE_UNLIKELY
-# define GRACE_UNLIKELY     [[unlikely]]
-#endif
-
-#ifndef GRACE_INLINE
-# ifdef GRACE_MSC 
-#   define GRACE_INLINE       __forceinline
-# elif defined GRACE_GCC_CLANG
-#   define GRACE_INLINE       __attribute__((always_inline))
-# else
-#   define GRACE_INLINE       inline
-# endif
+# define GRACE_UNLIKELY       [[unlikely]]
 #endif
 
 #ifndef GRACE_NODISCARD
@@ -87,8 +77,18 @@
 # define GRACE_MAYBE_UNUSED   [[maybe_unused]]
 #endif
 
-#ifndef GRACE_NOEXCEPT
-# define GRACE_NOEXCEPT       noexcept
+#ifndef GRACE_NORETURN
+# define GRACE_NORETURN       [[noreturn]]
+#endif
+
+#ifndef GRACE_INLINE
+# ifdef GRACE_MSC 
+#   define GRACE_INLINE       __forceinline
+# elif defined GRACE_GCC_CLANG
+#   define GRACE_INLINE       __attribute__((always_inline))
+# else
+#   define GRACE_INLINE       inline
+# endif
 #endif
 
 #ifndef GRACE_UNREACHABLE
