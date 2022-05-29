@@ -75,7 +75,7 @@ struct CompilerContext
 };
 
 GRACE_NODISCARD static bool Match(Scanner::TokenType expected, CompilerContext& compiler);
-GRACE_NODISCARD static bool Check(Scanner::TokenType expected, CompilerContext& compiler);
+GRACE_NODISCARD static bool Check(Scanner::TokenType type, CompilerContext& compiler);
 
 static void Consume(Scanner::TokenType expected, const std::string& message, CompilerContext& compiler);
 static void Synchronize(CompilerContext& compiler);
@@ -211,9 +211,9 @@ static void Advance(CompilerContext& compiler)
   }
 }
 
-static bool Match(Scanner::TokenType type, CompilerContext& compiler)
+static bool Match(Scanner::TokenType expected, CompilerContext& compiler)
 {
-  if (!Check(type, compiler)) {
+  if (!Check(expected, compiler)) {
     return false;
   }
 
@@ -221,9 +221,9 @@ static bool Match(Scanner::TokenType type, CompilerContext& compiler)
   return true;
 }
 
-static bool Check(Scanner::TokenType type, CompilerContext& compiler)
+static bool Check(Scanner::TokenType expected, CompilerContext& compiler)
 {
-  return compiler.current.has_value() && compiler.current.value().GetType() == type;
+  return compiler.current.has_value() && compiler.current.value().GetType() == expected;
 }
 
 static void Consume(Scanner::TokenType expected, const std::string& message, CompilerContext& compiler)
@@ -484,13 +484,13 @@ static void VarDeclaration(CompilerContext& compiler)
   }
 
   Consume(Scanner::TokenType::Identifier, "Expected identifier after `var`", compiler);
-  auto it = std::find_if(compiler.locals.begin(), compiler.locals.end(), [&] (const Local& l) { return l.name == compiler.previous.value().GetText(); });
+  std::string localName(compiler.previous.value().GetText());
+  auto it = std::find_if(compiler.locals.begin(), compiler.locals.end(), [&localName] (const Local& l) { return l.name == localName; });
   if (it != compiler.locals.end()) {
     MessageAtPrevious("A local variable with the same name already exists", LogLevel::Error, compiler);
     return;
   }
 
-  std::string localName(compiler.previous.value().GetText());
   int line = compiler.previous.value().GetLine();
 
   auto localId = static_cast<std::int64_t>(compiler.locals.size());
@@ -518,13 +518,13 @@ static void FinalDeclaration(CompilerContext& compiler)
 
   Consume(Scanner::TokenType::Identifier, "Expected identifier after `final`", compiler);
 
-  auto it = std::find_if(compiler.locals.begin(), compiler.locals.end(), [&] (const Local& l) { return l.name == compiler.previous.value().GetText(); });
+  std::string localName(compiler.previous.value().GetText());
+  auto it = std::find_if(compiler.locals.begin(), compiler.locals.end(), [&localName] (const Local& l) { return l.name == localName; });
   if (it != compiler.locals.end()) {
     MessageAtPrevious("A local variable with the same name already exists", LogLevel::Error, compiler);
     return;
   }
 
-  std::string localName(compiler.previous.value().GetText());
   int line = compiler.previous.value().GetLine();
 
   auto localId = static_cast<std::int64_t>(compiler.locals.size());
@@ -567,7 +567,7 @@ static void Expression(bool canAssign, CompilerContext& compiler)
       }
 
       auto localName = std::string(compiler.previous.value().GetText());
-      auto it = std::find_if(compiler.locals.begin(), compiler.locals.end(), [&](const Local& l) { return l.name == localName; });
+      auto it = std::find_if(compiler.locals.begin(), compiler.locals.end(), [&localName](const Local& l) { return l.name == localName; });
       if (it == compiler.locals.end()) {
         MessageAtPrevious(fmt::format("Cannot find variable '{}' in this scope", localName), LogLevel::Error, compiler);
         return;
@@ -789,10 +789,15 @@ static void ForStatement(CompilerContext& compiler)
 
   // parse iterator variable
   Consume(Scanner::TokenType::Identifier, "Expected identifier after `for`", compiler);
-  auto iteratorNeedsPop = false;
+  auto iteratorNeedsPop = false, secondIteratorNeedsPop = false, twoIterators = false;
   auto iteratorName = std::string(compiler.previous.value().GetText());
   std::int64_t iteratorId;
-  auto it = std::find_if(compiler.locals.begin(), compiler.locals.end(), [&](const Local& l) { return l.name == iteratorName; });
+  auto it = std::find_if(
+    compiler.locals.begin(),
+    compiler.locals.end(),
+    [&iteratorName](const Local& l) {
+      return l.name == iteratorName;
+    });
   if (it == compiler.locals.end()) {
     iteratorId = static_cast<std::int64_t>(compiler.locals.size());
     compiler.locals.emplace_back(std::move(iteratorName), false, iteratorId);
@@ -803,14 +808,60 @@ static void ForStatement(CompilerContext& compiler)
       MessageAtPrevious(fmt::format("Loop variable '{}' has already been declared as `final`", iteratorName), LogLevel::Error, compiler);
       return;
     }
-    iteratorId = it->index;
     if (compiler.verbose || compiler.warningsError) {
-      MessageAtPrevious(fmt::format("There is already a local variable called '{}' in this scope which will be reassigned inside the `for` loop", iteratorName), 
-          LogLevel::Warning, compiler);
+      MessageAtPrevious(fmt::format("There is already a local variable called '{}' in this scope which will be reassigned inside the `for` loop", iteratorName),
+                        LogLevel::Warning, compiler);
       if (compiler.warningsError) {
         return;
       }
     }
+    iteratorId = it->index;
+  }
+
+  // parse second iterator variable, if it exists
+  std::int64_t secondIteratorId{};
+  if (Match(Scanner::TokenType::Comma, compiler)) {
+    twoIterators = true;
+    if (!Match(Scanner::TokenType::Identifier, compiler)) {
+      MessageAtCurrent("Expected identifier", LogLevel::Error, compiler);
+      return;
+    }
+    auto secondIteratorName = std::string(compiler.previous.value().GetText());
+    auto secondIt = std::find_if(
+      compiler.locals.begin(),
+      compiler.locals.end(),
+      [&secondIteratorName](const Local& l) {
+        return l.name == secondIteratorName;
+      });
+    if (secondIt == compiler.locals.end()) {
+      secondIteratorId = static_cast<std::int64_t>(compiler.locals.size());
+      compiler.locals.emplace_back(std::move(secondIteratorName), false, secondIteratorId);
+      auto line = compiler.previous.value().GetLine();
+      EmitOp(VM::Ops::DeclareLocal, line);
+      secondIteratorNeedsPop = true;
+    } else {
+      if (secondIt->isFinal) {
+        MessageAtPrevious(fmt::format("Loop variable '{}' has already been declared as `final`", secondIteratorName), LogLevel::Error, compiler);
+        return;
+      }
+      if (compiler.verbose || compiler.warningsError) {
+        MessageAtPrevious(fmt::format("There is already a local variable called '{}' in this scope which will be reassigned inside the `for` loop", secondIteratorName),
+                          LogLevel::Warning, compiler);
+        if (compiler.warningsError) {
+          return;
+        }
+      }
+      secondIteratorId = secondIt->index;
+    }
+  }
+
+  auto line = compiler.previous.value().GetLine();
+
+  if (twoIterators) {
+    EmitConstant(std::int64_t(0));
+    EmitOp(VM::Ops::LoadConstant, line);
+    EmitConstant(secondIteratorId);
+    EmitOp(VM::Ops::AssignLocal, line);
   }
 
   auto numLocalsStart = static_cast<std::int64_t>(compiler.locals.size());
@@ -824,7 +875,7 @@ static void ForStatement(CompilerContext& compiler)
 
   Consume(Scanner::TokenType::Colon, "Expected ':' after `for` statement", compiler);
 
-  auto line = compiler.previous.value().GetLine();
+  line = compiler.previous.value().GetLine();
 
   EmitConstant(iteratorId);
   EmitOp(VM::Ops::AssignIteratorBegin, line);
@@ -869,6 +920,17 @@ static void ForStatement(CompilerContext& compiler)
   EmitConstant(iteratorId);
   EmitOp(VM::Ops::IncrementIterator, line);
 
+  if (twoIterators) {
+    // increment second iterator
+    EmitConstant(secondIteratorId);
+    EmitOp(VM::Ops::LoadLocal, line);
+    EmitConstant(std::int64_t(1));
+    EmitOp(VM::Ops::LoadConstant, line);
+    EmitOp(VM::Ops::Add, line);
+    EmitConstant(secondIteratorId);
+    EmitOp(VM::Ops::AssignLocal, line);
+  }
+
   // pop any locals created within the loop scope
   EmitConstant(true);
   EmitConstant(numLocalsStart);
@@ -901,6 +963,11 @@ static void ForStatement(CompilerContext& compiler)
 
   while (compiler.locals.size() != static_cast<std::size_t>(numLocalsStart)) {
     compiler.locals.pop_back();
+  }
+
+  if (secondIteratorNeedsPop) {
+    compiler.locals.pop_back();
+    EmitOp(VM::Ops::PopLocal, line);
   }
 
   if (iteratorNeedsPop) {
@@ -1154,7 +1221,7 @@ static void TryStatement(CompilerContext& compiler)
 
   auto exceptionVarName = std::string(compiler.previous.value().GetText());
   std::int64_t exceptionVarId;
-  auto it = std::find_if(compiler.locals.begin(), compiler.locals.end(), [&](const Local& l) { return l.name == exceptionVarName; });
+  auto it = std::find_if(compiler.locals.begin(), compiler.locals.end(), [&exceptionVarName](const Local& l) { return l.name == exceptionVarName; });
   if (it == compiler.locals.end()) {
     exceptionVarId = static_cast<std::int64_t>(compiler.locals.size());
     compiler.locals.emplace_back(std::move(exceptionVarName), false, exceptionVarId);
@@ -1450,10 +1517,10 @@ static void Call(bool canAssign, CompilerContext& compiler)
       std::int64_t numArgs = 0;
       if (!Match(Scanner::TokenType::RightParen, compiler)) {
         while (true) {
-          auto prev = compiler.usingExpressionResult;
+          auto prevUsing = compiler.usingExpressionResult;
           compiler.usingExpressionResult = true;      
           Expression(false, compiler);
-          compiler.usingExpressionResult = prev;
+          compiler.usingExpressionResult = prevUsing;
           numArgs++;
           if (Match(Scanner::TokenType::RightParen, compiler)) {
             break;
@@ -1490,7 +1557,7 @@ static void Call(bool canAssign, CompilerContext& compiler)
       // if it's not a reassignment, we are trying to load its value
       // Primary() has already but the variable's id on the stack
       if (!Check(Scanner::TokenType::Equal, compiler)) {
-        auto it = std::find_if(compiler.locals.begin(), compiler.locals.end(), [&](const Local& l){ return l.name == prevText; });
+        auto it = std::find_if(compiler.locals.begin(), compiler.locals.end(), [&prevText](const Local& l){ return l.name == prevText; });
         if (it == compiler.locals.end()) {
           MessageAtPrevious(fmt::format("Cannot find variable '{}' in this scope", prevText), LogLevel::Error, compiler);
           return;
