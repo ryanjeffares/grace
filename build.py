@@ -5,25 +5,37 @@ import os
 parser = argparse.ArgumentParser(
     description='Build the Grace interpreter from source'
 )
-parser.add_argument('config', type=str, help='Configuration (Release/Debug)')
+parser.add_argument(
+    'config', type=str, help='Configuration (Release/Debug/All)'
+)
 
 
 def main(config: str):
     if not os.path.isdir('build'):
         os.mkdir('build')
 
-    print('INFO: Generating cmake project\n')
+    if config == 'Release' or config == 'Debug':
+        print(f'INFO: Generating CMake project for configuration: {config}\n')
+        os.system(f'cmake -DCMAKE_BUILD_TYPE={config} -S . -B build')
+        print()
+        print(f'INFO: Building configuration: {config}\n')
+        os.system(f'cmake --build build --config {config}')
+    elif config == 'All':
+        print('INFO: Generating CMake project for configuration: Debug\n')
+        os.system('cmake -DCMAKE_BUILD_TYPE=Debug -S . -B build')
+        print()
+        print('INFO: Building configuration: Debug\n')
+        os.system('cmake --build build --config Debug')
 
-    if config != 'Release' and config != 'Debug':
-        raise ValueError('config must match "Debug" or "Release"')
+        print()
 
-    os.system(f'cmake -DCMAKE_BUILD_TYPE={config} -S . -B build')
-
-    print()
-    print('INFO: Building\n')
-
-    # -DCMAKE_BUILD_TYPE is ignored on Windows, need to add config arg here
-    os.system(f'cmake --build build --config {config}')
+        print('INFO: Generating CMake project for configuration: Release\n')
+        os.system('cmake -DCMAKE_BUILD_TYPE=Release -S . -B build')
+        print()
+        print('INFO: Building configuration: Release\n')
+        os.system('cmake --build build --config Release')
+    else:
+        raise ValueError('config must match "Debug" or "Release" or "All"')
 
 
 if __name__ == "__main__":

@@ -11,6 +11,7 @@
  */
 
 #include <unordered_map>
+#include <utility>
 
 #include "scanner.hpp"
 
@@ -39,6 +40,8 @@ static std::unordered_map<std::string, TokenType> s_KeywordLookup =
   std::make_pair("break", TokenType::Break),
   std::make_pair("by", TokenType::By),
   std::make_pair("class", TokenType::Class),
+  std::make_pair("catch", TokenType::Catch),
+  std::make_pair("continue", TokenType::Continue),
   std::make_pair("end", TokenType::End),
   std::make_pair("else", TokenType::Else),
   std::make_pair("false", TokenType::False),
@@ -54,13 +57,16 @@ static std::unordered_map<std::string, TokenType> s_KeywordLookup =
   std::make_pair("return", TokenType::Return),
   std::make_pair("while", TokenType::While),
   std::make_pair("this", TokenType::This),
+  std::make_pair("throw", TokenType::Throw),
   std::make_pair("true", TokenType::True),
+  std::make_pair("try", TokenType::Try),
   std::make_pair("var", TokenType::Var),
   std::make_pair("int", TokenType::IntIdent),
   std::make_pair("float", TokenType::FloatIdent),
   std::make_pair("bool", TokenType::BoolIdent),
   std::make_pair("string", TokenType::StringIdent),
   std::make_pair("char", TokenType::CharIdent),
+  std::make_pair("list", TokenType::ListIdent),
 };
 
 static bool IsIdentifierChar(char c)
@@ -87,8 +93,8 @@ static bool IsSingleCharToken(TokenType type)
 Token::Token(TokenType type,
   std::size_t start, 
   std::size_t length, 
-  int line, 
-  int column,
+  std::size_t line,
+  std::size_t column,
   const std::string& code
 ) : m_Type(type), m_Start(start), m_Line(line), 
   m_Text(code.c_str() + start, length)
@@ -102,8 +108,8 @@ Token::Token(TokenType type,
   }
 }
 
-Token::Token(TokenType type, int line, int column, const std::string& errorMessage)
-  : m_Type(type), m_Start(0), m_Length(1), m_Line(line), m_Column(column), m_ErrorMessage(errorMessage)
+Token::Token(TokenType type, std::size_t line, std::size_t column, std::string&& errorMessage)
+  : m_Type(type), m_Start(0), m_Length(1), m_Line(line), m_Column(column), m_ErrorMessage(std::move(errorMessage))
 {
 
 }
@@ -113,21 +119,40 @@ std::string Token::ToString() const
   return fmt::format("Token [ type: {}, start: {}, length: {}, line: {}, text: '{}' ]", m_Type, m_Start, m_Length, m_Line, m_Text);
 }
 
-Scanner::Scanner(std::string&& code) 
-  : m_CodeString(std::move(code))
-{
+static void SkipWhitespace();
 
+GRACE_NODISCARD static bool IsAtEnd();
+
+static char Advance();
+GRACE_NODISCARD static char Peek();
+GRACE_NODISCARD static char PeekNext();
+GRACE_NODISCARD static char PeekPrevious();
+
+GRACE_NODISCARD static Token ErrorToken(std::string&& message);
+GRACE_NODISCARD static Token Identifier();
+GRACE_NODISCARD static Token Number();
+GRACE_NODISCARD static Token MakeToken(TokenType);
+GRACE_NODISCARD static Token MakeString();
+GRACE_NODISCARD static Token MakeChar();
+
+static std::string s_CodeString;
+static std::size_t s_ScannerStart = 0, s_ScannerCurrent = 0;
+static std::size_t s_ScannerLine = 1, s_ScannerColumn = 1;
+
+void Grace::Scanner::InitScanner(std::string&& code)
+{
+  s_CodeString = std::move(code);
 }
 
-Token Scanner::ScanToken()
+Token Grace::Scanner::ScanToken()
 {
   SkipWhitespace();
-  m_Start = m_Current;
+  s_ScannerStart = s_ScannerCurrent;
 
   auto c = Advance();
 
   if (IsAtEnd()) {
-    return Token(TokenType::EndOfFile, 0, 0, m_Line - 1, m_Column - 1, "");
+    return Token(TokenType::EndOfFile, 0, 0, s_ScannerLine - 1, s_ScannerColumn - 1, "");
   }
 
   if (std::isalpha(c) || c == '_') {
@@ -147,19 +172,38 @@ Token Scanner::ScanToken()
       if (Peek() == '=') {
         Advance();
         return MakeToken(TokenType::BangEqual);
-      } else {
-        return MakeToken(TokenType::Bang);
       }
+      return MakeToken(TokenType::Bang);
     case '=':
-      return MakeToken(MatchChar('=') ? TokenType::EqualEqual : TokenType::Equal);
+      if (Peek() == '=') {
+        Advance();
+        return MakeToken(TokenType::EqualEqual);
+      }
+      return MakeToken(TokenType::Equal);
     case '<':
-      return MakeToken(MatchChar('=') ? TokenType::LessEqual : TokenType::LessThan);
+      if (Peek() == '=') {
+        Advance();
+        return MakeToken(TokenType::LessEqual);
+      }
+      return MakeToken(TokenType::LessThan);
     case '>':
-      return MakeToken(MatchChar('=') ? TokenType::GreaterEqual : TokenType::GreaterThan);
+      if (Peek() == '=') {
+        Advance();
+        return MakeToken(TokenType::GreaterEqual);
+      }
+      return MakeToken(TokenType::GreaterThan);
     case '*':
-      return MakeToken(MatchChar('*') ? TokenType::StarStar: TokenType::Star);
+      if (Peek() == '*') {
+        Advance();
+        return MakeToken(TokenType::StarStar);
+      }
+      return MakeToken(TokenType::Star);
     case '.':
-      return MakeToken(MatchChar('.') ? TokenType::DotDot : TokenType::Dot);
+      if (Peek() == '.') {
+        Advance();
+        return MakeToken(TokenType::DotDot);
+      }
+      return MakeToken(TokenType::Dot);
     case '"':
       return MakeString();
     case '\'':
@@ -169,22 +213,22 @@ Token Scanner::ScanToken()
   }
 }
 
-std::string Scanner::GetCodeAtLine(int line) const
+std::string Grace::Scanner::GetCodeAtLine(int line)
 {
   int curr = 1;
   int strIndex = 0;
   while (curr < line) {
-    if (m_CodeString[strIndex++] == '\n') {
+    if (s_CodeString[strIndex++] == '\n') {
       curr++;
     }
   }
 
-  std::string codeSubStr = m_CodeString.substr(strIndex, m_CodeString.length() - strIndex);
+  std::string codeSubStr = s_CodeString.substr(strIndex, s_CodeString.length() - strIndex);
   codeSubStr = codeSubStr.substr(0, codeSubStr.find_first_of('\n'));
   return codeSubStr;
 }
 
-void Scanner::SkipWhitespace()
+static void SkipWhitespace()
 {
   while (true) {
     if (IsAtEnd()) {
@@ -193,14 +237,14 @@ void Scanner::SkipWhitespace()
 
     switch (Peek()) {
       case '\t':
-        m_Column += 8;
+        s_ScannerColumn += 8;
       case ' ':
       case '\r':
         Advance();
         break;
       case '\n':
-        m_Line++;
-        m_Column = 0;
+        s_ScannerLine++;
+        s_ScannerColumn = 0;
         Advance();
         break;
       case '/': {
@@ -231,62 +275,53 @@ void Scanner::SkipWhitespace()
   }
 }
 
-char Scanner::Advance()
+static char Advance()
 {
   if (IsAtEnd()) {
     return '\0';
   }
 
-  m_Current++;
-  m_Column++;
-  return m_CodeString[m_Current - 1];
+  s_ScannerCurrent++;
+  s_ScannerColumn++;
+  return s_CodeString[s_ScannerCurrent - 1];
 }
 
-bool Scanner::IsAtEnd() const
+static bool IsAtEnd()
 {
-  return m_Current >= m_CodeString.length();
+  return s_ScannerCurrent >= s_CodeString.length();
 }
 
-bool Scanner::MatchChar(char toMatch)
+static char Peek()
 {
-  if (IsAtEnd()) {
-    return false;
-  }
-  
-  return Advance() == toMatch;
+  return s_CodeString[s_ScannerCurrent];
 }
 
-char Scanner::Peek()
+static char PeekNext()
 {
-  return m_CodeString[m_Current];
-}
-
-char Scanner::PeekNext()
-{
-  if (IsAtEnd() || m_Current == m_CodeString.length() - 1) {
+  if (IsAtEnd() || s_ScannerCurrent == s_CodeString.length() - 1) {
     return '\0';
   }
 
-  return m_CodeString[m_Current + 1];
+  return s_CodeString[s_ScannerCurrent + 1];
 }
 
-char Scanner::PeekPrevious()
+static char PeekPrevious()
 {
-  return m_Current == 0 ? '\0' : m_CodeString[m_Current - 1];
+  return s_ScannerCurrent == 0 ? '\0' : s_CodeString[s_ScannerCurrent - 1];
 }
 
-Token Scanner::ErrorToken(const std::string& message)
+static Token ErrorToken(std::string&& message)
 {
-  return Token(TokenType::Error, m_Line, m_Column, message);
+  return Token(TokenType::Error, s_ScannerLine, s_ScannerColumn, std::move(message));
 }
 
-Token Scanner::Identifier()
+static Token Identifier()
 {
   while (!IsAtEnd() && (IsIdentifierChar(Peek()) || std::isdigit(Peek()))) {
     Advance();
   }
 
-  std::string tokenStr = m_CodeString.substr(m_Start, m_Current - m_Start);
+  std::string tokenStr = s_CodeString.substr(s_ScannerStart, s_ScannerCurrent - s_ScannerStart);
   if (s_KeywordLookup.find(tokenStr) != s_KeywordLookup.end()) {
     return MakeToken(s_KeywordLookup[tokenStr]);
   } else {
@@ -294,7 +329,7 @@ Token Scanner::Identifier()
   }
 }
 
-Token Scanner::Number()
+static Token Number()
 {
   while (!IsAtEnd() && std::isdigit(Peek())) {
     Advance();
@@ -312,13 +347,13 @@ Token Scanner::Number()
   }
 }
 
-Token Scanner::MakeToken(TokenType type) const
+static Token MakeToken(TokenType type)
 {
-  auto length = m_Current - m_Start;
-  return Token(type, m_Start, length, m_Line, m_Column - 1, m_CodeString);
+  auto length = s_ScannerCurrent - s_ScannerStart;
+  return Token(type, s_ScannerStart, length, s_ScannerLine, s_ScannerColumn - 1, s_CodeString);
 }
 
-Token Scanner::MakeString()
+static Token MakeString()
 {
   while (!IsAtEnd()) {
     if (Peek() == '"') {
@@ -327,7 +362,7 @@ Token Scanner::MakeString()
       }
     }
     if (Peek() == '\n') {
-      m_Line++;
+      s_ScannerLine++;
     }
     Advance();
   }
@@ -341,7 +376,7 @@ Token Scanner::MakeString()
 }
 
 // not doing error checking here to do better error reporting in the compiler
-Token Scanner::MakeChar()
+static Token MakeChar()
 {
   while (!IsAtEnd()) {
     if (Peek() == '\'') {
@@ -350,7 +385,7 @@ Token Scanner::MakeChar()
       }
     }
     if (Peek() == '\n') {
-      m_Line++;
+      s_ScannerLine++;
     }
     Advance();
   }

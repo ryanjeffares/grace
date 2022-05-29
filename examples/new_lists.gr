@@ -1,0 +1,16 @@
+func append_list(l, value):
+  __NATIVE_APPEND_LIST(l, value);
+end
+
+func get_list(l, index):
+  return __NATIVE_GET_LIST_AT_INDEX(l, index);
+end
+
+func main():
+  try:
+    var l = [];
+    var value = get_list(l, 1); 
+  catch e:
+    println(e);
+  end
+end

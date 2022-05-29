@@ -19,6 +19,11 @@
 
 namespace Grace 
 {
+  namespace VM
+  {
+    class Value;
+  }
+
   class GraceObject
   {
     public:
@@ -27,8 +32,10 @@ namespace Grace
       virtual void DebugPrint() const = 0;
       virtual void Print() const = 0;
       virtual void PrintLn() const = 0;
-      virtual std::string ToString() const = 0;
-      virtual bool AsBool() const = 0;
+      GRACE_NODISCARD virtual std::string ToString() const = 0;
+      GRACE_NODISCARD virtual bool AsBool() const = 0;
+      GRACE_NODISCARD virtual std::string ObjectName() const = 0;
+      GRACE_NODISCARD virtual VM::Value Deref() const = 0;
 
       GRACE_INLINE std::uint32_t IncreaseRef()
       {

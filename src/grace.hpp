@@ -44,8 +44,8 @@
 #   error "C++17 is required"
 # endif
 #else
-# if (__cplusplus < 201703L)
-#   error "C++17 is required"
+# if (__cplusplus < 202002L)
+#   error "C++20 is required"
 # endif
 #endif
 
@@ -59,6 +59,14 @@
 
 #ifndef GRACE_PATCH_NUMBER
 # define GRACE_PATCH_NUMBER   1
+#endif
+
+#ifndef GRACE_LIKELY
+# define GRACE_LIKELY       [[likely]]
+#endif
+
+#ifndef GRACE_UNLIKELY
+# define GRACE_UNLIKELY     [[unlikely]]
 #endif
 
 #ifndef GRACE_INLINE

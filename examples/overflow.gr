@@ -1,0 +1,12 @@
+func time_ms():
+  return __NATIVE_TIME_MS();
+end
+
+func main():
+  var start = time_ms();
+  var a = 0;
+  while a >= 0:
+    a = a + 1;
+  end
+  println("Took " + (time_ms() - start) + " ms to reach int max");
+end

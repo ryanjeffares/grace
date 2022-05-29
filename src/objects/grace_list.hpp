@@ -14,21 +14,29 @@
 
 #include <vector>
 
-#include "grace_object.hpp"
+#include "grace_exception.hpp"
+#include "grace_iterator.hpp"
 #include "../value.hpp"
 
 namespace Grace
 {
-  class GraceList : public GraceObject
+  class GraceList : public GraceIterable<std::vector<VM::Value>::iterator>
   {
     public:
+      using Iterator = std::vector<VM::Value>::iterator;
+
       GraceList() = default;
-      GraceList(std::vector<VM::Value>&& items);
+      explicit GraceList(const VM::Value&);
+      explicit GraceList(std::vector<VM::Value>&& items);
       GraceList(const GraceList& other, std::int64_t multiple);
+      GraceList(const VM::Value& min, const VM::Value& max, const VM::Value& increment);
+
+      ~GraceList();
 
       GRACE_INLINE void Append(const VM::Value& value)
       {
         m_Data.push_back(value);
+        InvalidateIterators();
       }
       
       template<typename T>
@@ -39,26 +47,66 @@ namespace Grace
             || std::is_same<T, std::string>::value || std::is_same<T, VM::Value::NullValue>::value,
             "Invalid type for Value<T>");
         m_Data.emplace_back(value);
+        InvalidateIterators();
       }
 
       void Append(const std::vector<VM::Value>& items);
       void Remove(std::size_t index);
 
+      GRACE_NODISCARD GRACE_INLINE std::size_t Length() const
+      {
+        return m_Data.size();
+      }
+
+      GRACE_NODISCARD GRACE_INLINE Iterator Begin() override
+      {
+        return m_Data.begin();
+      }
+
+      GRACE_NODISCARD GRACE_INLINE Iterator End() override
+      {
+        return m_Data.end();
+      }
+
       void DebugPrint() const override;
       void Print() const override;
       void PrintLn() const override;
-      std::string ToString() const override;
-      bool AsBool() const override; 
-
+      GRACE_NODISCARD std::string ToString() const override;
+      GRACE_NODISCARD bool AsBool() const override;
+      GRACE_NODISCARD std::string ObjectName() const override;
+      VM::Value Deref() const override
+      {
+        throw GraceException(
+          GraceException::Type::InvalidType,
+          "List cannot be dereferenced"
+        );
+      }
+      
       GRACE_INLINE VM::Value& operator[](std::size_t index)
       {
+        if (index >= m_Data.size()) {
+          throw GraceException(
+            GraceException::Type::IndexOutOfRange,
+            fmt::format("Given index is {} but the length of the List is {}", index, m_Data.size())
+          );
+        }
         return m_Data[index];
       }
 
       GRACE_INLINE const VM::Value& operator[](std::size_t index) const
       {
+        if (index >= m_Data.size()) {
+          throw GraceException(
+            GraceException::Type::IndexOutOfRange,
+            fmt::format("Given index is {} but the length of the List is {}", index, m_Data.size())
+          );
+        }
         return m_Data[index];
       }
+
+      void AddIterator(GraceIterator<Iterator>*) override;
+      void RemoveIterator(GraceIterator<Iterator>*) override;
+      void InvalidateIterators() override;
 
     private:
       std::vector<VM::Value> m_Data;

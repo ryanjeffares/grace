@@ -21,6 +21,7 @@
 #include <fmt/format.h>
 
 #include "grace.hpp"
+#include "objects/grace_exception.hpp"
 #include "objects/grace_object.hpp"
 #include "objects/object_tracker.hpp"
 
@@ -30,6 +31,9 @@ namespace Grace
 
   namespace VM
   {
+    template<class T>
+    concept DerivedGraceObject = std::is_base_of<GraceObject, T>::value;
+
     class Value final 
     {
     public:
@@ -81,9 +85,18 @@ namespace Grace
       Value(Value&& other) GRACE_NOEXCEPT;
       ~Value();
 
-      static Value CreateList();
-      static Value CreateList(std::vector<Value>&& items);
-      static Value CreateList(const GraceList& list, std::int64_t multiple);
+      template<DerivedGraceObject T, typename... Args>
+      GRACE_NODISCARD static Value CreateObject(Args&&... args)
+      {
+        Value res;
+        res.m_Type = Type::Object;
+        res.m_Data.m_Object = new T(std::forward<Args>(args)...);
+        res.m_Data.m_Object->IncreaseRef();
+      #ifdef GRACE_DEBUG
+        ObjectTracker::TrackObject(res.m_Data.m_Object);
+      #endif
+        return res;
+      }
 
       constexpr Value& operator=(const Value& other)
       {
@@ -182,11 +195,32 @@ namespace Grace
           m_Data.m_Null = nullptr;
         }
         return *this;
-      }
+      }      
+
+      GRACE_NODISCARD Value operator+(const Value&) const;
+      GRACE_NODISCARD Value operator-(const Value&) const;
+      GRACE_NODISCARD Value operator*(const Value&) const;
+      GRACE_NODISCARD Value operator/(const Value&) const;
+      GRACE_NODISCARD Value operator%(const Value&) const;
+      GRACE_NODISCARD Value operator==(const Value&) const;
+      GRACE_NODISCARD Value operator!=(const Value&) const;
+      GRACE_NODISCARD Value operator<(const Value&) const;
+      GRACE_NODISCARD Value operator<=(const Value&) const;
+      GRACE_NODISCARD Value operator>(const Value&) const;
+      GRACE_NODISCARD Value operator>=(const Value&) const;
+      GRACE_NODISCARD Value operator!() const;
+      GRACE_NODISCARD Value operator-() const;
+
+      GRACE_NODISCARD Value Pow(const Value&) const;
 
       void PrintLn() const;
       void Print() const;
       void DebugPrint() const;
+
+      GRACE_NODISCARD GRACE_INLINE bool IsNumber() const
+      {
+        return m_Type == Type::Int || m_Type == Type::Double;
+      }
 
       GRACE_NODISCARD std::string AsString() const;
       GRACE_NODISCARD bool AsBool() const;
@@ -230,9 +264,17 @@ namespace Grace
         return m_Type;
       }
 
+      GRACE_NODISCARD GRACE_INLINE std::string GetTypeName() const
+      {
+        if (m_Type == Type::Object) {
+          return m_Data.m_Object->ObjectName();
+        }
+        return fmt::format("{}", m_Type);
+      }
+
     private:
 
-      Type m_Type;
+      Type m_Type{ Type::Null }; 
 
       union
       {
@@ -243,7 +285,7 @@ namespace Grace
         NullValue m_Null;
         GraceObject* m_Object;
         std::string* m_Str;
-      } m_Data;
+      } m_Data{};
     };
   } // namespace VM
 } // namespace Grace

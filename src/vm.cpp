@@ -9,12 +9,12 @@
  *  For licensing information, see grace.hpp
  */
 
-#include <cmath>
 #include <cstdlib>
 #include <initializer_list>
 #include <iterator>
 #include <stack>
 #include <chrono>
+#include <utility>
 
 #include "grace.hpp"
 
@@ -22,9 +22,10 @@
 # include <stdlib.h>    // getenv_s
 #endif
 
-#include "compiler.hpp"
-#include "objects/grace_list.hpp"
+#include "scanner.hpp"
 #include "vm.hpp"
+#include "objects/grace_iterator.hpp"
+#include "objects/grace_list.hpp"
 #include "objects/object_tracker.hpp"
 
 using namespace Grace::VM;
@@ -65,7 +66,7 @@ static void PrintLocals(const std::vector<Value>& locals, const std::string& fun
 }
 #endif
 
-VM::VM(Compiler::Compiler& compiler) : m_Compiler(compiler)
+VM::VM()
 {
   RegisterNatives();
 }
@@ -121,7 +122,7 @@ bool VM::CombineFunctions(GRACE_MAYBE_UNUSED bool verbose)
   return true;
 }
 
-void VM::Start(bool verbose)
+InterpretResult VM::Start(bool verbose)
 {
   using namespace std::chrono;
   auto start = steady_clock::now();
@@ -137,6 +138,7 @@ void VM::Start(bool verbose)
       }
     }
   }
+  return res;
 }
 
 InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
@@ -149,232 +151,230 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
     }                                                                 \
   } while (false)                                                     \
 
-#define RETURN_ERR()                                                  \
-  do {                                                                \
-    localsList.clear();                                               \
-    return InterpretResult::RuntimeError;                             \
-  } while (false)                                                     \
-
-#define RETURN_ASSERT_FAILED()                                        \
-  do {                                                                \
-    localsList.clear();                                               \
-    return InterpretResult::RuntimeAssertionFailed;                   \
-  } while (false)                                                     \
-
-  auto funcNameHash = m_Hasher("main");
+  auto funcNameHash = static_cast<std::int64_t>(m_Hasher("main"));
   std::vector<Value> valueStack, localsList;
+  valueStack.reserve(16);
+  localsList.reserve(16);
 
   std::size_t opCurrent = 0, constantCurrent = 0;
+  
+  auto& mainFunc = m_FunctionList.at(funcNameHash);
+
+  std::vector<std::pair<std::size_t, std::size_t>> opConstOffsets, constantOffsets;
+  opConstOffsets.reserve(32);
+  opConstOffsets.emplace_back(mainFunc.m_OpIndexStart, mainFunc.m_ConstantIndexStart);
+
   std::stack<std::size_t> localsOffsets;
   localsOffsets.push(0);
 
   CallStack callStack;
   callStack.emplace_back(static_cast<std::int64_t>(m_Hasher("file")), funcNameHash, 1);
 
-  while (opCurrent < m_FullOpList.size()) {
+  // used to restore the "state" of the VM before entering a try block
+  // if an exception is caught
+  struct VMState
+  {
+    std::size_t stackSize{}, numLocals{}, callStackSize{}, opOffsetSize{}, localsOffsets{};
+    std::int64_t opIndexToJump{}, constIndexToJump{};
+  };
+
+  std::stack<VMState> vmStateStack;
+
+  bool inTryBlock = false;
+
+#ifdef GRACE_DEBUG
+  if (verbose) {
+    ObjectTracker::EnableVerbose();
+  }
+#endif
+
+  while (true) {
     auto [op, line] = m_FullOpList[opCurrent++];
 
-    switch (op) {
-      case Ops::Add: {
-        auto [c1, c2] = PopLastTwo(valueStack);
-        if (!HandleAddition(c1, c2, valueStack)) {
-          RuntimeError(fmt::format("cannot add `{}` to `{}`", c2.GetType(), c1.GetType()), 
-              InterpretError::InvalidOperand, line, callStack);
-#ifdef GRACE_DEBUG
-          PRINT_LOCAL_MEMORY();
-#endif
-          RETURN_ERR();
-        }
-        break;
-      }
-      case Ops::Subtract: {
-        auto [c1, c2] = PopLastTwo(valueStack);
-        if (!HandleSubtraction(c1, c2, valueStack)) {
-          RuntimeError(fmt::format("cannot subtract `{}` from `{}`", c2.GetType(), c1.GetType()), 
-              InterpretError::InvalidOperand, line, callStack);
-#ifdef GRACE_DEBUG
-          PRINT_LOCAL_MEMORY();
-#endif
-          RETURN_ERR();
-        }
-        break;
-      }
-      case Ops::Multiply: {
-        auto [c1, c2] = PopLastTwo(valueStack);
-        if (!HandleMultiplication(c1, c2, valueStack)) {
-          RuntimeError(fmt::format("cannot multiply `{}` by `{}`", c1.GetType(), c2.GetType()), 
-              InterpretError::InvalidOperand, line, callStack);
-#ifdef GRACE_DEBUG
-          PRINT_LOCAL_MEMORY();
-#endif
-          RETURN_ERR();
-        }
-        break;
-      }
-      case Ops::Mod: {
-        auto [c1, c2] = PopLastTwo(valueStack);
-        if (!HandleMod(c1, c2, valueStack)) {
-          RuntimeError(fmt::format("cannot multiply `{}` by `{}`", c1.GetType(), c2.GetType()), 
-              InterpretError::InvalidOperand, line, callStack);
-#ifdef GRACE_DEBUG
-          PRINT_LOCAL_MEMORY();
-#endif
-          RETURN_ERR();
-        }
-        break;
-      }
-      case Ops::Divide: {
-        auto [c1, c2] = PopLastTwo(valueStack);
-        if (!HandleDivision(c1, c2, valueStack)) {
-          RuntimeError(fmt::format("cannot divide `{}` by `{}`", c1.GetType(), c2.GetType()), 
-              InterpretError::InvalidOperand, line, callStack);
-#ifdef GRACE_DEBUG
-          PRINT_LOCAL_MEMORY();
-#endif
-          RETURN_ERR();
-        }
-        break;
-      }
-      case Ops::And: {
-        auto [c1, c2] = PopLastTwo(valueStack);
-        valueStack.emplace_back(c1.AsBool() && c2.AsBool());
-        break;
-      }
-      case Ops::Or: {
-        auto [c1, c2] = PopLastTwo(valueStack);
-        valueStack.emplace_back(c1.AsBool() || c2.AsBool());
-        break;
-      }
-      case Ops::Equal: {
-        auto [c1, c2] = PopLastTwo(valueStack);
-        HandleEquality(c1, c2, valueStack, true);
-        break;
-      }
-      case Ops::NotEqual: {
-        auto [c1, c2] = PopLastTwo(valueStack);
-        HandleEquality(c1, c2, valueStack, false);
-        break;
-      }
-      case Ops::Greater: {
-        auto [c1, c2] = PopLastTwo(valueStack);
-        if (!HandleGreaterThan(c1, c2, valueStack)) {
-          RuntimeError(fmt::format("cannot compare `{}` with `{}`", c1.GetType(), c2.GetType()), 
-              InterpretError::InvalidOperand, line, callStack);
-#ifdef GRACE_DEBUG
-          PRINT_LOCAL_MEMORY();
-#endif
-          RETURN_ERR();
-        }
-        break;
-      }
-      case Ops::GreaterEqual: {
-        auto [c1, c2] = PopLastTwo(valueStack);
-        if (!HandleGreaterEqual(c1, c2, valueStack)) {
-          RuntimeError(fmt::format("cannot compare `{}` with `{}`", c1.GetType(), c2.GetType()), 
-              InterpretError::InvalidOperand, line, callStack);
-#ifdef GRACE_DEBUG
-          PRINT_LOCAL_MEMORY();
-#endif
-          RETURN_ERR();
-        }
-        break;
-      }
-      case Ops::Less: {
-        auto [c1, c2] = PopLastTwo(valueStack);
-        if (!HandleLessThan(c1, c2, valueStack)) {
-          RuntimeError(fmt::format("cannot compare `{}` with `{}`", c1.GetType(), c2.GetType()), 
-              InterpretError::InvalidOperand, line, callStack);
-#ifdef GRACE_DEBUG
-          PRINT_LOCAL_MEMORY();
-#endif
-          RETURN_ERR();
-        }
-        break;
-      }
-      case Ops::LessEqual: {
-        auto [c1, c2] = PopLastTwo(valueStack);
-        if (!HandleLessEqual(c1, c2, valueStack)) {
-          RuntimeError(fmt::format("cannot compare `{}` with `{}`", c1.GetType(), c2.GetType()), 
-              InterpretError::InvalidOperand, line, callStack);
-#ifdef GRACE_DEBUG
-          PRINT_LOCAL_MEMORY();
-#endif
-          RETURN_ERR();
-        }
-        break;
-      }
-      case Ops::Pow: {
-        auto [c1, c2] = PopLastTwo(valueStack);
-        if (!HandlePower(c1, c2, valueStack)) {
-          RuntimeError(fmt::format("cannot power `{}` with `{}`", c1.GetType(), c2.GetType()),
-            InterpretError::InvalidOperand, line, callStack);
-#ifdef GRACE_DEBUG
-          PRINT_LOCAL_MEMORY();
-#endif
-          RETURN_ERR();
-        }
-        break;
-      }
-      case Ops::Negate: {
-        auto c = Pop(valueStack);
-        if (!HandleNegate(c, valueStack)) {
-          RuntimeError(fmt::format("Cannot negate `{}`", c.GetType()), 
-              InterpretError::InvalidType, line, callStack);
-#ifdef GRACE_DEBUG
-          PRINT_LOCAL_MEMORY();
-#endif
-          RETURN_ERR();
-        }
-        break;
-      }
-      case Ops::Not: {
-        auto c = Pop(valueStack);
-        valueStack.emplace_back(!(c.AsBool()));
-        break;
-      }
-      case Ops::LoadConstant:
-        // hot path here
-        valueStack.push_back(m_FullConstantList[constantCurrent++]);
-        break;
-      case Ops::LoadLocal: {
-        auto id = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
-        auto value = localsList[id + localsOffsets.top()];
-        valueStack.push_back(value);
-        break;
-      }
-      case Ops::Pop:
-        valueStack.pop_back();
-        break;
-      case Ops::PopLocal:
-        localsList.pop_back();
-        break;
-      case Ops::Print:
-        valueStack.back().Print();
-        break;
-      case Ops::PrintEmptyLine:
-        fmt::print("\n");
-        break;
-      case Ops::PrintLn:
-        valueStack.back().PrintLn();
-        break;
-      case Ops::PrintTab:
-        fmt::print("\t");
-        break;
-      case Ops::Call: {
-        auto calleeNameHash = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+    try {
 
-        if (m_NativeFunctions.find(calleeNameHash) != m_NativeFunctions.end()) {
-          auto& calleeFunc = m_NativeFunctions.at(calleeNameHash);
+      switch (op) {
+        case Ops::Add: {
+          auto [c1, c2] = PopLastTwo(valueStack);
+          valueStack.push_back(c1 + c2);
+          break;
+        }
+        case Ops::Subtract: {
+          auto [c1, c2] = PopLastTwo(valueStack);
+          valueStack.push_back(c1 - c2);
+          break;
+        }
+        case Ops::Multiply: {
+          auto [c1, c2] = PopLastTwo(valueStack);
+          valueStack.push_back(c1 * c2);
+          break;
+        }
+        case Ops::Mod: {
+          auto [c1, c2] = PopLastTwo(valueStack);
+          valueStack.push_back(c1 % c2);
+          break;
+        }
+        case Ops::Divide: {
+          auto [c1, c2] = PopLastTwo(valueStack);
+          valueStack.push_back(c1 / c2);
+          break;
+        }
+        case Ops::And: {
+          auto [c1, c2] = PopLastTwo(valueStack);
+          valueStack.emplace_back(c1.AsBool() && c2.AsBool());
+          break;
+        }
+        case Ops::Or: {
+          auto [c1, c2] = PopLastTwo(valueStack);
+          valueStack.emplace_back(c1.AsBool() || c2.AsBool());
+          break;
+        }
+        case Ops::Equal: {
+          auto [c1, c2] = PopLastTwo(valueStack);
+          valueStack.push_back(c1 == c2);
+          break;
+        }
+        case Ops::NotEqual: {
+          auto [c1, c2] = PopLastTwo(valueStack);
+          valueStack.push_back(c1 != c2);
+          break;
+        }
+        case Ops::Greater: {
+          auto [c1, c2] = PopLastTwo(valueStack);
+          valueStack.push_back(c1 > c2);
+          break;
+        }
+        case Ops::GreaterEqual: {
+          auto [c1, c2] = PopLastTwo(valueStack);
+          valueStack.push_back(c1 >= c2);
+          break;
+        }
+        case Ops::Less: {
+          auto [c1, c2] = PopLastTwo(valueStack);
+          valueStack.push_back(c1 < c2);
+          break;
+        }
+        case Ops::LessEqual: {
+          auto [c1, c2] = PopLastTwo(valueStack);
+          valueStack.push_back(c1 <= c2);
+          break;
+        }
+        case Ops::Pow: {
+          auto [c1, c2] = PopLastTwo(valueStack);
+          valueStack.push_back(c1.Pow(c2));
+          break;
+        }
+        case Ops::Negate: {
+          auto c = Pop(valueStack);
+          valueStack.push_back(-c);
+          break;
+        }
+        case Ops::Not: {
+          auto c = Pop(valueStack);
+          valueStack.push_back(!c);
+          break;
+        }
+        case Ops::Deref: {
+          auto value = Pop(valueStack);
+          if (value.GetType() == Value::Type::Object) {
+            valueStack.push_back(value.GetObject()->Deref());
+            break;
+          }
+          throw GraceException(
+            GraceException::Type::InvalidType,
+            fmt::format("Cannot dereference {}", value.GetTypeName())
+          );
+        }
+        case Ops::LoadConstant:
+          valueStack.push_back(m_FullConstantList[constantCurrent++]);
+          break;
+        case Ops::LoadLocal: {
+          auto id = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+          auto& value = localsList[id + localsOffsets.top()];
+          valueStack.push_back(value);
+          break;
+        }
+        case Ops::Pop:
+          valueStack.pop_back();
+          break;
+        case Ops::PopLocal:
+          localsList.pop_back();
+          break;
+        case Ops::PopLocals: {
+          auto shouldPop = m_FullConstantList[constantCurrent++].Get<bool>();
+          if (!shouldPop) {
+            break;
+          }
+          auto targetNumLocals = m_FullConstantList[constantCurrent++].Get<std::int64_t>() + localsOffsets.top();
+          localsList.resize(targetNumLocals);
+          break;
+        }
+        case Ops::Print:
+          valueStack.back().Print();
+          break;
+        case Ops::PrintEmptyLine:
+          fmt::print("\n");
+          break;
+        case Ops::PrintLn:
+          valueStack.back().PrintLn();
+          break;
+        case Ops::PrintTab:
+          fmt::print("\t");
+          break;
+        case Ops::Call: {
+          auto calleeNameHash = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+          auto numArgsGiven = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+
+          auto it = m_FunctionList.find(calleeNameHash);
+          if (it == m_FunctionList.end()) {
+            throw GraceException(
+              GraceException::Type::FunctionNotFound, 
+              fmt::format("cannot find function `{}`", m_FullConstantList[constantCurrent++].Get<std::string>())
+            );
+          }
+          
+          // increment this here to get past the string function name
+          // we only put it in the constant list so we can report a nice error
+          constantCurrent++;
+
+          auto& calleeFunc = it->second;
+          int arity = calleeFunc.m_Arity;          
+
+          if (numArgsGiven != arity) {            
+            throw GraceException(
+              GraceException::Type::IncorrectArgCount, 
+              fmt::format("Incorrect number of arguments given to function '{}', expected {} but got {}", calleeFunc.m_Name, arity, numArgsGiven)
+            );
+          }
+
+          localsOffsets.push(localsList.size());
+          localsList.resize(localsList.size() + arity);
+          for (auto i = 0; i < arity; i++) {
+            localsList[arity - i - 1 + localsOffsets.top()] = Pop(valueStack);
+          }
+
+          callStack.emplace_back(funcNameHash, calleeNameHash, line);
+          valueStack.emplace_back(static_cast<std::int64_t>(opCurrent));
+          valueStack.emplace_back(static_cast<std::int64_t>(constantCurrent));
+
+          opCurrent = calleeFunc.m_OpIndexStart;
+          constantCurrent = calleeFunc.m_ConstantIndexStart; 
+          opConstOffsets.emplace_back(opCurrent, constantCurrent);
+          
+          funcNameHash = calleeNameHash;
+          break;
+        }
+        case Ops::NativeCall: {
+          auto calleeIndex = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+          auto& calleeFunc = m_NativeFunctions[calleeIndex];
           auto arity = calleeFunc.GetArity();
           auto numArgsGiven = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
 
-          if (numArgsGiven != arity) {
-            RuntimeError(fmt::format("Incorrect number of arguments given to function '{}', expected {} but got {}", calleeFunc.GetName(), arity, numArgsGiven), 
-                InterpretError::IncorrectArgCount, line, callStack);
-#ifdef GRACE_DEBUG
-            PRINT_LOCAL_MEMORY();
-#endif
-            RETURN_ERR();
+          if (numArgsGiven != arity) {            
+            throw GraceException(
+              GraceException::Type::IncorrectArgCount, 
+              fmt::format("Incorrect number of arguments given to function '{}', expected {} but got {}", calleeFunc.GetName(), arity, numArgsGiven)
+            );
           }
 
           std::vector<Value> args(arity);
@@ -386,198 +386,305 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
           valueStack.push_back(std::move(res));
           break;
         }
+        case Ops::AssignLocal: {
+          auto value = Pop(valueStack);
+          localsList[m_FullConstantList[constantCurrent++].Get<std::int64_t>() + localsOffsets.top()] = std::move(value);
+          break;
+        }
+        case Ops::DeclareLocal: {
+          localsList.emplace_back();
+          break;
+        }
+        case Ops::AssignIteratorBegin: {
+          auto collection = Pop(valueStack);
+          auto iteratorId = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+          auto object = collection.GetObject();
+          if (auto list = dynamic_cast<GraceList*>(object)) {
+            localsList[iteratorId + localsOffsets.top()] = 
+              Value::CreateObject<GraceIterator<GraceList::Iterator>>(list);
+          } else {
+            throw GraceException(
+              GraceException::Type::InvalidType,
+              fmt::format("{} is not iterable", collection.GetTypeName())
+            );
+          }
+          break;
+        }
+        case Ops::IncrementIterator: {
+          auto iteratorId = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+          auto iterator = localsList[iteratorId + localsOffsets.top()].GetObject();
+          if (auto listIterator = dynamic_cast<GraceIterator<GraceList::Iterator>*>(iterator)) {
+            listIterator->Increment();
+          } else {
+            throw GraceException(
+              GraceException::Type::InvalidType,
+              "Value was not an iterator"
+            );
+          }
+          break;
+        }
+        case Ops::Jump: {
+          auto constIdx = m_FullConstantList[constantCurrent++].Get<std::int64_t>(); 
+          auto opIdx = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+          auto [opOffset, constOffset] = opConstOffsets.back();
+          opCurrent = opIdx + opOffset;
+          constantCurrent = constIdx + constOffset;
+          break;
+        }
+        case Ops::JumpIfFalse: {
+          auto constIdx = m_FullConstantList[constantCurrent++].Get<std::int64_t>(); 
+          auto opIdx = m_FullConstantList[constantCurrent++].Get<std::int64_t>(); 
+          auto condition = Pop(valueStack);
+          if (!condition.AsBool()) {
+            auto [opOffset, constOffset] = opConstOffsets.back();
+            opCurrent = opIdx + opOffset;
+            constantCurrent = constIdx + constOffset;
+          }
+          break;
+        }
+        case Ops::Return: {
+          auto returnValue = Pop(valueStack);
 
-        if (m_FunctionList.find(calleeNameHash) == m_FunctionList.end()) {
-          RuntimeError("Function not found", InterpretError::FunctionNotFound, line, callStack);
 #ifdef GRACE_DEBUG
           PRINT_LOCAL_MEMORY();
 #endif
-          RETURN_ERR();
-        }
 
-        auto& calleeFunc = m_FunctionList.at(calleeNameHash);
-        int arity = calleeFunc.m_Arity;
-        auto numArgsGiven = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+          funcNameHash = std::get<0>(callStack.back());
+          callStack.pop_back();
 
-        if (numArgsGiven != arity) {
-          RuntimeError(fmt::format("Incorrect number of arguments given to function '{}', expected {} but got {}", calleeFunc.m_Name, arity, numArgsGiven), 
-              InterpretError::IncorrectArgCount, line, callStack);
+          constantCurrent = static_cast<std::size_t>(Pop(valueStack).Get<std::int64_t>());
+          opCurrent = static_cast<std::size_t>(Pop(valueStack).Get<std::int64_t>());
+
+          valueStack.emplace_back(std::move(returnValue));
+          localsOffsets.pop();
+          opConstOffsets.pop_back();
+          constantOffsets.pop_back();
+
 #ifdef GRACE_DEBUG
           PRINT_LOCAL_MEMORY();
 #endif
-          RETURN_ERR();
+          break;
+        }
+        case Ops::Cast: {
+          auto value = Pop(valueStack);
+          auto type = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+          switch (type) {
+            case 0: {
+              std::int64_t result;
+              auto [success, message] = value.AsInt(result);
+              if (success) {
+                valueStack.emplace_back(result);
+              } else {                
+                throw GraceException(
+                  GraceException::Type::InvalidCast,
+                  fmt::format("cannot cast `{}` as `int`", value.GetTypeName())
+                );
+              }
+              break;
+            }
+            case 1: {
+              double result;
+              auto [success, message] = value.AsDouble(result);
+              if (success) {
+                valueStack.emplace_back(result);
+              } else {
+                throw GraceException(
+                  GraceException::Type::InvalidCast,
+                  fmt::format("cannot cast `{}` as `float`", value.GetTypeName())
+                );                
+              }
+              break;
+            }
+            case 2:
+              valueStack.emplace_back(value.AsBool());
+              break;
+            case 3:
+              valueStack.emplace_back(value.AsString());
+              break;
+            case 4: {
+              char result;
+              auto [success, message] = value.AsChar(result);
+              if (success) {
+                valueStack.emplace_back(result);
+              } else {
+                throw GraceException(
+                  GraceException::Type::InvalidCast,
+                  fmt::format("cannot cast `{}` as `char`", value.GetTypeName())
+                );                
+              }
+              break;
+            }
+            case 5:
+              valueStack.emplace_back(Value::CreateObject<GraceList>(value));
+              break;
+            default:
+              GRACE_UNREACHABLE();
+              break;
+          }
+          break;
+        }
+        case Ops::CheckType: {
+          auto typeIdx = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+          if (typeIdx < 6) {
+            valueStack.emplace_back(typeIdx == static_cast<std::int64_t>(Pop(valueStack).GetType()));
+          } else {
+            switch (typeIdx) {
+              case 6: {
+                auto l = dynamic_cast<GraceList*>(Pop(valueStack).GetObject());
+                valueStack.emplace_back(l != nullptr);
+                break;
+              }
+              default:
+                GRACE_UNREACHABLE();
+                break;
+            }
+          }
+          break;
+        }
+        case Ops::Dup: {
+          auto numDups = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+          auto value = valueStack.back();
+          valueStack.reserve(numDups);
+          valueStack.insert(valueStack.end(), numDups, value);
+          break;
+        }
+        case Ops::CreateList: {
+          auto numItems = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+          std::vector<Value> result(numItems);
+          for (auto i = 0; i < numItems; i++) {
+            result[numItems - i - 1] = Pop(valueStack);
+          }
+          valueStack.push_back(Value::CreateObject<GraceList>(std::move(result)));
+          break;
+        }
+        case Ops::CreateEmptyList: {
+          valueStack.push_back(Value::CreateObject<GraceList>());
+          break;
+        }
+        case Ops::CreateRangeList: {
+          auto increment = Pop(valueStack);
+          auto max = Pop(valueStack);
+          auto min = Pop(valueStack);
+
+          if (!min.IsNumber()) {
+            throw GraceException(
+              GraceException::Type::InvalidType,
+              fmt::format("All values in range expression must be numbers, got: {}", min.GetTypeName())
+            );
+          }
+
+          if (!max.IsNumber()) {
+            throw GraceException(
+              GraceException::Type::InvalidType,
+              fmt::format("All values in range expression must be numbers, got: {}", max.GetTypeName())
+            );
+          }
+
+          if (!increment.IsNumber()) {
+            throw GraceException(
+              GraceException::Type::InvalidType,
+              fmt::format("All values in range expression must be numbers, got: {}", increment.GetTypeName())
+            );
+          }
+
+          valueStack.push_back(Value::CreateObject<GraceList>(min, max, increment));
+
+          break;
+        }
+        case Ops::Assert: {
+          auto condition = Pop(valueStack);
+          if (!condition.AsBool()) {
+            RuntimeError(GraceException(
+              GraceException::Type::AssertionFailed, "assertion failed"),
+              line,
+              callStack
+            );
+            goto exit;       
+          }
+          break;
+        }
+        case Ops::AssertWithMessage: {
+          auto condition = Pop(valueStack);
+          auto message = m_FullConstantList[constantCurrent++].Get<std::string>();
+          if (!condition.AsBool()) {
+            RuntimeError(GraceException(
+              GraceException::Type::AssertionFailed, fmt::format("assertion failed: {}", message)),
+              line,
+              callStack
+            );
+            goto exit;
+          }
+          break;
+        }
+        case Ops::EnterTry: {
+          inTryBlock = true;
+          auto opIdx = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+          auto constIdx = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+          vmStateStack.push({
+            valueStack.size(),
+            localsList.size(),
+            callStack.size(),
+            opConstOffsets.size(),
+            localsOffsets.size(),
+            opIdx,
+            constIdx
+          });
+          break;
+        }
+        case Ops::ExitTry: {
+          auto targetNumLocals = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+          localsList.resize(targetNumLocals);
+          vmStateStack.pop();
+          inTryBlock = !vmStateStack.empty();
+          break;
+        }
+        case Ops::Throw: {
+          auto message = m_FullConstantList[constantCurrent++].Get<std::string>();
+          throw GraceException(GraceException::Type::ThrownException, std::move(message));
+        }
+        case Ops::Exit: {
+          goto exit;
+        }
+        default:
+          GRACE_UNREACHABLE();
+          break;
+      }      
+
+    } catch(const GraceException& ge) {
+      if (inTryBlock) {
+        // jump to the catch block and put the exception on the stack to be assigned
+        auto vmState = vmStateStack.top();
+
+        // we need to "unwind" the call stack back to its state before we entered the try block...
+        valueStack.resize(vmState.stackSize);
+        localsList.resize(vmState.numLocals);
+        callStack.resize(vmState.callStackSize);
+        opConstOffsets.resize(vmState.opOffsetSize);
+
+        while (localsOffsets.size() != vmState.localsOffsets) {
+          localsOffsets.pop();
         }
 
-        callStack.emplace_back(funcNameHash, calleeNameHash, line);
+        auto [opOffset, constOffset] = opConstOffsets.back();
+        opCurrent = vmState.opIndexToJump + opOffset;
+        constantCurrent = vmState.constIndexToJump + constOffset;
 
-        localsOffsets.push(localsList.size());
-        localsList.resize(localsList.size() + arity);
-        for (auto i = 0; i < arity; i++) {
-          localsList[arity - i - 1 + localsOffsets.top()] = Pop(valueStack);
-        }
+        funcNameHash = std::get<1>(callStack.back());
 
-        valueStack.emplace_back(static_cast<std::int64_t>(opCurrent));
-        valueStack.emplace_back(static_cast<std::int64_t>(constantCurrent));
-
-        opCurrent = calleeFunc.m_OpIndexStart;
-        constantCurrent = calleeFunc.m_ConstantIndexStart; 
-        
-        funcNameHash = calleeNameHash;
-
-        break;
-      }
-      case Ops::AssignLocal: {
-        auto value = Pop(valueStack);
-        localsList[m_FullConstantList[constantCurrent++].Get<std::int64_t>() + localsOffsets.top()] = std::move(value);
-        break;
-      }
-      case Ops::DeclareLocal: {
-        localsList.emplace_back();
-        break;
-      }
-      case Ops::Jump: {
-        auto constIdx = m_FullConstantList[constantCurrent++].Get<std::int64_t>(); 
-        auto opIdx = m_FullConstantList[constantCurrent++].Get<std::int64_t>(); 
-        opCurrent = opIdx + m_FunctionList.at(funcNameHash).m_OpIndexStart;
-        constantCurrent = constIdx + m_FunctionList.at(funcNameHash).m_ConstantIndexStart;
-        break;
-      }
-      case Ops::JumpIfFalse: {
-        auto constIdx = m_FullConstantList[constantCurrent++].Get<std::int64_t>(); 
-        auto opIdx = m_FullConstantList[constantCurrent++].Get<std::int64_t>(); 
-        auto condition = Pop(valueStack);
-        if (!condition.AsBool()) {
-          opCurrent = opIdx + m_FunctionList.at(funcNameHash).m_OpIndexStart;
-          constantCurrent = constIdx + m_FunctionList.at(funcNameHash).m_ConstantIndexStart;
-        }
-        break;
-      }
-      case Ops::Return: {
-        auto returnValue = Pop(valueStack);
-
+        valueStack.push_back(Value::CreateObject<GraceException>(ge));
+      } else {
+        // exception unhandled, report the error and quit
+        RuntimeError(ge, line, callStack);
 #ifdef GRACE_DEBUG
         PRINT_LOCAL_MEMORY();
 #endif
-        
-        funcNameHash = std::get<0>(callStack.back());
-        callStack.pop_back();
-
-        constantCurrent = static_cast<std::size_t>(Pop(valueStack).Get<std::int64_t>());
-        opCurrent = static_cast<std::size_t>(Pop(valueStack).Get<std::int64_t>());
-
-        valueStack.emplace_back(std::move(returnValue));
-        localsOffsets.pop();
-
-#ifdef GRACE_DEBUG
-        PRINT_LOCAL_MEMORY();
-#endif
-        break;
+        localsList.clear();
+        return InterpretResult::RuntimeError;
       }
-      case Ops::CastAsInt: {
-        auto value = Pop(valueStack);
-        std::int64_t result;
-        auto [success, message] = value.AsInt(result);
-        if (success) {
-          valueStack.emplace_back(result);
-        } else {
-          RuntimeError(message.value(), InterpretError::InvalidCast, line, callStack);
-#ifdef GRACE_DEBUG
-          PRINT_LOCAL_MEMORY();
-#endif
-          RETURN_ERR();
-        }
-        break;
-      }
-      case Ops::CastAsFloat: {
-        auto value = Pop(valueStack);
-        double result;
-        auto [success, message] = value.AsDouble(result);
-        if (success) {
-          valueStack.emplace_back(result);
-        } else {
-          RuntimeError(message.value(), InterpretError::InvalidCast, line, callStack);
-#ifdef GRACE_DEBUG
-          PRINT_LOCAL_MEMORY();
-#endif
-          RETURN_ERR();
-        }
-        break;
-      }
-      case Ops::CastAsBool: {
-        auto value = Pop(valueStack);
-        valueStack.emplace_back(value.AsBool());
-        break;
-      }
-      case Ops::CastAsString: {
-        auto value = Pop(valueStack);
-        valueStack.emplace_back(value.AsString());
-        break;
-      }
-      case Ops::CastAsChar: {
-        auto value = Pop(valueStack);
-        char result;
-        auto [success, message] = value.AsChar(result);
-        if (success) {
-          valueStack.emplace_back(result);
-        } else {
-          RuntimeError(message.value(), InterpretError::InvalidCast, line, callStack);
-#ifdef GRACE_DEBUG
-          PRINT_LOCAL_MEMORY();
-#endif
-          RETURN_ERR();
-        }
-        break;
-      }
-      case Ops::CheckType: {
-        auto typeIdx = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
-        valueStack.emplace_back(typeIdx == static_cast<std::int64_t>(Pop(valueStack).GetType()));
-        break;
-      }
-      case Ops::CreateList: {
-        auto numItems = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
-        auto offset = valueStack.size() - numItems;
-        std::vector<Value> result;
-        result.insert(result.end(), std::make_move_iterator(valueStack.begin() + offset), std::make_move_iterator(valueStack.end()));
-        valueStack.erase(valueStack.begin() + offset, valueStack.end());
-        valueStack.emplace_back(Value::CreateList(std::move(result)));
-        break;
-      }
-      case Ops::CreateEmptyList: {
-        valueStack.emplace_back(Value::CreateList());
-        break;
-      }
-      case Ops::Assert: {
-        auto condition = Pop(valueStack);
-        if (!condition.AsBool()) {
-          RuntimeError("Assertion failed", InterpretError::AssertionFailed, line, callStack);
-#ifdef GRACE_DEBUG
-          PRINT_LOCAL_MEMORY();
-#endif
-          RETURN_ASSERT_FAILED();
-        }
-        break;
-      }
-      case Ops::AssertWithMessage: {
-        auto condition = Pop(valueStack);
-        auto message = m_FullConstantList[constantCurrent++].Get<std::string>();
-        if (!condition.AsBool()) {
-          RuntimeError(message, InterpretError::AssertionFailed, line, callStack);
-#ifdef GRACE_DEBUG
-          PRINT_LOCAL_MEMORY();
-#endif
-          RETURN_ASSERT_FAILED();
-        }
-        break;
-      }
-      case Ops::Exit: {
-        opCurrent = m_FullOpList.size();
-        break;
-      }
-      default:
-        GRACE_UNREACHABLE();
-        break;
     }
   }
+
+exit:
 
   localsList.clear();
 
@@ -589,11 +696,9 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
   return InterpretResult::RuntimeOk;
 
 #undef PRINT_LOCAL_MEMORY
-#undef RETURN_ERR
-#undef RETURN_ASSERT_FAILED
 }
 
-void VM::RuntimeError(const std::string& message, InterpretError errorType, int line, const CallStack& callStack)
+void VM::RuntimeError(const GraceException& exception, int line, const CallStack& callStack)
 {
   fmt::print(stderr, "\n");
   
@@ -612,28 +717,28 @@ void VM::RuntimeError(const std::string& message, InterpretError errorType, int 
       for (std::size_t i = 1; i < callStack.size(); i++) {
         const auto& [caller, callee, ln] = callStack[i];
         fmt::print(stderr, "line {}, in {}:\n", ln, m_FunctionList.at(caller).m_Name);
-        fmt::print(stderr, "{:>4}\n", m_Compiler.GetCodeAtLine(ln));
+        fmt::print(stderr, "{:>4}\n", Scanner::GetCodeAtLine(ln));
       }
     } else {
       fmt::print(stderr, "{} more calls before - set environment variable `GRACE_SHOW_FULL_CALLSTACK` to see full callstack\n", callStackSize - 15);
       for (auto i = callStackSize - 15; i < callStackSize; i++) {
         const auto& [caller, callee, ln] = callStack[i];
         fmt::print(stderr, "line {}, in {}:\n", ln, m_FunctionList.at(caller).m_Name);
-        fmt::print(stderr, "{:>4}\n", m_Compiler.GetCodeAtLine(ln));
+        fmt::print(stderr, "{:>4}\n", Scanner::GetCodeAtLine(ln));
       }
     }
   } else {
     for (std::size_t i = 1; i < callStack.size(); i++) {
       const auto& [caller, callee, ln] = callStack[i];
       fmt::print(stderr, "line {}, in {}:\n", ln, m_FunctionList.at(caller).m_Name);
-      fmt::print(stderr, "{:>4}\n", m_Compiler.GetCodeAtLine(ln));
+      fmt::print(stderr, "{:>4}\n", Scanner::GetCodeAtLine(ln));
     }
   }
 
   fmt::print(stderr, "line {}, in {}:\n", line, m_FunctionList.at(std::get<1>(callStack.back())).m_Name);
-  fmt::print(stderr, "{:>4}\n", m_Compiler.GetCodeAtLine(line));
+  fmt::print(stderr, "{:>4}\n", Scanner::GetCodeAtLine(line));
 
   fmt::print(stderr, "\n");
   fmt::print(stderr, fmt::fg(fmt::color::red) | fmt::emphasis::bold, "ERROR: ");
-  fmt::print(stderr, "[line {}] {}: {}. Stopping execution.\n", line, errorType, message);
+  fmt::print(stderr, "[line {}] {}. Stopping execution.\n", line, exception.ToString());
 }

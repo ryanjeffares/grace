@@ -6,12 +6,11 @@ func factorial(n):
 end
 
 func make_list(n1, n2, n3):
-  var res = [n1, n2, n3];
-  return res;
+  return [n1, n2, n3];
 end
 
-func multiply_list(list, multiple):
-  return list * multiple;
+func multiply_list(l, multiple):
+  return l * multiple;
 end
 
 func main():
@@ -20,9 +19,6 @@ func main():
 
   var some_numbers = [69, 420, 140];
   println(some_numbers);
-
-  final some_things = ["Ryan", true, '\t', 1.23 ** 3.14];
-  println(some_things);
 
   var result = make_list("Hello", 2**3, false);
   println(result);
@@ -38,4 +34,14 @@ func main():
   final str = "this is a string";
   final list_of_lists = [[str], [true, false], [1, 2, 3]];
   println(list_of_lists);
+  // println([list_of_lists; 1000]);
+  final str_as_chars = list(str);
+  println(str_as_chars);
+
+  final list_range = [0..10 by 2];
+  println(list_range);
+
+  if instanceof(list_range, list):
+    println("local variable is indeed, a list");
+  end
 end
