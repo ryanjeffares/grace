@@ -396,17 +396,20 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
           break;
         }
         case Ops::AssignIteratorBegin: {
-          auto collection = Pop(valueStack);
+          auto value = Pop(valueStack);
+          auto object = value.GetObject();
+
+          if (object == nullptr || !object->IsIterable()) {
+            throw GraceException(
+              GraceException::Type::InvalidType,
+              fmt::format("{} is not iterable", value.GetTypeName())
+            );
+          }
+
           auto iteratorId = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
-          auto object = collection.GetObject();
           if (auto list = dynamic_cast<GraceList*>(object)) {
             localsList[iteratorId + localsOffsets.top()] = 
               Value::CreateObject<GraceIterator<GraceList::Iterator>>(list);
-          } else {
-            throw GraceException(
-              GraceException::Type::InvalidType,
-              fmt::format("{} is not iterable", collection.GetTypeName())
-            );
           }
           break;
         }

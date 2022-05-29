@@ -54,11 +54,6 @@ bool GraceException::AsBool() const
   return true;
 }
 
-std::string GraceException::ObjectName() const
-{
-  return "Exception";
-}
-
 VM::Value GraceException::Deref() const
 {
   throw GraceException(

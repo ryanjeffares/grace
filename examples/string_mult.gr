@@ -11,4 +11,8 @@ func main():
   println(multiply_string(s, 5));
   println(multiply_string(false, 10));
   println(multiply_string(1234, 20));
+
+  for c in list(multiply_string("hello ", 5)):
+    println(*c);
+  end
 end 

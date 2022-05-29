@@ -131,11 +131,6 @@ bool GraceList::AsBool() const
   return !m_Data.empty();
 }
 
-std::string GraceList::ObjectName() const
-{
-  return "List";
-}
-
 void GraceList::AddIterator(GraceIterator<Iterator>* iterator)
 {
   m_ActiveIterators.push_back(iterator);
