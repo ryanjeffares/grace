@@ -203,19 +203,14 @@ namespace Grace
       GRACE_NODISCARD Value operator*(const Value&) const;
       GRACE_NODISCARD Value operator/(const Value&) const;
       GRACE_NODISCARD Value operator%(const Value&) const;
-      GRACE_NODISCARD Value operator==(const Value&) const;
-      GRACE_NODISCARD Value operator!=(const Value&) const;
-      GRACE_NODISCARD Value operator<(const Value&) const;
-      GRACE_NODISCARD Value operator<=(const Value&) const;
-      GRACE_NODISCARD Value operator>(const Value&) const;
-      GRACE_NODISCARD Value operator>=(const Value&) const;
+      GRACE_NODISCARD bool operator==(const Value&) const;
+      GRACE_NODISCARD bool operator!=(const Value&) const;
+      GRACE_NODISCARD bool operator<(const Value&) const;
+      GRACE_NODISCARD bool operator<=(const Value&) const;
+      GRACE_NODISCARD bool operator>(const Value&) const;
+      GRACE_NODISCARD bool operator>=(const Value&) const;
       GRACE_NODISCARD Value operator!() const;
       GRACE_NODISCARD Value operator-() const;
-
-      GRACE_NODISCARD GRACE_INLINE operator bool() const
-      {
-        return AsBool();
-      }
 
       GRACE_NODISCARD Value Pow(const Value&) const;
 

@@ -286,16 +286,16 @@ Value Value::operator%(const Value& other) const
   );
 }
 
-Value Value::operator==(const Value& other) const
+bool Value::operator==(const Value& other) const
 {
   switch (m_Type) {
     case Type::Int: {
       switch (other.m_Type) {
         case Type::Double: {
-          return Value(static_cast<double>(m_Data.m_Int) == other.m_Data.m_Double);
+          return static_cast<double>(m_Data.m_Int) == other.m_Data.m_Double;
         }
         case Type::Int: {
-          return Value(m_Data.m_Int == other.m_Data.m_Int);
+          return m_Data.m_Int == other.m_Data.m_Int;
         }
         default: break;
       }
@@ -304,10 +304,10 @@ Value Value::operator==(const Value& other) const
     case Type::Double: {
       switch (other.m_Type) {
         case Type::Int: {
-          return Value(m_Data.m_Double == static_cast<double>(other.m_Data.m_Int));
+          return m_Data.m_Double == static_cast<double>(other.m_Data.m_Int);
         }
         case Type::Double: {
-          return Value(m_Data.m_Double == other.m_Data.m_Double);
+          return m_Data.m_Double == other.m_Data.m_Double;
         }
         default: break;
       }
@@ -315,17 +315,17 @@ Value Value::operator==(const Value& other) const
     }
     case Type::Bool: {
       if (other.m_Type == Type::Bool) {
-        return Value(m_Data.m_Bool == other.m_Data.m_Bool);
+        return m_Data.m_Bool == other.m_Data.m_Bool;
       }
       break;
     }
     case Type::Char: {
       switch (other.m_Type) {
         case Type::String: {
-          return Value(other.Get<std::string>().length() == 1 && m_Data.m_Char == other.Get<std::string>()[0]);
+          return other.Get<std::string>().length() == 1 && m_Data.m_Char == other.Get<std::string>()[0];
         }
         case Type::Char: {
-          return Value(m_Data.m_Char == other.m_Data.m_Char);
+          return m_Data.m_Char == other.m_Data.m_Char;
         }
         default: break;
       }
@@ -334,10 +334,10 @@ Value Value::operator==(const Value& other) const
     case Type::String: {
       switch (other.m_Type) {
         case Type::String: {
-          return Value(Get<std::string>() == other.Get<std::string>());
+          return Get<std::string>() == other.Get<std::string>();
         }
         case Type::Char: {
-          return Value(Get<std::string>().length() == 1 && Get<std::string>()[0] == other.m_Data.m_Char);
+          return Get<std::string>().length() == 1 && Get<std::string>()[0] == other.m_Data.m_Char;
         }
         default: break;
       }
@@ -345,30 +345,30 @@ Value Value::operator==(const Value& other) const
     }
     case Type::Null: {
       if (other.m_Type == Type::Null) {
-        return Value(true);
+        return true;
       }
       break;
     }
     default: break;
   }
-  return Value(false);
+  return false;
 }
 
-Value Value::operator!=(const Value& other) const
+bool Value::operator!=(const Value& other) const
 {
   return !(*this == other);
 }
 
-Value Value::operator<(const Value& other) const
+bool Value::operator<(const Value& other) const
 {
   switch (m_Type) {
     case Type::Int: {
       switch (other.m_Type) {
         case Type::Double: {                                          
-          return Value(static_cast<double>(m_Data.m_Int) < other.m_Data.m_Double);
+          return static_cast<double>(m_Data.m_Int) < other.m_Data.m_Double;
         }
         case Type::Int: {
-          return Value(m_Data.m_Int < other.m_Data.m_Int);
+          return m_Data.m_Int < other.m_Data.m_Int;
         }
         default: break;
       }
@@ -377,10 +377,10 @@ Value Value::operator<(const Value& other) const
     case Type::Double: {
       switch (other.m_Type) {
         case Type::Int: {
-          return Value(m_Data.m_Double < static_cast<double>(other.m_Data.m_Int));
+          return m_Data.m_Double < static_cast<double>(other.m_Data.m_Int);
         }
         case Type::Double: {
-          return Value(m_Data.m_Double < other.m_Data.m_Double);
+          return m_Data.m_Double < other.m_Data.m_Double;
         }
         default: break;
       }
@@ -388,7 +388,7 @@ Value Value::operator<(const Value& other) const
     }
     case Type::Char: {
       if (other.m_Type == Type::Char) {
-        return Value(m_Data.m_Char < other.m_Data.m_Char);
+        return m_Data.m_Char < other.m_Data.m_Char;
       }
       break;
     }
@@ -400,16 +400,16 @@ Value Value::operator<(const Value& other) const
   );
 }
 
-Value Value::operator<=(const Value& other) const
+bool Value::operator<=(const Value& other) const
 {
   switch (m_Type) {
     case Type::Int: {
       switch (other.m_Type) {
         case Type::Double: {                                          
-          return Value(static_cast<double>(m_Data.m_Int) <= other.m_Data.m_Double);
+          return static_cast<double>(m_Data.m_Int) <= other.m_Data.m_Double;
         }
         case Type::Int: {
-          return Value(m_Data.m_Int <= other.m_Data.m_Int);
+          return m_Data.m_Int <= other.m_Data.m_Int;
         }
         default: break;
       }
@@ -418,10 +418,10 @@ Value Value::operator<=(const Value& other) const
     case Type::Double: {
       switch (other.m_Type) {
         case Type::Int: {
-          return Value(m_Data.m_Double <= static_cast<double>(other.m_Data.m_Int));
+          return m_Data.m_Double <= static_cast<double>(other.m_Data.m_Int);
         }
         case Type::Double: {
-          return Value(m_Data.m_Double <= other.m_Data.m_Double);
+          return m_Data.m_Double <= other.m_Data.m_Double;
         }
         default: break;
       }
@@ -429,7 +429,7 @@ Value Value::operator<=(const Value& other) const
     }
     case Type::Char: {
       if (other.m_Type == Type::Char) {
-        return Value(m_Data.m_Char <= other.m_Data.m_Char);
+        return m_Data.m_Char <= other.m_Data.m_Char;
       }
       break;
     }
@@ -441,86 +441,14 @@ Value Value::operator<=(const Value& other) const
   );
 }
 
-Value Value::operator>(const Value& other) const
+bool Value::operator>(const Value& other) const
 {
-  switch (m_Type) {
-    case Type::Int: {
-      switch (other.m_Type) {
-        case Type::Double: {                                          
-          return Value(static_cast<double>(m_Data.m_Int) > other.m_Data.m_Double);
-        }
-        case Type::Int: {
-          return Value(m_Data.m_Int > other.m_Data.m_Int);
-        }
-        default: break;
-      }
-      break;
-    }
-    case Type::Double: {
-      switch (other.m_Type) {
-        case Type::Int: {
-          return Value(m_Data.m_Double > static_cast<double>(other.m_Data.m_Int));
-        }
-        case Type::Double: {
-          return Value(m_Data.m_Double > other.m_Data.m_Double);
-        }
-        default: break;
-      }
-      break;
-    }
-    case Type::Char: {
-      if (other.m_Type == Type::Char) {
-        return Value(m_Data.m_Char > other.m_Data.m_Char);
-      }
-      break;
-    }
-    default: break;
-  }
-  throw GraceException(
-    GraceException::Type::InvalidOperand,
-    fmt::format("Cannot compare {} with {}", GetTypeName(), other.GetTypeName())
-  );
+  return !(*this <= other);
 }
 
-Value Value::operator>=(const Value& other) const
+bool Value::operator>=(const Value& other) const
 {
-  switch (m_Type) {
-    case Type::Int: {
-      switch (other.m_Type) {
-        case Type::Double: {                                          
-          return Value(static_cast<double>(m_Data.m_Int) >= other.m_Data.m_Double);
-        }
-        case Type::Int: {
-          return Value(m_Data.m_Int >= other.m_Data.m_Int);
-        }
-        default: break;
-      }
-      break;
-    }
-    case Type::Double: {
-      switch (other.m_Type) {
-        case Type::Int: {
-          return Value(m_Data.m_Double >= static_cast<double>(other.m_Data.m_Int));
-        }
-        case Type::Double: {
-          return Value(m_Data.m_Double >= other.m_Data.m_Double);
-        }
-        default: break;
-      }
-      break;
-    }
-    case Type::Char: {
-      if (other.m_Type == Type::Char) {
-        return Value(m_Data.m_Char >= other.m_Data.m_Char);
-      }
-      break;
-    }
-    default: break;
-  }
-  throw GraceException(
-    GraceException::Type::InvalidOperand,
-    fmt::format("Cannot compare {} with {}", GetTypeName(), other.GetTypeName())
-  );
+  return !(*this < other);
 }
 
 Value Value::operator!() const

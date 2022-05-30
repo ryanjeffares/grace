@@ -231,32 +231,32 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
         }
         case Ops::Equal: {
           auto [c1, c2] = PopLastTwo(valueStack);
-          valueStack.push_back(c1 == c2);
+          valueStack.emplace_back(c1 == c2);
           break;
         }
         case Ops::NotEqual: {
           auto [c1, c2] = PopLastTwo(valueStack);
-          valueStack.push_back(c1 != c2);
+          valueStack.emplace_back(c1 != c2);
           break;
         }
         case Ops::Greater: {
           auto [c1, c2] = PopLastTwo(valueStack);
-          valueStack.push_back(c1 > c2);
+          valueStack.emplace_back(c1 > c2);
           break;
         }
         case Ops::GreaterEqual: {
           auto [c1, c2] = PopLastTwo(valueStack);
-          valueStack.push_back(c1 >= c2);
+          valueStack.emplace_back(c1 >= c2);
           break;
         }
         case Ops::Less: {
           auto [c1, c2] = PopLastTwo(valueStack);
-          valueStack.push_back(c1 < c2);
+          valueStack.emplace_back(c1 < c2);
           break;
         }
         case Ops::LessEqual: {
           auto [c1, c2] = PopLastTwo(valueStack);
-          valueStack.push_back(c1 <= c2);
+          valueStack.emplace_back(c1 <= c2);
           break;
         }
         case Ops::Pow: {

@@ -21,4 +21,6 @@ func main():
   end
 
   //println(index);
+
+  for i in []: println(i); end
 end

@@ -6,26 +6,26 @@ func fib(n):
 end 
 
 func main():
-  for i in 0..20:
-    println(fib(i));
+  for i in [0..20]:
+    println(fib(*i));
   end 
   
   var min = 0;
   var max = 100;
-  for i in min..max:
+  for i in [min..max]:
     println(i);
     max = max - 1;
   end
 
-  for i in 0..100:
+  for i in [0..100]:
     final first_name = "Ryan";
     final last_name = "Jeffares";
     println("Hello, " + first_name + " " + last_name);
-    println("x" + i);
+    println("x" + *i);
   end
 
-  for i in 100..200:
-    if i % 2 == 0:
+  for i in [100..200]:
+    if *i % 2 == 0:
       continue;
       println("This should never print!");
     end

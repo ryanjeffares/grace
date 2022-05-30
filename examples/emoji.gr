@@ -1,5 +1,4 @@
 func main():
   var s = "😂😂😂😂😂😂";
-  s;
   println(s);
 end

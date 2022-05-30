@@ -1,6 +1,6 @@
 func is_divisible(n):
-  for i in 1..21:
-    final div = float(n) / float(i);
+  for i in [1..21]:
+    final div = float(n) / float(*i);
     if div != int(div):
       return false;
     end
