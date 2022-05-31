@@ -179,6 +179,7 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
   };
 
   std::stack<VMState> vmStateStack;
+  std::stack<std::size_t> heldDictionaryIteratorIndexes;
 
   bool inTryBlock = false;
 
@@ -406,23 +407,68 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
             );
           }
 
+          auto twoIterators = m_FullConstantList[constantCurrent++].Get<bool>();
           auto iteratorId = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
           if (auto list = dynamic_cast<GraceList*>(object)) {
-            localsList[iteratorId + localsOffsets.top()] = 
-              Value::CreateObject<GraceIterator<GraceList::Iterator>>(list);
+            localsList[iteratorId + localsOffsets.top()] =  Value::CreateObject<GraceIterator<GraceList::Iterator>>(list);
+            if (twoIterators) {
+              auto secondIteratorId = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+              localsList[secondIteratorId + localsOffsets.top()] = std::int64_t(0);
+            } else {
+              constantCurrent++;
+            }
+          } else if (auto dict = dynamic_cast<GraceDictionary*>(object)) {
+            if (twoIterators) {
+              auto secondIteratorId = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+              auto dictIterator = Value::CreateObject<GraceIterator<GraceDictionary::Iterator>>(dict);
+              auto kvpValue = dictIterator.GetObject()->Deref(); // should be the keyvaluepair
+              auto kvp = dynamic_cast<GraceKeyValuePair*>(kvpValue.GetObject());
+              localsList[iteratorId + localsOffsets.top()] = kvp->Key();
+              localsList[secondIteratorId + localsOffsets.top()] = kvp->Value();
+              heldDictionaryIteratorIndexes.push(valueStack.size());
+              valueStack.push_back(std::move(dictIterator));  // keep the iterator on the stack even though it's not being used as a variable
+            } else {
+              localsList[iteratorId + localsOffsets.top()] = Value::CreateObject<GraceIterator<GraceDictionary::Iterator>>(dict);
+              constantCurrent++;
+            }
           }
           break;
         }
         case Ops::IncrementIterator: {
+          auto twoIterators = m_FullConstantList[constantCurrent++].Get<bool>();
           auto iteratorId = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
           auto iterator = localsList[iteratorId + localsOffsets.top()].GetObject();
           if (auto listIterator = dynamic_cast<GraceIterator<GraceList::Iterator>*>(iterator)) {
             listIterator->Increment();
+            if (twoIterators) {
+              auto secondIteratorId = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+              auto& local = localsList[secondIteratorId + localsOffsets.top()]; 
+              auto value = local.Get<std::int64_t>();
+              local = value + 1;
+            } else {
+              constantCurrent++;
+            }
           } else {
-            throw GraceException(
-              GraceException::Type::InvalidType,
-              "Value was not an iterator"
-            );
+            if (twoIterators) {
+              // at this point, we know its a dictionary, and there will be the index of the held iterator on the stack
+              auto secondIteratorId = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+              auto indexOfHeldIterator = heldDictionaryIteratorIndexes.top();
+              auto heldIterator = dynamic_cast<GraceIterator<GraceDictionary::Iterator>*>(valueStack[indexOfHeldIterator].GetObject());
+              heldIterator->Increment();
+              if (!heldIterator->IsAtEnd()) {
+                auto kvpValue = heldIterator->Deref();
+                auto kvp = dynamic_cast<GraceKeyValuePair*>(kvpValue.GetObject());
+                localsList[iteratorId + localsOffsets.top()] = kvp->Key();
+                localsList[secondIteratorId + localsOffsets.top()] = kvp->Value();
+              } else {
+                valueStack.erase(valueStack.begin() + indexOfHeldIterator);
+                heldDictionaryIteratorIndexes.pop();
+              }
+            } else {
+              auto dictIterator = dynamic_cast<GraceIterator<GraceDictionary::Iterator>*>(iterator);
+              dictIterator->Increment();
+              constantCurrent++;
+            }
           }
           break;
         }
@@ -557,11 +603,12 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
             valueStack.push_back(Value::CreateObject<GraceDictionary>());
             break;
           }
-          std::unordered_map<Value, Value> res;
+          GraceDictionary dict;
           for (std::int64_t i = 0; i < numItems; i++) {
-            res.emplace(PopLastTwo(valueStack));
+            auto [key, value] = PopLastTwo(valueStack);
+            dict.Insert(std::move(key), std::move(value));
           }
-          valueStack.push_back(Value::CreateObject<GraceDictionary>(std::move(res)));
+          valueStack.push_back(Value::CreateObject<GraceDictionary>(std::move(dict)));
           break;
         }
         case Ops::CreateList: {

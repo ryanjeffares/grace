@@ -62,7 +62,7 @@ namespace Grace
             "Iterator is no longer valid, due to either being incremented past the end of the collection or the collection being modified"
           );
         }
-        m_Iterator++;
+        m_Iterable->IncrementIterator(m_Iterator);
       }
 
       GRACE_NODISCARD bool IsAtEnd() const
@@ -134,6 +134,7 @@ namespace Grace
       ~GraceIterable() override = default;
       virtual IteratorType Begin() = 0;
       virtual IteratorType End() = 0;
+      virtual void IncrementIterator(IteratorType&) const = 0;
 
       void AddIterator(GraceIterator<IteratorType>* iterator)
       {

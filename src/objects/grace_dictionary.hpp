@@ -12,22 +12,24 @@
 #ifndef GRACE_DICTIONARY_HPP
 #define GRACE_DICTIONARY_HPP
 
-#include <unordered_map>
+#include <functional>
+#include <vector>
 
 #include "grace_exception.hpp"
 #include "grace_iterator.hpp"
+#include "grace_keyvaluepair.hpp"
 #include "../value.hpp"
 
 namespace Grace
 {
-  class GraceDictionary : public GraceIterable<std::unordered_map<VM::Value, VM::Value>::iterator>
+  class GraceDictionary : public GraceIterable<std::vector<VM::Value>::iterator>
   {
     public:
-      using Dictionary = std::unordered_map<VM::Value, VM::Value>;
-      using Iterator = Dictionary::iterator;
+      using Iterator = std::vector<VM::Value>::iterator;
 
-      GraceDictionary() = default;
-      explicit GraceDictionary(Dictionary&& dict);
+      GraceDictionary();
+      GraceDictionary(const GraceDictionary&);
+      GraceDictionary(GraceDictionary&&);
 
       ~GraceDictionary() override = default;
 
@@ -55,18 +57,27 @@ namespace Grace
         );
       }
 
-      GRACE_NODISCARD Iterator Begin() override
+      GRACE_NODISCARD Iterator Begin() override;
+      GRACE_NODISCARD Iterator End() override;
+      void IncrementIterator(Iterator& toIncrement) const override;
+
+      GRACE_NODISCARD GRACE_INLINE std::size_t Size() const
       {
-        return m_Dict.begin();
+        return m_Size;
       }
 
-      GRACE_NODISCARD Iterator End() override
-      {
-        return m_Dict.end();
-      }
+      bool Insert(VM::Value&& key, VM::Value&& value);
 
     private:
-      Dictionary m_Dict;
+      enum class CellState
+      {
+        NeverUsed, Tombstone, Occupied
+      };
+
+      std::vector<VM::Value> m_Data;
+      std::vector<CellState> m_CellStates;
+      std::size_t m_Size;
+      std::hash<VM::Value> m_Hasher{};
   };
 }
 

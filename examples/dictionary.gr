@@ -11,9 +11,24 @@ func main():
   final dict = {
     true: 1,
     false: 0,
-    l: factorial(10) 
+    l: factorial(10),
+    "Ryan": "Jeffares",
+    "Hello": "World",
   };
 
-  println(dict);
+  // println(dict);
+  // println();
+  for key, value in dict:
+    // println(key);
+    // println(value);
+  end
 
+  // println(l);
+  // println(dict);
+
+
+  // for item, index in l:
+  //   println(item);
+  //   println(index);
+  // end
 end

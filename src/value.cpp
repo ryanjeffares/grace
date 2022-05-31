@@ -349,6 +349,9 @@ bool Value::operator==(const Value& other) const
       }
       break;
     }
+    case Type::Object: {
+      return m_Data.m_Object == other.m_Data.m_Object;
+    }
     default: break;
   }
   return false;

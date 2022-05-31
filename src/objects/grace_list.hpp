@@ -68,6 +68,11 @@ namespace Grace
         return m_Data.end();
       }
 
+      GRACE_INLINE void IncrementIterator(Iterator& toIncrement) const override
+      {
+        toIncrement++;
+      }
+
       void DebugPrint() const override;
       void Print() const override;
       void PrintLn() const override;

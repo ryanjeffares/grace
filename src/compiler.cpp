@@ -36,11 +36,11 @@ enum class CodeContext
 struct Local
 {
   std::string name;
-  bool isFinal;
+  bool isFinal, isIterator;
   std::int64_t index;
 
-  Local(std::string&& name, bool final, std::int64_t index)
-    : name(std::move(name)), isFinal(final), index(index)
+  Local(std::string&& name, bool final, bool iterator, std::int64_t index)
+    : name(std::move(name)), isFinal(final), isIterator(iterator), index(index)
   {
 
   }
@@ -413,7 +413,7 @@ static void FuncDeclaration(CompilerContext& compiler)
         return;
       }
       parameters.push_back(p);
-      compiler.locals.emplace_back(std::move(p), true, compiler.locals.size());
+      compiler.locals.emplace_back(std::move(p), true, false, compiler.locals.size());
 
       if (!Check(Scanner::TokenType::RightParen, compiler)) {
         Consume(Scanner::TokenType::Comma, "Expected ',' after function parameter", compiler);
@@ -425,7 +425,7 @@ static void FuncDeclaration(CompilerContext& compiler)
         return;
       }
       parameters.push_back(p);
-      compiler.locals.emplace_back(std::move(p), false, compiler.locals.size());
+      compiler.locals.emplace_back(std::move(p), false, false, compiler.locals.size());
 
       if (!Check(Scanner::TokenType::RightParen, compiler)) {
         Consume(Scanner::TokenType::Comma, "Expected ',' after function parameter", compiler);
@@ -495,7 +495,7 @@ static void VarDeclaration(CompilerContext& compiler)
   int line = compiler.previous.value().GetLine();
 
   auto localId = static_cast<std::int64_t>(compiler.locals.size());
-  compiler.locals.emplace_back(std::move(localName), false, localId);
+  compiler.locals.emplace_back(std::move(localName), false, false, localId);
   EmitOp(VM::Ops::DeclareLocal, line);
 
   if (Match(Scanner::TokenType::Equal, compiler)) {
@@ -529,7 +529,7 @@ static void FinalDeclaration(CompilerContext& compiler)
   int line = compiler.previous.value().GetLine();
 
   auto localId = static_cast<std::int64_t>(compiler.locals.size());
-  compiler.locals.emplace_back(std::move(localName), true, localId);
+  compiler.locals.emplace_back(std::move(localName), true, false, localId);
   EmitOp(VM::Ops::DeclareLocal, line);
 
   Consume(Scanner::TokenType::Equal, "Must assign to `final` upon declaration", compiler);
@@ -575,6 +575,10 @@ static void Expression(bool canAssign, CompilerContext& compiler)
       }
 
       if (it->isFinal) {
+        if (it->isIterator) {
+          MessageAtPrevious(fmt::format("'{}' is an iterator variable and cannot be reassigned", compiler.previous.value().GetText()), LogLevel::Error, compiler);
+          return;
+        }
         MessageAtPrevious(fmt::format("Cannot reassign to final '{}'", compiler.previous.value().GetText()), LogLevel::Error, compiler);
         return;
       }
@@ -803,11 +807,15 @@ static void ForStatement(CompilerContext& compiler)
     });
   if (it == compiler.locals.end()) {
     iteratorId = static_cast<std::int64_t>(compiler.locals.size());
-    compiler.locals.emplace_back(std::move(iteratorName), false, iteratorId);
+    compiler.locals.emplace_back(std::move(iteratorName), true, true, iteratorId);
     EmitOp(VM::Ops::DeclareLocal, compiler.previous.value().GetLine());
     iteratorNeedsPop = true;
   } else {
     if (it->isFinal) {
+      if (it->isIterator) {
+        MessageAtPrevious(fmt::format("'{}' is an iterator variable and cannot be reassigned", iteratorName), LogLevel::Error, compiler);
+        return;
+      }
       MessageAtPrevious(fmt::format("Loop variable '{}' has already been declared as `final`", iteratorName), LogLevel::Error, compiler);
       return;
     }
@@ -838,12 +846,16 @@ static void ForStatement(CompilerContext& compiler)
       });
     if (secondIt == compiler.locals.end()) {
       secondIteratorId = static_cast<std::int64_t>(compiler.locals.size());
-      compiler.locals.emplace_back(std::move(secondIteratorName), false, secondIteratorId);
+      compiler.locals.emplace_back(std::move(secondIteratorName), true, true, secondIteratorId);
       auto line = compiler.previous.value().GetLine();
       EmitOp(VM::Ops::DeclareLocal, line);
       secondIteratorNeedsPop = true;
     } else {
       if (secondIt->isFinal) {
+        if (it->isIterator) {
+          MessageAtPrevious(fmt::format("'{}' is an iterator variable and cannot be reassigned", iteratorName), LogLevel::Error, compiler);
+          return;
+        }
         MessageAtPrevious(fmt::format("Loop variable '{}' has already been declared as `final`", secondIteratorName), LogLevel::Error, compiler);
         return;
       }
@@ -860,13 +872,6 @@ static void ForStatement(CompilerContext& compiler)
 
   auto line = compiler.previous.value().GetLine();
 
-  if (twoIterators) {
-    EmitConstant(std::int64_t(0));
-    EmitOp(VM::Ops::LoadConstant, line);
-    EmitConstant(secondIteratorId);
-    EmitOp(VM::Ops::AssignLocal, line);
-  }
-
   auto numLocalsStart = static_cast<std::int64_t>(compiler.locals.size());
 
   Consume(Scanner::TokenType::In, "Expected `in` after identifier", compiler);
@@ -880,7 +885,9 @@ static void ForStatement(CompilerContext& compiler)
 
   line = compiler.previous.value().GetLine();
 
+  EmitConstant(twoIterators);
   EmitConstant(iteratorId);
+  EmitConstant(secondIteratorId);
   EmitOp(VM::Ops::AssignIteratorBegin, line);
 
   // constant and op index to jump to after each iteration
@@ -920,19 +927,10 @@ static void ForStatement(CompilerContext& compiler)
   }
 
   // increment iterator
+  EmitConstant(twoIterators);
   EmitConstant(iteratorId);
+  EmitConstant(secondIteratorId);
   EmitOp(VM::Ops::IncrementIterator, line);
-
-  if (twoIterators) {
-    // increment second iterator
-    EmitConstant(secondIteratorId);
-    EmitOp(VM::Ops::LoadLocal, line);
-    EmitConstant(std::int64_t(1));
-    EmitOp(VM::Ops::LoadConstant, line);
-    EmitOp(VM::Ops::Add, line);
-    EmitConstant(secondIteratorId);
-    EmitOp(VM::Ops::AssignLocal, line);
-  }
 
   // pop any locals created within the loop scope
   EmitConstant(true);
@@ -971,6 +969,12 @@ static void ForStatement(CompilerContext& compiler)
   if (secondIteratorNeedsPop) {
     compiler.locals.pop_back();
     EmitOp(VM::Ops::PopLocal, line);
+  } else {
+    // set this iterator to be null after the collection is exhausted
+    EmitConstant(nullptr);
+    EmitOp(VM::Ops::LoadConstant, line);
+    EmitConstant(secondIteratorId);
+    EmitOp(VM::Ops::AssignLocal, line);
   }
 
   if (iteratorNeedsPop) {
@@ -1227,10 +1231,14 @@ static void TryStatement(CompilerContext& compiler)
   auto it = std::find_if(compiler.locals.begin(), compiler.locals.end(), [&exceptionVarName](const Local& l) { return l.name == exceptionVarName; });
   if (it == compiler.locals.end()) {
     exceptionVarId = static_cast<std::int64_t>(compiler.locals.size());
-    compiler.locals.emplace_back(std::move(exceptionVarName), false, exceptionVarId);
+    compiler.locals.emplace_back(std::move(exceptionVarName), false, false, exceptionVarId);
     EmitOp(VM::Ops::DeclareLocal, compiler.previous.value().GetLine());
   } else {
     if (it->isFinal) {
+      if (it->isIterator) {
+        MessageAtPrevious(fmt::format("'{}' is an iterator variable and cannot be reassigned", exceptionVarName), LogLevel::Error, compiler);
+        return;
+      }
       MessageAtPrevious(fmt::format("Exception variable '{}' has already been declared as `final`", exceptionVarName), LogLevel::Error, compiler);
       return;
     }
