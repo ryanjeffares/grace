@@ -35,6 +35,11 @@ namespace Grace
     template<class T>
     concept DerivedGraceObject = std::is_base_of<GraceObject, T>::value;
 
+    template<typename T>
+    concept BuiltinGraceType = std::is_same<T, std::int64_t>::value || std::is_same<T, double>::value
+            || std::is_same<T, bool>::value || std::is_same<T, char>::value
+            || std::is_same<T, std::string>::value || std::is_same<T, std::nullptr_t>::value;
+
     class Value final 
     {
     public:
@@ -52,14 +57,9 @@ namespace Grace
         String,
       };
 
-      template<typename T>
+      template<BuiltinGraceType T>
       GRACE_INLINE explicit constexpr Value(const T& value)
       {
-        static_assert(std::is_same<T, std::int64_t>::value || std::is_same<T, double>::value
-            || std::is_same<T, bool>::value || std::is_same<T, char>::value
-            || std::is_same<T, std::string>::value || std::is_same<T, NullValue>::value, 
-            "Invalid type for Value<T>");
-
         if constexpr (std::is_same<T, std::int64_t>::value) {
           m_Type = Type::Int;
           m_Data.m_Int = value;
@@ -93,7 +93,7 @@ namespace Grace
         res.m_Type = Type::Object;
         res.m_Data.m_Object = new T(std::forward<Args>(args)...);
         res.m_Data.m_Object->IncreaseRef();
-      #ifdef GRACE_DEBUG
+      #ifdef GRACE_DEBUG 
         ObjectTracker::TrackObject(res.m_Data.m_Object);
       #endif
         return res;
@@ -155,14 +155,9 @@ namespace Grace
         return *this;
       }
 
-      template<typename T>
+      template<BuiltinGraceType T>
       constexpr Value& operator=(const T& value)
       {
-        static_assert(std::is_same<T, std::int64_t>::value || std::is_same<T, double>::value
-            || std::is_same<T, bool>::value || std::is_same<T, char>::value
-            || std::is_same<T, std::string>::value || std::is_same<T, NullValue>::value,
-            "Invalid type for Value<T>::operator=");
-
         if (m_Type == Type::String && m_Data.m_Str != nullptr) {
           delete m_Data.m_Str;
         }
@@ -229,14 +224,9 @@ namespace Grace
       GRACE_NODISCARD std::tuple<bool, std::optional<std::string>> AsDouble(double& result) const;
       GRACE_NODISCARD std::tuple<bool, std::optional<std::string>> AsChar(char& result) const;
 
-      template<typename T> 
+      template<BuiltinGraceType T> 
       GRACE_NODISCARD constexpr GRACE_INLINE T Get() const
       {
-        static_assert(std::is_same<T, std::int64_t>::value || std::is_same<T, double>::value
-            || std::is_same<T, bool>::value || std::is_same<T, char>::value
-            || std::is_same<T, std::string>::value || std::is_same<T, NullValue>::value,
-            "Invalid type for Value::Get<T>()");
-
         if constexpr (std::is_same<T, std::int64_t>::value) {
           return m_Data.m_Int;
         } else if constexpr (std::is_same<T, double>::value) {
