@@ -96,10 +96,9 @@ namespace Grace
 
   void GraceDictionary::IncrementIterator(Iterator& toIncrement) const
   {
-    toIncrement++;
-    while (toIncrement->GetType() == VM::Value::Type::Null) {
+    do {
       toIncrement++;
-    }
+    } while (toIncrement->GetType() == VM::Value::Type::Null && toIncrement != m_Data.end());
   }
 
   bool GraceDictionary::Insert(VM::Value&& key, VM::Value&& value)
@@ -108,6 +107,7 @@ namespace Grace
     if (fullness > s_GrowFactor) {
       m_Data.resize(m_Data.size() * 2);
       m_CellStates.resize(m_CellStates.size() * 2, CellState::NeverUsed);
+      InvalidateIterators();
     }
 
     auto hash = m_Hasher(key);

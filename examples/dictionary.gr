@@ -1,34 +1,26 @@
-func factorial(n):
-  if n < 2:
-    return 1;
+func factorial(num):
+  if num < 2:
+    return num;
   end
-  return n * factorial(n - 1);
+  return num * factorial(num - 1);
 end
 
 func main():
+  final operatives = ["Hays", "Syl", "Ryan"];
 
-  final l = ["hello", 42, l]; // l is still null here during the list declaration, so a null value is simply copied into the list
-  final dict = {
-    true: 1,
-    false: 0,
-    l: factorial(10),
-    "Ryan": "Jeffares",
-    "Hello": "World",
-  };
-
-  // println(dict);
-  // println();
-  for key, value in dict:
-    // println(key);
-    // println(value);
+  for operative, index in operatives:
+    println("Operative #" + index + " is " + operative);
   end
 
-  // println(l);
-  // println(dict);
+  println();
 
+  final dict = {
+    "Jamie": "Snake",
+    "Operative List": operatives,
+    factorial(10): factorial(20),
+  };
 
-  // for item, index in l:
-  //   println(item);
-  //   println(index);
-  // end
+  for key, value in dict:
+    println("The key is " + key + " and the value is " + value);
+  end
 end

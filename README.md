@@ -44,6 +44,7 @@ This will build the `grace` executable, which you can add to your path or move s
 
 ## Alpha Release Roadmap
 * Figure out whats happening in examples/euler/problem02.gr
+  * Locals seems to be popped incorrectly, possibly related
 * Experiment with string interning
 * Unicode support for `char`s 
 * Classes
@@ -54,7 +55,6 @@ This will build the `grace` executable, which you can add to your path or move s
 * Imports 
 * Extension methods
 * Collections
-  * Hash table 
 * Standard library
 * Filesystem handling
 * Install process 

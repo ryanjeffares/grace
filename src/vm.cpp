@@ -368,6 +368,9 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
         case Ops::NativeCall: {
           auto calleeIndex = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
           auto& calleeFunc = m_NativeFunctions[calleeIndex];
+          if (calleeFunc.GetName() == "__NATIVE_GET_LIST_AT_INDEX") {
+            fmt::print("here\n");
+          }
           auto arity = calleeFunc.GetArity();
           auto numArgsGiven = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
 
@@ -380,7 +383,8 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
 
           std::vector<Value> args(arity);
           for (std::uint32_t i = 0; i < arity; i++) {
-            args[arity - i - 1] = Pop(valueStack);
+            auto value = Pop(valueStack);
+            args[arity - i - 1] = std::move(value);
           }
 
           auto res = calleeFunc(args);
@@ -460,14 +464,27 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
                 auto kvp = dynamic_cast<GraceKeyValuePair*>(kvpValue.GetObject());
                 localsList[iteratorId + localsOffsets.top()] = kvp->Key();
                 localsList[secondIteratorId + localsOffsets.top()] = kvp->Value();
-              } else {
-                valueStack.erase(valueStack.begin() + indexOfHeldIterator);
-                heldDictionaryIteratorIndexes.pop();
               }
             } else {
               auto dictIterator = dynamic_cast<GraceIterator<GraceDictionary::Iterator>*>(iterator);
               dictIterator->Increment();
               constantCurrent++;
+            }
+          }
+          break;
+        }
+        case Ops::CheckIteratorEnd: {
+          auto iteratorId = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+          auto iterator = localsList[iteratorId + localsOffsets.top()].GetObject();
+          if (auto listIterator = dynamic_cast<GraceIterator<GraceList::Iterator>*>(iterator)) {
+            valueStack.emplace_back(listIterator->AsBool());
+          } else {
+            auto indexOfHeldIterator = heldDictionaryIteratorIndexes.top();
+            auto heldIterator = dynamic_cast<GraceIterator<GraceDictionary::Iterator>*>(valueStack[indexOfHeldIterator].GetObject());
+            valueStack.emplace_back(heldIterator->AsBool());
+            if (heldIterator->IsAtEnd()) {
+              valueStack.erase(valueStack.begin() + indexOfHeldIterator);
+              heldDictionaryIteratorIndexes.pop();
             }
           }
           break;

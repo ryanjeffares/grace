@@ -896,9 +896,7 @@ static void ForStatement(CompilerContext& compiler)
 
   // evaluate the condition
   EmitConstant(iteratorId);
-  EmitOp(VM::Ops::LoadLocal, line);
-  EmitConstant(s_CastOps[Scanner::TokenType::BoolIdent]);
-  EmitOp(VM::Ops::Cast, line);
+  EmitOp(VM::Ops::CheckIteratorEnd, line);
 
   auto endJumpConstantIndex = VM::VM::GetInstance().GetNumConstants();
   EmitConstant(std::int64_t{});

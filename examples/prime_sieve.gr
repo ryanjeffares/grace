@@ -1,6 +1,7 @@
 // ================================================================
 
 func list_get(l, index):
+  println(index);
   return __NATIVE_GET_LIST_AT_INDEX(l, index);
 end
 

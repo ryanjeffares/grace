@@ -40,6 +40,7 @@ namespace Grace::VM
     AssignLocal,
     Call,
     Cast,
+    CheckIteratorEnd,
     CheckType,
     CreateDictionary,
     CreateList,
@@ -236,6 +237,7 @@ struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
       case Ops::AssignLocal: name = "Ops::AssignLocal"; break;
       case Ops::Call: name = "Ops::Call"; break;
       case Ops::Cast: name = "Ops::Cast"; break;
+      case Ops::CheckIteratorEnd: name = "Ops::CheckIteratorEnd"; break;
       case Ops::CheckType: name = "Ops::CheckType"; break;
       case Ops::CreateDictionary: name = "Ops::CreateDictionary"; break;
       case Ops::CreateList: name = "Ops::CreateList"; break;
