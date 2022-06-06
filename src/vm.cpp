@@ -593,6 +593,11 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
                 valueStack.emplace_back(l != nullptr);
                 break;
               }
+              case 7: {
+                auto d = dynamic_cast<GraceDictionary*>(Pop(valueStack).GetObject());
+                valueStack.emplace_back(d != nullptr);
+                break;
+              }
               default:
                 GRACE_UNREACHABLE();
                 break;

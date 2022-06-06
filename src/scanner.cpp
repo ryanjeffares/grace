@@ -70,6 +70,7 @@ static std::unordered_map<std::string, TokenType> s_KeywordLookup =
   std::make_pair("String", TokenType::StringIdent),
   std::make_pair("Char", TokenType::CharIdent),
   std::make_pair("List", TokenType::ListIdent),
+  std::make_pair("Dict", TokenType::DictIdent),
 };
 
 static bool IsIdentifierChar(char c)

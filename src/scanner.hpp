@@ -38,6 +38,7 @@ namespace Grace::Scanner
     StringIdent,
     CharIdent,
     ListIdent,
+    DictIdent,
 
     // Symbols
     Colon,
@@ -210,6 +211,7 @@ struct fmt::formatter<Grace::Scanner::TokenType> : fmt::formatter<std::string_vi
       case TokenType::StringIdent: name = "TokenType::StringIdent"; break;
       case TokenType::CharIdent: name = "TokenType::CharIdent"; break;
       case TokenType::ListIdent: name = "TokenType::ListIdent"; break;
+      case TokenType::DictIdent: name = "TokenType::DictIdent"; break;
     }
     return fmt::formatter<std::string_view>::format(name, context);
   }

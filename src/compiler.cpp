@@ -1723,7 +1723,12 @@ static void String(CompilerContext& compiler)
 static void InstanceOf(CompilerContext& compiler)
 {
   Consume(Scanner::TokenType::LeftParen, "Expected '(' after 'instanceof'", compiler);
+
+  auto prevUsing = compiler.usingExpressionResult;
+  compiler.usingExpressionResult = true;
   Expression(false, compiler);
+  compiler.usingExpressionResult = prevUsing;
+
   Consume(Scanner::TokenType::Comma, "Expected ',' after expression", compiler);
 
   switch (compiler.current.value().GetType()) {
@@ -1754,6 +1759,9 @@ static void InstanceOf(CompilerContext& compiler)
     case Scanner::TokenType::ListIdent:
       EmitConstant(std::int64_t(6));
       break;
+    case Scanner::TokenType::DictIdent:
+      EmitConstant(std::int64_t(7));
+      break;
     default:
       MessageAtCurrent("Expected type as second argument for `instanceof`", LogLevel::Error, compiler);
       return;
@@ -1761,7 +1769,7 @@ static void InstanceOf(CompilerContext& compiler)
 
   EmitOp(VM::Ops::CheckType, compiler.current.value().GetLine());
 
-  Advance(compiler);  // Consume the type ide, compilernt
+  Advance(compiler);  // Consume the type ident
   Consume(Scanner::TokenType::RightParen, "Expected ')'", compiler);
 
   if (!compiler.usingExpressionResult) {
@@ -1775,7 +1783,10 @@ static void Cast(CompilerContext& compiler)
   auto type = compiler.current.value().GetType();
   Advance(compiler);
   Consume(Scanner::TokenType::LeftParen, "Expected '(' after type ident", compiler);
+  auto prevUsing = compiler.usingExpressionResult;
+  compiler.usingExpressionResult = true;
   Expression(false, compiler);
+  compiler.usingExpressionResult = prevUsing;
   EmitConstant(s_CastOps[type]);
   EmitOp(VM::Ops::Cast, compiler.current.value().GetLine());
   Consume(Scanner::TokenType::RightParen, "Expected ')' after expression", compiler);
@@ -1795,7 +1806,10 @@ static void List(CompilerContext& compiler)
       break;
     }
 
+    auto prevUsing = compiler.usingExpressionResult;
+    compiler.usingExpressionResult = true;
     Expression(false, compiler);
+    compiler.usingExpressionResult = prevUsing;
 
     if (Match(Scanner::TokenType::DotDot, compiler)){
       if (singleItemParsed) {
@@ -1804,11 +1818,17 @@ static void List(CompilerContext& compiler)
       }
 
       // max
+      prevUsing = compiler.usingExpressionResult;
+      compiler.usingExpressionResult = true;
       Expression(false, compiler);
+      compiler.usingExpressionResult = prevUsing;
 
       // check for custom increment
       if (Match(Scanner::TokenType::By, compiler)) {
+        prevUsing = compiler.usingExpressionResult;
+        compiler.usingExpressionResult = true;
         Expression(false, compiler);
+        compiler.usingExpressionResult = prevUsing;
       } else {
         EmitConstant(std::int64_t{1});
         EmitOp(VM::Ops::LoadConstant, compiler.previous.value().GetLine());
@@ -1858,6 +1878,8 @@ static void Dictionary(CompilerContext& compiler)
       break;
     }
 
+    auto prevUsing = compiler.usingExpressionResult;
+    compiler.usingExpressionResult = true;
     Expression(false, compiler);
 
     if (!Match(Scanner::TokenType::Colon, compiler)) {
@@ -1866,6 +1888,7 @@ static void Dictionary(CompilerContext& compiler)
     }
 
     Expression(false, compiler);
+    compiler.usingExpressionResult = prevUsing;
 
     numItems++;
 
