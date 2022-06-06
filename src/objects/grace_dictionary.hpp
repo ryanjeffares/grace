@@ -41,7 +41,7 @@ namespace Grace
 
       GRACE_NODISCARD GRACE_INLINE constexpr const char* ObjectName() const override
       {
-        return "Dictionary";
+        return "Dict";
       }
 
       GRACE_NODISCARD GRACE_INLINE constexpr bool IsIterable() const override
@@ -67,6 +67,8 @@ namespace Grace
       }
 
       bool Insert(VM::Value&& key, VM::Value&& value);
+
+      std::vector<VM::Value> ToVector() const;
 
     private:
       enum class CellState

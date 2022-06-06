@@ -143,4 +143,15 @@ namespace Grace
       }
     }
   }
+
+  std::vector<VM::Value> GraceDictionary::ToVector() const
+  {
+    std::vector<VM::Value> res;
+    res.reserve(m_Size);
+    for (const auto& value : m_Data) {
+      if (value.GetType() == VM::Value::Type::Null) continue;
+      res.push_back(value);
+    }
+    return res;
+  }
 } // namespace Grace

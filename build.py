@@ -1,7 +1,6 @@
 import argparse
 import os
 
-
 parser = argparse.ArgumentParser(
     description='Build the Grace interpreter from source'
 )

@@ -13,6 +13,7 @@
 #include <fmt/format.h>
 
 #include "grace_list.hpp"
+#include "grace_dictionary.hpp"
 
 using namespace Grace;
 using namespace Grace::VM;
@@ -29,7 +30,11 @@ GraceList::GraceList(const Value& value)
       m_Data.emplace_back(c);
     }
   } else {
-    m_Data.push_back(value);
+    if (auto dict = dynamic_cast<GraceDictionary*>(value.GetObject())) {
+      m_Data = dict->ToVector();
+    } else {
+      m_Data.push_back(value);
+    }
   }
 }
 

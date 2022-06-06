@@ -23,4 +23,10 @@ func main():
   for key, value in dict:
     println("The key is " + key + " and the value is " + value);
   end
+
+  assert(instanceof(dict, Dict) and typename(dict) == "Dict");
+  final as_list = List(dict);
+  for item in as_list:
+    println(item);
+  end
 end
