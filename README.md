@@ -43,10 +43,8 @@ python3 build.py <Release/Debug/All>
 This will build the `grace` executable, which you can add to your path or move somewhere that is on your path. Full installation process as well as documentation is WIP.
 
 ## Alpha Release Roadmap
-* Figure out whats happening in examples/euler/problem02.gr
-  * Locals seems to be popped incorrectly, possibly related
 * Experiment with string interning
-* Unicode support for `char`s 
+* Investigate wide chars over regular chars
 * Classes
   * Reference counting
   * Cyclic references handled through a "cyclic reference tracker" - if a cyclic reference is detected, start tracking the two objects, and when those objects' only reminaing references are eachother they can be safely destroyed 
