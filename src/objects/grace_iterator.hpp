@@ -62,7 +62,7 @@ namespace Grace
             "Iterator is no longer valid, due to either being incremented past the end of the collection or the collection being modified"
           );
         }
-        m_Iterator++;
+        m_Iterable->IncrementIterator(m_Iterator);
       }
 
       GRACE_NODISCARD bool IsAtEnd() const
@@ -110,7 +110,7 @@ namespace Grace
         return false;
       }
 
-      VM::Value Deref() const override
+      GRACE_NODISCARD const VM::Value& Deref() const override
       {
         if (!m_IsValid) {
           throw GraceException(
@@ -131,14 +131,36 @@ namespace Grace
   class GraceIterable : public GraceObject
   {
     public:
-      virtual ~GraceIterable() = default;
+      ~GraceIterable() override = default;
       virtual IteratorType Begin() = 0;
       virtual IteratorType End() = 0;
-      virtual void AddIterator(GraceIterator<IteratorType>*) = 0;
-      virtual void RemoveIterator(GraceIterator<IteratorType>*) = 0;
-      virtual void InvalidateIterators() = 0;
+      virtual void IncrementIterator(IteratorType&) const = 0;
+
+      void AddIterator(GraceIterator<IteratorType>* iterator)
+      {
+        m_ActiveIterators.push_back(iterator);
+      }
+
+      void RemoveIterator(GraceIterator<IteratorType>* iterator)
+      {
+        auto it = std::find(m_ActiveIterators.begin(), m_ActiveIterators.end(), iterator);
+        if (it == m_ActiveIterators.end()) {
+#ifdef GRACE_DEBUG
+          GRACE_ASSERT(false, "Trying to remove an iterator that wasn't added");
+#endif
+          return;
+        }
+        m_ActiveIterators.erase(it);
+      }
       
     protected:
+      void InvalidateIterators()
+      {
+        for (auto it : m_ActiveIterators) {
+          it->Invalidate();
+        }
+      }
+
       std::vector<GraceIterator<IteratorType>*> m_ActiveIterators;
   };
 } // namespace Grace::VM

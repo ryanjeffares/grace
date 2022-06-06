@@ -1,0 +1,13 @@
+func main():
+
+  var names = ["Ryan", "Hello"];
+  println(typename(names));
+
+  println(typename(1));
+  final s = "a string";
+  final l = List(s);
+  println(l);
+  println(typename(s));
+  assert(typename(s) == "String");
+  assert(typename(l) == "List");
+end

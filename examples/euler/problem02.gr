@@ -14,6 +14,5 @@ func main():
     y = z;
   end
 
-  assert(sum == 4613732);
-  println(sum);
+  println("Sum is: " + sum);
 end

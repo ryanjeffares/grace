@@ -17,8 +17,10 @@ func main():
   final items = ["Ryan", false, null, [0..5], 2**4];
   //var index;
   for item, index in items:
-    println("The item at index " + index + " is " + item);
+    println("The item at index " + index + " is " + get_list(items, index));
   end
 
   //println(index);
+
+  for i in []: println(i); end
 end

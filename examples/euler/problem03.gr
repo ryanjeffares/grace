@@ -8,7 +8,7 @@ func is_prime(n):
   end
 
   var i = 5;
-  while (i * i) <= n:
+  while i * i <= n:
     if n % i == 0 or n % (i + 2) == 0:
       return false;
     end
@@ -21,10 +21,9 @@ func main():
   final max = 600851475143 / 2;
 
   var largest = 0;
-  for i in 1..max:
-    println(i);
-    if is_prime(i) and i > largest:
-      largest = i;
+  for i in [1..max]:
+    if is_prime(*i) and *i > largest:
+      largest = *i;
     end
   end
   println(largest);

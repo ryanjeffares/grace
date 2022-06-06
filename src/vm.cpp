@@ -9,28 +9,28 @@
  *  For licensing information, see grace.hpp
  */
 
+#include <chrono>
 #include <cstdlib>
-#include <initializer_list>
 #include <iterator>
 #include <stack>
-#include <chrono>
 #include <utility>
-
-#include "grace.hpp"
 
 #ifdef GRACE_MSC
 # include <stdlib.h>    // getenv_s
 #endif
 
+#include "grace.hpp"
+
 #include "scanner.hpp"
 #include "vm.hpp"
 #include "objects/grace_iterator.hpp"
+#include "objects/grace_dictionary.hpp"
 #include "objects/grace_list.hpp"
 #include "objects/object_tracker.hpp"
 
 using namespace Grace::VM;
 
-static GRACE_INLINE std::tuple<Value, Value> PopLastTwo(std::vector<Value>& stack)
+static GRACE_INLINE std::pair<Value, Value> PopLastTwo(std::vector<Value>& stack)
 {
   auto c1 = std::move(stack[stack.size() - 2]);
   auto c2 = std::move(stack[stack.size() - 1]);
@@ -179,6 +179,7 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
   };
 
   std::stack<VMState> vmStateStack;
+  std::stack<std::size_t> heldDictionaryIteratorIndexes;
 
   bool inTryBlock = false;
 
@@ -231,32 +232,32 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
         }
         case Ops::Equal: {
           auto [c1, c2] = PopLastTwo(valueStack);
-          valueStack.push_back(c1 == c2);
+          valueStack.emplace_back(c1 == c2);
           break;
         }
         case Ops::NotEqual: {
           auto [c1, c2] = PopLastTwo(valueStack);
-          valueStack.push_back(c1 != c2);
+          valueStack.emplace_back(c1 != c2);
           break;
         }
         case Ops::Greater: {
           auto [c1, c2] = PopLastTwo(valueStack);
-          valueStack.push_back(c1 > c2);
+          valueStack.emplace_back(c1 > c2);
           break;
         }
         case Ops::GreaterEqual: {
           auto [c1, c2] = PopLastTwo(valueStack);
-          valueStack.push_back(c1 >= c2);
+          valueStack.emplace_back(c1 >= c2);
           break;
         }
         case Ops::Less: {
           auto [c1, c2] = PopLastTwo(valueStack);
-          valueStack.push_back(c1 < c2);
+          valueStack.emplace_back(c1 < c2);
           break;
         }
         case Ops::LessEqual: {
           auto [c1, c2] = PopLastTwo(valueStack);
-          valueStack.push_back(c1 <= c2);
+          valueStack.emplace_back(c1 <= c2);
           break;
         }
         case Ops::Pow: {
@@ -301,10 +302,6 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
           localsList.pop_back();
           break;
         case Ops::PopLocals: {
-          auto shouldPop = m_FullConstantList[constantCurrent++].Get<bool>();
-          if (!shouldPop) {
-            break;
-          }
           auto targetNumLocals = m_FullConstantList[constantCurrent++].Get<std::int64_t>() + localsOffsets.top();
           localsList.resize(targetNumLocals);
           break;
@@ -323,7 +320,7 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
           break;
         case Ops::Call: {
           auto calleeNameHash = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
-          auto numArgsGiven = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+          auto numArgsGiven = static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>());
 
           auto it = m_FunctionList.find(calleeNameHash);
           if (it == m_FunctionList.end()) {
@@ -337,8 +334,8 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
           // we only put it in the constant list so we can report a nice error
           constantCurrent++;
 
-          auto& calleeFunc = it->second;
-          int arity = calleeFunc.m_Arity;          
+          const auto& calleeFunc = it->second;
+          auto arity = calleeFunc.m_Arity;
 
           if (numArgsGiven != arity) {            
             throw GraceException(
@@ -349,7 +346,7 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
 
           localsOffsets.push(localsList.size());
           localsList.resize(localsList.size() + arity);
-          for (auto i = 0; i < arity; i++) {
+          for (std::size_t i = 0; i < arity; i++) {
             localsList[arity - i - 1 + localsOffsets.top()] = Pop(valueStack);
           }
 
@@ -379,7 +376,8 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
 
           std::vector<Value> args(arity);
           for (std::uint32_t i = 0; i < arity; i++) {
-            args[arity - i - 1] = Pop(valueStack);
+            auto value = Pop(valueStack);
+            args[arity - i - 1] = std::move(value);
           }
 
           auto res = calleeFunc(args);
@@ -406,23 +404,81 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
             );
           }
 
+          auto twoIterators = m_FullConstantList[constantCurrent++].Get<bool>();
           auto iteratorId = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
           if (auto list = dynamic_cast<GraceList*>(object)) {
-            localsList[iteratorId + localsOffsets.top()] = 
-              Value::CreateObject<GraceIterator<GraceList::Iterator>>(list);
+            localsList[iteratorId + localsOffsets.top()] =  Value::CreateObject<GraceIterator<GraceList::Iterator>>(list);
+            if (twoIterators) {
+              auto secondIteratorId = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+              localsList[secondIteratorId + localsOffsets.top()] = std::int64_t(0);
+            } else {
+              constantCurrent++;
+            }
+          } else if (auto dict = dynamic_cast<GraceDictionary*>(object)) {
+            if (twoIterators) {
+              auto secondIteratorId = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+              auto dictIterator = Value::CreateObject<GraceIterator<GraceDictionary::Iterator>>(dict);
+              auto kvpValue = dictIterator.GetObject()->Deref(); // should be the keyvaluepair
+              auto kvp = dynamic_cast<GraceKeyValuePair*>(kvpValue.GetObject());
+              localsList[iteratorId + localsOffsets.top()] = kvp->Key();
+              localsList[secondIteratorId + localsOffsets.top()] = kvp->Value();
+              heldDictionaryIteratorIndexes.push(valueStack.size());
+              valueStack.push_back(std::move(dictIterator));  // keep the iterator on the stack even though it's not being used as a variable
+            } else {
+              localsList[iteratorId + localsOffsets.top()] = Value::CreateObject<GraceIterator<GraceDictionary::Iterator>>(dict);
+              constantCurrent++;
+            }
           }
           break;
         }
         case Ops::IncrementIterator: {
+          auto twoIterators = m_FullConstantList[constantCurrent++].Get<bool>();
           auto iteratorId = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
           auto iterator = localsList[iteratorId + localsOffsets.top()].GetObject();
           if (auto listIterator = dynamic_cast<GraceIterator<GraceList::Iterator>*>(iterator)) {
             listIterator->Increment();
+            if (twoIterators) {
+              auto secondIteratorId = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+              auto& local = localsList[secondIteratorId + localsOffsets.top()]; 
+              auto value = local.Get<std::int64_t>();
+              local = value + 1;
+            } else {
+              constantCurrent++;
+            }
           } else {
-            throw GraceException(
-              GraceException::Type::InvalidType,
-              "Value was not an iterator"
-            );
+            if (twoIterators) {
+              // at this point, we know its a dictionary, and there will be the index of the held iterator on the stack
+              auto secondIteratorId = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+              auto indexOfHeldIterator = heldDictionaryIteratorIndexes.top();
+              auto heldIterator = dynamic_cast<GraceIterator<GraceDictionary::Iterator>*>(valueStack[indexOfHeldIterator].GetObject());
+              heldIterator->Increment();
+              if (!heldIterator->IsAtEnd()) {
+                auto kvpValue = heldIterator->Deref();
+                auto kvp = dynamic_cast<GraceKeyValuePair*>(kvpValue.GetObject());
+                localsList[iteratorId + localsOffsets.top()] = kvp->Key();
+                localsList[secondIteratorId + localsOffsets.top()] = kvp->Value();
+              }
+            } else {
+              auto dictIterator = dynamic_cast<GraceIterator<GraceDictionary::Iterator>*>(iterator);
+              dictIterator->Increment();
+              constantCurrent++;
+            }
+          }
+          break;
+        }
+        case Ops::CheckIteratorEnd: {
+          auto iteratorId = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+          auto iterator = localsList[iteratorId + localsOffsets.top()].GetObject();
+          if (auto listIterator = dynamic_cast<GraceIterator<GraceList::Iterator>*>(iterator)) {
+            valueStack.emplace_back(listIterator->AsBool());
+          } else {
+            auto indexOfHeldIterator = heldDictionaryIteratorIndexes.top();
+            auto heldIterator = dynamic_cast<GraceIterator<GraceDictionary::Iterator>*>(valueStack[indexOfHeldIterator].GetObject());
+            valueStack.emplace_back(heldIterator->AsBool());
+            if (heldIterator->IsAtEnd()) {
+              valueStack.erase(valueStack.begin() + indexOfHeldIterator);
+              heldDictionaryIteratorIndexes.pop();
+            }
           }
           break;
         }
@@ -537,11 +593,20 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
                 valueStack.emplace_back(l != nullptr);
                 break;
               }
+              case 7: {
+                auto d = dynamic_cast<GraceDictionary*>(Pop(valueStack).GetObject());
+                valueStack.emplace_back(d != nullptr);
+                break;
+              }
               default:
                 GRACE_UNREACHABLE();
                 break;
             }
           }
+          break;
+        }
+        case Ops::Typename: {
+          valueStack.emplace_back(Pop(valueStack).GetTypeName());
           break;
         }
         case Ops::Dup: {
@@ -551,17 +616,31 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
           valueStack.insert(valueStack.end(), numDups, value);
           break;
         }
+        case Ops::CreateDictionary: {
+          auto numItems = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+          if (numItems == 0) {
+            valueStack.push_back(Value::CreateObject<GraceDictionary>());
+            break;
+          }
+          GraceDictionary dict;
+          for (std::int64_t i = 0; i < numItems; i++) {
+            auto [key, value] = PopLastTwo(valueStack);
+            dict.Insert(std::move(key), std::move(value));
+          }
+          valueStack.push_back(Value::CreateObject<GraceDictionary>(std::move(dict)));
+          break;
+        }
         case Ops::CreateList: {
           auto numItems = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+          if (numItems == 0) {
+            valueStack.push_back(Value::CreateObject<GraceList>());
+            break;
+          }
           std::vector<Value> result(numItems);
           for (auto i = 0; i < numItems; i++) {
             result[numItems - i - 1] = Pop(valueStack);
           }
           valueStack.push_back(Value::CreateObject<GraceList>(std::move(result)));
-          break;
-        }
-        case Ops::CreateEmptyList: {
-          valueStack.push_back(Value::CreateObject<GraceList>());
           break;
         }
         case Ops::CreateRangeList: {
@@ -591,7 +670,6 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
           }
 
           valueStack.push_back(Value::CreateObject<GraceList>(min, max, increment));
-
           break;
         }
         case Ops::Assert: {

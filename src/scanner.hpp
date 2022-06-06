@@ -38,6 +38,7 @@ namespace Grace::Scanner
     StringIdent,
     CharIdent,
     ListIdent,
+    DictIdent,
 
     // Symbols
     Colon,
@@ -46,6 +47,8 @@ namespace Grace::Scanner
     RightParen,
     LeftSquareParen,
     RightSquareParen,
+    LeftCurlyParen,
+    RightCurlyParen,
     Comma,
     Dot,
     DotDot,
@@ -90,6 +93,7 @@ namespace Grace::Scanner
     Throw,
     True,
     Try,
+    Typename,
     Var,
     While,
   };
@@ -154,6 +158,8 @@ struct fmt::formatter<Grace::Scanner::TokenType> : fmt::formatter<std::string_vi
       case TokenType::RightParen: name = "TokenType::RightParen"; break;
       case TokenType::LeftSquareParen: name = "TokenType::LeftSquareParen"; break;
       case TokenType::RightSquareParen: name = "TokenType::RightSquareParen"; break;
+      case TokenType::LeftCurlyParen: name = "TokenType::LeftCurlyParen"; break;
+      case TokenType::RightCurlyParen: name = "TokenType::RightCurlyParen"; break;
       case TokenType::Comma: name = "TokenType::Comma"; break;
       case TokenType::Dot: name = "TokenType::Dot"; break;
       case TokenType::DotDot: name = "TokenType::DotDot"; break;
@@ -195,6 +201,7 @@ struct fmt::formatter<Grace::Scanner::TokenType> : fmt::formatter<std::string_vi
       case TokenType::Throw: name = "TokenType::Throw"; break;
       case TokenType::True: name = "TokenType::True"; break;
       case TokenType::Try: name = "TokenType::Try"; break;
+      case TokenType::Typename: name = "TokenType::Typename"; break;
       case TokenType::Var: name = "TokenType::Var"; break;
       case TokenType::Or: name = "TokenType::Or"; break;
       case TokenType::And: name = "TokenType::And"; break;
@@ -204,6 +211,7 @@ struct fmt::formatter<Grace::Scanner::TokenType> : fmt::formatter<std::string_vi
       case TokenType::StringIdent: name = "TokenType::StringIdent"; break;
       case TokenType::CharIdent: name = "TokenType::CharIdent"; break;
       case TokenType::ListIdent: name = "TokenType::ListIdent"; break;
+      case TokenType::DictIdent: name = "TokenType::DictIdent"; break;
     }
     return fmt::formatter<std::string_view>::format(name, context);
   }

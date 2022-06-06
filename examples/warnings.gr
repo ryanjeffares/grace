@@ -1,6 +1,6 @@
 func main():
   var i = "hello";
-  for i in 0..10:   // warning - i already exists and will be reassigned in the loop
+  for i in [0..10]:   // warning - i already exists and will be reassigned in the loop
   end
 
   println(instanceof(i, null)); // warning - prefer == over instanceof for null checks

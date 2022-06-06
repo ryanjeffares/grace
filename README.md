@@ -44,7 +44,7 @@ This will build the `grace` executable, which you can add to your path or move s
 
 ## Alpha Release Roadmap
 * Experiment with string interning
-* Unicode support for `char`s 
+* Investigate wide chars over regular chars
 * Classes
   * Reference counting
   * Cyclic references handled through a "cyclic reference tracker" - if a cyclic reference is detected, start tracking the two objects, and when those objects' only reminaing references are eachother they can be safely destroyed 
@@ -53,7 +53,6 @@ This will build the `grace` executable, which you can add to your path or move s
 * Imports 
 * Extension methods
 * Collections
-  * Hash table 
 * Standard library
 * Filesystem handling
 * Install process 
