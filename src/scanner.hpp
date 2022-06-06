@@ -92,6 +92,7 @@ namespace Grace::Scanner
     Throw,
     True,
     Try,
+    Typename,
     Var,
     While,
   };
@@ -199,6 +200,7 @@ struct fmt::formatter<Grace::Scanner::TokenType> : fmt::formatter<std::string_vi
       case TokenType::Throw: name = "TokenType::Throw"; break;
       case TokenType::True: name = "TokenType::True"; break;
       case TokenType::Try: name = "TokenType::Try"; break;
+      case TokenType::Typename: name = "TokenType::Typename"; break;
       case TokenType::Var: name = "TokenType::Var"; break;
       case TokenType::Or: name = "TokenType::Or"; break;
       case TokenType::And: name = "TokenType::And"; break;

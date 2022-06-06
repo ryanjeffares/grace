@@ -302,10 +302,6 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
           localsList.pop_back();
           break;
         case Ops::PopLocals: {
-          auto shouldPop = m_FullConstantList[constantCurrent++].Get<bool>();
-          if (!shouldPop) {
-            break;
-          }
           auto targetNumLocals = m_FullConstantList[constantCurrent++].Get<std::int64_t>() + localsOffsets.top();
           localsList.resize(targetNumLocals);
           break;
@@ -338,7 +334,7 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
           // we only put it in the constant list so we can report a nice error
           constantCurrent++;
 
-          auto& calleeFunc = it->second;
+          const auto& calleeFunc = it->second;
           auto arity = calleeFunc.m_Arity;
 
           if (numArgsGiven != arity) {            
@@ -368,9 +364,6 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
         case Ops::NativeCall: {
           auto calleeIndex = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
           auto& calleeFunc = m_NativeFunctions[calleeIndex];
-          if (calleeFunc.GetName() == "__NATIVE_GET_LIST_AT_INDEX") {
-            fmt::print("here\n");
-          }
           auto arity = calleeFunc.GetArity();
           auto numArgsGiven = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
 
@@ -607,6 +600,10 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
           }
           break;
         }
+        case Ops::Typename: {
+          valueStack.emplace_back(Pop(valueStack).GetTypeName());
+          break;
+        }
         case Ops::Dup: {
           auto numDups = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
           auto value = valueStack.back();
@@ -630,15 +627,15 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
         }
         case Ops::CreateList: {
           auto numItems = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+          if (numItems == 0) {
+            valueStack.push_back(Value::CreateObject<GraceList>());
+            break;
+          }
           std::vector<Value> result(numItems);
           for (auto i = 0; i < numItems; i++) {
             result[numItems - i - 1] = Pop(valueStack);
           }
           valueStack.push_back(Value::CreateObject<GraceList>(std::move(result)));
-          break;
-        }
-        case Ops::CreateEmptyList: {
-          valueStack.push_back(Value::CreateObject<GraceList>());
           break;
         }
         case Ops::CreateRangeList: {
@@ -668,7 +665,6 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
           }
 
           valueStack.push_back(Value::CreateObject<GraceList>(min, max, increment));
-
           break;
         }
         case Ops::Assert: {

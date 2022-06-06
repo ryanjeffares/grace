@@ -1,10 +1,10 @@
 func sqrti(n):
-  assert(instanceof(n, int), "Argument for `sqrt` must be an int");
+  assert(instanceof(n, Int), "Argument for `sqrt` must be an int");
   return __NATIVE_SQRT_INT(n);
 end
 
 func sqrtf(n):
-  assert(instanceof(n, float), "Argument for `sqrtf` must be a float");
+  assert(instanceof(n, Float), "Argument for `sqrtf` must be a float");
   return __NATIVE_SQRT_FLOAT(n);
 end
 

@@ -35,13 +35,13 @@ func main():
   final list_of_lists = [[str], [true, false], [1, 2, 3]];
   println(list_of_lists);
   // println([list_of_lists; 1000]);
-  final str_as_chars = list(str);
+  final str_as_chars = List(str);
   println(str_as_chars);
 
   final list_range = [0..10 by 2];
   println(list_range);
 
-  if instanceof(list_range, list):
+  if instanceof(list_range, List):
     println("local variable is indeed, a list");
   end
 end

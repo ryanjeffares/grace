@@ -130,6 +130,7 @@ static void InstanceOf(CompilerContext& compiler);
 static void Cast(CompilerContext& compiler);
 static void List(CompilerContext& compiler);
 static void Dictionary(CompilerContext& compiler);
+static void Typename(CompilerContext& compiler);
 
 enum class LogLevel
 {
@@ -457,7 +458,6 @@ static void FuncDeclaration(CompilerContext& compiler)
   // implicitly return if the user didn't write a return so the VM knows to return to the caller
   // functions with no return will implicitly return null, so setting a call equal to a variable is valid
   if (!compiler.functionHadReturn) {
-    EmitConstant(true);
     EmitConstant(std::int64_t{0});
     EmitOp(VM::Ops::PopLocals, compiler.previous.value().GetLine());
 
@@ -931,7 +931,6 @@ static void ForStatement(CompilerContext& compiler)
   EmitOp(VM::Ops::IncrementIterator, line);
 
   // pop any locals created within the loop scope
-  EmitConstant(true);
   EmitConstant(numLocalsStart);
   EmitOp(VM::Ops::PopLocals, line);
 
@@ -949,13 +948,9 @@ static void ForStatement(CompilerContext& compiler)
     compiler.breakIdxPairs.pop();
     compiler.breakJumpNeedsIndexes = !compiler.breakIdxPairs.empty();
 
-    EmitConstant(true);
-  } else {
-    EmitConstant(false);
+    EmitConstant(numLocalsStart);
+    EmitOp(VM::Ops::PopLocals, line);
   }
-
-  EmitConstant(numLocalsStart);
-  EmitOp(VM::Ops::PopLocals, line);
 
   VM::VM::GetInstance().SetConstantAtIndex(endJumpConstantIndex, static_cast<std::int64_t>(VM::VM::GetInstance().GetNumConstants()));
   VM::VM::GetInstance().SetConstantAtIndex(endJumpOpIndex, static_cast<std::int64_t>(VM::VM::GetInstance().GetNumOps()));
@@ -964,15 +959,17 @@ static void ForStatement(CompilerContext& compiler)
     compiler.locals.pop_back();
   }
 
-  if (secondIteratorNeedsPop) {
-    compiler.locals.pop_back();
-    EmitOp(VM::Ops::PopLocal, line);
-  } else {
-    // set this iterator to be null after the collection is exhausted
-    EmitConstant(nullptr);
-    EmitOp(VM::Ops::LoadConstant, line);
-    EmitConstant(secondIteratorId);
-    EmitOp(VM::Ops::AssignLocal, line);
+  if (twoIterators) {
+    if (secondIteratorNeedsPop) {
+      compiler.locals.pop_back();
+      EmitOp(VM::Ops::PopLocal, line);
+    } else {
+      // set this iterator to be null after the collection is exhausted
+      EmitConstant(nullptr);
+      EmitOp(VM::Ops::LoadConstant, line);
+      EmitConstant(secondIteratorId);
+      EmitOp(VM::Ops::AssignLocal, line);
+    }
   }
 
   if (iteratorNeedsPop) {
@@ -1017,6 +1014,10 @@ static void IfStatement(CompilerContext& compiler)
   bool elseIfBlockFound = false;
   bool needsElseBlock = true;
   while (true) {
+    if (needsElseBlock && Match(Scanner::TokenType::End, compiler)) {
+      break;
+    }
+
     if (Match(Scanner::TokenType::Else, compiler)) {
       // make any unreachable 'else' blocks a compiler error
       if (elseBlockFound) {
@@ -1065,10 +1066,6 @@ static void IfStatement(CompilerContext& compiler)
       MessageAtPrevious("Unterminated `if` statement", LogLevel::Error, compiler);
       return;
     }
-
-    if (needsElseBlock && Match(Scanner::TokenType::End, compiler)) {
-      break;
-    }
   }
 
   auto numConstants = static_cast<std::int64_t>(VM::VM::GetInstance().GetNumConstants());
@@ -1090,7 +1087,6 @@ static void IfStatement(CompilerContext& compiler)
   }
 
   auto line = compiler.previous.value().GetLine();
-  EmitConstant(true);
   EmitConstant(numLocalsStart);
   EmitOp(VM::Ops::PopLocals, line);
 
@@ -1133,14 +1129,7 @@ static void PrintLnStatement(CompilerContext& compiler)
 
 static void ReturnStatement(CompilerContext& compiler)
 {
-  bool insideFunction = false;
-  for (auto it = compiler.codeContextStack.crbegin(); it != compiler.codeContextStack.crend(); ++it) {
-    if (*it == CodeContext::Function) {
-      insideFunction = true;
-      break;
-    }
-  }
-  if (!insideFunction) {
+  if (std::find(compiler.codeContextStack.begin(), compiler.codeContextStack.end(), CodeContext::Function) == compiler.codeContextStack.end()) {
     MessageAtPrevious("`return` only allowed inside functions", LogLevel::Error, compiler);
     return;
   }
@@ -1168,9 +1157,8 @@ static void ReturnStatement(CompilerContext& compiler)
   // don't destroy these locals here in the compiler's list because this could be an early return
   // that is handled at the end of `FuncDeclaration()`
   // but the VM needs to destroy any locals made up until this point
-  for (std::size_t i = 0; i < compiler.locals.size(); i++) {
-    EmitOp(VM::Ops::PopLocal, compiler.previous.value().GetLine());
-  }
+  EmitConstant(std::int64_t{0});
+  EmitOp(VM::Ops::PopLocals, compiler.previous.value().GetLine());
 }
 
 static void TryStatement(CompilerContext& compiler)
@@ -1266,7 +1254,6 @@ static void TryStatement(CompilerContext& compiler)
     }
   }
 
-  EmitConstant(true);
   EmitConstant(numLocalsStart);
   EmitOp(VM::Ops::PopLocals, compiler.previous.value().GetLine());
 
@@ -1338,7 +1325,6 @@ static void WhileStatement(CompilerContext& compiler)
     compiler.continueJumpNeedsIndexes = !compiler.continueIdxPairs.empty();
   }
 
-  EmitConstant(true);
   EmitConstant(numLocalsStart);
   EmitOp(VM::Ops::PopLocals, line);
 
@@ -1350,9 +1336,6 @@ static void WhileStatement(CompilerContext& compiler)
   numConstants = static_cast<std::int64_t>(VM::VM::GetInstance().GetNumConstants());
   numOps = static_cast<std::int64_t>(VM::VM::GetInstance().GetNumOps());
 
-  VM::VM::GetInstance().SetConstantAtIndex(endConstantJumpIdx, numConstants);
-  VM::VM::GetInstance().SetConstantAtIndex(endOpJumpIdx, numOps);
-
   if (compiler.breakJumpNeedsIndexes) {
     for (auto& p : compiler.breakIdxPairs.top()) {
       VM::VM::GetInstance().SetConstantAtIndex(p.first, numConstants);
@@ -1363,13 +1346,15 @@ static void WhileStatement(CompilerContext& compiler)
 
     // if we broke, we missed the PopLocals instruction before the end of the loop
     // so tell the VM to still pop those locals IF we broke
-    EmitConstant(true);
-  } else {
-    EmitConstant(false);
+    EmitConstant(numLocalsStart);
+    EmitOp(VM::Ops::PopLocals, line);
   }
-  
-  EmitConstant(numLocalsStart);
-  EmitOp(VM::Ops::PopLocals, line);
+
+  numConstants = static_cast<std::int64_t>(VM::VM::GetInstance().GetNumConstants());
+  numOps = static_cast<std::int64_t>(VM::VM::GetInstance().GetNumOps());
+
+  VM::VM::GetInstance().SetConstantAtIndex(endConstantJumpIdx, numConstants);
+  VM::VM::GetInstance().SetConstantAtIndex(endOpJumpIdx, numOps);
  
   while (compiler.locals.size() != static_cast<std::size_t>(numLocalsStart)) {
     compiler.locals.pop_back();
@@ -1648,6 +1633,8 @@ static void Primary(bool canAssign, CompilerContext& compiler)
     List(compiler);
   } else if (Match(Scanner::TokenType::LeftCurlyParen, compiler)) {
     Dictionary(compiler);
+  } else if (Match(Scanner::TokenType::Typename, compiler)) {
+    Typename(compiler);
   } else {
     Expression(canAssign, compiler);
   }
@@ -1853,11 +1840,12 @@ static void List(CompilerContext& compiler)
     if (parsedRangeExpression) {
       EmitOp(VM::Ops::CreateRangeList, line);
     } else {
-      EmitOp(VM::Ops::CreateEmptyList, line);
+      EmitConstant(numItems);
+      EmitOp(VM::Ops::CreateList, line);
     }
   } else {
     EmitConstant(numItems);
-    EmitOp(VM::Ops::CreateList, line); 
+    EmitOp(VM::Ops::CreateList, line);
   }
 }
 
@@ -1890,6 +1878,17 @@ static void Dictionary(CompilerContext& compiler)
 
   EmitConstant(numItems);
   EmitOp(VM::Ops::CreateDictionary, compiler.previous.value().GetLine());
+}
+
+static void Typename(CompilerContext& compiler)
+{
+  Consume(Scanner::TokenType::LeftParen, "Expected '('", compiler);
+  auto prevUsing = compiler.usingExpressionResult;
+  compiler.usingExpressionResult = true;
+  Expression(false, compiler);
+  compiler.usingExpressionResult = prevUsing;
+  EmitOp(VM::Ops::Typename, compiler.previous.value().GetLine());
+  Consume(Scanner::TokenType::RightParen, "Expected ')'", compiler);
 }
 
 static void MessageAtCurrent(const std::string& message, LogLevel level, CompilerContext& compiler)

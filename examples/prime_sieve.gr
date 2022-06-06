@@ -1,7 +1,6 @@
 // ================================================================
 
 func list_get(l, index):
-  println(index);
   return __NATIVE_GET_LIST_AT_INDEX(l, index);
 end
 
@@ -18,9 +17,9 @@ func time_ms():
 end
 
 func sqrt(n):
-  if instanceof(n, int):
+  if instanceof(n, Int):
     return __NATIVE_SQRT_INT(n);
-  else if instanceof(n, float):
+  else if instanceof(n, Float):
     return __NATIVE_SQRT_FLOAT(n);
   end
   assert(false, "Arg for `sqrt` should be `int` or `float`");
@@ -36,6 +35,7 @@ func reset(bits):
 end
 
 func get_bit(bits, i):
+  assert(true);
   return i % 2 > 0 and list_get(bits, i / 2);
 end
 
@@ -44,12 +44,12 @@ func clear_bit(bits, i):
 end
 
 func run_sieve(bits):
-  final max = int(sqrt(1000000));
+  final max = Int(sqrt(1000000));
   var factor = 3;
 
   while factor < max:
     var f = factor;
-    while f < 1000000:
+    while f < 1000:
       if get_bit(bits, f):
         factor = f;
         break;

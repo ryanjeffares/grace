@@ -29,6 +29,6 @@ func main():
       continue;
       println("This should never print!");
     end
-    println(string(i) + " is odd");
+    println(String(i) + " is odd");
   end
 end

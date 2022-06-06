@@ -27,12 +27,12 @@ func main():
       end
     catch f:
       println("here f");
-      println("Caught exception f: " + string(f));
+      println("Caught exception f: " + String(f));
       println(null * 5);
     end
   catch g:
     println("here g");
-    println("Caught exception g: " + string(g));
+    println("Caught exception g: " + String(g));
   end
 
   println("here");

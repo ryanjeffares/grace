@@ -291,15 +291,6 @@ struct fmt::formatter<Grace::VM::Value::Type> : fmt::formatter<std::string_view>
 
     std::string_view name = "unknown";
     switch (type) {
-#ifdef GRACE_DEBUG
-      case Value::Type::Bool: name = "Type::Bool"; break;
-      case Value::Type::Char: name = "Type::Char"; break;
-      case Value::Type::Double: name = "Type::Float"; break;
-      case Value::Type::Int: name = "Type::Int"; break;
-      case Value::Type::Null: name = "Type::Null"; break;
-      case Value::Type::Object: name = "Type::Object"; break;
-      case Value::Type::String: name = "Type::String"; break;
-#else
       case Value::Type::Bool: name = "Bool"; break;
       case Value::Type::Char: name = "Char"; break;
       case Value::Type::Double: name = "Float"; break;
@@ -307,7 +298,6 @@ struct fmt::formatter<Grace::VM::Value::Type> : fmt::formatter<std::string_view>
       case Value::Type::Null: name = "Null"; break;
       case Value::Type::Object: name = "Object"; break;
       case Value::Type::String: name = "String"; break;
-#endif
     }
     return fmt::formatter<std::string_view>::format(name, context);
   }

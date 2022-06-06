@@ -45,7 +45,6 @@ namespace Grace::VM
     CreateDictionary,
     CreateList,
     CreateRangeList,
-    CreateEmptyList,
     DeclareLocal,
     Deref,
     Divide,
@@ -81,6 +80,7 @@ namespace Grace::VM
     Return,
     Subtract,
     Throw,
+    Typename
   };
 
   enum class InterpretResult
@@ -125,7 +125,7 @@ namespace Grace::VM
         }
       }
 
-      template<typename T>
+      template<BuiltinGraceType T>
       constexpr GRACE_INLINE void PushConstant(const T& value)
       {
         m_FunctionList.at(m_LastFunctionHash).m_ConstantList.emplace_back(value);
@@ -141,7 +141,7 @@ namespace Grace::VM
         return m_FunctionList.at(m_LastFunctionHash).m_OpList.size();
       }
 
-      template<typename T>
+      template<BuiltinGraceType T>
       constexpr GRACE_INLINE void SetConstantAtIndex(std::size_t index, const T& value)
       {
         m_FunctionList.at(m_LastFunctionHash).m_ConstantList[index] = value;
@@ -242,7 +242,6 @@ struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
       case Ops::CreateDictionary: name = "Ops::CreateDictionary"; break;
       case Ops::CreateList: name = "Ops::CreateList"; break;
       case Ops::CreateRangeList: name = "Ops::CreateRangeList"; break;
-      case Ops::CreateEmptyList: name = "Ops::CreateEmptyList"; break;
       case Ops::DeclareLocal: name = "Ops::DeclareLocal"; break;
       case Ops::Deref: name = "Ops::Deref"; break;
       case Ops::Divide: name = "Ops::Divide"; break;
@@ -278,6 +277,7 @@ struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
       case Ops::Return: name = "Ops::Return"; break;
       case Ops::Subtract: name = "Ops::Subtract"; break;
       case Ops::Throw: name = "Ops::Throw"; break;
+      case Ops::Typename: name = "Ops::Typename"; break;
     }
     return fmt::formatter<std::string_view>::format(name, context);
   }

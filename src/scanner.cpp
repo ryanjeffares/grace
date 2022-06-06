@@ -62,13 +62,14 @@ static std::unordered_map<std::string, TokenType> s_KeywordLookup =
   std::make_pair("throw", TokenType::Throw),
   std::make_pair("true", TokenType::True),
   std::make_pair("try", TokenType::Try),
+  std::make_pair("typename", TokenType::Typename),
   std::make_pair("var", TokenType::Var),
-  std::make_pair("int", TokenType::IntIdent),
-  std::make_pair("float", TokenType::FloatIdent),
-  std::make_pair("bool", TokenType::BoolIdent),
-  std::make_pair("string", TokenType::StringIdent),
-  std::make_pair("char", TokenType::CharIdent),
-  std::make_pair("list", TokenType::ListIdent),
+  std::make_pair("Int", TokenType::IntIdent),
+  std::make_pair("Float", TokenType::FloatIdent),
+  std::make_pair("Bool", TokenType::BoolIdent),
+  std::make_pair("String", TokenType::StringIdent),
+  std::make_pair("Char", TokenType::CharIdent),
+  std::make_pair("List", TokenType::ListIdent),
 };
 
 static bool IsIdentifierChar(char c)
