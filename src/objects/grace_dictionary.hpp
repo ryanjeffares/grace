@@ -68,7 +68,7 @@ namespace Grace
 
       bool Insert(VM::Value&& key, VM::Value&& value);
 
-      std::vector<VM::Value> ToVector() const;
+      GRACE_NODISCARD std::vector<VM::Value> ToVector() const;
 
     private:
       enum class CellState
