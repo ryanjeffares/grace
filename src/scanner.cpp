@@ -172,7 +172,6 @@ Token Grace::Scanner::ScanToken()
 
   switch (c) {
     case '!':
-      // for some reason, using MatchChar was fucking this up
       if (Peek() == '=') {
         Advance();
         return MakeToken(TokenType::BangEqual);

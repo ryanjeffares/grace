@@ -23,7 +23,7 @@ set_target_properties(grace PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BUILD_TYPE}
 )
 
-if (NOT CMAKE_BUILD_TYPE MATCHES Release)
+if (CMAKE_BUILD_TYPE MATCHES Debug)
   add_compile_definitions(GRACE_DEBUG)
   target_compile_definitions(grace PRIVATE GRACE_DEBUG)
 endif()

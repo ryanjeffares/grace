@@ -121,4 +121,4 @@ struct fmt::formatter<Grace::GraceException::Type> : fmt::formatter<std::string_
   }
 };
 
-#endif  // ifdef GRACE_EXCEPTION_HPP
+#endif  // ifndef GRACE_EXCEPTION_HPP
