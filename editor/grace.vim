@@ -4,7 +4,7 @@ endif
 
 syn keyword graceKeywords class if else for in by while break continue return end import this print println and or func instanceof assert try catch throw typename skipwhite
 syn keyword graceBooleans true false skipwhite
-syn keyword graceVariable var final Int Float Bool String Char null List skipwhite
+syn keyword graceVariable var final Int Float Bool String Char null List Dict skipwhite
 
 syn keyword graceTodo TODO FIXME NOTE NOTES XXX contained
 syn match graceComment "//.*$" contains=graceTodo
