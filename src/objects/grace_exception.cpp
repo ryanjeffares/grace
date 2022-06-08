@@ -53,11 +53,3 @@ bool GraceException::AsBool() const
 {
   return true;
 }
-
-GRACE_NORETURN const VM::Value& GraceException::Deref() const
-{
-  throw GraceException(
-    Type::InvalidType,
-    "Exception cannot be dereferenced"
-  );
-}

@@ -82,17 +82,17 @@ namespace Grace
 
       void Print() const override
       {
-        Deref().Print();
+        Value().Print();
       }
 
       void PrintLn() const override
       {
-        Deref().PrintLn();
+        Value().PrintLn();
       }
 
       GRACE_NODISCARD std::string ToString() const override
       {
-        return Deref().AsString();
+        return Value().AsString();
       }
 
       GRACE_NODISCARD bool AsBool() const override
@@ -110,7 +110,7 @@ namespace Grace
         return false;
       }
 
-      GRACE_NODISCARD const VM::Value& Deref() const override
+      GRACE_NODISCARD const VM::Value& Value() const
       {
         if (!m_IsValid) {
           throw GraceException(

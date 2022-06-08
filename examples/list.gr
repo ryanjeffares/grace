@@ -27,7 +27,7 @@ func main():
   println(factorials);
 
   for i in [0..100 by 10]:
-    final multiplied = multiply_list([false], *i);
+    final multiplied = multiply_list([false], i);
     println(multiplied);
   end
 

@@ -5,10 +5,10 @@ func nested_loops():
     println(n);
     n = n + 1;
 
-    for i in []:
-      if *i > 25:
-//        println("breaking inner");
-//        break;
+    for i in [0..50]:
+      if i > 25:
+        println("breaking inner");
+        break;
       end 
     end 
 

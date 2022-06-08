@@ -36,7 +36,6 @@ namespace Grace
       GRACE_NODISCARD virtual bool AsBool() const = 0;
       GRACE_NODISCARD virtual constexpr const char* ObjectName() const = 0;
       GRACE_NODISCARD virtual constexpr bool IsIterable() const = 0;
-      GRACE_NODISCARD virtual const VM::Value& Deref() const = 0;
 
       GRACE_INLINE std::uint32_t IncreaseRef()
       {

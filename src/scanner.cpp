@@ -78,21 +78,21 @@ static bool IsIdentifierChar(char c)
   return std::isalpha(c) || c == '_';
 }
 
-static bool IsSingleCharToken(TokenType type)
-{
-  static const std::vector<TokenType> tokens = {
-    TokenType::Equal,
-    TokenType::LessThan,
-    TokenType::GreaterThan,
-    TokenType::Bang,
-    TokenType::Dot,
-    TokenType::Star,
-  };
-
-  return std::any_of(tokens.begin(), tokens.end(), [type](TokenType t) {
-      return t == type;
-  });
-}
+// static bool IsSingleCharToken(TokenType type)
+// {
+//   static const std::vector<TokenType> tokens = {
+//     TokenType::Equal,
+//     TokenType::LessThan,
+//     TokenType::GreaterThan,
+//     TokenType::Bang,
+//     TokenType::Dot,
+//     TokenType::Star,
+//   };
+//
+//   return std::any_of(tokens.begin(), tokens.end(), [type](TokenType t) {
+//       return t == type;
+//   });
+// }
 
 Token::Token(TokenType type,
   std::size_t start, 
@@ -100,16 +100,16 @@ Token::Token(TokenType type,
   std::size_t line,
   std::size_t column,
   const std::string& code
-) : m_Type(type), m_Start(start), m_Line(line), 
-  m_Text(code.c_str() + start, length)
+) : m_Type(type), m_Start(start), m_Length(length),
+  m_Line(line), m_Column(column), m_Text(code.c_str() + start, length)
 {
-  if (IsSingleCharToken(type)) {
-    m_Length = 1;
-    m_Column = column - 1;
-  } else {
-    m_Length = length;
-    m_Column = column;
-  }
+  // if (IsSingleCharToken(type)) {
+  //   m_Length = 1;
+  //   m_Column = column - 1;
+  // } else {
+  //   m_Length = length;
+  //   m_Column = column;
+  // }
 }
 
 Token::Token(TokenType type, std::size_t line, std::size_t column, std::string&& errorMessage)

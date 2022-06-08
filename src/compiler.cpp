@@ -304,6 +304,7 @@ static bool IsOperator(Scanner::TokenType type)
     Scanner::TokenType::DotDot,
     Scanner::TokenType::Plus,
     Scanner::TokenType::Slash,
+    Scanner::TokenType::Star,
     Scanner::TokenType::StarStar,
     Scanner::TokenType::BangEqual,
     Scanner::TokenType::Equal,
@@ -895,7 +896,6 @@ static void ForStatement(CompilerContext& compiler)
   auto startOpIdx = static_cast<std::int64_t>(VM::VM::GetInstance().GetNumOps());
 
   // evaluate the condition
-  EmitConstant(iteratorId);
   EmitOp(VM::Ops::CheckIteratorEnd, line);
 
   auto endJumpConstantIndex = VM::VM::GetInstance().GetNumConstants();
@@ -963,25 +963,15 @@ static void ForStatement(CompilerContext& compiler)
     if (secondIteratorNeedsPop) {
       compiler.locals.pop_back();
       EmitOp(VM::Ops::PopLocal, line);
-    } else {
-      // set this iterator to be null after the collection is exhausted
-      EmitConstant(nullptr);
-      EmitOp(VM::Ops::LoadConstant, line);
-      EmitConstant(secondIteratorId);
-      EmitOp(VM::Ops::AssignLocal, line);
     }
   }
 
   if (iteratorNeedsPop) {
     compiler.locals.pop_back();
     EmitOp(VM::Ops::PopLocal, line);
-  } else {
-    // set this iterator to be null after the collection is exhausted
-    EmitConstant(nullptr);
-    EmitOp(VM::Ops::LoadConstant, line);
-    EmitConstant(iteratorId);
-    EmitOp(VM::Ops::AssignLocal, line);
   }
+
+  EmitOp(VM::Ops::DestroyHeldIterator, line);
   
   compiler.codeContextStack.pop_back();  
 }
@@ -1104,7 +1094,6 @@ static void PrintStatement(CompilerContext& compiler)
     Expression(false, compiler);
     compiler.usingExpressionResult = prevUsing;
     EmitOp(VM::Ops::Print, compiler.current.value().GetLine());
-    EmitOp(VM::Ops::Pop, compiler.current.value().GetLine());
     Consume(Scanner::TokenType::RightParen, "Expected ')' after expression", compiler);
   }
   Consume(Scanner::TokenType::Semicolon, "Expected ';' after expression", compiler);
@@ -1121,7 +1110,6 @@ static void PrintLnStatement(CompilerContext& compiler)
     Expression(false, compiler);
     compiler.usingExpressionResult = prevUsing;
     EmitOp(VM::Ops::PrintLn, compiler.current.value().GetLine());
-    EmitOp(VM::Ops::Pop, compiler.current.value().GetLine());
     Consume(Scanner::TokenType::RightParen, "Expected ')' after expression", compiler);
   }
   Consume(Scanner::TokenType::Semicolon, "Expected ';' after expression", compiler);
@@ -1471,10 +1459,6 @@ static void Unary(bool canAssign, CompilerContext& compiler)
     auto line = compiler.previous.value().GetLine();
     Unary(canAssign, compiler);
     EmitOp(VM::Ops::Negate, line);
-  } else if (Match(Scanner::TokenType::Star, compiler)) {
-    auto line = compiler.previous.value().GetLine();
-    Unary(canAssign, compiler);
-    EmitOp(VM::Ops::Deref, line);
   } else {
     Call(canAssign, compiler);
   }

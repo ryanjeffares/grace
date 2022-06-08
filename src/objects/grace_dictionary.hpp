@@ -49,14 +49,6 @@ namespace Grace
         return true;
       }
 
-      GRACE_NORETURN const VM::Value& Deref() const override
-      {
-        throw GraceException(
-          GraceException::Type::InvalidType,
-          "Dictionary cannot be dereferenced"
-        );
-      }
-
       GRACE_NODISCARD Iterator Begin() override;
       GRACE_NODISCARD Iterator End() override;
       void IncrementIterator(Iterator& toIncrement) const override;

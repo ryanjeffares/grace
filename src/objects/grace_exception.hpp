@@ -77,7 +77,6 @@ namespace Grace
       void PrintLn() const override;
       GRACE_NODISCARD std::string ToString() const override;
       GRACE_NODISCARD bool AsBool() const override;
-      GRACE_NORETURN const VM::Value& Deref() const override;
       
       GRACE_NODISCARD GRACE_INLINE constexpr const char* ObjectName() const override
       {

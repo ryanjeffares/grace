@@ -30,7 +30,7 @@ end
 func reset(bits):
   final len = list_length(bits);
   for i in [0..len]:
-    list_set(bits, *i, true);
+    list_set(bits, i, true);
   end
 end
 
@@ -60,7 +60,7 @@ func run_sieve(bits):
     final min = factor * 3;
     final jump = factor * 2;
     for i in [min..1000000 by jump]:
-      clear_bit(bits, *i);
+      clear_bit(bits, i);
     end
 
     factor = factor + 2;
@@ -85,7 +85,7 @@ func main():
 
   var count = 0;
   for i in [0..bit_count]:
-    if list_get(bits, *i):
+    if list_get(bits, i):
       count = count + 1;
     end
   end

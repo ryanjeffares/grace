@@ -20,7 +20,11 @@ func main():
     println("The item at index " + index + " is " + get_list(items, index));
   end
 
-  //println(index);
+  // println(index);
 
   for i in []: println(i); end
+
+  for i in [0..5]:
+    println(i);
+  end
 end

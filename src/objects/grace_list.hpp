@@ -88,14 +88,6 @@ namespace Grace
       {
         return true;
       }
-
-      GRACE_NORETURN const VM::Value& Deref() const override
-      {
-        throw GraceException(
-          GraceException::Type::InvalidType,
-          "List cannot be dereferenced"
-        );
-      }
       
       GRACE_INLINE VM::Value& operator[](std::size_t index)
       {

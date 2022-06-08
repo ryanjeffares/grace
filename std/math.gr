@@ -3,7 +3,7 @@ func sqrt(n):
     return __NATIVE_SQRT_FLOAT(n);
   else if instanceof(n, int):
     return __NATIVE_SQRT_INT(n);
-  else:
-    assert(false, "Expected argument to `sqrt` to be an int or float");
   end
+
+  throw("Expected argument to `sqrt` to be an `Int` or `Float`");
 end

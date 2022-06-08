@@ -44,14 +44,6 @@ namespace Grace
         return false;
       }
 
-      GRACE_NORETURN const VM::Value& Deref() const override
-      {
-        throw GraceException(
-          GraceException::Type::InvalidType,
-          "KeyValuePair is not dereferenceable"
-        );
-      }
-
       GRACE_NODISCARD GRACE_INLINE const VM::Value& Key() const
       {
         return m_Key;

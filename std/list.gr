@@ -1,0 +1,21 @@
+func get(this List list, index):
+  if !instaceof(index, Int):
+    throw("Expected `Int` for List.get(index) but got `" + typename(index) + "`");
+  end
+  return __NATIVE_GET_LIST_AT_INDEX(list, index);
+end
+
+func set(this List list, index, value):
+  if !instanceof(index, Int):
+    throw("Expected `Int` for List.set(index, value) but got `" + typename(index) + "`");
+  end
+  __NATIVE_SET_LIST_AT_INDEX(list, index, value);
+end
+
+func append(this List list, value):
+  __NATIVE_APPEND_LIST(list, value);
+end
+
+func length(this List list):
+  __NATIVE_LIST_LENGTH(list);
+end
