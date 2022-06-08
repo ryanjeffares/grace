@@ -482,7 +482,7 @@ Value Value::Pow(const Value& other) const
     case Type::Int: {
       switch (other.m_Type) {
         case Type::Int: {
-          return Value(std::pow(m_Data.m_Int, other.m_Data.m_Int));
+          return Value(static_cast<std::int64_t>(std::pow(m_Data.m_Int, other.m_Data.m_Int)));
         }
         case Type::Double: {
           return Value(std::pow(static_cast<double>(m_Data.m_Int), other.m_Data.m_Double));

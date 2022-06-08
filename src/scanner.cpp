@@ -237,7 +237,11 @@ static void SkipWhitespace()
           while (!IsAtEnd()) {
             if (Peek() == '\n') {
               s_ScannerLine++;
+              s_ScannerColumn = 0;
+            } else if (Peek() == '\t') {
+              s_ScannerCurrent += 8;
             }
+
             if (Peek() == '*') {
               Advance();
               if (Peek() == '/') {

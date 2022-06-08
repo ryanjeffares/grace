@@ -174,7 +174,7 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
   // if an exception is caught
   struct VMState
   {
-    std::size_t stackSize{}, numLocals{}, callStackSize{}, opOffsetSize{}, localsOffsets{};
+    std::size_t stackSize{}, numLocals{}, callStackSize{}, opOffsetSize{}, localsOffsetsSize{}, heldIteratorIndexesSize{};
     std::int64_t opIndexToJump{}, constIndexToJump{};
   };
 
@@ -713,6 +713,7 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
             callStack.size(),
             opConstOffsets.size(),
             localsOffsets.size(),
+            heldIteratorIndexes.size(),
             opIdx,
             constIdx
           });
@@ -743,14 +744,19 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
         auto vmState = vmStateStack.top();
 
         // we need to "unwind" the call stack back to its state before we entered the try block...
+        while (heldIteratorIndexes.size() != vmState.heldIteratorIndexesSize) {
+          valueStack.erase(valueStack.begin() + heldIteratorIndexes.top());
+          heldIteratorIndexes.pop();
+        }
+
+        while (localsOffsets.size() != vmState.localsOffsetsSize) {
+          localsOffsets.pop();
+        }
+        
         valueStack.resize(vmState.stackSize);
         localsList.resize(vmState.numLocals);
         callStack.resize(vmState.callStackSize);
         opConstOffsets.resize(vmState.opOffsetSize);
-
-        while (localsOffsets.size() != vmState.localsOffsets) {
-          localsOffsets.pop();
-        }
 
         auto [opOffset, constOffset] = opConstOffsets.back();
         opCurrent = vmState.opIndexToJump + opOffset;
@@ -765,6 +771,7 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
 #ifdef GRACE_DEBUG
         PRINT_LOCAL_MEMORY();
 #endif
+        valueStack.clear();
         localsList.clear();
         return InterpretResult::RuntimeError;
       }
@@ -773,6 +780,7 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
 
 exit:
 
+  valueStack.clear();
   localsList.clear();
 
 #ifdef GRACE_DEBUG 
