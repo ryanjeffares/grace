@@ -77,6 +77,8 @@ namespace Grace::Scanner
     Continue,
     Else,
     End,
+    Eprint,
+    EprintLn,
     False,
     Final,
     For,
@@ -196,6 +198,8 @@ struct fmt::formatter<Grace::Scanner::TokenType> : fmt::formatter<std::string_vi
       case TokenType::While: name = "TokenType::While"; break;
       case TokenType::Print: name = "TokenType::Print"; break;
       case TokenType::PrintLn: name = "TokenType::PrintLn"; break;
+      case TokenType::Eprint: name = "TokenType::Eprint"; break;
+      case TokenType::EprintLn: name = "TokenType::EprintLn"; break;
       case TokenType::Return: name = "TokenType::Return"; break;
       case TokenType::This: name = "TokenType::This"; break;
       case TokenType::Throw: name = "TokenType::Throw"; break;

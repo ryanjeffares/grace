@@ -32,14 +32,16 @@ void GraceKeyValuePair::DebugPrint() const
   fmt::print("KeyValuePair: {}\n", ToString());
 }
 
-void GraceKeyValuePair::Print() const
+void GraceKeyValuePair::Print(bool err) const
 {
-  fmt::print("{}", ToString());
+  auto stream = err ? stderr : stdout;
+  fmt::print(stream, "{}", ToString());
 }
 
-void GraceKeyValuePair::PrintLn() const
+void GraceKeyValuePair::PrintLn(bool err) const
 {
-  fmt::print("{}\n", ToString());
+  auto stream = err ? stderr : stdout;
+  fmt::print(stream, "{}\n", ToString());
 }
 
 std::string GraceKeyValuePair::ToString() const

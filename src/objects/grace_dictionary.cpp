@@ -48,14 +48,16 @@ namespace Grace
     fmt::print("Dictionary: {}\n", ToString());
   }
 
-  void GraceDictionary::Print() const
+  void GraceDictionary::Print(bool err) const
   {
-    fmt::print("{}", ToString());
+    auto stream = err ? stderr : stdout;
+    fmt::print(stream, "{}", ToString());
   }
 
-  void GraceDictionary::PrintLn() const
+  void GraceDictionary::PrintLn(bool err) const
   {
-    fmt::print("{}\n", ToString());
+    auto stream = err ? stderr : stdout;
+    fmt::print(stream, "{}\n", ToString());
   }
 
   std::string GraceDictionary::ToString() const

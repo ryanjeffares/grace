@@ -34,14 +34,16 @@ void GraceException::DebugPrint() const
   fmt::print("GraceException: {}: {}\n", what(), m_Message);
 }
 
-void GraceException::Print() const
+void GraceException::Print(bool err) const
 {
-  fmt::print("{}: {}", what(), m_Message);
+  auto stream = err ? stderr : stdout;
+  fmt::print(stream, "{}: {}", what(), m_Message);
 }
 
-void GraceException::PrintLn() const
+void GraceException::PrintLn(bool err) const
 {
-  fmt::print("{}: {}\n", what(), m_Message);
+  auto stream = err ? stderr : stdout;
+  fmt::print(stream, "{}: {}\n", what(), m_Message);
 }
 
 std::string GraceException::ToString() const

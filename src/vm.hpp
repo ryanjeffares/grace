@@ -77,6 +77,10 @@ namespace Grace::VM
     PrintEmptyLine,
     PrintLn,
     PrintTab,
+    EPrint,
+    EPrintEmptyLine,
+    EPrintLn,
+    EPrintTab,
     Return,
     Subtract,
     Throw,
@@ -274,6 +278,10 @@ struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
       case Ops::PrintEmptyLine: name = "Ops::PrintEmptyLine"; break;
       case Ops::PrintLn: name = "Ops::PrintLn"; break;
       case Ops::PrintTab: name = "Ops::PrintTab"; break;
+      case Ops::EPrint: name = "Ops::EPrint"; break;
+      case Ops::EPrintEmptyLine: name = "Ops::EPrintEmptyLine"; break;
+      case Ops::EPrintLn: name = "Ops::EPrintLn"; break;
+      case Ops::EPrintTab: name = "Ops::EPrintTab"; break;
       case Ops::Return: name = "Ops::Return"; break;
       case Ops::Subtract: name = "Ops::Subtract"; break;
       case Ops::Throw: name = "Ops::Throw"; break;

@@ -511,56 +511,58 @@ Value Value::Pow(const Value& other) const
   );
 }
 
-void Value::PrintLn() const
+void Value::PrintLn(bool err) const
 {
+  auto stream = err ? stderr : stdout;
   switch (m_Type) {
     case Type::Bool:
-      fmt::print("{}\n", m_Data.m_Bool);
+      fmt::print(stream, "{}\n", m_Data.m_Bool);
       break;
     case Type::Char:
-      fmt::print("{}\n", m_Data.m_Char);
+      fmt::print(stream, "{}\n", m_Data.m_Char);
       break;
     case Type::Double:
-      fmt::print("{}\n", m_Data.m_Double);
+      fmt::print(stream, "{}\n", m_Data.m_Double);
       break;
     case Type::Int:
-      fmt::print("{}\n", m_Data.m_Int);
+      fmt::print(stream, "{}\n", m_Data.m_Int);
       break;
     case Type::Null:
-      fmt::print("null\n");
+      fmt::print(stream, "null\n");
       break;
     case Type::Object:
-      m_Data.m_Object->PrintLn();
+      m_Data.m_Object->PrintLn(err);
       break;
     case Type::String:
-      fmt::print("{}\n", *m_Data.m_Str);
+      fmt::print(stream, "{}\n", *m_Data.m_Str);
       break;
   }
 }
 
-void Value::Print() const
+void Value::Print(bool err) const
 {
+  auto stream = err ? stderr : stdout;
   switch (m_Type) {
     case Type::Bool:
-      fmt::print("{}", m_Data.m_Bool);
+      fmt::print(stream, "{}", m_Data.m_Bool);
       break;
     case Type::Char:
-      fmt::print("{}", m_Data.m_Char);
+      fmt::print(stream, "{}", m_Data.m_Char);
       break;
     case Type::Double:
-      fmt::print("{}", m_Data.m_Double);
+      fmt::print(stream, "{}", m_Data.m_Double);
       break;
     case Type::Int:
-      fmt::print("{}", m_Data.m_Int);
+      fmt::print(stream, "{}", m_Data.m_Int);
       break;
     case Type::Null:
-      fmt::print("null");
+      fmt::print(stream, "null");
       break;
     case Type::Object:
-      m_Data.m_Object->Print();
+      m_Data.m_Object->Print(err);
       break;
     case Type::String:
-      fmt::print("{}", *m_Data.m_Str);
+      fmt::print(stream, "{}", *m_Data.m_Str);
       break;
     default:
       GRACE_ASSERT(false, "Value::m_Type was not set");

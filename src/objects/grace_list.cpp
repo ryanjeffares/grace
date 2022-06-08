@@ -93,14 +93,16 @@ void GraceList::DebugPrint() const
   fmt::print("GraceList: {}\n", ToString());
 }
 
-void GraceList::Print() const
+void GraceList::Print(bool err) const
 {
-  fmt::print("{}", ToString());
+  auto stream = err ? stderr : stdout;
+  fmt::print(stream, "{}", ToString());
 }
 
-void GraceList::PrintLn() const
+void GraceList::PrintLn(bool err) const
 {
-  fmt::print("{}\n", ToString());
+  auto stream = err ? stderr : stdout;
+  fmt::print(stream, "{}\n", ToString());
 }
 
 std::string GraceList::ToString() const

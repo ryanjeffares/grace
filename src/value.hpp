@@ -209,8 +209,8 @@ namespace Grace
 
       GRACE_NODISCARD Value Pow(const Value&) const;
 
-      void PrintLn() const;
-      void Print() const;
+      void PrintLn(bool err) const;
+      void Print(bool err) const;
       void DebugPrint() const;
 
       GRACE_NODISCARD GRACE_INLINE bool IsNumber() const

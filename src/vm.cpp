@@ -296,16 +296,28 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
           break;
         }
         case Ops::Print:
-          Pop(valueStack).Print();
+          Pop(valueStack).Print(false);
           break;
         case Ops::PrintEmptyLine:
           fmt::print("\n");
           break;
         case Ops::PrintLn:
-          Pop(valueStack).PrintLn();
+          Pop(valueStack).PrintLn(false);
           break;
         case Ops::PrintTab:
           fmt::print("\t");
+          break;
+        case Ops::EPrint:
+          Pop(valueStack).Print(true);
+          break;
+        case Ops::EPrintEmptyLine:
+          fmt::print(stderr, "\n");
+          break;
+        case Ops::EPrintLn:
+          Pop(valueStack).PrintLn(true);
+          break;
+        case Ops::EPrintTab:
+          fmt::print(stderr, "\t");
           break;
         case Ops::Call: {
           auto calleeNameHash = m_FullConstantList[constantCurrent++].Get<std::int64_t>();

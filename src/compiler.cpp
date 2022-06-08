@@ -107,6 +107,8 @@ static void ForStatement(CompilerContext& compiler);
 static void IfStatement(CompilerContext& compiler);
 static void PrintStatement(CompilerContext& compiler);
 static void PrintLnStatement(CompilerContext& compiler);
+static void EPrintStatement(CompilerContext& compiler);
+static void EPrintLnStatement(CompilerContext& compiler);
 static void ReturnStatement(CompilerContext& compiler);
 static void TryStatement(CompilerContext& compiler);
 static void ThrowStatement(CompilerContext& compiler);
@@ -256,6 +258,8 @@ static void Synchronize(CompilerContext& compiler)
       case Scanner::TokenType::While:
       case Scanner::TokenType::Print:
       case Scanner::TokenType::PrintLn:
+      case Scanner::TokenType::Eprint:
+      case Scanner::TokenType::EprintLn:
       case Scanner::TokenType::Return:
       case Scanner::TokenType::Var:
         return;
@@ -283,6 +287,8 @@ static bool IsKeyword(Scanner::TokenType type, std::string& outKeyword)
     case Scanner::TokenType::Or: outKeyword = "or"; return true;
     case Scanner::TokenType::Print: outKeyword = "print"; return true;
     case Scanner::TokenType::PrintLn: outKeyword = "println"; return true;
+    case Scanner::TokenType::Eprint: outKeyword = "eprint"; return true;
+    case Scanner::TokenType::EprintLn: outKeyword = "eprintln"; return true;
     case Scanner::TokenType::Return: outKeyword = "return"; return true;
     case Scanner::TokenType::Throw: outKeyword = "throw"; return true;
     case Scanner::TokenType::Try: outKeyword = "try"; return true;
@@ -354,6 +360,10 @@ static void Statement(CompilerContext& compiler)
     PrintStatement(compiler);
   } else if (Match(Scanner::TokenType::PrintLn, compiler)) {
     PrintLnStatement(compiler);
+  } else if (Match(Scanner::TokenType::Eprint, compiler)) {
+    EPrintStatement(compiler);
+  } else if (Match(Scanner::TokenType::EprintLn, compiler)) {
+    EPrintLnStatement(compiler);
   } else if (Match(Scanner::TokenType::Return, compiler)) {
     ReturnStatement(compiler);
   } else if (Match(Scanner::TokenType::While, compiler)) {
@@ -1119,6 +1129,38 @@ static void PrintLnStatement(CompilerContext& compiler)
     Expression(false, compiler);
     compiler.usingExpressionResult = prevUsing;
     EmitOp(VM::Ops::PrintLn, compiler.current.value().GetLine());
+    Consume(Scanner::TokenType::RightParen, "Expected ')' after expression", compiler);
+  }
+  Consume(Scanner::TokenType::Semicolon, "Expected ';' after expression", compiler);
+}
+
+static void EPrintStatement(CompilerContext& compiler)
+{
+  Consume(Scanner::TokenType::LeftParen, "Expected '(' after 'eprint'", compiler);
+  if (Match(Scanner::TokenType::RightParen, compiler)) {
+    EmitOp(VM::Ops::EPrintTab, compiler.current.value().GetLine());
+  } else {
+    auto prevUsing = compiler.usingExpressionResult;
+    compiler.usingExpressionResult = true;
+    Expression(false, compiler);
+    compiler.usingExpressionResult = prevUsing;
+    EmitOp(VM::Ops::EPrint, compiler.current.value().GetLine());
+    Consume(Scanner::TokenType::RightParen, "Expected ')' after expression", compiler);
+  }
+  Consume(Scanner::TokenType::Semicolon, "Expected ';' after expression", compiler);
+}
+
+static void EPrintLnStatement(CompilerContext& compiler)
+{
+  Consume(Scanner::TokenType::LeftParen, "Expected '(' after 'eprintln'", compiler);
+  if (Match(Scanner::TokenType::RightParen, compiler)) {
+    EmitOp(VM::Ops::EPrintEmptyLine, compiler.current.value().GetLine());
+  } else {
+    auto prevUsing = compiler.usingExpressionResult;
+    compiler.usingExpressionResult = true;
+    Expression(false, compiler);
+    compiler.usingExpressionResult = prevUsing;
+    EmitOp(VM::Ops::EPrintLn, compiler.current.value().GetLine());
     Consume(Scanner::TokenType::RightParen, "Expected ')' after expression", compiler);
   }
   Consume(Scanner::TokenType::Semicolon, "Expected ';' after expression", compiler);

@@ -29,8 +29,8 @@ namespace Grace
       GraceKeyValuePair(std::pair<VM::Value, VM::Value>&& pair);
 
       void DebugPrint() const override;
-      void Print() const override;
-      void PrintLn() const override;
+      void Print(bool err) const override;
+      void PrintLn(bool err) const override;
       GRACE_NODISCARD std::string ToString() const override;
       GRACE_NODISCARD bool AsBool() const override;
       
