@@ -752,7 +752,7 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
         while (localsOffsets.size() != vmState.localsOffsetsSize) {
           localsOffsets.pop();
         }
-        
+
         valueStack.resize(vmState.stackSize);
         localsList.resize(vmState.numLocals);
         callStack.resize(vmState.callStackSize);

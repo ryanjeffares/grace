@@ -39,7 +39,7 @@ void ObjectTracker::TrackObject(GraceObject* object)
   }
 }
 
-void ObjectTracker::StopTracking(GraceObject* object)
+void ObjectTracker::StopTrackingObject(GraceObject* object)
 {
   GRACE_ASSERT(object != nullptr, "Trying to stop tracking an object that is a nullptr");
   auto it = std::find(s_TrackedObjects.begin(), s_TrackedObjects.end(), object);
@@ -60,7 +60,6 @@ void ObjectTracker::Finalise()
       fmt::print("\t{}: ", fmt::ptr(obj));
       obj->DebugPrint();
     }
-    GRACE_ASSERT_FALSE();
   }
 }
 #endif

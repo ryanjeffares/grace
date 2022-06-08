@@ -48,7 +48,7 @@ namespace Grace
 
         if (m_Iterable->DecreaseRef() == 0) {
 #ifdef GRACE_DEBUG
-          ObjectTracker::StopTracking(m_Iterable);
+          ObjectTracker::StopTrackingObject(m_Iterable);
 #endif
           delete m_Iterable;
         }

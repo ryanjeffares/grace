@@ -102,14 +102,14 @@ namespace Grace
       constexpr Value& operator=(const Value& other)
       {
         if (this != &other) {
-          if (m_Type == Type::String && m_Data.m_Str != nullptr) {
+          if (m_Type == Type::String) {
             delete m_Data.m_Str;
           }
 
           if (m_Type == Type::Object) {
             if (m_Data.m_Object->DecreaseRef() == 0) {
 #ifdef GRACE_DEBUG
-              ObjectTracker::StopTracking(m_Data.m_Object); 
+              ObjectTracker::StopTrackingObject(m_Data.m_Object);
 #endif
               delete m_Data.m_Object;
             }
@@ -131,14 +131,14 @@ namespace Grace
       constexpr Value& operator=(Value&& other)
       {
         if (this != &other) {
-          if (m_Type == Type::String && m_Data.m_Str != nullptr) {
+          if (m_Type == Type::String) {
             delete m_Data.m_Str;
           }
           
           if (m_Type == Type::Object) {
             if (m_Data.m_Object->DecreaseRef() == 0) {
 #ifdef GRACE_DEBUG
-              ObjectTracker::StopTracking(m_Data.m_Object); 
+              ObjectTracker::StopTrackingObject(m_Data.m_Object);
 #endif
               delete m_Data.m_Object;
             }
@@ -158,14 +158,14 @@ namespace Grace
       template<BuiltinGraceType T>
       constexpr Value& operator=(const T& value)
       {
-        if (m_Type == Type::String && m_Data.m_Str != nullptr) {
+        if (m_Type == Type::String) {
           delete m_Data.m_Str;
         }
 
         if (m_Type == Type::Object) {
           if (m_Data.m_Object->DecreaseRef() == 0) {
 #ifdef GRACE_DEBUG
-            ObjectTracker::StopTracking(m_Data.m_Object); 
+            ObjectTracker::StopTrackingObject(m_Data.m_Object);
 #endif
             delete m_Data.m_Object;
           }
