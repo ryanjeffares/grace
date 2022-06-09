@@ -1545,7 +1545,7 @@ static void Call(bool canAssign, CompilerContext& compiler)
       if (nativeCall) {
         auto [exists, index] = VM::VM::GetInstance().HasNativeFunction(prevText);
         if (!exists) {
-          MessageAtPrevious(fmt::format("No native function matching the given signature `{}` was found", prevText), LogLevel::Error, compiler);
+          Message(prev, fmt::format("No native function matching the given signature `{}` was found", prevText), LogLevel::Error, compiler);
           return;
         } else {
           nativeIndex = index;
@@ -1564,6 +1564,14 @@ static void Call(bool canAssign, CompilerContext& compiler)
             break;
           }
           Consume(Scanner::TokenType::Comma, "Expected ',' after function call argument", compiler);
+        }
+      }
+
+      if (nativeCall) {
+        auto arity = VM::VM::GetInstance().GetNativeFunction(nativeIndex).GetArity();
+        if (numArgs != arity) {
+          MessageAtPrevious(fmt::format("Incorrect number of arguments given to native call - got {} but expected {}", numArgs, arity), LogLevel::Error, compiler);
+          return;
         }
       }
 

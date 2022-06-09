@@ -159,7 +159,7 @@ namespace Grace::VM
 
       GRACE_NODISCARD bool AddFunction(std::string&& name, int line, int arity);
 
-      GRACE_INLINE std::tuple<bool, std::size_t> HasNativeFunction(const std::string& name)
+      std::tuple<bool, std::size_t> HasNativeFunction(const std::string& name)
       {
         auto it = std::find_if(m_NativeFunctions.begin(), m_NativeFunctions.end(), 
             [&name](const Native::NativeFunction& fn) { return fn.GetName() == name;});
@@ -167,6 +167,11 @@ namespace Grace::VM
           return {false, 0};
         }
         return {true, it - m_NativeFunctions.begin()};
+      }
+
+      GRACE_NODISCARD GRACE_INLINE const Native::NativeFunction& GetNativeFunction(std::size_t index) const
+      {
+        return m_NativeFunctions[index];
       }
 
       GRACE_NODISCARD bool CombineFunctions(bool verbose);

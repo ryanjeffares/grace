@@ -14,6 +14,7 @@
 #include "grace.hpp"
 #include "vm.hpp"
 #include "objects/grace_list.hpp"
+#include "objects/grace_dictionary.hpp"
 
 using namespace Grace::VM;
 
@@ -24,10 +25,12 @@ static Value TimeSeconds(GRACE_MAYBE_UNUSED const std::vector<Value>& args);
 static Value TimeMilliSeconds(GRACE_MAYBE_UNUSED const std::vector<Value>& args);
 static Value TimeNanoSeconds(GRACE_MAYBE_UNUSED const std::vector<Value>& args);
 
-static Value AppendList(const std::vector<Value>& args);
-static Value SetListAtIndex(const std::vector<Value>& args);
-static Value GetListAtIndex(const std::vector<Value>& args);
+static Value ListAppend(const std::vector<Value>& args);
+static Value ListSetAtIndex(const std::vector<Value>& args);
+static Value ListGetAtIndex(const std::vector<Value>& args);
 static Value ListLength(const std::vector<Value>& args);
+
+static Value DictionaryInsert(const std::vector<Value>& args);
 
 void VM::RegisterNatives()
 {
@@ -41,10 +44,13 @@ void VM::RegisterNatives()
   m_NativeFunctions.emplace_back("__NATIVE_TIME_NS", 0, &TimeNanoSeconds);
 
   // List functions
-  m_NativeFunctions.emplace_back("__NATIVE_APPEND_LIST", 2, &AppendList);
-  m_NativeFunctions.emplace_back("__NATIVE_SET_LIST_AT_INDEX", 3, &SetListAtIndex);
-  m_NativeFunctions.emplace_back("__NATIVE_GET_LIST_AT_INDEX", 2, &GetListAtIndex);
+  m_NativeFunctions.emplace_back("__NATIVE_APPEND_LIST", 2, &ListAppend);
+  m_NativeFunctions.emplace_back("__NATIVE_SET_LIST_AT_INDEX", 3, &ListSetAtIndex);
+  m_NativeFunctions.emplace_back("__NATIVE_GET_LIST_AT_INDEX", 2, &ListGetAtIndex);
   m_NativeFunctions.emplace_back("__NATIVE_LIST_LENGTH", 1, &ListLength);
+
+  // Dictionary functions
+  m_NativeFunctions.emplace_back("__NATIVE_DICTIONARY_INSERT", 3, &DictionaryInsert);
 }
 
 static Value SqrtFloat(const std::vector<Value>& args)
@@ -72,20 +78,20 @@ static Value TimeNanoSeconds(GRACE_MAYBE_UNUSED const std::vector<Value>& args)
   return Value(std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count());
 }
 
-static Value AppendList(const std::vector<Value>& args)
+static Value ListAppend(const std::vector<Value>& args)
 {
   dynamic_cast<Grace::GraceList*>(args[0].GetObject())->Append(args[1]);
   return Value();
 }
 
-static Value SetListAtIndex(const std::vector<Value>& args)
+static Value ListSetAtIndex(const std::vector<Value>& args)
 {
   auto l = dynamic_cast<Grace::GraceList*>(args[0].GetObject());
   (*l)[args[1].Get<std::int64_t>()] = args[2];
   return Value();
 }
 
-static Value GetListAtIndex(const std::vector<Value>& args)
+static Value ListGetAtIndex(const std::vector<Value>& args)
 {
   return (*dynamic_cast<Grace::GraceList*>(args[0].GetObject()))[args[1].Get<std::int64_t>()];
 }
@@ -93,4 +99,13 @@ static Value GetListAtIndex(const std::vector<Value>& args)
 static Value ListLength(const std::vector<Value>& args)
 {
   return Value(static_cast<std::int64_t>(dynamic_cast<Grace::GraceList*>(args[0].GetObject())->Length()));
+}
+
+static Value DictionaryInsert(const std::vector<Value>& args)
+{
+  auto dict = dynamic_cast<Grace::GraceDictionary*>(args[0].GetObject());
+  auto key = args[1];
+  auto value = args[2];
+  dict->Insert(std::move(key), std::move(value));
+  return Value();
 }

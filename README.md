@@ -2,15 +2,15 @@
 
 [![Total alerts](https://img.shields.io/lgtm/alerts/g/ryanjeffares/grace.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/ryanjeffares/grace/alerts/) [![Language grade: C/C++](https://img.shields.io/lgtm/grade/cpp/g/ryanjeffares/grace.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/ryanjeffares/grace/context:cpp)
 
-Grace is a dynamically typed, bytecode interpreted programming language, written with C++20. Still a work in progress, Grace will support object oriented and precedural programming, use reference counting as opposed to a garbage collector, and features a concise syntax inspired by Python and Ruby.
+Grace is a dynamically typed, bytecode interpreted programming language, written with C++20. Still a work in progress, Grace will support object-oriented and procedural programming, use reference counting as opposed to a garbage collector, and features a concise syntax inspired by Python and Ruby.
 
 ## Aspirations
 
-The goal of Grace is to combine the ease of use and portability of an interpreted language with the scalability and robustness of a compiled language. Grace is easy to write and run, similar to Python, but to better achieve the goals of scalability it does not support a REPL shell or top level statements. A Grace program starts in the `main` function, and code is limited to classes and functions.
+The goal of Grace is to combine the ease of use and portability of an interpreted language with the scalability and robustness of a compiled language. Grace is easy to write and run, similar to Python, but to better achieve the goals of scalability it does not support a REPL shell or top level statements. A Grace program starts in the `main` function, and code is limited to within classes and functions.
 
-An important aspiration of Grace is to be unambiguous and predictable. By keeping syntax and operators to a minimum, Grace can avoid unexpected behaviour and having many different ways to do the exact same thing, which can be hostile things for newcomers and programming beginners.
+An important aspiration of Grace is to be unambiguous and predictable. By keeping syntax and operators to a minimum, Grace can avoid unexpected behaviour and having many ways to do the exact same thing, which can be hostile things for newcomers and programming beginners.
 
-Performance is pertinent, and should stay predictable due to the use of reference counting over garbage collection.
+Performance will stay predictable due to the use of reference counting over garbage collection.
 
 ## Spec and Guidelines
 
@@ -48,12 +48,11 @@ This will build the `grace` executable, which you can add to your path or move s
 * Investigate wide chars over regular chars
 * Classes
   * Reference counting
-  * Cyclic references handled through a "cyclic reference tracker" - if a cyclic reference is detected, start tracking the two objects, and when those objects' only reminaing references are eachother they can be safely destroyed 
+  * Cyclic references handled through a "cyclic reference tracker" - if a cyclic reference is detected, start tracking the two objects, and when those objects' only remaining references are each other they can be safely destroyed 
 * Lambdas 
 * Global const fields 
 * Imports 
 * Extension methods
-* Collections
 * Standard library
 * Filesystem handling
 * Install process 

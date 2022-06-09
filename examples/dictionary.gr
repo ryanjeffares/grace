@@ -5,6 +5,10 @@ func factorial(num):
   return num * factorial(num - 1);
 end
 
+func dictionary_insert(dict, key, value):
+  __NATIVE_DICTIONARY_INSERT(dict, key, value);
+end
+
 func main():
   final operatives = ["Hays", "Syl", "Ryan"];
 
@@ -29,4 +33,22 @@ func main():
   for item in as_list:
     println(item);
   end
+
+  println();
+
+  final testing_rehash = {};
+
+  dictionary_insert(testing_rehash, "Ryan", "Jeffares");
+  dictionary_insert(testing_rehash, "Ryan1", "Jeffares");
+  dictionary_insert(testing_rehash, "Ryan2", "Jeffares");
+  dictionary_insert(testing_rehash, "Ryan3", "Jeffares");
+  dictionary_insert(testing_rehash, "Ryan4", "Jeffares");
+  dictionary_insert(testing_rehash, "Ryan5", "Jeffares");
+  dictionary_insert(testing_rehash, "Ryan6", "Jeffares");
+  dictionary_insert(testing_rehash, "Ryan7", "Jeffares");
+  dictionary_insert(testing_rehash, "Ryan8", "Jeffares");
+  dictionary_insert(testing_rehash, "Ryan9", "Jeffares");
+  dictionary_insert(testing_rehash, "Ryan10", "Jeffares");
+
+  println(testing_rehash);
 end

@@ -63,6 +63,9 @@ namespace Grace
       GRACE_NODISCARD std::vector<VM::Value> ToVector() const;
 
     private:
+
+      void Rehash();
+
       enum class CellState
       {
         NeverUsed, Tombstone, Occupied

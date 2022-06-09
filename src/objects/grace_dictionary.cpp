@@ -40,7 +40,7 @@ namespace Grace
       m_CellStates(std::move(other.m_CellStates)),
       m_Size(other.m_Size)
   {
-
+    other.m_Size = 0;
   }
 
   void GraceDictionary::DebugPrint() const
@@ -109,6 +109,7 @@ namespace Grace
     if (fullness > s_GrowFactor) {
       m_Data.resize(m_Data.size() * 2);
       m_CellStates.resize(m_CellStates.size() * 2, CellState::NeverUsed);
+      Rehash();
       InvalidateIterators();
     }
 
@@ -155,5 +156,38 @@ namespace Grace
       res.push_back(value);
     }
     return res;
+  }
+
+  void GraceDictionary::Rehash()
+  {
+    auto pairs = ToVector();
+    std::fill(m_Data.begin(), m_Data.end(), VM::Value());
+    std::fill(m_CellStates.begin(), m_CellStates.end(), CellState::NeverUsed);
+
+    for (const auto& pair : pairs) {
+      auto kvp = dynamic_cast<GraceKeyValuePair*>(pair.GetObject());
+      const auto& key = kvp->Key();
+      auto hash = m_Hasher(key);
+      auto index = hash % m_Data.size();
+
+      auto state = m_CellStates[index];
+      if (state == CellState::NeverUsed) {
+        m_Data[index] = pair;
+        m_CellStates[index] = CellState::Occupied;
+      } else {
+        // if its not NeverUsed it will be Occupied
+        // iterate until we find a NeverUsed
+        for (auto i = index + 1; ; ++i) {
+          if (i == m_Data.size()) {
+            i = 0;
+          }
+          if (m_CellStates[i] == CellState::NeverUsed) {
+            m_Data[i] = pair;
+            m_CellStates[i] = CellState::Occupied;
+            break;
+          }          
+        }
+      }
+    }
   }
 } // namespace Grace
