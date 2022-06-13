@@ -198,6 +198,11 @@ namespace Grace
       GRACE_NODISCARD Value operator*(const Value&) const;
       GRACE_NODISCARD Value operator/(const Value&) const;
       GRACE_NODISCARD Value operator%(const Value&) const;
+      GRACE_NODISCARD Value operator<<(const Value&) const;
+      GRACE_NODISCARD Value operator>>(const Value&) const;
+      GRACE_NODISCARD Value operator|(const Value&) const;
+      GRACE_NODISCARD Value operator^(const Value&) const;
+      GRACE_NODISCARD Value operator&(const Value&) const;
       GRACE_NODISCARD bool operator==(const Value&) const;
       GRACE_NODISCARD bool operator!=(const Value&) const;
       GRACE_NODISCARD bool operator<(const Value&) const;
@@ -206,6 +211,7 @@ namespace Grace
       GRACE_NODISCARD bool operator>=(const Value&) const;
       GRACE_NODISCARD Value operator!() const;
       GRACE_NODISCARD Value operator-() const;
+      GRACE_NODISCARD Value operator~() const;
 
       GRACE_NODISCARD Value Pow(const Value&) const;
 
@@ -285,7 +291,7 @@ template<>
 struct fmt::formatter<Grace::VM::Value::Type> : fmt::formatter<std::string_view>
 {
   template<typename FormatContext>
-  auto format(Grace::VM::Value::Type type, FormatContext& context) -> decltype(context.out())
+  constexpr auto format(Grace::VM::Value::Type type, FormatContext& context) -> decltype(context.out())
   {
     using namespace Grace::VM;
 

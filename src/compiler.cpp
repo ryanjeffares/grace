@@ -118,8 +118,12 @@ static void Expression(bool canAssign, CompilerContext& compiler);
 
 static void Or(bool canAssign, bool skipFirst, CompilerContext& compiler);
 static void And(bool canAssign, bool skipFirst, CompilerContext& compiler);
+static void BitwiseOr(bool canAssign, bool skipFirst, CompilerContext& compiler);
+static void BitwiseXOr(bool canAssign, bool skipFirst, CompilerContext& compiler);
+static void BitwiseAnd(bool canAssign, bool skipFirst, CompilerContext& compiler);
 static void Equality(bool canAssign, bool skipFirst, CompilerContext& compiler);
 static void Comparison(bool canAssign, bool skipFirst, CompilerContext& compiler);
+static void Shift(bool canAssign, bool skipFirst, CompilerContext& compiler);
 static void Term(bool canAssign, bool skipFirst, CompilerContext& compiler);
 static void Factor(bool canAssign, bool skipFirst, CompilerContext& compiler);
 static void Unary(bool canAssign, CompilerContext& compiler);
@@ -319,6 +323,11 @@ static bool IsOperator(Scanner::TokenType type)
     Scanner::TokenType::GreaterThan,
     Scanner::TokenType::LessEqual,
     Scanner::TokenType::GreaterEqual,
+    Scanner::TokenType::Bar,
+    Scanner::TokenType::Ampersand,
+    Scanner::TokenType::Caret,
+    Scanner::TokenType::ShiftRight,
+    Scanner::TokenType::ShiftLeft,
   };
 
   return std::any_of(symbols.begin(), symbols.end(), [type](Scanner::TokenType t) {
@@ -615,6 +624,15 @@ static void Expression(bool canAssign, CompilerContext& compiler)
       bool shouldBreak = false;
       while (!shouldBreak) {
         switch (compiler.current.value().GetType()) {
+          case Scanner::TokenType::Bar:
+            BitwiseOr(false, true, compiler);
+            break;
+          case Scanner::TokenType::Ampersand:
+            BitwiseAnd(false, true, compiler);
+            break;
+          case Scanner::TokenType::Caret:
+            BitwiseXOr(false, true, compiler);
+            break;
           case Scanner::TokenType::And:
             And(false, true, compiler);
             break;
@@ -640,6 +658,10 @@ static void Expression(bool canAssign, CompilerContext& compiler)
           case Scanner::TokenType::Slash:
           case Scanner::TokenType::Mod:
             Factor(false, true, compiler);
+            break;
+          case Scanner::TokenType::ShiftLeft:
+          case Scanner::TokenType::ShiftRight:
+            Shift(false, true, compiler);
             break;
           case Scanner::TokenType::Semicolon:
           case Scanner::TokenType::RightParen:
@@ -1425,11 +1447,44 @@ static void Or(bool canAssign, bool skipFirst, CompilerContext& compiler)
 static void And(bool canAssign, bool skipFirst, CompilerContext& compiler)
 {
   if (!skipFirst) {
-    Equality(canAssign, false, compiler);
+    BitwiseOr(canAssign, false, compiler);
   }
   while (Match(Scanner::TokenType::And, compiler)) {
-    Equality(canAssign, false, compiler);
+    BitwiseOr(canAssign, false, compiler);
     EmitOp(VM::Ops::And, compiler.current.value().GetLine());
+  }
+}
+
+static void BitwiseOr(bool canAssign, bool skipFirst, CompilerContext& compiler)
+{
+  if (!skipFirst) {
+    BitwiseXOr(canAssign, false, compiler);
+  }
+  while (Match(Scanner::TokenType::Bar, compiler)) {
+    BitwiseXOr(canAssign, false, compiler);
+    EmitOp(VM::Ops::BitwiseOr, compiler.current.value().GetLine());
+  }
+}
+
+static void BitwiseXOr(bool canAssign, bool skipFirst, CompilerContext& compiler)
+{
+  if (!skipFirst) {
+    BitwiseAnd(canAssign, false, compiler);
+  }
+  while (Match(Scanner::TokenType::Caret, compiler)) {
+    BitwiseAnd(canAssign, false, compiler);
+    EmitOp(VM::Ops::BitwiseXOr, compiler.current.value().GetLine());
+  }
+}
+
+static void BitwiseAnd(bool canAssign, bool skipFirst, CompilerContext& compiler)
+{
+  if (!skipFirst) {
+    Equality(canAssign, false, compiler);
+  }
+  while (Match(Scanner::TokenType::Ampersand, compiler)) {
+    Equality(canAssign, false, compiler);
+    EmitOp(VM::Ops::BitwiseAnd, compiler.current.value().GetLine());
   }
 }
 
@@ -1450,20 +1505,34 @@ static void Equality(bool canAssign, bool skipFirst, CompilerContext& compiler)
 static void Comparison(bool canAssign, bool skipFirst, CompilerContext& compiler)
 {
   if (!skipFirst) {
-    Term(canAssign, false, compiler);
+    Shift(canAssign, false, compiler);
   }
   if (Match(Scanner::TokenType::GreaterThan, compiler)) {
-    Term(canAssign, false, compiler);
+    Shift(canAssign, false, compiler);
     EmitOp(VM::Ops::Greater, compiler.current.value().GetLine());
   } else if (Match(Scanner::TokenType::GreaterEqual, compiler)) {
-    Term(canAssign, false, compiler);
+    Shift(canAssign, false, compiler);
     EmitOp(VM::Ops::GreaterEqual, compiler.current.value().GetLine());
   } else if (Match(Scanner::TokenType::LessThan, compiler)) {
-    Term(canAssign, false, compiler);
+    Shift(canAssign, false, compiler);
     EmitOp(VM::Ops::Less, compiler.current.value().GetLine());
   } else if (Match(Scanner::TokenType::LessEqual, compiler)) {
-    Term(canAssign, false, compiler);
+    Shift(canAssign, false, compiler);
     EmitOp(VM::Ops::LessEqual, compiler.current.value().GetLine());
+  }
+}
+
+static void Shift(bool canAssign, bool skipFirst, CompilerContext& compiler)
+{
+  if (!skipFirst) {
+    Term(canAssign, false, compiler);
+  }
+  if (Match(Scanner::TokenType::ShiftRight, compiler)) {
+    Term(canAssign, skipFirst, compiler);
+    EmitOp(VM::Ops::ShiftRight, compiler.current.value().GetLine());
+  } else if (Match(Scanner::TokenType::ShiftLeft, compiler)) {
+    Term(canAssign, skipFirst, compiler);
+    EmitOp(VM::Ops::ShiftLeft, compiler.current.value().GetLine());
   }
 }
 
@@ -1519,6 +1588,10 @@ static void Unary(bool canAssign, CompilerContext& compiler)
     auto line = compiler.previous.value().GetLine();
     Unary(canAssign, compiler);
     EmitOp(VM::Ops::Negate, line);
+  } else if (Match(Scanner::TokenType::Tilde, compiler)) {
+    auto line = compiler.previous.value().GetLine();
+    Unary(canAssign, compiler);
+    EmitOp(VM::Ops::BitwiseNot, line);
   } else {
     Call(canAssign, compiler);
   }

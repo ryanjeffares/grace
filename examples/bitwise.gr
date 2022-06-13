@@ -1,0 +1,14 @@
+func main():
+  println(~1); 
+  println(1 ^ 0);
+
+  for i in [0..64]:
+    println(1 << i);
+  end
+
+  final int_max = 2 ** 64;
+  println(int_max);
+  for i in [0..64]:
+    println(9223372036854775807 >> i);
+  end
+end

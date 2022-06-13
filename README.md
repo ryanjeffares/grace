@@ -43,6 +43,7 @@ python3 build.py <Release/Debug/All>
 This will build the `grace` executable, which you can add to your path or move somewhere that is on your path. Full installation process as well as documentation is WIP.
 
 ## Alpha Release Roadmap
+* Fix compiler issue found in `bitwise.gr`
 * Prevent integer overflow by automatically promoting to a `BigInt` class
 * Experiment with string interning
 * Investigate wide chars over regular chars

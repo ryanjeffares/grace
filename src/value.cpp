@@ -286,6 +286,61 @@ Value Value::operator%(const Value& other) const
   );
 }
 
+Value Value::operator<<(const Value& other) const
+{
+  if (m_Type != Type::Int || other.m_Type != Type::Int) {
+    throw GraceException(
+      GraceException::Type::InvalidOperand,
+      fmt::format("Cannot shift {} by {}", GetTypeName(), other.GetTypeName())
+    );
+  }
+  return Value(m_Data.m_Int << other.m_Data.m_Int);
+}
+
+Value Value::operator>>(const Value& other) const
+{
+  if (m_Type != Type::Int || other.m_Type != Type::Int) {
+    throw GraceException(
+      GraceException::Type::InvalidOperand,
+      fmt::format("Cannot shift {} by {}", GetTypeName(), other.GetTypeName())
+    );
+  }
+  return Value(m_Data.m_Int >> other.m_Data.m_Int);
+}
+
+Value Value::operator|(const Value& other) const
+{
+  if (m_Type != Type::Int || other.m_Type != Type::Int) {
+    throw GraceException(
+      GraceException::Type::InvalidOperand,
+      fmt::format("Cannot bitwise or {} by {}", GetTypeName(), other.GetTypeName())
+    );
+  }
+  return Value(m_Data.m_Int | other.m_Data.m_Int);
+}
+
+Value Value::operator^(const Value& other) const
+{
+  if (m_Type != Type::Int || other.m_Type != Type::Int) {
+    throw GraceException(
+      GraceException::Type::InvalidOperand,
+      fmt::format("Cannot bitwise xor {} by {}", GetTypeName(), other.GetTypeName())
+    );
+  }
+  return Value(m_Data.m_Int ^ other.m_Data.m_Int);
+}
+
+Value Value::operator&(const Value& other) const
+{
+  if (m_Type != Type::Int || other.m_Type != Type::Int) {
+    throw GraceException(
+      GraceException::Type::InvalidOperand,
+      fmt::format("Cannot bitwise and {} by {}", GetTypeName(), other.GetTypeName())
+    );
+  }
+  return Value(m_Data.m_Int & other.m_Data.m_Int);
+}
+
 bool Value::operator==(const Value& other) const
 {
   switch (m_Type) {
@@ -474,6 +529,17 @@ Value Value::operator-() const
     GraceException::Type::InvalidType,
     fmt::format("Cannot negate type {}", m_Type)
   );
+}
+
+Value Value::operator~() const
+{
+  if (m_Type != Type::Int) {
+    throw GraceException(
+      GraceException::Type::InvalidOperand,
+      fmt::format("Cannot bitwise not {}", GetTypeName())
+    );
+  }
+  return Value(~(m_Data.m_Int));
 }
 
 Value Value::Pow(const Value& other) const

@@ -32,6 +32,10 @@ static std::unordered_map<char, TokenType> s_SymbolLookup =
   std::make_pair('%', TokenType::Mod),
   std::make_pair('+', TokenType::Plus),
   std::make_pair('/', TokenType::Slash),
+  std::make_pair('|', TokenType::Bar),
+  std::make_pair('~', TokenType::Tilde),
+  std::make_pair('^', TokenType::Caret),
+  std::make_pair('&', TokenType::Ampersand),
 };
 
 static std::unordered_map<std::string, TokenType> s_KeywordLookup = 
@@ -167,12 +171,18 @@ Token Grace::Scanner::ScanToken()
       if (Peek() == '=') {
         Advance();
         return MakeToken(TokenType::LessEqual);
+      } else if (Peek() == '<') {
+        Advance();
+        return MakeToken(TokenType::ShiftLeft);
       }
       return MakeToken(TokenType::LessThan);
     case '>':
       if (Peek() == '=') {
         Advance();
         return MakeToken(TokenType::GreaterEqual);
+      } else if (Peek() == '>') {
+        Advance();
+        return MakeToken(TokenType::ShiftRight);
       }
       return MakeToken(TokenType::GreaterThan);
     case '*':

@@ -66,6 +66,12 @@ namespace Grace::Scanner
     GreaterThan,
     LessEqual,
     GreaterEqual,
+    ShiftLeft,
+    ShiftRight,
+    Bar,
+    Tilde,
+    Caret,
+    Ampersand,
 
     // Keywords
     And,
@@ -141,7 +147,7 @@ template<>
 struct fmt::formatter<Grace::Scanner::TokenType> : fmt::formatter<std::string_view>
 {
   template<typename FormatContext>
-  auto format(Grace::Scanner::TokenType type, FormatContext& context) -> decltype(context.out())
+  constexpr auto format(Grace::Scanner::TokenType type, FormatContext& context) -> decltype(context.out())
   {
     using namespace Grace::Scanner;
 
@@ -216,6 +222,12 @@ struct fmt::formatter<Grace::Scanner::TokenType> : fmt::formatter<std::string_vi
       case TokenType::CharIdent: name = "TokenType::CharIdent"; break;
       case TokenType::ListIdent: name = "TokenType::ListIdent"; break;
       case TokenType::DictIdent: name = "TokenType::DictIdent"; break;
+      case TokenType::ShiftLeft: name = "TokenType::ShiftLeft"; break;
+      case TokenType::ShiftRight: name = "TokenType::ShiftRight"; break;
+      case TokenType::Bar: name = "TokenType::Bar"; break;
+      case TokenType::Tilde: name = "TokenType::Tilde"; break;
+      case TokenType::Caret: name = "TokenType::Caret"; break;
+      case TokenType::Ampersand: name = "TokenType::Ampersand"; break;
     }
     return fmt::formatter<std::string_view>::format(name, context);
   }

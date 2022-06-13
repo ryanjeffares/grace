@@ -17,7 +17,6 @@
 #include <tuple>
 #include <unordered_map>
 #include <vector>
-#include <type_traits>
 
 #include <fmt/color.h>
 #include <fmt/core.h>
@@ -38,6 +37,10 @@ namespace Grace::VM
     AssertWithMessage,
     AssignIteratorBegin,
     AssignLocal,
+    BitwiseAnd,
+    BitwiseNot,
+    BitwiseOr,
+    BitwiseXOr,
     Call,
     Cast,
     CheckIteratorEnd,
@@ -82,6 +85,8 @@ namespace Grace::VM
     EPrintLn,
     EPrintTab,
     Return,
+    ShiftLeft,
+    ShiftRight,
     Subtract,
     Throw,
     Typename
@@ -232,7 +237,7 @@ template<>
 struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
 {
   template<typename FormatContext>
-  auto format(Grace::VM::Ops type, FormatContext& context) -> decltype(context.out())
+  constexpr auto format(Grace::VM::Ops type, FormatContext& context) -> decltype(context.out())
   {
     using namespace Grace::VM;
 
@@ -291,6 +296,12 @@ struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
       case Ops::Subtract: name = "Ops::Subtract"; break;
       case Ops::Throw: name = "Ops::Throw"; break;
       case Ops::Typename: name = "Ops::Typename"; break;
+      case Ops::BitwiseAnd: name = "Ops:BitwiseAnd"; break;
+      case Ops::BitwiseNot: name = "Ops:BitwiseNot"; break;
+      case Ops::BitwiseOr: name = "Ops:BitwiseOr"; break;
+      case Ops::BitwiseXOr: name = "Ops:BitwiseXOr"; break;
+      case Ops::ShiftLeft: name = "Ops:ShiftLeft"; break;
+      case Ops::ShiftRight: name = "Ops:ShiftRight"; break;
     }
     return fmt::formatter<std::string_view>::format(name, context);
   }

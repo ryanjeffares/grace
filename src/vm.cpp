@@ -275,6 +275,36 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
           valueStack.push_back(!c);
           break;
         }
+        case Ops::BitwiseAnd: {
+          auto [c1, c2] = PopLastTwo(valueStack);
+          valueStack.push_back(c1 & c2);
+          break;
+        }
+        case Ops::BitwiseNot: {
+          auto c1 = Pop(valueStack);
+          valueStack.push_back(~c1);
+          break;
+        }
+        case Ops::BitwiseOr: {
+          auto [c1, c2] = PopLastTwo(valueStack);
+          valueStack.push_back(c1 | c2);
+          break;
+        }
+        case Ops::BitwiseXOr: {
+          auto [c1, c2] = PopLastTwo(valueStack);
+          valueStack.push_back(c1 ^ c2);
+          break;
+        }
+        case Ops::ShiftLeft: {
+          auto [c1, c2] = PopLastTwo(valueStack);
+          valueStack.push_back(c1 << c2);
+          break;
+        }
+        case Ops::ShiftRight: {
+          auto [c1, c2] = PopLastTwo(valueStack);
+          valueStack.push_back(c1 >> c2);
+          break;
+        }
         case Ops::LoadConstant:
           valueStack.push_back(m_FullConstantList[constantCurrent++]);
           break;

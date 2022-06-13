@@ -1,0 +1,9 @@
+func main():
+  var inf = 1.0 / 0.0;
+  println(inf);
+
+  var nan = 0.0 / 0.0;
+  println(nan);
+
+  println(nan == nan);
+end
