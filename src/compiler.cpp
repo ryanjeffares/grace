@@ -1528,10 +1528,10 @@ static void Shift(bool canAssign, bool skipFirst, CompilerContext& compiler)
     Term(canAssign, false, compiler);
   }
   if (Match(Scanner::TokenType::ShiftRight, compiler)) {
-    Term(canAssign, skipFirst, compiler);
+    Term(canAssign, false, compiler);
     EmitOp(VM::Ops::ShiftRight, compiler.current.value().GetLine());
   } else if (Match(Scanner::TokenType::ShiftLeft, compiler)) {
-    Term(canAssign, skipFirst, compiler);
+    Term(canAssign, false, compiler);
     EmitOp(VM::Ops::ShiftLeft, compiler.current.value().GetLine());
   }
 }
@@ -2084,9 +2084,8 @@ static void Message(const std::optional<Scanner::Token>& token, const std::strin
     fmt::print(stderr, " ");
   }
   for (std::size_t i = 0; i < token.value().GetLength(); i++) {
-    fmt::print(stderr, colour, "^");
+    fmt::print(stderr, colour, "^\n\n");
   }
-  fmt::print("\n\n");
 
   if (level == LogLevel::Error) {
     compiler.hadError = true;
