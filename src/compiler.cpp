@@ -466,7 +466,9 @@ static void ImportDeclaration(CompilerContext& compiler)
     importPath.push_back('/');
   }
 
-  std::filesystem::path inPath;
+  namespace fs = std::filesystem;
+
+  fs::path inPath;
   // if it was an std import, get the std path env variable and look there
   if (isStdImport.has_value()) {
     std::string stdPath;
@@ -475,7 +477,7 @@ static void ImportDeclaration(CompilerContext& compiler)
     std::size_t size;
     getenv_s(&size, NULL, 0, "GRACE_STD_PATH");
     if (size == 0) {
-      fmt::print(stderr, "The `GRACE_STD_PATH` environment variable has not been set, so cannot continue importing file {}", importPath);
+      fmt::print(stderr, "The `GRACE_STD_PATH` environment variable has not been set, so cannot continue importing file {}\n", importPath);
       return;
     }
     char* libPath = (char*)std::malloc(size * sizeof(char));
@@ -484,24 +486,24 @@ static void ImportDeclaration(CompilerContext& compiler)
 #else
     char* pathPtr = std::getenv("GRACE_STD_PATH");
     if (pathPtr == nullptr) {
-      fmt::print(stderr, "The `GRACE_STD_PATH` environment variable has not been set, so cannot continue importing file {}", importPath);
+      fmt::print(stderr, "The `GRACE_STD_PATH` environment variable has not been set, so cannot continue importing file {}\n", importPath);
       return;
     }
     stdPath = pathPtr;
 #endif
 
-    inPath = stdPath + importPath.substr(4);  // trim off 'std/' because that's contained within the path environment variable
+    inPath = fs::path(stdPath) / fs::path(importPath.substr(4));  // trim off 'std/' because that's contained within the path environment variable
   } else {
-    auto basePath = std::filesystem::path(compiler.currentFileName).parent_path();
-    inPath = basePath / std::filesystem::path(importPath);
+    auto basePath = fs::path(compiler.currentFileName).parent_path();
+    inPath = basePath / fs::path(importPath);
   }
 
-  if (!std::filesystem::exists(inPath)) {
+  if (!fs::exists(inPath)) {
     Message(lastPathToken, fmt::format("Could not find file `{}` to import", importPath), LogLevel::Error, compiler);
     return;
   }
 
-  if (Scanner::HasFile(inPath.string())) {
+  if (Scanner::HasFile(importPath)) {
     // don't produce a warning, but silently ignore the duplicate import
     // TODO: maybe ignore this in the std, but warn the user if they have duplicate imports in one file?
     return;
@@ -509,10 +511,10 @@ static void ImportDeclaration(CompilerContext& compiler)
 
   std::stringstream inFileStream;
   try {
-    std::ifstream inFile(importPath);
+    std::ifstream inFile(inPath);
     inFileStream << inFile.rdbuf();
   } catch (const std::exception& e) {
-    fmt::print(stderr, "Error reading imported file `{}`: {}. This import will be ignored.\n", importPath, e.what());
+    fmt::print(stderr, "Error reading imported file `{}`: {}. This import will be ignored.\n", inPath.string(), e.what());
     return;
   }
 

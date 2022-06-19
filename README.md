@@ -54,6 +54,7 @@ This will build the `grace` executable, which you can add to your path or move s
 * Global const fields 
 * Imports 
   * Obviously importing the same file multiple times is allowed, we will only compile it the first time - but how do we warn the user about two files with the same but different contents?
+  * Reorganise the way functions are held in memory to avoid duplicate function definitions
 * Extension methods
 * Standard library
 * Filesystem handling
