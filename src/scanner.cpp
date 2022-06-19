@@ -10,6 +10,7 @@
  *  For licensing information, see grace.hpp
  */
 
+#include <stack>
 #include <unordered_map>
 #include <utility>
 
@@ -19,7 +20,6 @@ using namespace Grace::Scanner;
 
 static std::unordered_map<char, TokenType> s_SymbolLookup = 
 {   
-  std::make_pair(':', TokenType::Colon),
   std::make_pair(';', TokenType::Semicolon),
   std::make_pair('(', TokenType::LeftParen),
   std::make_pair(')', TokenType::RightParen),
@@ -55,6 +55,7 @@ static std::unordered_map<std::string, TokenType> s_KeywordLookup =
   std::make_pair("for", TokenType::For),
   std::make_pair("func", TokenType::Func),
   std::make_pair("if", TokenType::If),
+  std::make_pair("import", TokenType::Import),
   std::make_pair("in", TokenType::In),
   std::make_pair("instanceof", TokenType::InstanceOf),
   std::make_pair("null", TokenType::Null),
@@ -123,24 +124,53 @@ GRACE_NODISCARD static Token MakeToken(TokenType);
 GRACE_NODISCARD static Token MakeString();
 GRACE_NODISCARD static Token MakeChar();
 
-static std::string s_CodeString;
-static std::size_t s_ScannerStart = 0, s_ScannerCurrent = 0;
-static std::size_t s_ScannerLine = 1, s_ScannerColumn = 1;
-
-void Grace::Scanner::InitScanner(std::string&& code)
+struct ScannerContext
 {
-  s_CodeString = std::move(code);
+  std::string codeString;
+  std::size_t scannerStart = 0, scannerCurrent = 0;
+  std::size_t scannerLine = 1, scannerColumn = 1;
+
+  ScannerContext(std::string&& code)
+    : codeString(std::move(code))
+  {
+
+  }
+};
+
+static std::stack<ScannerContext> s_ScannerContextStack;
+static std::unordered_map<std::string, std::string> s_CodeStringsLookup;
+
+void Grace::Scanner::InitScanner(const std::string& fileName, std::string&& code)
+{
+  s_CodeStringsLookup.try_emplace(fileName, code);
+  s_ScannerContextStack.emplace(std::move(code));
+}
+
+void Grace::Scanner::PopScanner()
+{
+  s_ScannerContextStack.pop();
+}
+
+static Token MatchChars(const std::unordered_map<char, TokenType>& pairs, TokenType defaultType)
+{
+  for (const auto& [c, type] : pairs) {
+    if (Peek() == c) {
+      Advance();
+      return MakeToken(type);
+    }
+  }
+  return MakeToken(defaultType);
 }
 
 Token Grace::Scanner::ScanToken()
 {
   SkipWhitespace();
-  s_ScannerStart = s_ScannerCurrent;
+  s_ScannerContextStack.top().scannerStart = s_ScannerContextStack.top().scannerCurrent;
 
   auto c = Advance();
 
   if (IsAtEnd()) {
-    return Token(TokenType::EndOfFile, 0, 0, s_ScannerLine - 1, s_ScannerColumn - 1, "");
+    return Token(TokenType::EndOfFile, 0, 0, s_ScannerContextStack.top().scannerLine - 1, s_ScannerContextStack.top().scannerColumn - 1, "");
   }
 
   if (std::isalpha(c) || c == '_') {
@@ -156,47 +186,19 @@ Token Grace::Scanner::ScanToken()
 
   switch (c) {
     case '!':
-      if (Peek() == '=') {
-        Advance();
-        return MakeToken(TokenType::BangEqual);
-      }
-      return MakeToken(TokenType::Bang);
+      return MatchChars({ {'=', TokenType::BangEqual} }, TokenType::Bang);
     case '=':
-      if (Peek() == '=') {
-        Advance();
-        return MakeToken(TokenType::EqualEqual);
-      }
-      return MakeToken(TokenType::Equal);
+      return MatchChars({ {'=', TokenType::EqualEqual} }, TokenType::Equal);
     case '<':
-      if (Peek() == '=') {
-        Advance();
-        return MakeToken(TokenType::LessEqual);
-      } else if (Peek() == '<') {
-        Advance();
-        return MakeToken(TokenType::ShiftLeft);
-      }
-      return MakeToken(TokenType::LessThan);
+      return MatchChars({ {'=', TokenType::LessEqual}, {'<', TokenType::ShiftLeft} }, TokenType::LessThan);
     case '>':
-      if (Peek() == '=') {
-        Advance();
-        return MakeToken(TokenType::GreaterEqual);
-      } else if (Peek() == '>') {
-        Advance();
-        return MakeToken(TokenType::ShiftRight);
-      }
-      return MakeToken(TokenType::GreaterThan);
+      return MatchChars({ {'=', TokenType::EqualEqual}, {'>', TokenType::ShiftRight} }, TokenType::GreaterThan);
     case '*':
-      if (Peek() == '*') {
-        Advance();
-        return MakeToken(TokenType::StarStar);
-      }
-      return MakeToken(TokenType::Star);
+      return MatchChars({ {'*', TokenType::StarStar} }, TokenType::Star);
     case '.':
-      if (Peek() == '.') {
-        Advance();
-        return MakeToken(TokenType::DotDot);
-      }
-      return MakeToken(TokenType::Dot);
+      return MatchChars({ {'.', TokenType::DotDot} }, TokenType::Dot);
+    case ':':
+      return MatchChars({ {':', TokenType::ColonColon} }, TokenType::Colon);
     case '"':
       return MakeString();
     case '\'':
@@ -206,17 +208,22 @@ Token Grace::Scanner::ScanToken()
   }
 }
 
-std::string Grace::Scanner::GetCodeAtLine(std::size_t line)
+std::string Grace::Scanner::GetCodeAtLine(const std::string& fileName, std::size_t line)
 {
+  if (s_CodeStringsLookup.find(fileName) == s_CodeStringsLookup.end()) {
+    return fmt::format("Couldn't find file `{}`\n", fileName);
+  }
+
+  const auto& code = s_CodeStringsLookup.at(fileName);
   std::size_t curr = 1;
   std::size_t strIndex = 0;
   while (curr < line) {
-    if (s_CodeString[strIndex++] == '\n') {
+    if (code[strIndex++] == '\n') {
       curr++;
     }
   }
 
-  std::string codeSubStr = s_CodeString.substr(strIndex, s_CodeString.length() - strIndex);
+  std::string codeSubStr = code.substr(strIndex, code.length() - strIndex);
   codeSubStr = codeSubStr.substr(0, codeSubStr.find_first_of('\n'));
   return codeSubStr;
 }
@@ -230,14 +237,14 @@ static void SkipWhitespace()
 
     switch (Peek()) {
       case '\t':
-        s_ScannerColumn += 8;
+        s_ScannerContextStack.top().scannerColumn += 8;
       case ' ':
       case '\r':
         Advance();
         break;
       case '\n':
-        s_ScannerLine++;
-        s_ScannerColumn = 0;
+        s_ScannerContextStack.top().scannerLine++;
+        s_ScannerContextStack.top().scannerColumn = 0;
         Advance();
         break;
       case '/': {
@@ -248,10 +255,10 @@ static void SkipWhitespace()
         } else if (PeekNext() == '*') {
           while (!IsAtEnd()) {
             if (Peek() == '\n') {
-              s_ScannerLine++;
-              s_ScannerColumn = 0;
+              s_ScannerContextStack.top().scannerLine++;
+              s_ScannerContextStack.top().scannerColumn = 0;
             } else if (Peek() == '\t') {
-              s_ScannerCurrent += 8;
+              s_ScannerContextStack.top().scannerCurrent += 8;
             }
 
             if (Peek() == '*') {
@@ -281,38 +288,38 @@ static char Advance()
     return '\0';
   }
 
-  s_ScannerCurrent++;
-  s_ScannerColumn++;
-  return s_CodeString[s_ScannerCurrent - 1];
+  s_ScannerContextStack.top().scannerCurrent++;
+  s_ScannerContextStack.top().scannerColumn++;
+  return s_ScannerContextStack.top().codeString[s_ScannerContextStack.top().scannerCurrent - 1];
 }
 
 static bool IsAtEnd()
 {
-  return s_ScannerCurrent >= s_CodeString.length();
+  return s_ScannerContextStack.top().scannerCurrent >= s_ScannerContextStack.top().codeString.length();
 }
 
 static char Peek()
 {
-  return s_CodeString[s_ScannerCurrent];
+  return s_ScannerContextStack.top().codeString[s_ScannerContextStack.top().scannerCurrent];
 }
 
 static char PeekNext()
 {
-  if (IsAtEnd() || s_ScannerCurrent == s_CodeString.length() - 1) {
+  if (IsAtEnd() || s_ScannerContextStack.top().scannerCurrent == s_ScannerContextStack.top().codeString.length() - 1) {
     return '\0';
   }
 
-  return s_CodeString[s_ScannerCurrent + 1];
+  return s_ScannerContextStack.top().codeString[s_ScannerContextStack.top().scannerCurrent + 1];
 }
 
 static char PeekPrevious()
 {
-  return s_ScannerCurrent == 0 ? '\0' : s_CodeString[s_ScannerCurrent - 1];
+  return s_ScannerContextStack.top().scannerCurrent == 0 ? '\0' : s_ScannerContextStack.top().codeString[s_ScannerContextStack.top().scannerCurrent - 1];
 }
 
 static Token ErrorToken(std::string&& message)
 {
-  return Token(TokenType::Error, s_ScannerLine, s_ScannerColumn, std::move(message));
+  return Token(TokenType::Error, s_ScannerContextStack.top().scannerLine, s_ScannerContextStack.top().scannerColumn, std::move(message));
 }
 
 static Token Identifier()
@@ -321,7 +328,7 @@ static Token Identifier()
     Advance();
   }
 
-  std::string tokenStr = s_CodeString.substr(s_ScannerStart, s_ScannerCurrent - s_ScannerStart);
+  std::string tokenStr = s_ScannerContextStack.top().codeString.substr(s_ScannerContextStack.top().scannerStart, s_ScannerContextStack.top().scannerCurrent - s_ScannerContextStack.top().scannerStart);
   if (s_KeywordLookup.find(tokenStr) != s_KeywordLookup.end()) {
     return MakeToken(s_KeywordLookup[tokenStr]);
   } else {
@@ -349,8 +356,8 @@ static Token Number()
 
 static Token MakeToken(TokenType type)
 {
-  auto length = s_ScannerCurrent - s_ScannerStart;
-  return Token(type, s_ScannerStart, length, s_ScannerLine, s_ScannerColumn - 1, s_CodeString);
+  auto length = s_ScannerContextStack.top().scannerCurrent - s_ScannerContextStack.top().scannerStart;
+  return Token(type, s_ScannerContextStack.top().scannerStart, length, s_ScannerContextStack.top().scannerLine, s_ScannerContextStack.top().scannerColumn - 1, s_ScannerContextStack.top().codeString);
 }
 
 static Token MakeString()
@@ -362,7 +369,7 @@ static Token MakeString()
       }
     }
     if (Peek() == '\n') {
-      s_ScannerLine++;
+      s_ScannerContextStack.top().scannerLine++;
     }
     Advance();
   }
@@ -385,7 +392,7 @@ static Token MakeChar()
       }
     }
     if (Peek() == '\n') {
-      s_ScannerLine++;
+      s_ScannerContextStack.top().scannerLine++;
     }
     Advance();
   }

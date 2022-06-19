@@ -11,6 +11,8 @@
 
 #include <charconv>
 #include <chrono>
+#include <filesystem>
+#include <fstream>
 #include <stack>
 #include <unordered_map>
 #include <variant>
@@ -51,7 +53,13 @@ struct CompilerContext
   CompilerContext(std::string&& fileName, std::string&& code)
     : currentFileName(fileName)
   {
-    Scanner::InitScanner(std::move(code));
+    Scanner::InitScanner(fileName, std::move(code));
+    codeContextStack.push_back(CodeContext::TopLevel);
+  }
+
+  ~CompilerContext()
+  {
+    Scanner::PopScanner();
   }
 
   std::vector<CodeContext> codeContextStack;
@@ -64,8 +72,6 @@ struct CompilerContext
   bool panicMode = false, hadError = false, hadWarning = false;
 
   bool usingExpressionResult = false;
-  bool verbose = false;
-  bool warningsError = false;
 
   bool continueJumpNeedsIndexes = false;
   bool breakJumpNeedsIndexes = false;
@@ -93,6 +99,7 @@ GRACE_INLINE static void EmitConstant(const T& value)
 static void Advance(CompilerContext& compiler);
 
 static void Declaration(CompilerContext& compiler);
+static void ImportDeclaration(CompilerContext& compiler);
 static void ClassDeclaration(CompilerContext& compiler);
 static void FuncDeclaration(CompilerContext& compiler);
 static void VarDeclaration(CompilerContext& compiler);
@@ -147,35 +154,48 @@ static void MessageAtCurrent(const std::string& message, LogLevel level, Compile
 static void MessageAtPrevious(const std::string& message, LogLevel level, CompilerContext& compiler);
 static void Message(const std::optional<Scanner::Token>& token, const std::string& message, LogLevel level, CompilerContext& compiler);
 
-GRACE_NODISCARD static VM::InterpretResult Finalise(CompilerContext& compiler);
+GRACE_NODISCARD static VM::InterpretResult Finalise(bool verbose);
+
+static bool s_Verbose, s_WarningsError;
+static std::stack<CompilerContext> s_CompilerContextStack;
 
 VM::InterpretResult Grace::Compiler::Compile(std::string&& fileName, std::string&& code, bool verbose, bool warningsError)
 {
   using namespace std::chrono;
 
   auto start = steady_clock::now();
+
+  s_Verbose = verbose;
+  s_WarningsError = warningsError;
  
-  CompilerContext compiler(std::move(fileName), std::move(code));
+  s_CompilerContextStack.emplace(std::move(fileName), std::move(code));
   
-  compiler.warningsError = warningsError;
-  compiler.verbose = verbose;
-  compiler.codeContextStack.emplace_back(CodeContext::TopLevel);
+  Advance(s_CompilerContextStack.top());
   
-  Advance(compiler);
-  
-  while (!Match(Scanner::TokenType::EndOfFile, compiler)) {
-    Declaration(compiler);
-    if (compiler.hadError) {
+  auto hadError = false, hadWarning = false;
+  while (!s_CompilerContextStack.empty()) {
+    if (Match(Scanner::TokenType::EndOfFile, s_CompilerContextStack.top())) {
+      s_CompilerContextStack.pop();
+      continue;
+    }
+    Declaration(s_CompilerContextStack.top());
+    hadError = s_CompilerContextStack.top().hadError;
+    hadWarning = s_CompilerContextStack.top().hadWarning;
+    if (s_CompilerContextStack.top().hadError) {
       break;
     }
   }
 
-  if (compiler.hadError) {
+  while (!s_CompilerContextStack.empty()) {
+    s_CompilerContextStack.pop();
+  }
+
+  if (hadError) {
     fmt::print(stderr, "Terminating process due to compilation errors.\n");
-  } else if (compiler.hadWarning && compiler.warningsError) {
+  } else if (hadWarning && warningsError) {
     fmt::print(stderr, "Terminating process due to compilation warnings treated as errors.\n");
   } else {
-    if (compiler.verbose) {
+    if (verbose) {
       auto end = steady_clock::now();
       auto duration = duration_cast<microseconds>(end - start).count();
       if (duration > 1000) {
@@ -184,21 +204,21 @@ VM::InterpretResult Grace::Compiler::Compile(std::string&& fileName, std::string
         fmt::print("Compilation succeeded in {} μs.\n", duration);
       }
     }
-    return Finalise(compiler);
+    return Finalise(verbose);
   }
 
   return VM::InterpretResult::RuntimeError;
 }
 
-static VM::InterpretResult Finalise(CompilerContext& compiler)
+static VM::InterpretResult Finalise(bool verbose)
 {
  #ifdef GRACE_DEBUG
-   if (compiler.verbose) {
+   if (verbose) {
      VM::VM::GetInstance().PrintOps();
    }
  #endif
-   if (VM::VM::GetInstance().CombineFunctions(compiler.verbose)) {
-     return VM::VM::GetInstance().Start(compiler.verbose);
+   if (VM::VM::GetInstance().CombineFunctions(verbose)) {
+     return VM::VM::GetInstance().Start(verbose);
    }
   return VM::InterpretResult::RuntimeError;
 }
@@ -209,7 +229,7 @@ static void Advance(CompilerContext& compiler)
   compiler.current = Scanner::ScanToken();
 
 #ifdef GRACE_DEBUG
-  if (compiler.verbose) {
+  if (s_Verbose) {
     fmt::print("{}\n", compiler.current.value().ToString());
   }
 #endif 
@@ -337,7 +357,9 @@ static bool IsOperator(Scanner::TokenType type)
 
 static void Declaration(CompilerContext& compiler)
 {
-  if (Match(Scanner::TokenType::Class, compiler)) {
+  if (Match(Scanner::TokenType::Import, compiler)) {
+    ImportDeclaration(compiler);
+  } else if (Match(Scanner::TokenType::Class, compiler)) {
     ClassDeclaration(compiler);
   } else if (Match(Scanner::TokenType::Func, compiler)) {
     FuncDeclaration(compiler);
@@ -396,6 +418,48 @@ static void Statement(CompilerContext& compiler)
   } else {
     ExpressionStatement(compiler);
   }
+}
+
+static void ImportDeclaration(CompilerContext& compiler)
+{
+  std::optional<Scanner::Token> lastPathToken;
+  std::string importPath;
+  while (true) {
+    if (!Match(Scanner::TokenType::Identifier, compiler)) {
+      MessageAtCurrent("Expected path", LogLevel::Error, compiler);
+      return;
+    }
+    importPath.append(compiler.previous.value().GetText());
+    lastPathToken = compiler.previous;
+    if (Match(Scanner::TokenType::Semicolon, compiler)) {
+      importPath.append(".gr");
+      break;
+    }
+    if (Match(Scanner::TokenType::EndOfFile, compiler)) {
+      MessageAtPrevious("Unterminated `import` statement", LogLevel::Error, compiler);
+      return;
+    }
+    Consume(Scanner::TokenType::ColonColon, "Expected `::` for path continuation", compiler);
+    importPath.push_back('/');
+  }
+
+  std::filesystem::path inPath(importPath);
+  if (!std::filesystem::exists(inPath)) {
+    Message(lastPathToken, fmt::format("Could not find file `{}` to import", importPath), LogLevel::Error, compiler);
+    return;
+  }
+
+  std::stringstream inFileStream;
+  try {
+    std::ifstream inFile(importPath);
+    inFileStream << inFile.rdbuf();
+  } catch (const std::exception& e) {
+    fmt::print(stderr, "Error reading imported file `{}`: {}\n", importPath, e.what());
+    std::exit(1); // just exit here after reporting the exception
+  }
+
+  s_CompilerContextStack.emplace(inPath.filename().string(), inFileStream.str());
+  Advance(s_CompilerContextStack.top());
 }
 
 static void ClassDeclaration(GRACE_MAYBE_UNUSED CompilerContext& compiler)
@@ -459,7 +523,7 @@ static void FuncDeclaration(CompilerContext& compiler)
 
   Consume(Scanner::TokenType::Colon, "Expected ':' after function signature", compiler);
 
-  if (!VM::VM::GetInstance().AddFunction(std::move(name), compiler.previous.value().GetLine(), parameters.size())) {
+  if (!VM::VM::GetInstance().AddFunction(std::move(name), compiler.previous.value().GetLine(), parameters.size(), compiler.currentFileName)) {
     MessageAtPrevious("Duplicate function definitions", LogLevel::Error, compiler);
     return;
   }
@@ -597,12 +661,15 @@ static void Expression(bool canAssign, CompilerContext& compiler)
       }
 
       if (it->isFinal) {
-        if (it->isIterator) {
-          MessageAtPrevious(fmt::format("'{}' is an iterator variable and cannot be reassigned", compiler.previous.value().GetText()), LogLevel::Error, compiler);
-          return;
-        }
         MessageAtPrevious(fmt::format("Cannot reassign to final '{}'", compiler.previous.value().GetText()), LogLevel::Error, compiler);
         return;
+      }
+
+      if (it->isIterator && (s_Verbose || s_WarningsError)) {
+        MessageAtPrevious(fmt::format("'{}' is an iterator variable and will be reassigned on each loop iteration", compiler.previous.value().GetText()), LogLevel::Warning, compiler);
+        if (s_WarningsError) {
+          return;
+        }
       }
 
       Advance(compiler);  // consume the equals
@@ -828,7 +895,11 @@ static void ForStatement(CompilerContext& compiler)
   compiler.breakIdxPairs.emplace();
   compiler.continueIdxPairs.emplace();
 
-  // parse iterator variable
+  // parse terator variable
+  auto firstItIsFinal = false;
+  if (Match(Scanner::TokenType::Final, compiler)) {
+    firstItIsFinal = true;
+  }
   Consume(Scanner::TokenType::Identifier, "Expected identifier after `for`", compiler);
   auto iteratorNeedsPop = false, secondIteratorNeedsPop = false, twoIterators = false;
   auto iteratorName = std::string(compiler.previous.value().GetText());
@@ -841,22 +912,26 @@ static void ForStatement(CompilerContext& compiler)
     });
   if (it == compiler.locals.end()) {
     iteratorId = static_cast<std::int64_t>(compiler.locals.size());
-    compiler.locals.emplace_back(std::move(iteratorName), true, true, iteratorId);
+    compiler.locals.emplace_back(std::move(iteratorName), firstItIsFinal, true, iteratorId);
     EmitOp(VM::Ops::DeclareLocal, compiler.previous.value().GetLine());
     iteratorNeedsPop = true;
   } else {
     if (it->isFinal) {
-      if (it->isIterator) {
-        MessageAtPrevious(fmt::format("'{}' is an iterator variable and cannot be reassigned", iteratorName), LogLevel::Error, compiler);
-        return;
-      }
       MessageAtPrevious(fmt::format("Loop variable '{}' has already been declared as `final`", iteratorName), LogLevel::Error, compiler);
       return;
     }
-    if (compiler.verbose || compiler.warningsError) {
+
+    if (it->isIterator && (s_Verbose || s_WarningsError)) {
+      MessageAtPrevious(fmt::format("'{}' is an iterator variable and will be reassigned on each iteration", iteratorName), LogLevel::Warning, compiler);
+      if (s_WarningsError) {
+        return;
+      }
+    }
+
+    if (s_Verbose || s_WarningsError) {
       MessageAtPrevious(fmt::format("There is already a local variable called '{}' in this scope which will be reassigned inside the `for` loop", iteratorName),
                         LogLevel::Warning, compiler);
-      if (compiler.warningsError) {
+      if (s_WarningsError) {
         return;
       }
     }
@@ -867,6 +942,10 @@ static void ForStatement(CompilerContext& compiler)
   std::int64_t secondIteratorId{};
   if (Match(Scanner::TokenType::Comma, compiler)) {
     twoIterators = true;
+    auto secondItIsFinal = false;
+    if (Match(Scanner::TokenType::Final, compiler)) {
+      secondItIsFinal = true;
+    }
     if (!Match(Scanner::TokenType::Identifier, compiler)) {
       MessageAtCurrent("Expected identifier", LogLevel::Error, compiler);
       return;
@@ -880,23 +959,27 @@ static void ForStatement(CompilerContext& compiler)
       });
     if (secondIt == compiler.locals.end()) {
       secondIteratorId = static_cast<std::int64_t>(compiler.locals.size());
-      compiler.locals.emplace_back(std::move(secondIteratorName), true, true, secondIteratorId);
+      compiler.locals.emplace_back(std::move(secondIteratorName), secondItIsFinal, true, secondIteratorId);
       auto line = compiler.previous.value().GetLine();
       EmitOp(VM::Ops::DeclareLocal, line);
       secondIteratorNeedsPop = true;
     } else {
       if (secondIt->isFinal) {
-        if (it->isIterator) {
-          MessageAtPrevious(fmt::format("'{}' is an iterator variable and cannot be reassigned", it->name), LogLevel::Error, compiler);
-          return;
-        }
         MessageAtPrevious(fmt::format("Loop variable '{}' has already been declared as `final`", secondIteratorName), LogLevel::Error, compiler);
         return;
       }
-      if (compiler.verbose || compiler.warningsError) {
+
+      if (it->isIterator && (s_Verbose || s_WarningsError)) {
+        MessageAtPrevious(fmt::format("'{}' is an iterator variable will be reassigned on each iteration", it->name), LogLevel::Warning, compiler);
+        if (s_WarningsError) {
+          return;
+        }
+      }
+
+      if (s_Verbose || s_WarningsError) {
         MessageAtPrevious(fmt::format("There is already a local variable called '{}' in this scope which will be reassigned inside the `for` loop", secondIteratorName),
                           LogLevel::Warning, compiler);
-        if (compiler.warningsError) {
+        if (s_WarningsError) {
           return;
         }
       }
@@ -1283,18 +1366,22 @@ static void TryStatement(CompilerContext& compiler)
     EmitOp(VM::Ops::DeclareLocal, compiler.previous.value().GetLine());
   } else {
     if (it->isFinal) {
-      if (it->isIterator) {
-        MessageAtPrevious(fmt::format("'{}' is an iterator variable and cannot be reassigned", exceptionVarName), LogLevel::Error, compiler);
-        return;
-      }
       MessageAtPrevious(fmt::format("Exception variable '{}' has already been declared as `final`", exceptionVarName), LogLevel::Error, compiler);
       return;
     }
+
+    if (it->isIterator && (s_Verbose || s_WarningsError)) {
+      MessageAtPrevious(fmt::format("'{}' is an iterator variable will be reassigned on each loop iteration", exceptionVarName), LogLevel::Warning, compiler);
+      if (s_WarningsError) {
+        return;
+      }
+    }
+
     exceptionVarId = it->index;
-    if (compiler.verbose || compiler.warningsError) {
+    if (s_Verbose || s_WarningsError) {
       MessageAtPrevious(fmt::format("There is already a local variable called '{}' in this scope which will be reassigned inside the `catch` block", exceptionVarName),
           LogLevel::Warning, compiler);
-      if (compiler.warningsError) {
+      if (s_WarningsError) {
         return;
       }
     }
@@ -1870,9 +1957,9 @@ static void InstanceOf(CompilerContext& compiler)
       break;
     case Scanner::TokenType::Null:
       EmitConstant(std::int64_t(4));
-      if (compiler.verbose || compiler.warningsError) {
+      if (s_Verbose || s_WarningsError) {
         MessageAtCurrent("Prefer comparison `== null` over `instanceof` call for `null` check", LogLevel::Warning, compiler);
-        if (compiler.warningsError) {
+        if (s_WarningsError) {
           return;
         }
       }
@@ -2050,7 +2137,7 @@ static void MessageAtPrevious(const std::string& message, LogLevel level, Compil
 
 static void Message(const std::optional<Scanner::Token>& token, const std::string& message, LogLevel level, CompilerContext& compiler)
 {
-  if (level == LogLevel::Error || compiler.warningsError) {
+  if (level == LogLevel::Error || s_WarningsError) {
     if (compiler.panicMode) return;
     compiler.panicMode = true;
   }
@@ -2077,14 +2164,15 @@ static void Message(const std::optional<Scanner::Token>& token, const std::strin
   auto column = token.value().GetColumn() - token.value().GetLength();  // need the START of the token
   fmt::print(stderr, "       --> {}:{}:{}\n", compiler.currentFileName, lineNo, column + 1); 
   fmt::print(stderr, "        |\n");
-  fmt::print(stderr, "{:>7} | {}\n", lineNo, Scanner::GetCodeAtLine(lineNo));
+  fmt::print(stderr, "{:>7} | {}\n", lineNo, Scanner::GetCodeAtLine(compiler.currentFileName, lineNo));
   fmt::print(stderr, "        | ");
   for (std::size_t i = 0; i < column; i++) {
     fmt::print(stderr, " ");
   }
   for (std::size_t i = 0; i < token.value().GetLength(); i++) {
-    fmt::print(stderr, colour, "^\n\n");
+    fmt::print(stderr, colour, "^");
   }
+  fmt::print(stderr, "\n\n");
 
   if (level == LogLevel::Error) {
     compiler.hadError = true;

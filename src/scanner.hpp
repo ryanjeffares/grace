@@ -42,6 +42,7 @@ namespace Grace::Scanner
 
     // Symbols
     Colon,
+    ColonColon,
     Semicolon,
     LeftParen,
     RightParen,
@@ -90,6 +91,7 @@ namespace Grace::Scanner
     For,
     Func,
     If,
+    Import,
     In,
     InstanceOf,
     Null,
@@ -138,9 +140,10 @@ namespace Grace::Scanner
       std::string m_ErrorMessage;
   };
 
-  void InitScanner(std::string&& code);
+  void InitScanner(const std::string& fileName, std::string&& code);
+  void PopScanner();
   Token ScanToken();
-  std::string GetCodeAtLine(std::size_t line);
+  std::string GetCodeAtLine(const std::string& fileName, std::size_t line);
 } // namespace Grace::Scanner
 
 template<>
@@ -161,6 +164,7 @@ struct fmt::formatter<Grace::Scanner::TokenType> : fmt::formatter<std::string_vi
       case TokenType::Integer: name = "TokenType::Integer"; break;
       case TokenType::String: name = "TokenType::String"; break;
       case TokenType::Colon: name = "TokenType::Colon"; break;
+      case TokenType::ColonColon: name = "TokenType::ColonColon"; break;
       case TokenType::Semicolon: name = "TokenType::Semicolon"; break;
       case TokenType::LeftParen: name = "TokenType::LeftParen"; break;
       case TokenType::RightParen: name = "TokenType::RightParen"; break;
@@ -198,6 +202,7 @@ struct fmt::formatter<Grace::Scanner::TokenType> : fmt::formatter<std::string_vi
       case TokenType::For: name = "TokenType::For"; break;
       case TokenType::Func: name = "TokenType::Func"; break;
       case TokenType::If: name = "TokenType::If"; break;
+      case TokenType::Import: name = "TokenType::Import"; break;
       case TokenType::In: name = "TokenType::In"; break;
       case TokenType::InstanceOf: name = "TokenType::InstanceOf"; break;
       case TokenType::Null: name = "TokenType::Null"; break;

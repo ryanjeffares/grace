@@ -22,8 +22,8 @@ func main():
 
   var largest = 0;
   for i in [1..max]:
-    if is_prime(*i) and *i > largest:
-      largest = *i;
+    if is_prime(i) and i > largest:
+      largest = i;
     end
   end
   println(largest);

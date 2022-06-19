@@ -43,7 +43,7 @@ python3 build.py <Release/Debug/All>
 This will build the `grace` executable, which you can add to your path or move somewhere that is on your path. Full installation process as well as documentation is WIP.
 
 ## Alpha Release Roadmap
-* Fix compiler issue found in `bitwise.gr`
+* Why does examples/euler/problem03.gr use so much memory?
 * Prevent integer overflow by automatically promoting to a `BigInt` class
 * Experiment with string interning
 * Investigate wide chars over regular chars
@@ -53,6 +53,7 @@ This will build the `grace` executable, which you can add to your path or move s
 * Lambdas 
 * Global const fields 
 * Imports 
+  * Obviously importing the same file multiple times is allowed, we will only compile it the first time - but how do we warn the user about two files with the same but different contents?
 * Extension methods
 * Standard library
 * Filesystem handling

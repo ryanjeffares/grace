@@ -71,10 +71,10 @@ VM::VM()
   RegisterNatives();
 }
 
-bool VM::AddFunction(std::string&& name, std::size_t line, std::size_t arity)
+bool VM::AddFunction(std::string&& name, std::size_t line, std::size_t arity, const std::string& fileName)
 {
   auto hash = static_cast<std::int64_t>(m_Hasher(name));
-  auto [it, res] = m_FunctionList.try_emplace(hash, Function(std::move(name), hash, arity, line));
+  auto [it, res] = m_FunctionList.try_emplace(hash, Function(std::move(name), hash, arity, line, fileName));
   if (res) {
     m_LastFunctionHash = hash;
     return true;
@@ -852,27 +852,31 @@ void VM::RuntimeError(const GraceException& exception, std::size_t line, const C
 #endif
       for (std::size_t i = 1; i < callStack.size(); i++) {
         const auto& [caller, callee, ln] = callStack[i];
-        fmt::print(stderr, "line {}, in {}:\n", ln, m_FunctionList.at(caller).m_Name);
-        fmt::print(stderr, "{:>4}\n", Scanner::GetCodeAtLine(ln));
+        const auto& callerFunc = m_FunctionList.at(caller);
+        fmt::print(stderr, "line {}, in {}:\n", ln, callerFunc.m_Name);
+        fmt::print(stderr, "{:>4}\n", Scanner::GetCodeAtLine(callerFunc.m_FileName, ln));
       }
     } else {
       fmt::print(stderr, "{} more calls before - set environment variable `GRACE_SHOW_FULL_CALLSTACK` to see full callstack\n", callStackSize - 15);
       for (auto i = callStackSize - 15; i < callStackSize; i++) {
         const auto& [caller, callee, ln] = callStack[i];
-        fmt::print(stderr, "line {}, in {}:\n", ln, m_FunctionList.at(caller).m_Name);
-        fmt::print(stderr, "{:>4}\n", Scanner::GetCodeAtLine(ln));
+        const auto& callerFunc = m_FunctionList.at(caller);
+        fmt::print(stderr, "line {}, in {}:\n", ln, callerFunc.m_Name);
+        fmt::print(stderr, "{:>4}\n", Scanner::GetCodeAtLine(callerFunc.m_FileName, ln));
       }
     }
   } else {
     for (std::size_t i = 1; i < callStack.size(); i++) {
       const auto& [caller, callee, ln] = callStack[i];
-      fmt::print(stderr, "line {}, in {}:\n", ln, m_FunctionList.at(caller).m_Name);
-      fmt::print(stderr, "{:>4}\n", Scanner::GetCodeAtLine(ln));
+      const auto& callerFunc = m_FunctionList.at(caller);
+      fmt::print(stderr, "line {}, in {}:\n", ln, callerFunc.m_Name);
+      fmt::print(stderr, "{:>4}\n", Scanner::GetCodeAtLine(callerFunc.m_FileName, ln));
     }
   }
 
-  fmt::print(stderr, "line {}, in {}:\n", line, m_FunctionList.at(std::get<1>(callStack.back())).m_Name);
-  fmt::print(stderr, "{:>4}\n", Scanner::GetCodeAtLine(line));
+  const auto& calleeFunc = m_FunctionList.at(std::get<1>(callStack.back()));
+  fmt::print(stderr, "line {}, in {}:\n", line, calleeFunc.m_Name);
+  fmt::print(stderr, "{:>4}\n", Scanner::GetCodeAtLine(calleeFunc.m_FileName, line));
 
   fmt::print(stderr, "\n");
   fmt::print(stderr, fmt::fg(fmt::color::red) | fmt::emphasis::bold, "ERROR: ");

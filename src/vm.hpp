@@ -162,7 +162,7 @@ namespace Grace::VM
         return m_FunctionList.at(m_LastFunctionHash).m_Name;
       }
 
-      GRACE_NODISCARD bool AddFunction(std::string&& name, std::size_t line, std::size_t arity);
+      GRACE_NODISCARD bool AddFunction(std::string&& name, std::size_t line, std::size_t arity, const std::string& fileName);
 
       std::tuple<bool, std::size_t> HasNativeFunction(const std::string& name)
       {
@@ -211,13 +211,15 @@ namespace Grace::VM
         std::int64_t m_NameHash;
         std::size_t m_Line, m_Arity;
 
+        std::string m_FileName;
+
         std::vector<OpLine> m_OpList;
         std::vector<Value> m_ConstantList;
 
         std::size_t m_OpIndexStart = 0, m_ConstantIndexStart = 0;
 
-        Function(std::string&& name, std::int64_t nameHash, std::size_t arity, std::size_t line)
-          : m_Name(std::move(name)), m_NameHash(nameHash), m_Line(line), m_Arity(arity)
+        Function(std::string&& name, std::int64_t nameHash, std::size_t arity, std::size_t line, const std::string& fileName)
+          : m_Name(std::move(name)), m_NameHash(nameHash), m_Line(line), m_Arity(arity), m_FileName(fileName)
         {
 
         }

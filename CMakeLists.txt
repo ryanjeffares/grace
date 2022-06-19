@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.8)
 project(grace)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 add_executable(grace 
   src/main.cpp
   src/compiler.cpp
@@ -18,7 +20,6 @@ add_executable(grace
 target_include_directories(grace PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/deps/fmt/include)
 target_compile_definitions(grace PRIVATE FMT_HEADER_ONLY)
 set_target_properties(grace PROPERTIES
-  EXPORT_COMPILE_COMMANDS ON
   CXX_STANDARD 20
   RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BUILD_TYPE}
 )

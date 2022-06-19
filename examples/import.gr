@@ -1,0 +1,10 @@
+import std::math;
+import std::time;
+
+func main():
+  final start = time_us();
+  for i in [0..100]:
+    println(sqrt(i));
+  end
+  println("Found 100 square roots in " + (time_us() - start) + " us");
+end

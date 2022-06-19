@@ -21,8 +21,11 @@ using namespace Grace::VM;
 static Value SqrtFloat(const std::vector<Value>& args);
 static Value SqrtInt(const std::vector<Value>& args);
 
+static Value TimeHours(GRACE_MAYBE_UNUSED const std::vector<Value>& args);
+static Value TimeMinutes(GRACE_MAYBE_UNUSED const std::vector<Value>& args);
 static Value TimeSeconds(GRACE_MAYBE_UNUSED const std::vector<Value>& args);
 static Value TimeMilliSeconds(GRACE_MAYBE_UNUSED const std::vector<Value>& args);
+static Value TimeMicroSeconds(GRACE_MAYBE_UNUSED const std::vector<Value>& args);
 static Value TimeNanoSeconds(GRACE_MAYBE_UNUSED const std::vector<Value>& args);
 
 static Value ListAppend(const std::vector<Value>& args);
@@ -39,8 +42,11 @@ void VM::RegisterNatives()
   m_NativeFunctions.emplace_back("__NATIVE_SQRT_INT", 1, &SqrtInt);
 
   // Time functions
+  m_NativeFunctions.emplace_back("__NATIVE_TIME_H", 0, &TimeHours);
+  m_NativeFunctions.emplace_back("__NATIVE_TIME_M", 0, &TimeMinutes);
   m_NativeFunctions.emplace_back("__NATIVE_TIME_S", 0, &TimeSeconds);
   m_NativeFunctions.emplace_back("__NATIVE_TIME_MS", 0, &TimeMilliSeconds);
+  m_NativeFunctions.emplace_back("__NATIVE_TIME_US", 0, &TimeMicroSeconds);
   m_NativeFunctions.emplace_back("__NATIVE_TIME_NS", 0, &TimeNanoSeconds);
 
   // List functions
@@ -63,6 +69,16 @@ static Value SqrtInt(const std::vector<Value>& args)
   return Value(std::sqrt(args[0].Get<std::int64_t>()));
 }
 
+static Value TimeHours(GRACE_MAYBE_UNUSED const std::vector<Value>& args)
+{
+  return Value(std::chrono::duration_cast<std::chrono::hours>(std::chrono::steady_clock::now().time_since_epoch()).count());
+}
+
+static Value TimeMinutes(GRACE_MAYBE_UNUSED const std::vector<Value>& args)
+{
+  return Value(std::chrono::duration_cast<std::chrono::minutes>(std::chrono::steady_clock::now().time_since_epoch()).count());
+}
+
 static Value TimeSeconds(GRACE_MAYBE_UNUSED const std::vector<Value>& args)
 {
   return Value(std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now().time_since_epoch()).count());
@@ -71,6 +87,11 @@ static Value TimeSeconds(GRACE_MAYBE_UNUSED const std::vector<Value>& args)
 static Value TimeMilliSeconds(GRACE_MAYBE_UNUSED const std::vector<Value>& args)
 {
   return Value(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count());
+}
+
+static Value TimeMicroSeconds(GRACE_MAYBE_UNUSED const std::vector<Value>& args)
+{
+  return Value(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now().time_since_epoch()).count());
 }
 
 static Value TimeNanoSeconds(GRACE_MAYBE_UNUSED const std::vector<Value>& args)
