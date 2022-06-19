@@ -71,12 +71,12 @@ static Value SqrtInt(const std::vector<Value>& args)
 
 static Value TimeHours(GRACE_MAYBE_UNUSED const std::vector<Value>& args)
 {
-  return Value(std::chrono::duration_cast<std::chrono::hours>(std::chrono::steady_clock::now().time_since_epoch()).count());
+  return Value(static_cast<std::int64_t>(std::chrono::duration_cast<std::chrono::hours>(std::chrono::steady_clock::now().time_since_epoch()).count()));
 }
 
 static Value TimeMinutes(GRACE_MAYBE_UNUSED const std::vector<Value>& args)
 {
-  return Value(std::chrono::duration_cast<std::chrono::minutes>(std::chrono::steady_clock::now().time_since_epoch()).count());
+  return Value(static_cast<std::int64_t>(std::chrono::duration_cast<std::chrono::minutes>(std::chrono::steady_clock::now().time_since_epoch()).count()));
 }
 
 static Value TimeSeconds(GRACE_MAYBE_UNUSED const std::vector<Value>& args)
