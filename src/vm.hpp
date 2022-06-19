@@ -14,6 +14,8 @@
 
 #include <cstdint>
 #include <exception>
+#include <sstream>
+#include <string>
 #include <tuple>
 #include <unordered_map>
 #include <vector>
@@ -33,6 +35,7 @@ namespace Grace::VM
   {
     Add,
     And,
+    AppendNamespace,
     Assert,
     AssertWithMessage,
     AssignIteratorBegin,
@@ -162,7 +165,7 @@ namespace Grace::VM
         return m_FunctionList.at(m_LastFunctionHash).m_Name;
       }
 
-      GRACE_NODISCARD bool AddFunction(std::string&& name, std::size_t line, std::size_t arity, const std::string& fileName);
+      GRACE_NODISCARD bool AddFunction(std::string&& name, std::size_t line, std::size_t arity, const std::string& fileName, bool exported);
 
       std::tuple<bool, std::size_t> HasNativeFunction(const std::string& name)
       {
@@ -184,8 +187,8 @@ namespace Grace::VM
 
     private:
 
-      // hash of caller, hash of callee, line
-      using CallStack = std::vector<std::tuple<std::int64_t, std::int64_t, std::size_t>>;
+      // hash of caller, hash of callee, line, file name
+      using CallStack = std::vector<std::tuple<std::int64_t, std::int64_t, std::size_t, std::string>>;
 
       void RegisterNatives();
       GRACE_NODISCARD InterpretResult Run(bool verbose);
@@ -212,16 +215,37 @@ namespace Grace::VM
         std::size_t m_Line, m_Arity;
 
         std::string m_FileName;
+        std::vector<std::string> m_NamespaceVec;
+        bool m_Exported;
 
         std::vector<OpLine> m_OpList;
         std::vector<Value> m_ConstantList;
 
         std::size_t m_OpIndexStart = 0, m_ConstantIndexStart = 0;
 
-        Function(std::string&& name, std::int64_t nameHash, std::size_t arity, std::size_t line, const std::string& fileName)
-          : m_Name(std::move(name)), m_NameHash(nameHash), m_Line(line), m_Arity(arity), m_FileName(fileName)
+        Function(std::string&& name, std::int64_t nameHash, std::size_t arity, std::size_t line, const std::string& fileName, bool exported)
+          : m_Name(std::move(name)), m_NameHash(nameHash), m_Line(line), m_Arity(arity), m_FileName(fileName), m_Exported(exported)
         {
+          std::stringstream ss(m_FileName.substr(0, m_FileName.find_last_of('.')));
+          std::string part;
+          while (std::getline(ss, part, '/')) {
+            m_NamespaceVec.push_back(part);
+          }
+        }
 
+        bool CompareNamespace(const std::vector<std::string>& nameSpace) const
+        {
+          if (nameSpace.size() != m_NamespaceVec.size()) {
+            return false;
+          }
+          
+          for (std::size_t i = 0; i < nameSpace.size(); i++) {
+            if (nameSpace[i] != m_NamespaceVec[i]) {
+              return false;
+            }
+          }
+
+          return true;
         }
       };
 
@@ -248,6 +272,7 @@ struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
     switch (type) {
       case Ops::Add: name = "Ops::Add"; break;
       case Ops::And: name = "Ops::And"; break;
+      case Ops::AppendNamespace: name = "Ops::AppendNamespace"; break;
       case Ops::Assert: name = "Ops::Assert"; break;
       case Ops::AssertWithMessage: name = "Ops::AssertWithMessage"; break;
       case Ops::AssignIteratorBegin: name = "Ops::AssignIteratorBegin"; break;

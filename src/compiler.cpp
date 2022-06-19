@@ -71,6 +71,8 @@ struct CompilerContext
   bool functionHadReturn = false;
   bool panicMode = false, hadError = false, hadWarning = false;
 
+  bool passedImports = false;
+
   bool usingExpressionResult = false;
 
   bool continueJumpNeedsIndexes = false;
@@ -137,6 +139,7 @@ static void Unary(bool canAssign, CompilerContext& compiler);
 static void Call(bool canAssign, CompilerContext& compiler);
 static void Primary(bool canAssign, CompilerContext& compiler);
 
+static void Identifier(bool canAssign, CompilerContext& compiler);
 static void Char(CompilerContext& compiler);
 static void String(CompilerContext& compiler);
 static void InstanceOf(CompilerContext& compiler);
@@ -313,6 +316,7 @@ static bool IsKeyword(Scanner::TokenType type, std::string& outKeyword)
     case Scanner::TokenType::PrintLn: outKeyword = "println"; return true;
     case Scanner::TokenType::Eprint: outKeyword = "eprint"; return true;
     case Scanner::TokenType::EprintLn: outKeyword = "eprintln"; return true;
+    case Scanner::TokenType::Export: outKeyword = "export"; return true;
     case Scanner::TokenType::Return: outKeyword = "return"; return true;
     case Scanner::TokenType::Throw: outKeyword = "throw"; return true;
     case Scanner::TokenType::Try: outKeyword = "try"; return true;
@@ -360,12 +364,16 @@ static void Declaration(CompilerContext& compiler)
   if (Match(Scanner::TokenType::Import, compiler)) {
     ImportDeclaration(compiler);
   } else if (Match(Scanner::TokenType::Class, compiler)) {
+    compiler.passedImports = true;
     ClassDeclaration(compiler);
   } else if (Match(Scanner::TokenType::Func, compiler)) {
+    compiler.passedImports = true;
     FuncDeclaration(compiler);
   } else if (Match(Scanner::TokenType::Var, compiler)) {
+    compiler.passedImports = true;
     VarDeclaration(compiler);
   } else if (Match(Scanner::TokenType::Final, compiler)) {
+    compiler.passedImports = true;
     FinalDeclaration(compiler);    
   } else {
     Statement(compiler);
@@ -422,6 +430,11 @@ static void Statement(CompilerContext& compiler)
 
 static void ImportDeclaration(CompilerContext& compiler)
 {
+  if (compiler.passedImports) {
+    MessageAtPrevious("`import` only allowed before any other declarations", LogLevel::Error, compiler);
+    return;
+  }
+
   std::optional<Scanner::Token> lastPathToken;
   std::string importPath;
   while (true) {
@@ -449,16 +462,22 @@ static void ImportDeclaration(CompilerContext& compiler)
     return;
   }
 
+  if (Scanner::HasCompiledFile(inPath.string())) {
+    // don't produce a warning, but silently ignore the duplicate import
+    // TODO: maybe ignore this in the std, but warn the user if they have duplicate imports in one file?
+    return;
+  }
+
   std::stringstream inFileStream;
   try {
     std::ifstream inFile(importPath);
     inFileStream << inFile.rdbuf();
   } catch (const std::exception& e) {
-    fmt::print(stderr, "Error reading imported file `{}`: {}\n", importPath, e.what());
-    std::exit(1); // just exit here after reporting the exception
+    fmt::print(stderr, "Error reading imported file `{}`: {}. This import will be ignored.\n", importPath, e.what());
+    return;
   }
 
-  s_CompilerContextStack.emplace(inPath.filename().string(), inFileStream.str());
+  s_CompilerContextStack.emplace(inPath.string(), inFileStream.str());
   Advance(s_CompilerContextStack.top());
 }
 
@@ -476,7 +495,12 @@ static void FuncDeclaration(CompilerContext& compiler)
     }
   }
 
+  auto exportFunction = false;
   compiler.codeContextStack.emplace_back(CodeContext::Function);
+
+  if (Match(Scanner::TokenType::Export, compiler)) {
+    exportFunction = true;
+  }
 
   Consume(Scanner::TokenType::Identifier, "Expected function name", compiler);
   auto name = std::string(compiler.previous.value().GetText());
@@ -523,7 +547,7 @@ static void FuncDeclaration(CompilerContext& compiler)
 
   Consume(Scanner::TokenType::Colon, "Expected ':' after function signature", compiler);
 
-  if (!VM::VM::GetInstance().AddFunction(std::move(name), compiler.previous.value().GetLine(), parameters.size(), compiler.currentFileName)) {
+  if (!VM::VM::GetInstance().AddFunction(std::move(name), compiler.previous.value().GetLine(), parameters.size(), compiler.currentFileName, exportFunction)) {
     MessageAtPrevious("Duplicate function definitions", LogLevel::Error, compiler);
     return;
   }
@@ -1686,97 +1710,6 @@ static void Unary(bool canAssign, CompilerContext& compiler)
 static void Call(bool canAssign, CompilerContext& compiler)
 {
   Primary(canAssign, compiler);
-
-  auto prev = compiler.previous.value();
-  auto prevText = std::string(compiler.previous.value().GetText());
-
-  if (prev.GetType() != Scanner::TokenType::Identifier && Check(Scanner::TokenType::LeftParen, compiler)) {
-    MessageAtCurrent("'(' only allowed after functions and classes", LogLevel::Error, compiler);
-    return;
-  }
-
-  if (prev.GetType() == Scanner::TokenType::Identifier) {
-    if (Match(Scanner::TokenType::LeftParen, compiler)) {
-      static std::hash<std::string> hasher;
-      auto hash = static_cast<std::int64_t>(hasher(prevText));
-      auto nativeCall = prevText.starts_with("__");
-      std::size_t nativeIndex{};
-      if (nativeCall) {
-        auto [exists, index] = VM::VM::GetInstance().HasNativeFunction(prevText);
-        if (!exists) {
-          Message(prev, fmt::format("No native function matching the given signature `{}` was found", prevText), LogLevel::Error, compiler);
-          return;
-        } else {
-          nativeIndex = index;
-        }
-      }
-
-      std::int64_t numArgs = 0;
-      if (!Match(Scanner::TokenType::RightParen, compiler)) {
-        while (true) {
-          auto prevUsing = compiler.usingExpressionResult;
-          compiler.usingExpressionResult = true;      
-          Expression(false, compiler);
-          compiler.usingExpressionResult = prevUsing;
-          numArgs++;
-          if (Match(Scanner::TokenType::RightParen, compiler)) {
-            break;
-          }
-          Consume(Scanner::TokenType::Comma, "Expected ',' after function call argument", compiler);
-        }
-      }
-
-      if (nativeCall) {
-        auto arity = VM::VM::GetInstance().GetNativeFunction(nativeIndex).GetArity();
-        if (numArgs != arity) {
-          MessageAtPrevious(fmt::format("Incorrect number of arguments given to native call - got {} but expected {}", numArgs, arity), LogLevel::Error, compiler);
-          return;
-        }
-      }
-
-      // TODO: in a script that is not being ran as the main script, 
-      // there may be a function called 'main' that you should be allowed to call
-      if (prevText == "main") {
-        Message(prev, "Cannot call the `main` function", LogLevel::Error, compiler);
-        return;
-      }
-      
-      EmitConstant(nativeCall ? static_cast<std::int64_t>(nativeIndex) : hash);
-      EmitConstant(numArgs);
-      if (nativeCall) {
-        EmitOp(VM::Ops::NativeCall, compiler.previous.value().GetLine());
-      } else {
-        EmitConstant(prevText);
-        EmitOp(VM::Ops::Call, compiler.previous.value().GetLine());
-      }
-
-      if (!compiler.usingExpressionResult) {
-        // pop unused return value
-        EmitOp(VM::Ops::Pop, compiler.previous.value().GetLine());
-      }
-    } else if (Match(Scanner::TokenType::Dot, compiler)) {
-      // TODO: account for dot
-    } else {
-      // not a call or member access, so we are just trying to call on the value of the local
-      // or reassign it 
-      // if it's not a reassignment, we are trying to load its value
-      // Primary() has already but the variable's id on the stack
-      if (!Check(Scanner::TokenType::Equal, compiler)) {
-        auto it = std::find_if(compiler.locals.begin(), compiler.locals.end(), [&prevText](const Local& l){ return l.name == prevText; });
-        if (it == compiler.locals.end()) {
-          MessageAtPrevious(fmt::format("Cannot find variable '{}' in this scope", prevText), LogLevel::Error, compiler);
-          return;
-        }
-        if (compiler.usingExpressionResult) {
-          EmitConstant(it->index);
-          EmitOp(VM::Ops::LoadLocal, prev.GetLine());
-        } else {
-          MessageAtPrevious("Expected expression", LogLevel::Error, compiler);
-          return;
-        }
-      }
-    }
-  }
 }
 
 static bool IsTypeIdent(Scanner::TokenType type)
@@ -1827,9 +1760,7 @@ static void Primary(bool canAssign, CompilerContext& compiler)
   } else if (Match(Scanner::TokenType::Char, compiler)) {
     Char(compiler);
   } else if (Match(Scanner::TokenType::Identifier, compiler)) {
-    // TODO: warn against use of __, we'll need to know if we're in a std library file
-    // do nothing, but consume the identifier and return
-    // caller functions will handle it
+    Identifier(canAssign, compiler);
   } else if (Match(Scanner::TokenType::Null, compiler)) {
     EmitConstant(nullptr);
     EmitOp(VM::Ops::LoadConstant, compiler.previous.value().GetLine());
@@ -1848,6 +1779,111 @@ static void Primary(bool canAssign, CompilerContext& compiler)
     Typename(compiler);
   } else {
     Expression(canAssign, compiler);
+  }
+}
+
+static void Identifier(bool canAssign, CompilerContext& compiler)
+{
+  auto prev = compiler.previous.value();
+  auto prevText = std::string(compiler.previous.value().GetText());
+
+  if (prev.GetType() != Scanner::TokenType::Identifier && Check(Scanner::TokenType::LeftParen, compiler)) {
+    MessageAtCurrent("'(' only allowed after functions and classes", LogLevel::Error, compiler);
+    return;
+  }
+
+  if (Match(Scanner::TokenType::LeftParen, compiler)) {
+    static std::hash<std::string> hasher;
+    auto hash = static_cast<std::int64_t>(hasher(prevText));
+    auto nativeCall = prevText.starts_with("__");
+    std::size_t nativeIndex{};
+    if (nativeCall) {
+      auto [exists, index] = VM::VM::GetInstance().HasNativeFunction(prevText);
+      if (!exists) {
+        Message(prev, fmt::format("No native function matching the given signature `{}` was found", prevText), LogLevel::Error, compiler);
+        return;
+      } else {
+        nativeIndex = index;
+      }
+    }
+
+    std::int64_t numArgs = 0;
+    if (!Match(Scanner::TokenType::RightParen, compiler)) {
+      while (true) {
+        auto prevUsing = compiler.usingExpressionResult;
+        compiler.usingExpressionResult = true;      
+        Expression(false, compiler);
+        compiler.usingExpressionResult = prevUsing;
+        numArgs++;
+        if (Match(Scanner::TokenType::RightParen, compiler)) {
+          break;
+        }
+        Consume(Scanner::TokenType::Comma, "Expected ',' after function call argument", compiler);
+      }
+    }
+
+    if (nativeCall) {
+      auto arity = VM::VM::GetInstance().GetNativeFunction(nativeIndex).GetArity();
+      if (numArgs != arity) {
+        MessageAtPrevious(fmt::format("Incorrect number of arguments given to native call - got {} but expected {}", numArgs, arity), LogLevel::Error, compiler);
+        return;
+      }
+    }
+
+    // TODO: in a script that is not being ran as the main script, 
+    // there may be a function called 'main' that you should be allowed to call
+    if (prevText == "main") {
+      Message(prev, "Cannot call the `main` function", LogLevel::Error, compiler);
+      return;
+    }
+    
+    EmitConstant(nativeCall ? static_cast<std::int64_t>(nativeIndex) : hash);
+    EmitConstant(numArgs);
+    if (nativeCall) {
+      EmitOp(VM::Ops::NativeCall, compiler.previous.value().GetLine());
+    } else {
+      EmitConstant(prevText);
+      EmitOp(VM::Ops::Call, compiler.previous.value().GetLine());
+    }
+
+    if (!compiler.usingExpressionResult) {
+      // pop unused return value
+      EmitOp(VM::Ops::Pop, compiler.previous.value().GetLine());
+    }
+  } else if (Match(Scanner::TokenType::Dot, compiler)) {
+    // TODO: account for dot
+  } else if (Match(Scanner::TokenType::ColonColon, compiler)) {
+    if (!Check(Scanner::TokenType::Identifier, compiler)) {
+      MessageAtCurrent("Expected identifier after `::`", LogLevel::Error, compiler);
+      return;
+    }
+    if (IsLiteral(compiler.current.value().GetType())) {
+      MessageAtCurrent("Expected identifier after `::`", LogLevel::Error, compiler);
+      return;
+    }
+
+    EmitConstant(prevText);
+    EmitOp(VM::Ops::AppendNamespace, prev.GetLine());
+    Expression(canAssign, compiler);
+  } else {
+    // not a call or member access, so we are just trying to call on the value of the local
+    // or reassign it 
+    // if it's not a reassignment, we are trying to load its value
+    // Primary() has already but the variable's id on the stack
+    if (!Check(Scanner::TokenType::Equal, compiler)) {
+      auto it = std::find_if(compiler.locals.begin(), compiler.locals.end(), [&prevText](const Local& l){ return l.name == prevText; });
+      if (it == compiler.locals.end()) {
+        MessageAtPrevious(fmt::format("Cannot find variable '{}' in this scope", prevText), LogLevel::Error, compiler);
+        return;
+      }
+      if (compiler.usingExpressionResult) {
+        EmitConstant(it->index);
+        EmitOp(VM::Ops::LoadLocal, prev.GetLine());
+      } else {
+        MessageAtPrevious("Expected expression", LogLevel::Error, compiler);
+        return;
+      }
+    }
   }
 }
 

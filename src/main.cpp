@@ -91,7 +91,7 @@ int main(int argc, const char* argv[])
 
   return static_cast<int>(
     Grace::Compiler::Compile(
-      filePath.filename().string(), inStream.str(), verbose, warningsError
+      filePath.string(), inStream.str(), verbose, warningsError
     )
   );
 }

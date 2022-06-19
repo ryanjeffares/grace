@@ -33,6 +33,7 @@ namespace Grace
       enum class Type
       {
         AssertionFailed,
+        FunctionNotExported,
         FunctionNotFound,
         IncorrectArgCount,
         IndexOutOfRange,
@@ -106,6 +107,7 @@ struct fmt::formatter<Grace::GraceException::Type> : fmt::formatter<std::string_
     std::string_view name = "unknown";
     switch (type) {
       case GraceException::Type::AssertionFailed: name = "AssertionFailed"; break;
+      case GraceException::Type::FunctionNotExported: name = "FunctionNotExported"; break;
       case GraceException::Type::FunctionNotFound: name = "FunctionNotFound"; break;
       case GraceException::Type::IncorrectArgCount: name = "IncorrectArgCount"; break;
       case GraceException::Type::IndexOutOfRange: name = "IndexOutOfRange"; break;

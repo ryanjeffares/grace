@@ -9,6 +9,7 @@
  *  For licensing information, see grace.hpp
  */
 
+#include "objects/grace_exception.hpp"
 #include <chrono>
 #include <cstdlib>
 #include <iterator>
@@ -71,10 +72,10 @@ VM::VM()
   RegisterNatives();
 }
 
-bool VM::AddFunction(std::string&& name, std::size_t line, std::size_t arity, const std::string& fileName)
+bool VM::AddFunction(std::string&& name, std::size_t line, std::size_t arity, const std::string& fileName, bool exported)
 {
   auto hash = static_cast<std::int64_t>(m_Hasher(name));
-  auto [it, res] = m_FunctionList.try_emplace(hash, Function(std::move(name), hash, arity, line, fileName));
+  auto [it, res] = m_FunctionList.try_emplace(hash, Function(std::move(name), hash, arity, line, fileName, exported));
   if (res) {
     m_LastFunctionHash = hash;
     return true;
@@ -168,7 +169,7 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
   localsOffsets.push(0);
 
   CallStack callStack;
-  callStack.emplace_back(static_cast<std::int64_t>(m_Hasher("file")), funcNameHash, 1);
+  callStack.emplace_back(static_cast<std::int64_t>(m_Hasher("file")), funcNameHash, 1, mainFunc.m_FileName);
 
   // used to restore the "state" of the VM before entering a try block
   // if an exception is caught
@@ -180,6 +181,7 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
 
   std::stack<VMState> vmStateStack;
   std::stack<std::size_t> heldIteratorIndexes;
+  std::vector<std::string> currentNamespaceLookup; // used to keep track of what namespace we look for a call in
 
   bool inTryBlock = false;
 
@@ -349,6 +351,9 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
         case Ops::EPrintTab:
           fmt::print(stderr, "\t");
           break;
+        case Ops::AppendNamespace:
+          currentNamespaceLookup.push_back(m_FullConstantList[constantCurrent++].Get<std::string>());
+          break;
         case Ops::Call: {
           auto calleeNameHash = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
           auto numArgsGiven = static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>());
@@ -366,6 +371,32 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
           constantCurrent++;
 
           const auto& calleeFunc = it->second;
+
+          if (std::get<3>(callStack.back()) != calleeFunc.m_FileName) {
+            if (!calleeFunc.CompareNamespace(currentNamespaceLookup)) {
+              if (currentNamespaceLookup.empty()) {
+                throw GraceException(
+                  GraceException::Type::FunctionNotFound,
+                  fmt::format("function `{}` does not exist in this namespace", calleeFunc.m_Name)
+                );
+              } else {
+                throw GraceException(
+                  GraceException::Type::FunctionNotFound,
+                  fmt::format("function `{}` is not a member of namespace `{}`", calleeFunc.m_Name, fmt::join(currentNamespaceLookup, "::"))
+                );
+              }
+            }
+
+            if (!calleeFunc.m_Exported) {
+              throw GraceException(
+                GraceException::Type::FunctionNotExported,
+                fmt::format("function `{}` is not marked as `export`", calleeFunc.m_Name)
+              );
+            }
+          }
+
+          currentNamespaceLookup.clear();
+
           auto arity = calleeFunc.m_Arity;
 
           if (numArgsGiven != arity) {            
@@ -381,7 +412,7 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
             localsList[arity - i - 1 + localsOffsets.top()] = Pop(valueStack);
           }
 
-          callStack.emplace_back(funcNameHash, calleeNameHash, line);
+          callStack.emplace_back(funcNameHash, calleeNameHash, line, calleeFunc.m_FileName);
           valueStack.emplace_back(static_cast<std::int64_t>(opCurrent));
           valueStack.emplace_back(static_cast<std::int64_t>(constantCurrent));
 
@@ -806,6 +837,8 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
         funcNameHash = std::get<1>(callStack.back());
 
         valueStack.push_back(Value::CreateObject<GraceException>(ge));
+
+        currentNamespaceLookup.clear();
       } else {
         // exception unhandled, report the error and quit
         RuntimeError(ge, line, callStack);
@@ -851,31 +884,31 @@ void VM::RuntimeError(const GraceException& exception, std::size_t line, const C
     if (auto showFull = std::getenv("GRACE_SHOW_FULL_CALLSTACK")) {
 #endif
       for (std::size_t i = 1; i < callStack.size(); i++) {
-        const auto& [caller, callee, ln] = callStack[i];
+        const auto& [caller, callee, ln, fileName] = callStack[i];
         const auto& callerFunc = m_FunctionList.at(caller);
-        fmt::print(stderr, "line {}, in {}:\n", ln, callerFunc.m_Name);
-        fmt::print(stderr, "{:>4}\n", Scanner::GetCodeAtLine(callerFunc.m_FileName, ln));
+        fmt::print(stderr, "line {}, in {}:{}:\n", ln, fileName, callerFunc.m_Name);
+        fmt::print(stderr, "{:>4}\n", Scanner::GetCodeAtLine(fileName, ln));
       }
     } else {
       fmt::print(stderr, "{} more calls before - set environment variable `GRACE_SHOW_FULL_CALLSTACK` to see full callstack\n", callStackSize - 15);
       for (auto i = callStackSize - 15; i < callStackSize; i++) {
-        const auto& [caller, callee, ln] = callStack[i];
+        const auto& [caller, callee, ln, fileName] = callStack[i];
         const auto& callerFunc = m_FunctionList.at(caller);
-        fmt::print(stderr, "line {}, in {}:\n", ln, callerFunc.m_Name);
-        fmt::print(stderr, "{:>4}\n", Scanner::GetCodeAtLine(callerFunc.m_FileName, ln));
+        fmt::print(stderr, "line {}, in {}:{}:\n", ln, fileName, callerFunc.m_Name);
+        fmt::print(stderr, "{:>4}\n", Scanner::GetCodeAtLine(fileName, ln));
       }
     }
   } else {
     for (std::size_t i = 1; i < callStack.size(); i++) {
-      const auto& [caller, callee, ln] = callStack[i];
+      const auto& [caller, callee, ln, fileName] = callStack[i];
       const auto& callerFunc = m_FunctionList.at(caller);
-      fmt::print(stderr, "line {}, in {}:\n", ln, callerFunc.m_Name);
-      fmt::print(stderr, "{:>4}\n", Scanner::GetCodeAtLine(callerFunc.m_FileName, ln));
+      fmt::print(stderr, "line {}, in {}:{}:\n", ln, fileName, callerFunc.m_Name);
+      fmt::print(stderr, "{:>4}\n", Scanner::GetCodeAtLine(fileName, ln));
     }
   }
 
   const auto& calleeFunc = m_FunctionList.at(std::get<1>(callStack.back()));
-  fmt::print(stderr, "line {}, in {}:\n", line, calleeFunc.m_Name);
+  fmt::print(stderr, "line {}, in {}:{}:\n", line, calleeFunc.m_FileName, calleeFunc.m_Name);
   fmt::print(stderr, "{:>4}\n", Scanner::GetCodeAtLine(calleeFunc.m_FileName, line));
 
   fmt::print(stderr, "\n");

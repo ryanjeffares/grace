@@ -1,4 +1,4 @@
-func sqrt(n):
+func export sqrt(n):
   if instanceof(n, Float):
     return __NATIVE_SQRT_FLOAT(n);
   else if instanceof(n, Int):

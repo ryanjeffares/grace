@@ -86,6 +86,7 @@ namespace Grace::Scanner
     End,
     Eprint,
     EprintLn,
+    Export,
     False,
     Final,
     For,
@@ -143,6 +144,7 @@ namespace Grace::Scanner
   void InitScanner(const std::string& fileName, std::string&& code);
   void PopScanner();
   Token ScanToken();
+  bool HasCompiledFile(const std::string& fileName);
   std::string GetCodeAtLine(const std::string& fileName, std::size_t line);
 } // namespace Grace::Scanner
 
@@ -211,6 +213,7 @@ struct fmt::formatter<Grace::Scanner::TokenType> : fmt::formatter<std::string_vi
       case TokenType::PrintLn: name = "TokenType::PrintLn"; break;
       case TokenType::Eprint: name = "TokenType::Eprint"; break;
       case TokenType::EprintLn: name = "TokenType::EprintLn"; break;
+      case TokenType::Export: name = "TokenType::Export"; break;
       case TokenType::Return: name = "TokenType::Return"; break;
       case TokenType::This: name = "TokenType::This"; break;
       case TokenType::Throw: name = "TokenType::Throw"; break;

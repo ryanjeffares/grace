@@ -63,6 +63,7 @@ static std::unordered_map<std::string, TokenType> s_KeywordLookup =
   std::make_pair("println", TokenType::PrintLn),
   std::make_pair("eprint", TokenType::Eprint),
   std::make_pair("eprintln", TokenType::EprintLn),
+  std::make_pair("export", TokenType::Export),
   std::make_pair("return", TokenType::Return),
   std::make_pair("while", TokenType::While),
   std::make_pair("this", TokenType::This),
@@ -139,6 +140,11 @@ struct ScannerContext
 
 static std::stack<ScannerContext> s_ScannerContextStack;
 static std::unordered_map<std::string, std::string> s_CodeStringsLookup;
+
+bool Grace::Scanner::HasCompiledFile(const std::string& fileName)
+{
+  return s_CodeStringsLookup.find(fileName) != s_CodeStringsLookup.end();
+}
 
 void Grace::Scanner::InitScanner(const std::string& fileName, std::string&& code)
 {

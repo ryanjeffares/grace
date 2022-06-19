@@ -1,23 +1,23 @@
-func time_h():
+func export time_h():
   return __NATIVE_TIME_H();
 end
 
-func time_m():
+func export time_m():
   return __NATIVE_TIME_M();
 end
 
-func time_s():
+func export time_s():
   return __NATIVE_TIME_S();
 end
 
-func time_ms():
+func export time_ms():
   return __NATIVE_TIME_MS();
 end
 
-func time_us():
+func export time_us():
   return __NATIVE_TIME_US();
 end
 
-func time_ns():
+func export time_ns():
   return __NATIVE_TIME_NS();
 end
