@@ -9,7 +9,6 @@
  *  For licensing information, see grace.hpp
  */
 
-#include "objects/grace_exception.hpp"
 #include <chrono>
 #include <cstdlib>
 #include <iterator>
@@ -24,6 +23,7 @@
 
 #include "scanner.hpp"
 #include "vm.hpp"
+#include "objects/grace_exception.hpp"
 #include "objects/grace_iterator.hpp"
 #include "objects/grace_dictionary.hpp"
 #include "objects/grace_list.hpp"

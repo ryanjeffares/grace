@@ -1,0 +1,9 @@
+import std::math;
+
+func export say_hello():
+  println("Hello world!");
+end
+
+func main(): 
+  println(std::math::sqrt(9));
+end

@@ -11,11 +11,16 @@
 
 #include <charconv>
 #include <chrono>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <stack>
 #include <unordered_map>
 #include <variant>
+
+#ifdef GRACE_MSC
+# include <stdlib.h>
+#endif
 
 #include <fmt/color.h>
 #include <fmt/core.h>
@@ -436,13 +441,18 @@ static void ImportDeclaration(CompilerContext& compiler)
   }
 
   std::optional<Scanner::Token> lastPathToken;
+  std::optional<bool> isStdImport = std::nullopt;
   std::string importPath;
   while (true) {
     if (!Match(Scanner::TokenType::Identifier, compiler)) {
       MessageAtCurrent("Expected path", LogLevel::Error, compiler);
       return;
     }
-    importPath.append(compiler.previous.value().GetText());
+    auto txt = compiler.previous.value().GetText();
+    if (!isStdImport.has_value() && txt == "std") {
+      isStdImport = true;
+    }
+    importPath.append(txt);
     lastPathToken = compiler.previous;
     if (Match(Scanner::TokenType::Semicolon, compiler)) {
       importPath.append(".gr");
@@ -456,13 +466,42 @@ static void ImportDeclaration(CompilerContext& compiler)
     importPath.push_back('/');
   }
 
-  std::filesystem::path inPath(importPath);
+  std::filesystem::path inPath;
+  // if it was an std import, get the std path env variable and look there
+  if (isStdImport.has_value()) {
+    std::string stdPath;
+
+#ifdef GRACE_MSC
+    std::size_t size;
+    getenv_s(&size, NULL, 0, "GRACE_STD_PATH");
+    if (size == 0) {
+      fmt::print(stderr, "The `GRACE_STD_PATH` environment variable has not been set, so cannot continue importing file {}", importPath);
+      return;
+    }
+    char* libPath = (char*)std::malloc(size * sizeof(char));
+    getenv_s(&size, libPath, size, "GRACE_STD_PATH");
+    stdPath = libPath;
+#else
+    char* pathPtr = std::getenv("GRACE_STD_PATH");
+    if (pathPtr == nullptr) {
+      fmt::print(stderr, "The `GRACE_STD_PATH` environment variable has not been set, so cannot continue importing file {}", importPath);
+      return;
+    }
+    stdPath = pathPtr;
+#endif
+
+    inPath = stdPath + importPath.substr(4);  // trim off 'std/' because that's contained within the path environment variable
+  } else {
+    auto basePath = std::filesystem::path(compiler.currentFileName).parent_path();
+    inPath = basePath / std::filesystem::path(importPath);
+  }
+
   if (!std::filesystem::exists(inPath)) {
     Message(lastPathToken, fmt::format("Could not find file `{}` to import", importPath), LogLevel::Error, compiler);
     return;
   }
 
-  if (Scanner::HasCompiledFile(inPath.string())) {
+  if (Scanner::HasFile(inPath.string())) {
     // don't produce a warning, but silently ignore the duplicate import
     // TODO: maybe ignore this in the std, but warn the user if they have duplicate imports in one file?
     return;
@@ -477,7 +516,7 @@ static void ImportDeclaration(CompilerContext& compiler)
     return;
   }
 
-  s_CompilerContextStack.emplace(inPath.string(), inFileStream.str());
+  s_CompilerContextStack.emplace(std::move(importPath), inFileStream.str());
   Advance(s_CompilerContextStack.top());
 }
 

@@ -144,7 +144,7 @@ namespace Grace::Scanner
   void InitScanner(const std::string& fileName, std::string&& code);
   void PopScanner();
   Token ScanToken();
-  bool HasCompiledFile(const std::string& fileName);
+  bool HasFile(const std::string& fileName);
   std::string GetCodeAtLine(const std::string& fileName, std::size_t line);
 } // namespace Grace::Scanner
 

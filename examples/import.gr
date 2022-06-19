@@ -1,7 +1,10 @@
 import std::math;
 import std::time;
 
+import lib;
+
 func main():
+  lib::say_hello();
   final start = std::time::time_us();
   for i in [0..100]:
     println(std::math::sqrt(i));

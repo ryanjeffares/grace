@@ -141,7 +141,7 @@ struct ScannerContext
 static std::stack<ScannerContext> s_ScannerContextStack;
 static std::unordered_map<std::string, std::string> s_CodeStringsLookup;
 
-bool Grace::Scanner::HasCompiledFile(const std::string& fileName)
+bool Grace::Scanner::HasFile(const std::string& fileName)
 {
   return s_CodeStringsLookup.find(fileName) != s_CodeStringsLookup.end();
 }
