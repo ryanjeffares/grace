@@ -140,7 +140,7 @@ namespace Grace::Scanner
 
   void InitScanner(std::string&& code);
   Token ScanToken();
-  std::string GetCodeAtLine(int line);
+  std::string GetCodeAtLine(std::size_t line);
 } // namespace Grace::Scanner
 
 template<>

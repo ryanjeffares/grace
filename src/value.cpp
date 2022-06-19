@@ -849,5 +849,8 @@ std::size_t std::hash<Grace::VM::Value>::operator()(const Grace::VM::Value& valu
       return s_ObjectHash(value.GetObject());
     case Value::Type::String:
       return s_StringHash(value.Get<std::string>());
+    default:
+      GRACE_UNREACHABLE();
+      return 0;
   }
 }

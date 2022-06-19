@@ -71,7 +71,7 @@ VM::VM()
   RegisterNatives();
 }
 
-bool VM::AddFunction(std::string&& name, int line, int arity)
+bool VM::AddFunction(std::string&& name, std::size_t line, std::size_t arity)
 {
   auto hash = static_cast<std::int64_t>(m_Hasher(name));
   auto [it, res] = m_FunctionList.try_emplace(hash, Function(std::move(name), hash, arity, line));
@@ -160,7 +160,7 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
   
   auto& mainFunc = m_FunctionList.at(funcNameHash);
 
-  std::vector<std::pair<std::size_t, std::size_t>> opConstOffsets, constantOffsets;
+  std::vector<std::pair<std::size_t, std::size_t>> opConstOffsets;
   opConstOffsets.reserve(32);
   opConstOffsets.emplace_back(mainFunc.m_OpIndexStart, mainFunc.m_ConstantIndexStart);
 
@@ -565,7 +565,6 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
           valueStack.emplace_back(std::move(returnValue));
           localsOffsets.pop();
           opConstOffsets.pop_back();
-          constantOffsets.pop_back();
 
 #ifdef GRACE_DEBUG
           PRINT_LOCAL_MEMORY();
@@ -835,7 +834,7 @@ exit:
 #undef PRINT_LOCAL_MEMORY
 }
 
-void VM::RuntimeError(const GraceException& exception, int line, const CallStack& callStack)
+void VM::RuntimeError(const GraceException& exception, std::size_t line, const CallStack& callStack)
 {
   fmt::print(stderr, "\n");
   

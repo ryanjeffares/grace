@@ -459,7 +459,7 @@ static void FuncDeclaration(CompilerContext& compiler)
 
   Consume(Scanner::TokenType::Colon, "Expected ':' after function signature", compiler);
 
-  if (!VM::VM::GetInstance().AddFunction(std::move(name), compiler.previous.value().GetLine(), static_cast<int>(parameters.size()))) {
+  if (!VM::VM::GetInstance().AddFunction(std::move(name), compiler.previous.value().GetLine(), parameters.size())) {
     MessageAtPrevious("Duplicate function definitions", LogLevel::Error, compiler);
     return;
   }
@@ -514,7 +514,7 @@ static void VarDeclaration(CompilerContext& compiler)
     return;
   }
 
-  int line = compiler.previous.value().GetLine();
+  auto line = compiler.previous.value().GetLine();
 
   auto localId = static_cast<std::int64_t>(compiler.locals.size());
   compiler.locals.emplace_back(std::move(localName), false, false, localId);
@@ -548,7 +548,7 @@ static void FinalDeclaration(CompilerContext& compiler)
     return;
   }
 
-  int line = compiler.previous.value().GetLine();
+  auto line = compiler.previous.value().GetLine();
 
   auto localId = static_cast<std::int64_t>(compiler.locals.size());
   compiler.locals.emplace_back(std::move(localName), true, false, localId);
@@ -617,9 +617,8 @@ static void Expression(bool canAssign, CompilerContext& compiler)
       Expression(false, compiler); // disallow x = y = z...
       compiler.usingExpressionResult = prevUsing;
 
-      int line = compiler.previous.value().GetLine();
       EmitConstant(it->index);
-      EmitOp(VM::Ops::AssignLocal, line);
+      EmitOp(VM::Ops::AssignLocal, compiler.previous.value().GetLine());
     } else {
       bool shouldBreak = false;
       while (!shouldBreak) {
@@ -888,7 +887,7 @@ static void ForStatement(CompilerContext& compiler)
     } else {
       if (secondIt->isFinal) {
         if (it->isIterator) {
-          MessageAtPrevious(fmt::format("'{}' is an iterator variable and cannot be reassigned", iteratorName), LogLevel::Error, compiler);
+          MessageAtPrevious(fmt::format("'{}' is an iterator variable and cannot be reassigned", it->name), LogLevel::Error, compiler);
           return;
         }
         MessageAtPrevious(fmt::format("Loop variable '{}' has already been declared as `final`", secondIteratorName), LogLevel::Error, compiler);
@@ -1614,7 +1613,7 @@ static void Call(bool canAssign, CompilerContext& compiler)
       static std::hash<std::string> hasher;
       auto hash = static_cast<std::int64_t>(hasher(prevText));
       auto nativeCall = prevText.starts_with("__");
-      std::size_t nativeIndex;
+      std::size_t nativeIndex{};
       if (nativeCall) {
         auto [exists, index] = VM::VM::GetInstance().HasNativeFunction(prevText);
         if (!exists) {
@@ -2074,7 +2073,7 @@ static void Message(const std::optional<Scanner::Token>& token, const std::strin
       break;
   }
 
-  auto lineNo = token.value().GetLine();
+  auto lineNo = static_cast<int>(token.value().GetLine());
   auto column = token.value().GetColumn() - token.value().GetLength();  // need the START of the token
   fmt::print(stderr, "       --> {}:{}:{}\n", compiler.currentFileName, lineNo, column + 1); 
   fmt::print(stderr, "        |\n");

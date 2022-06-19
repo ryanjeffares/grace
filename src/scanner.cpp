@@ -206,10 +206,10 @@ Token Grace::Scanner::ScanToken()
   }
 }
 
-std::string Grace::Scanner::GetCodeAtLine(int line)
+std::string Grace::Scanner::GetCodeAtLine(std::size_t line)
 {
-  int curr = 1;
-  int strIndex = 0;
+  std::size_t curr = 1;
+  std::size_t strIndex = 0;
   while (curr < line) {
     if (s_CodeString[strIndex++] == '\n') {
       curr++;

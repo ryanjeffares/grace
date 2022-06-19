@@ -162,7 +162,7 @@ namespace Grace::VM
         return m_FunctionList.at(m_LastFunctionHash).m_Name;
       }
 
-      GRACE_NODISCARD bool AddFunction(std::string&& name, int line, int arity);
+      GRACE_NODISCARD bool AddFunction(std::string&& name, std::size_t line, std::size_t arity);
 
       std::tuple<bool, std::size_t> HasNativeFunction(const std::string& name)
       {
@@ -184,20 +184,21 @@ namespace Grace::VM
 
     private:
 
-      using CallStack = std::vector<std::tuple<std::int64_t, std::int64_t, int>>;
+      // hash of caller, hash of callee, line
+      using CallStack = std::vector<std::tuple<std::int64_t, std::int64_t, std::size_t>>;
 
       void RegisterNatives();
       GRACE_NODISCARD InterpretResult Run(bool verbose);
-      void RuntimeError(const GraceException& exception, int line, const CallStack& callStack);
+      void RuntimeError(const GraceException& exception, std::size_t line, const CallStack& callStack);
 
     private:
 
       struct OpLine
       {
         Ops m_Op;
-        int m_Line;
+        std::size_t m_Line;
 
-        OpLine(Ops op, int line) 
+        OpLine(Ops op, std::size_t line) 
           : m_Op(op), m_Line(line)
         {
 

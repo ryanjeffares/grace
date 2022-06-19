@@ -144,6 +144,9 @@ namespace Grace
           return true;
         }
       }
+      default:
+        GRACE_UNREACHABLE();
+        return false;
     }
   }
 
@@ -164,7 +167,7 @@ namespace Grace
     std::fill(m_Data.begin(), m_Data.end(), VM::Value());
     std::fill(m_CellStates.begin(), m_CellStates.end(), CellState::NeverUsed);
 
-    for (const auto& pair : pairs) {
+    for (auto& pair : pairs) {
       auto kvp = dynamic_cast<GraceKeyValuePair*>(pair.GetObject());
       const auto& key = kvp->Key();
       auto hash = m_Hasher(key);
@@ -172,7 +175,7 @@ namespace Grace
 
       auto state = m_CellStates[index];
       if (state == CellState::NeverUsed) {
-        m_Data[index] = pair;
+        m_Data[index] = std::move(pair);
         m_CellStates[index] = CellState::Occupied;
       } else {
         // if its not NeverUsed it will be Occupied
@@ -182,7 +185,7 @@ namespace Grace
             i = 0;
           }
           if (m_CellStates[i] == CellState::NeverUsed) {
-            m_Data[i] = pair;
+            m_Data[i] = std::move(pair);
             m_CellStates[i] = CellState::Occupied;
             break;
           }          
