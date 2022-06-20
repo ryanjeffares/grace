@@ -1,5 +1,0 @@
-import std::math;
-
-func export say_hello():
-  println("Hello world!");
-end

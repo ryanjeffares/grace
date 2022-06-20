@@ -1,8 +1,6 @@
 import std::math;
 import std::time;
 
-import lib::lib;
-
 func main():
   lib::lib::say_hello();
   final start = std::time::time_us();

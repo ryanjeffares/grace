@@ -1,0 +1,23 @@
+import std::math;
+import std::time;
+import std::time;
+import std::time;
+import std::time;
+import std::time;
+import std::time;
+import std::time;
+
+import lib::lib;
+import lib::lib::lib;
+
+func main():
+  lib::lib::say_hello();
+  lib::lib::lib::say_hello_two();
+//  final start = std::time::time_us();
+//
+//  for i in [0..100]:
+//    println(std::math::sqrt(i));
+//  end
+//
+//  println("Took " + (std::time::time_us() - start) + " us");
+end

@@ -482,7 +482,12 @@ static void ImportDeclaration(CompilerContext& compiler)
     }
     char* libPath = (char*)std::malloc(size * sizeof(char));
     getenv_s(&size, libPath, size, "GRACE_STD_PATH");
+    if (libPath == NULL) {
+      fmt::print(stderr, "Failed to retrive the `GRACE_STD_PATH` environment variable, so cannot continue importing file {}\n", importPath);
+      return;
+    }
     stdPath = libPath;
+    std::free(libPath);
 #else
     char* pathPtr = std::getenv("GRACE_STD_PATH");
     if (pathPtr == nullptr) {
@@ -544,6 +549,7 @@ static void FuncDeclaration(CompilerContext& compiler)
   }
 
   Consume(Scanner::TokenType::Identifier, "Expected function name", compiler);
+  auto funcNameToken = compiler.previous;
   auto name = std::string(compiler.previous.value().GetText());
   if (name.starts_with("__")) {
     MessageAtPrevious("Function names beginning with double underscore `__` are reserved for internal use", LogLevel::Error, compiler);
@@ -589,7 +595,7 @@ static void FuncDeclaration(CompilerContext& compiler)
   Consume(Scanner::TokenType::Colon, "Expected ':' after function signature", compiler);
 
   if (!VM::VM::GetInstance().AddFunction(std::move(name), compiler.previous.value().GetLine(), parameters.size(), compiler.currentFileName, exportFunction)) {
-    MessageAtPrevious("Duplicate function definitions", LogLevel::Error, compiler);
+    Message(funcNameToken, "Duplicate function definitions", LogLevel::Error, compiler);
     return;
   }
 
