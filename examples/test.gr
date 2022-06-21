@@ -1,5 +1,5 @@
-import std::file;
+import std::time;
 
 func main():
-  std::file::write("hello.txt", "Hello world!");
+  println(typename(std::time::time_ms()));
 end

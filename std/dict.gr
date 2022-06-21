@@ -1,11 +1,11 @@
-func export insert(dict, key, value):
+func export insert(dict: Dict, key, value) :: Bool:
   if !instanceof(dict, Dict):
     throw("Expected `Dict` for dict::insert(dict, key, value) but got `" + typename(dict) + "`");
   end
-  __NATIVE_DICTIONARY_INSERT(dict, key, value);
+  return __NATIVE_DICTIONARY_INSERT(dict, key, value);
 end
 
-func export get(dict, key):
+func export get(dict: Dict, key):
   if !instanceof(dict, Dict):
     throw("Expected `Dict` for dict::get(dict, key) but got `" + typename(dict) + "`");
   end

@@ -433,6 +433,24 @@ static void Statement(CompilerContext& compiler)
   }
 }
 
+static bool IsValidTypeAnnotation(const Scanner::TokenType& token)
+{
+  static const std::vector<Scanner::TokenType> valid = {
+    Scanner::TokenType::Identifier,
+    Scanner::TokenType::IntIdent,
+    Scanner::TokenType::FloatIdent,
+    Scanner::TokenType::BoolIdent,
+    Scanner::TokenType::CharIdent,
+    Scanner::TokenType::Null,
+    Scanner::TokenType::StringIdent,
+    Scanner::TokenType::ListIdent,
+    Scanner::TokenType::DictIdent,
+  };
+  return std::any_of(valid.begin(), valid.end(), [token] (Scanner::TokenType t) {
+    return t == token;
+  });
+}
+
 static void ImportDeclaration(CompilerContext& compiler)
 {
   if (compiler.passedImports) {
@@ -571,6 +589,14 @@ static void FuncDeclaration(CompilerContext& compiler)
       parameters.push_back(p);
       compiler.locals.emplace_back(std::move(p), true, false, compiler.locals.size());
 
+      if (Match(Scanner::TokenType::Colon, compiler)) {
+        if (!IsValidTypeAnnotation(compiler.current.value().GetType())) {
+          MessageAtCurrent("Expected type name after type annotation", LogLevel::Error, compiler);
+          return;
+        }
+        Advance(compiler);
+      }
+
       if (!Check(Scanner::TokenType::RightParen, compiler)) {
         Consume(Scanner::TokenType::Comma, "Expected ',' after function parameter", compiler);
       }
@@ -583,6 +609,14 @@ static void FuncDeclaration(CompilerContext& compiler)
       parameters.push_back(p);
       compiler.locals.emplace_back(std::move(p), false, false, compiler.locals.size());
 
+      if (Match(Scanner::TokenType::Colon, compiler)) {
+        if (!IsValidTypeAnnotation(compiler.current.value().GetType())) {
+          MessageAtCurrent("Expected type name after type annotation", LogLevel::Error, compiler);
+          return;
+        }
+        Advance(compiler);
+      }
+
       if (!Check(Scanner::TokenType::RightParen, compiler)) {
         Consume(Scanner::TokenType::Comma, "Expected ',' after function parameter", compiler);
       }
@@ -590,6 +624,14 @@ static void FuncDeclaration(CompilerContext& compiler)
       MessageAtCurrent("Expected identifier or `final`", LogLevel::Error, compiler);
       return;
     } 
+  }
+
+  if (Match(Scanner::TokenType::ColonColon, compiler)) {
+    if (!IsValidTypeAnnotation(compiler.current.value().GetType())) {
+      MessageAtCurrent("Expected type name after type annotation", LogLevel::Error, compiler);
+      return;
+    }
+    Advance(compiler);
   }
 
   Consume(Scanner::TokenType::Colon, "Expected ':' after function signature", compiler);
@@ -641,8 +683,22 @@ static void VarDeclaration(CompilerContext& compiler)
     return;
   }
 
-  Consume(Scanner::TokenType::Identifier, "Expected identifier after `var`", compiler);
-  std::string localName(compiler.previous.value().GetText());
+  if (!Match(Scanner::TokenType::Identifier, compiler)) {
+    MessageAtCurrent("Expected identifier after `var`", LogLevel::Error, compiler);
+    return;
+  }
+
+  auto nameToken = compiler.previous.value();
+
+  if (Match(Scanner::TokenType::Colon, compiler)) {
+    if (!IsValidTypeAnnotation(compiler.current.value().GetType())) {
+      MessageAtCurrent("Expected typename after type annotation", LogLevel::Error, compiler);
+      return;
+    }
+    Advance(compiler);
+  }
+
+  std::string localName(nameToken.GetText());
   auto it = std::find_if(compiler.locals.begin(), compiler.locals.end(), [&localName] (const Local& l) { return l.name == localName; });
   if (it != compiler.locals.end()) {
     MessageAtPrevious("A local variable with the same name already exists", LogLevel::Error, compiler);
@@ -674,9 +730,22 @@ static void FinalDeclaration(CompilerContext& compiler)
     return;
   } 
 
-  Consume(Scanner::TokenType::Identifier, "Expected identifier after `final`", compiler);
+  if (!Match(Scanner::TokenType::Identifier, compiler)) {
+    MessageAtCurrent("Expected identifier after `final`", LogLevel::Error, compiler);
+    return;
+  }
 
-  std::string localName(compiler.previous.value().GetText());
+  auto nameToken = compiler.previous.value();
+
+  if (Match(Scanner::TokenType::Colon, compiler)) {
+    if (!IsValidTypeAnnotation(compiler.current.value().GetType())) {
+      MessageAtCurrent("Expected typename after type annotation", LogLevel::Error, compiler);
+      return;
+    }
+    Advance(compiler);
+  }
+
+  std::string localName(nameToken.GetText());
   auto it = std::find_if(compiler.locals.begin(), compiler.locals.end(), [&localName] (const Local& l) { return l.name == localName; });
   if (it != compiler.locals.end()) {
     MessageAtPrevious("A local variable with the same name already exists", LogLevel::Error, compiler);
@@ -975,6 +1044,15 @@ static void ForStatement(CompilerContext& compiler)
   auto iteratorNeedsPop = false, secondIteratorNeedsPop = false, twoIterators = false;
   auto iteratorName = std::string(compiler.previous.value().GetText());
   std::int64_t iteratorId;
+
+  if (Match(Scanner::TokenType::Colon, compiler)) {
+    if (!IsValidTypeAnnotation(compiler.current.value().GetType())) {
+      MessageAtCurrent("Expected typename after type annotation", LogLevel::Error, compiler);
+      return;
+    }
+    Advance(compiler);
+  }
+
   auto it = std::find_if(
     compiler.locals.begin(),
     compiler.locals.end(),
@@ -1028,6 +1106,15 @@ static void ForStatement(CompilerContext& compiler)
       [&secondIteratorName](const Local& l) {
         return l.name == secondIteratorName;
       });
+
+    if (Match(Scanner::TokenType::Colon, compiler)) {
+      if (!IsValidTypeAnnotation(compiler.current.value().GetType())) {
+        MessageAtCurrent("Expected typename after type annotation", LogLevel::Error, compiler);
+        return;
+      }
+      Advance(compiler);
+    }
+
     if (secondIt == compiler.locals.end()) {
       secondIteratorId = static_cast<std::int64_t>(compiler.locals.size());
       compiler.locals.emplace_back(std::move(secondIteratorName), secondItIsFinal, true, secondIteratorId);

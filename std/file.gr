@@ -1,4 +1,4 @@
-func export write(path, contents):
+func export write(path: String, contents):
   if !instanceof(path, String):
     throw("Expected `String` for argument to std::file::write(path, text) but got `" + typename(path) + "`");
   end
