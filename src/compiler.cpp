@@ -162,12 +162,12 @@ static void MessageAtCurrent(const std::string& message, LogLevel level, Compile
 static void MessageAtPrevious(const std::string& message, LogLevel level, CompilerContext& compiler);
 static void Message(const std::optional<Scanner::Token>& token, const std::string& message, LogLevel level, CompilerContext& compiler);
 
-GRACE_NODISCARD static VM::InterpretResult Finalise(bool verbose);
+GRACE_NODISCARD static VM::InterpretResult Finalise(bool verbose, const std::vector<std::string>& args);
 
 static bool s_Verbose, s_WarningsError;
 static std::stack<CompilerContext> s_CompilerContextStack;
 
-VM::InterpretResult Grace::Compiler::Compile(std::string&& fileName, std::string&& code, bool verbose, bool warningsError)
+VM::InterpretResult Grace::Compiler::Compile(std::string&& fileName, std::string&& code, bool verbose, bool warningsError, const std::vector<std::string>& args)
 {
   using namespace std::chrono;
 
@@ -212,13 +212,13 @@ VM::InterpretResult Grace::Compiler::Compile(std::string&& fileName, std::string
         fmt::print("Compilation succeeded in {} μs.\n", duration);
       }
     }
-    return Finalise(verbose);
+    return Finalise(verbose, args);
   }
 
   return VM::InterpretResult::RuntimeError;
 }
 
-static VM::InterpretResult Finalise(bool verbose)
+static VM::InterpretResult Finalise(bool verbose, const std::vector<std::string>& args)
 {
  #ifdef GRACE_DEBUG
    if (verbose) {
@@ -226,7 +226,7 @@ static VM::InterpretResult Finalise(bool verbose)
    }
  #endif
    if (VM::VM::GetInstance().CombineFunctions(verbose)) {
-     return VM::VM::GetInstance().Start(verbose);
+     return VM::VM::GetInstance().Start(verbose, args);
    }
   return VM::InterpretResult::RuntimeError;
 }
@@ -579,6 +579,11 @@ static void FuncDeclaration(CompilerContext& compiler)
 
   std::vector<std::string> parameters;
   while (!Match(Scanner::TokenType::RightParen, compiler)) {
+    if (isMainFunction && parameters.size() > 1) {
+      Message(funcNameToken, fmt::format("`main` function can only take 0 or 1 parameter(s) but got {}", parameters.size()), LogLevel::Error, compiler);
+      return;
+    }
+
     if (Match(Scanner::TokenType::Final, compiler)) {
       Consume(Scanner::TokenType::Identifier, "Expected identifier after `final`", compiler);
       auto p = std::string(compiler.previous.value().GetText());
@@ -606,6 +611,7 @@ static void FuncDeclaration(CompilerContext& compiler)
         MessageAtPrevious("Function parameters with the same name already defined", LogLevel::Error, compiler);
         return;
       }
+
       parameters.push_back(p);
       compiler.locals.emplace_back(std::move(p), false, false, compiler.locals.size());
 
@@ -627,6 +633,10 @@ static void FuncDeclaration(CompilerContext& compiler)
   }
 
   if (Match(Scanner::TokenType::ColonColon, compiler)) {
+    if (isMainFunction) {
+      MessageAtPrevious("`main` does not return a value", LogLevel::Error, compiler);
+      return;
+    }
     if (!IsValidTypeAnnotation(compiler.current.value().GetType())) {
       MessageAtCurrent("Expected type name after type annotation", LogLevel::Error, compiler);
       return;

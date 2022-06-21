@@ -198,7 +198,7 @@ Token Grace::Scanner::ScanToken()
     case '<':
       return MatchChars({ {'=', TokenType::LessEqual}, {'<', TokenType::ShiftLeft} }, TokenType::LessThan);
     case '>':
-      return MatchChars({ {'=', TokenType::EqualEqual}, {'>', TokenType::ShiftRight} }, TokenType::GreaterThan);
+      return MatchChars({ {'=', TokenType::GreaterEqual}, {'>', TokenType::ShiftRight} }, TokenType::GreaterThan);
     case '*':
       return MatchChars({ {'*', TokenType::StarStar} }, TokenType::Star);
     case '.':

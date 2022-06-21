@@ -50,6 +50,7 @@ This will build the `grace` executable, which you can add to your path or move s
 * Classes
   * Reference counting
   * Cyclic references handled through a "cyclic reference tracker" - if a cyclic reference is detected, start tracking the two objects, and when those objects' only remaining references are each other they can be safely destroyed 
+  * Maybe we could use structs that only hold variables, and just use extension methods...
 * Lambdas 
 * Global const fields 
 * Imports 
@@ -58,13 +59,14 @@ This will build the `grace` executable, which you can add to your path or move s
   * Fix namespace qualifiers inside a function call that's also namespace qualified
 * Extension methods
 * Standard library
-* Filesystem handling
 * Install process 
 * Tests 
 * Documentation + comments 
 
 ## Long Term Goals 
 * Optional type annotations for use by a static analyzer
+  * Type annotations in, expand syntax to allow for List/Dict inner types eg `Dict[String, Float]`, `List[List[Int]]`
+  * Not a huge priority since no static analyzer exists yet
 * Package management similar to cargo - new projects, type checking, adding libraries, tests
 * Optimisation mode which allows the bytecode compiler to perform optimisations such as loop unrolling, constant folding, dead code elimination - slower initial compile time in return for better run time performance for scripts that will run for a long time
 

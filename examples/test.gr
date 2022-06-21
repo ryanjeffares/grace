@@ -1,5 +1,7 @@
-import std::time;
+func main(final args: List):
+  for arg: String in args:
+    println("Got CL arg: " + arg);
+  end
 
-func main():
-  println(typename(std::time::time_ms()));
+  println("Hello world!");
 end

@@ -183,7 +183,7 @@ namespace Grace::VM
       }
 
       GRACE_NODISCARD bool CombineFunctions(bool verbose);
-      GRACE_NODISCARD InterpretResult Start(bool verbose);
+      GRACE_NODISCARD InterpretResult Start(bool verbose, const std::vector<std::string>& args);
 
     private:
 
@@ -191,7 +191,7 @@ namespace Grace::VM
       using CallStack = std::vector<std::tuple<std::int64_t, std::int64_t, std::size_t, std::string>>;
 
       void RegisterNatives();
-      GRACE_NODISCARD InterpretResult Run(bool verbose);
+      GRACE_NODISCARD InterpretResult Run(bool verbose, const std::vector<std::string>& args);
       void RuntimeError(const GraceException& exception, std::size_t line, const CallStack& callStack);
 
     private:

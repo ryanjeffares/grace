@@ -123,11 +123,11 @@ bool VM::CombineFunctions(GRACE_MAYBE_UNUSED bool verbose)
   return true;
 }
 
-InterpretResult VM::Start(bool verbose)
+InterpretResult VM::Start(bool verbose, const std::vector<std::string>& args)
 {
   using namespace std::chrono;
   auto start = steady_clock::now();
-  auto res = Run(verbose);
+  auto res = Run(verbose, args);
   auto end = steady_clock::now();
   if (verbose) {
     if (res == InterpretResult::RuntimeOk) {
@@ -142,7 +142,7 @@ InterpretResult VM::Start(bool verbose)
   return res;
 }
 
-InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
+InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose, const std::vector<std::string>& args)
 {
 #define PRINT_LOCAL_MEMORY()                                          \
   do {                                                                \
@@ -156,6 +156,12 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose)
   std::vector<Value> valueStack, localsList;
   valueStack.reserve(16);
   localsList.reserve(16);
+
+  std::vector<Value> argsAsValues;
+  for (const auto& a : args) {
+    argsAsValues.emplace_back(a);
+  }
+  localsList.push_back(Value::CreateObject<Grace::GraceList>(std::move(argsAsValues)));
 
   std::size_t opCurrent = 0, constantCurrent = 0;
   

@@ -13,9 +13,18 @@ func append_row(row: List, text: String) :: String:
   return text + '\n';
 end
 
-func main():
+func main(final args: List):
 
-  final size: Int = 100;
+  assert(std::list::length(args) >= 1);
+  final size: Int = Int(std::list::at(args, 0));
+  assert(size > 0);
+
+  var write_to_file: Bool = false;
+  if std::list::length(args) > 1:
+    if std::list::at(args, 1) == "--write":
+      write_to_file = true;
+    end
+  end
 
   var previous: List = [0] * size;
   std::list::set(previous, size - 1, 1);
@@ -58,5 +67,9 @@ func main():
     previous = next;
   end
 
-  std::file::write("rule110_output.txt", full_text);
+  if write_to_file:
+    std::file::write("rule110_output.txt", full_text);
+  else:
+    println(full_text);
+  end
 end
