@@ -1492,8 +1492,10 @@ static void TryStatement(CompilerContext& compiler)
 static void ThrowStatement(CompilerContext& compiler)
 {
   Consume(Scanner::TokenType::LeftParen, "Expected '(' after `throw`", compiler);
-  Consume(Scanner::TokenType::String, "Expected string inside `throw` statement", compiler);
-  EmitConstant(std::string(compiler.previous.value().GetText()));
+  auto prevUsing = compiler.usingExpressionResult;
+  compiler.usingExpressionResult = true;
+  Expression(false, compiler);
+  compiler.usingExpressionResult = prevUsing;
   EmitOp(VM::Ops::Throw, compiler.previous.value().GetLine());
   Consume(Scanner::TokenType::RightParen, "Expected ')' after `throw` message", compiler);
   Consume(Scanner::TokenType::Semicolon, "Expected ';' after `throw` statement", compiler);

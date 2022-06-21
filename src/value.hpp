@@ -53,8 +53,8 @@ namespace Grace
         Double,
         Int,
         Null,
-        Object,
         String,
+        Object,
       };
 
       template<BuiltinGraceType T>

@@ -150,6 +150,18 @@ namespace Grace
     }
   }
 
+  VM::Value GraceDictionary::Get(const VM::Value& key)
+  {
+    for (auto& kvp : m_Data) {
+      if (kvp.GetType() == VM::Value::Type::Null) continue;
+      auto p = dynamic_cast<GraceKeyValuePair*>(kvp.GetObject());
+      if (key == p->Key()) {
+        return p->Value();
+      }
+    }
+    return VM::Value();
+  }
+
   std::vector<VM::Value> GraceDictionary::ToVector() const
   {
     std::vector<VM::Value> res;

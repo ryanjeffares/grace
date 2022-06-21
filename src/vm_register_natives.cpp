@@ -10,11 +10,14 @@
  */
 
 #include <chrono>
+#include <fstream>
+#include <iostream>
 
 #include "grace.hpp"
 #include "vm.hpp"
-#include "objects/grace_list.hpp"
 #include "objects/grace_dictionary.hpp"
+#include "objects/grace_exception.hpp"
+#include "objects/grace_list.hpp"
 
 using namespace Grace::VM;
 
@@ -34,6 +37,9 @@ static Value ListGetAtIndex(const std::vector<Value>& args);
 static Value ListLength(const std::vector<Value>& args);
 
 static Value DictionaryInsert(const std::vector<Value>& args);
+static Value DictionaryGet(const std::vector<Value>& args);
+
+static Value FileWrite(const std::vector<Value>& args);
 
 void VM::RegisterNatives()
 {
@@ -57,6 +63,10 @@ void VM::RegisterNatives()
 
   // Dictionary functions
   m_NativeFunctions.emplace_back("__NATIVE_DICTIONARY_INSERT", 3, &DictionaryInsert);
+  m_NativeFunctions.emplace_back("__NATIVE_DICTIONARY_GET", 2, &DictionaryGet);
+
+  // File functions
+  m_NativeFunctions.emplace_back("__NATIVE_FILE_WRITE", 2, &FileWrite);
 }
 
 static Value SqrtFloat(const std::vector<Value>& args)
@@ -127,6 +137,29 @@ static Value DictionaryInsert(const std::vector<Value>& args)
   auto dict = dynamic_cast<Grace::GraceDictionary*>(args[0].GetObject());
   auto key = args[1];
   auto value = args[2];
-  dict->Insert(std::move(key), std::move(value));
+  return Value(dict->Insert(std::move(key), std::move(value)));
+}
+
+static Value DictionaryGet(const std::vector<Value>& args)
+{
+  auto dict = dynamic_cast<Grace::GraceDictionary*>(args[0].GetObject());
+  return dict->Get(args[1]);
+}
+
+static Value FileWrite(const std::vector<Value>& args)
+{
+  auto& path = args[0];
+  auto& text = args[1];
+
+  std::ofstream outStream(path.AsString());
+  outStream << text.AsString();
+
+  if (outStream.fail()) {
+    throw Grace::GraceException(
+      Grace::GraceException::Type::FileWriteFailed,
+      fmt::format("failed to write to {}", path)
+    );
+  }
+
   return Value();
 }

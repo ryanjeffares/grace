@@ -59,6 +59,7 @@ namespace Grace
       }
 
       bool Insert(VM::Value&& key, VM::Value&& value);
+      GRACE_NODISCARD VM::Value Get(const VM::Value& key);
 
       GRACE_NODISCARD std::vector<VM::Value> ToVector() const;
 

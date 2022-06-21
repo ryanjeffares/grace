@@ -1,0 +1,13 @@
+func export insert(dict, key, value):
+  if !instanceof(dict, Dict):
+    throw("Expected `Dict` for dict::insert(dict, key, value) but got `" + typename(dict) + "`");
+  end
+  __NATIVE_DICTIONARY_INSERT(dict, key, value);
+end
+
+func export get(dict, key):
+  if !instanceof(dict, Dict):
+    throw("Expected `Dict` for dict::get(dict, key) but got `" + typename(dict) + "`");
+  end
+  return __NATIVE_DICTIONARY_GET(dict, key);
+end
