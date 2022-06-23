@@ -62,6 +62,7 @@ namespace Grace::VM
     Greater,
     GreaterEqual,
     IncrementIterator,
+    IsObject,
     Jump,
     JumpIfFalse,
     Less,
@@ -295,6 +296,7 @@ struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
       case Ops::Greater: name = "Ops::Greater"; break;
       case Ops::GreaterEqual: name = "Ops::GreaterEqual"; break;
       case Ops::IncrementIterator: name = "Ops::IncrementIterator"; break;
+      case Ops::IsObject: name = "Ops::IsObject"; break;
       case Ops::Jump: name = "Ops::Jump"; break;
       case Ops::JumpIfFalse: name = "Ops::JumpIfFalse"; break;
       case Ops::Less: name = "Ops::Less"; break;

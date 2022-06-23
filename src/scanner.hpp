@@ -95,6 +95,7 @@ namespace Grace::Scanner
     Import,
     In,
     InstanceOf,
+    IsObject,
     Null,
     Or,
     Print,
@@ -207,6 +208,7 @@ struct fmt::formatter<Grace::Scanner::TokenType> : fmt::formatter<std::string_vi
       case TokenType::Import: name = "TokenType::Import"; break;
       case TokenType::In: name = "TokenType::In"; break;
       case TokenType::InstanceOf: name = "TokenType::InstanceOf"; break;
+      case TokenType::IsObject: name = "TokenType::IsObject"; break;
       case TokenType::Null: name = "TokenType::Null"; break;
       case TokenType::While: name = "TokenType::While"; break;
       case TokenType::Print: name = "TokenType::Print"; break;

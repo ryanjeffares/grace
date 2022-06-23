@@ -61,6 +61,7 @@ This will build the `grace` executable, which you can add to your path or move s
 * Standard library
 * Default function parameter values
 * Hex/Binary int literals
+* Ability to exit early from `main()`
 * Install process 
 * Tests 
 * Documentation + comments 

@@ -148,6 +148,7 @@ static void Identifier(bool canAssign, CompilerContext& compiler);
 static void Char(CompilerContext& compiler);
 static void String(CompilerContext& compiler);
 static void InstanceOf(CompilerContext& compiler);
+static void IsObject(CompilerContext& compiler);
 static void Cast(CompilerContext& compiler);
 static void List(CompilerContext& compiler);
 static void Dictionary(CompilerContext& compiler);
@@ -1915,6 +1916,8 @@ static void Primary(bool canAssign, CompilerContext& compiler)
     Consume(Scanner::TokenType::RightParen, "Expected ')'", compiler);
   } else if (Match(Scanner::TokenType::InstanceOf, compiler)) {
     InstanceOf(compiler);
+  } else if (Match(Scanner::TokenType::IsObject, compiler)) {
+    IsObject(compiler);
   } else if (IsTypeIdent(compiler.current.value().GetType())) {
     Cast(compiler);
   } else if (Match(Scanner::TokenType::LeftSquareParen, compiler)) {
@@ -2167,6 +2170,21 @@ static void InstanceOf(CompilerContext& compiler)
 
   if (!compiler.usingExpressionResult) {
     // pop unused return value
+    EmitOp(VM::Ops::Pop, compiler.previous.value().GetLine());
+  }
+}
+
+static void IsObject(CompilerContext& compiler)
+{
+  Consume(Scanner::TokenType::LeftParen, "Expected '(' after `isobject`", compiler);
+  auto prevUsing = compiler.usingExpressionResult;
+  compiler.usingExpressionResult = true;
+  Expression(false, compiler);
+  EmitOp(VM::Ops::IsObject, compiler.previous.value().GetLine());
+  compiler.usingExpressionResult = prevUsing;
+  Consume(Scanner::TokenType::RightParen, "Expected ')' after expression", compiler);
+
+  if (!compiler.usingExpressionResult) {
     EmitOp(VM::Ops::Pop, compiler.previous.value().GetLine());
   }
 }

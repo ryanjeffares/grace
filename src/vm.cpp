@@ -689,6 +689,9 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose, const std::vector<std::
           }
           break;
         }
+        case Ops::IsObject:
+          valueStack.emplace_back(Pop(valueStack).GetObject() != nullptr);
+          break;
         case Ops::Typename: {
           valueStack.emplace_back(Pop(valueStack).GetTypeName());
           break;

@@ -58,6 +58,7 @@ static std::unordered_map<std::string, TokenType> s_KeywordLookup =
   std::make_pair("import", TokenType::Import),
   std::make_pair("in", TokenType::In),
   std::make_pair("instanceof", TokenType::InstanceOf),
+  std::make_pair("isobject", TokenType::IsObject),
   std::make_pair("null", TokenType::Null),
   std::make_pair("print", TokenType::Print),
   std::make_pair("println", TokenType::PrintLn),
