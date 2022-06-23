@@ -40,8 +40,8 @@
 #endif
 
 #ifdef GRACE_MSC    // __cplusplus isn't always set correctly on MSVC
-# if (_MSVC_LANG < 201703L)
-#   error "C++17 is required"
+# if (_MSVC_LANG < 202002L)
+#   error "C++20 is required"
 # endif
 #else
 # if (__cplusplus < 202002L)

@@ -21,10 +21,10 @@ static constexpr float s_GrowFactor = 0.75f;
 namespace Grace
 {
   GraceDictionary::GraceDictionary()
-    : m_Capacity(s_InitialCapacity),
+    : m_Size(0),
+      m_Capacity(s_InitialCapacity),
       m_Data(m_Capacity),
-      m_CellStates(m_Capacity, CellState::NeverUsed),
-      m_Size(0)
+      m_CellStates(m_Capacity, CellState::NeverUsed)
   {
     
   }
