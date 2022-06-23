@@ -10,7 +10,7 @@ The goal of Grace is to combine the ease of use and portability of an interprete
 
 An important aspiration of Grace is to be unambiguous and predictable. By keeping syntax and operators to a minimum, Grace can avoid unexpected behaviour and having many ways to do the exact same thing, which can be hostile things for newcomers and programming beginners.
 
-Performance will stay predictable due to the use of reference counting over garbage collection.
+Performance will stay predictable due to the use of reference counting over garbage collection (notice how I said "predictable" and not "good").
 
 ## Spec and Guidelines
 
@@ -59,6 +59,8 @@ This will build the `grace` executable, which you can add to your path or move s
   * Fix namespace qualifiers inside a function call that's also namespace qualified
 * Extension methods
 * Standard library
+* Default function parameter values
+* Hex/Binary int literals
 * Install process 
 * Tests 
 * Documentation + comments 

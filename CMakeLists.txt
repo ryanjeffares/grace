@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.8)
 project(grace)
 
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
 add_executable(grace 
   src/main.cpp
   src/compiler.cpp
@@ -22,6 +20,7 @@ target_compile_definitions(grace PRIVATE FMT_HEADER_ONLY)
 set_target_properties(grace PROPERTIES
   CXX_STANDARD 20
   RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BUILD_TYPE}
+  CMAKE_EXPORT_COMPILE_COMMANDS ON
 )
 
 if (CMAKE_BUILD_TYPE MATCHES Debug)

@@ -43,6 +43,7 @@ namespace Grace
         InvalidIterator,
         InvalidOperand,
         InvalidType,
+        KeyNotFound,
         ThrownException,
       };
 
@@ -118,6 +119,7 @@ struct fmt::formatter<Grace::GraceException::Type> : fmt::formatter<std::string_
       case GraceException::Type::InvalidIterator: name = "InvalidIterator"; break;
       case GraceException::Type::InvalidOperand: name = "InvalidOperand"; break;
       case GraceException::Type::InvalidType: name = "InvalidType"; break;
+      case GraceException::Type::KeyNotFound: name = "KeyNotFoundException"; break;
       case GraceException::Type::ThrownException: name = "ThrownException"; break;
     }
     return fmt::formatter<std::string_view>::format(name, context);

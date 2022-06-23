@@ -13,6 +13,7 @@
 #include <fmt/format.h>
 
 #include "grace_dictionary.hpp"
+#include "grace_exception.hpp"
 
 static constexpr std::size_t s_InitialCapacity = 8;
 static constexpr float s_GrowFactor = 0.75f;
@@ -20,27 +21,31 @@ static constexpr float s_GrowFactor = 0.75f;
 namespace Grace
 {
   GraceDictionary::GraceDictionary()
-    : m_Data(s_InitialCapacity),
-      m_CellStates(s_InitialCapacity, CellState::NeverUsed),
+    : m_Capacity(s_InitialCapacity),
+      m_Data(m_Capacity),
+      m_CellStates(m_Capacity, CellState::NeverUsed),
       m_Size(0)
   {
     
   }
 
   GraceDictionary::GraceDictionary(const GraceDictionary& other)
-    : m_Data(other.m_Data),
-      m_CellStates(other.m_CellStates),
-      m_Size(other.m_Size)
+    : m_Size(other.m_Size),
+      m_Capacity(other.m_Capacity),
+      m_Data(other.m_Data),
+      m_CellStates(other.m_CellStates)
   {
 
   }
 
   GraceDictionary::GraceDictionary(GraceDictionary&& other)
-    : m_Data(std::move(other.m_Data)),
-      m_CellStates(std::move(other.m_CellStates)),
-      m_Size(other.m_Size)
+    : m_Size(other.m_Size),
+      m_Capacity(other.m_Capacity),
+      m_Data(std::move(other.m_Data)),
+      m_CellStates(std::move(other.m_CellStates))
   {
     other.m_Size = 0;
+    other.m_Capacity = 0;
   }
 
   void GraceDictionary::DebugPrint() const
@@ -64,7 +69,7 @@ namespace Grace
   {
     std::string res = "{";
     std::size_t count = 0;
-    for (std::size_t i = 0; i < m_Data.size(); ++i) {
+    for (std::size_t i = 0; i < m_Capacity; ++i) {
       if (m_CellStates[i] != CellState::Occupied) continue;
       auto kvp = dynamic_cast<GraceKeyValuePair*>(m_Data[i].GetObject());
       res.append(kvp->ToString());
@@ -105,16 +110,17 @@ namespace Grace
 
   bool GraceDictionary::Insert(VM::Value&& key, VM::Value&& value)
   {
-    auto fullness = static_cast<float>(m_Size) / static_cast<float>(m_Data.size());
+    auto fullness = static_cast<float>(m_Size) / static_cast<float>(m_Capacity);
     if (fullness > s_GrowFactor) {
-      m_Data.resize(m_Data.size() * 2);
-      m_CellStates.resize(m_CellStates.size() * 2, CellState::NeverUsed);
+      m_Capacity *= 2;
+      m_Data.resize(m_Capacity);
+      m_CellStates.resize(m_Capacity, CellState::NeverUsed);
       Rehash();
       InvalidateIterators();
     }
 
     auto hash = m_Hasher(key);
-    auto index = hash % m_Data.size();
+    auto index = hash % m_Capacity;
 
     auto state = m_CellStates[index];
     switch (state) {
@@ -129,7 +135,7 @@ namespace Grace
           return false;
         }
         for (auto i = index + 1; ; ++i) {
-          if (i == m_Data.size()) {
+          if (i == m_Capacity) {
             i = 0;
           }
           if (m_CellStates[i] == CellState::Occupied) {
@@ -152,14 +158,57 @@ namespace Grace
 
   VM::Value GraceDictionary::Get(const VM::Value& key)
   {
-    for (auto& kvp : m_Data) {
-      if (kvp.GetType() == VM::Value::Type::Null) continue;
-      auto p = dynamic_cast<GraceKeyValuePair*>(kvp.GetObject());
-      if (key == p->Key()) {
-        return p->Value();
+    auto hash = m_Hasher(key);
+    auto index = hash % m_Capacity;
+    while (true) {
+      if (index >= m_Capacity) {
+        index = 0;
+      }
+      switch (m_CellStates[index]) {
+        case CellState::NeverUsed:
+          throw GraceException(
+            GraceException::Type::KeyNotFound,
+            fmt::format("Dict did not contain key {}", key)
+          );
+        case CellState::Occupied:
+          return m_Data[index];
+        case CellState::Tombstone:
+          index++;
+          break;
+        default:
+          GRACE_UNREACHABLE();
+          break;
       }
     }
+
+    GRACE_UNREACHABLE();
     return VM::Value();
+  }
+
+  bool GraceDictionary::ContainsKey(const VM::Value& key)
+  {
+    auto hash = m_Hasher(key);
+    auto index = hash % m_Capacity;
+    while (true) {
+    if (index >= m_Capacity) {
+      index = 0;
+    }
+    switch (m_CellStates[index]) {
+      case CellState::NeverUsed:
+        return false;
+      case CellState::Occupied:
+        return true;
+      case CellState::Tombstone:
+        index++;
+        break;
+      default:
+        GRACE_UNREACHABLE();
+        break;
+      }
+    }
+
+    GRACE_UNREACHABLE();
+    return false;
   }
 
   std::vector<VM::Value> GraceDictionary::ToVector() const
@@ -183,7 +232,7 @@ namespace Grace
       auto kvp = dynamic_cast<GraceKeyValuePair*>(pair.GetObject());
       const auto& key = kvp->Key();
       auto hash = m_Hasher(key);
-      auto index = hash % m_Data.size();
+      auto index = hash % m_Capacity;
 
       auto state = m_CellStates[index];
       if (state == CellState::NeverUsed) {
@@ -193,7 +242,7 @@ namespace Grace
         // if its not NeverUsed it will be Occupied
         // iterate until we find a NeverUsed
         for (auto i = index + 1; ; ++i) {
-          if (i == m_Data.size()) {
+          if (i == m_Capacity) {
             i = 0;
           }
           if (m_CellStates[i] == CellState::NeverUsed) {

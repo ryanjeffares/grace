@@ -28,6 +28,7 @@ std::unordered_map<GraceException::Type, const char*> GraceException::s_Exceptio
   {GraceException::Type::InvalidCast, "Invalid cast"},
   {GraceException::Type::InvalidOperand, "Invalid operand"},
   {GraceException::Type::InvalidType, "Invalid type"},
+  {GraceException::Type::KeyNotFound, "Key not found"},
   {GraceException::Type::ThrownException, "Thrown exception"},
 };
 

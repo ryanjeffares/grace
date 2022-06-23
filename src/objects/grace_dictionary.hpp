@@ -15,7 +15,6 @@
 #include <functional>
 #include <vector>
 
-#include "grace_exception.hpp"
 #include "grace_iterator.hpp"
 #include "grace_keyvaluepair.hpp"
 #include "../value.hpp"
@@ -58,8 +57,14 @@ namespace Grace
         return m_Size;
       }
 
+      GRACE_NODISCARD GRACE_INLINE std::size_t Capacity() const
+      {
+        return m_Capacity;
+      }
+
       bool Insert(VM::Value&& key, VM::Value&& value);
       GRACE_NODISCARD VM::Value Get(const VM::Value& key);
+      GRACE_NODISCARD bool ContainsKey(const VM::Value& key);
 
       GRACE_NODISCARD std::vector<VM::Value> ToVector() const;
 
@@ -72,9 +77,11 @@ namespace Grace
         NeverUsed, Tombstone, Occupied
       };
 
+      std::size_t m_Size, m_Capacity;
+
       std::vector<VM::Value> m_Data;
       std::vector<CellState> m_CellStates;
-      std::size_t m_Size;
+      
       std::hash<VM::Value> m_Hasher{};
   };
 }

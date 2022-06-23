@@ -7,7 +7,14 @@ end
 
 func export get(dict: Dict, key):
   if !instanceof(dict, Dict):
-    throw("Expected `Dict` for dict::get(dict, key) but got `" + typename(dict) + "`");
+    throw("expected `Dict` for dict::get(dict, key) but got `" + typename(dict) + "`");
   end
   return __NATIVE_DICTIONARY_GET(dict, key);
+end
+
+func export contains_key(dict: Dict, key) :: Bool:
+  if !instanceof(dict, Dict):
+    throw("expected `Dict` for dict::contains_key(dict, key) but got `" + typename(dict) + "`");
+  end
+  return __NATIVE_DICTIONARY_CONTAINS_KEY(dict, key);
 end
