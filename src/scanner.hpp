@@ -25,12 +25,14 @@ namespace Grace::Scanner
   enum class TokenType
   {
     // Lexical tokens
+    BinaryLiteral,
     Char,
     EndOfFile,
     Error,
     Double,
     Identifier,
     Integer,
+    HexLiteral,
     String,
     IntIdent,
     FloatIdent,
@@ -159,6 +161,8 @@ struct fmt::formatter<Grace::Scanner::TokenType> : fmt::formatter<std::string_vi
 
     std::string_view name = "unknown";
     switch (type) {
+      case TokenType::BinaryLiteral: name = "TokenType::BinaryLiteral"; break;
+      case TokenType::HexLiteral: name = "TokenType::HexLiteral"; break;
       case TokenType::Char: name = "TokenType::Char"; break;
       case TokenType::EndOfFile: name = "TokenType::EndOfFile"; break;
       case TokenType::Error: name = "TokenType::Error"; break;

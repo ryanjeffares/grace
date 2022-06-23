@@ -904,9 +904,9 @@ static void Expression(bool canAssign, CompilerContext& compiler)
   }
 }
 
-static std::optional<std::string> TryParseInt(const Scanner::Token& token, std::int64_t& result)
+static std::optional<std::string> TryParseInt(const Scanner::Token& token, std::int64_t& result, int base = 10, int offset = 0)
 {
-  auto [ptr, ec] = std::from_chars(token.GetData(), token.GetData() + token.GetLength(), result);
+  auto [ptr, ec] = std::from_chars(token.GetData() + offset, token.GetData() + token.GetLength(), result, base);
   if (ec == std::errc()) {
     return {};
   }
@@ -1888,7 +1888,25 @@ static void Primary(bool canAssign, CompilerContext& compiler)
     std::int64_t value;
     auto result = TryParseInt(compiler.previous.value(), value);
     if (result.has_value()) {
-      MessageAtPrevious(fmt::format("Scanner::Token could not be parsed as an int: {}", result.value()), LogLevel::Error, compiler);
+      MessageAtPrevious(fmt::format("Token could not be parsed as an int: {}", result.value()), LogLevel::Error, compiler);
+      return;
+    }
+    EmitOp(VM::Ops::LoadConstant, compiler.previous.value().GetLine());
+    EmitConstant(value);
+  } else if (Match(Scanner::TokenType::HexLiteral, compiler)) {
+    std::int64_t value;
+    auto result = TryParseInt(compiler.previous.value(), value, 16, 2);
+    if (result.has_value()) {
+      MessageAtPrevious(fmt::format("Token could not be parsed as a hex literal int: {}", result.value()), LogLevel::Error, compiler);
+      return;
+    }
+    EmitOp(VM::Ops::LoadConstant, compiler.previous.value().GetLine());
+    EmitConstant(value);
+  } else if (Match(Scanner::TokenType::BinaryLiteral, compiler)) {
+    std::int64_t value;
+    auto result = TryParseInt(compiler.previous.value(), value, 2, 2);
+    if (result.has_value()) {
+      MessageAtPrevious(fmt::format("Token could not be parsed as a binary literal int: {}", result.value()), LogLevel::Error, compiler);
       return;
     }
     EmitOp(VM::Ops::LoadConstant, compiler.previous.value().GetLine());
@@ -1897,7 +1915,7 @@ static void Primary(bool canAssign, CompilerContext& compiler)
     double value;
     auto result = TryParseDouble(compiler.previous.value(), value);
     if (result.has_value()) {
-      MessageAtPrevious(fmt::format("Scanner::Token could not be parsed as an float: {}", result.value().what()), LogLevel::Error, compiler);
+      MessageAtPrevious(fmt::format("Token could not be parsed as an float: {}", result.value().what()), LogLevel::Error, compiler);
       return;
     }
     EmitOp(VM::Ops::LoadConstant, compiler.previous.value().GetLine());

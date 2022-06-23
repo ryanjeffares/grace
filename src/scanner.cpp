@@ -343,8 +343,40 @@ static Token Identifier()
   }
 }
 
+static Token BinaryLiteral()
+{
+  while (!IsAtEnd() && (Peek() == '0' || Peek() == '1')) {
+    Advance();
+  }
+
+  return MakeToken(TokenType::BinaryLiteral);
+}
+
+static bool IsHexCharacter(char c)
+{
+  return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+}
+
+static Token HexLiteral()
+{
+  while (!IsAtEnd() && IsHexCharacter(Peek())) {
+    Advance();
+  }
+
+  return MakeToken(TokenType::HexLiteral);
+}
+
 static Token Number()
 {
+  if (Peek() == 'b' || Peek() == 'B') {
+    Advance();
+    return BinaryLiteral();
+  }
+  if (Peek() == 'x' || Peek() == 'X') {
+    Advance();
+    return HexLiteral();
+  }
+
   while (!IsAtEnd() && std::isdigit(Peek())) {
     Advance();
   }
