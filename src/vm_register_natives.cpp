@@ -21,26 +21,26 @@
 
 using namespace Grace::VM;
 
-static Value SqrtFloat(const std::vector<Value>& args);
-static Value SqrtInt(const std::vector<Value>& args);
+static Value SqrtFloat(std::vector<Value>& args);
+static Value SqrtInt(std::vector<Value>& args);
 
-static Value TimeHours(GRACE_MAYBE_UNUSED const std::vector<Value>& args);
-static Value TimeMinutes(GRACE_MAYBE_UNUSED const std::vector<Value>& args);
-static Value TimeSeconds(GRACE_MAYBE_UNUSED const std::vector<Value>& args);
-static Value TimeMilliSeconds(GRACE_MAYBE_UNUSED const std::vector<Value>& args);
-static Value TimeMicroSeconds(GRACE_MAYBE_UNUSED const std::vector<Value>& args);
-static Value TimeNanoSeconds(GRACE_MAYBE_UNUSED const std::vector<Value>& args);
+static Value TimeHours(GRACE_MAYBE_UNUSED std::vector<Value>& args);
+static Value TimeMinutes(GRACE_MAYBE_UNUSED std::vector<Value>& args);
+static Value TimeSeconds(GRACE_MAYBE_UNUSED std::vector<Value>& args);
+static Value TimeMilliSeconds(GRACE_MAYBE_UNUSED std::vector<Value>& args);
+static Value TimeMicroSeconds(GRACE_MAYBE_UNUSED std::vector<Value>& args);
+static Value TimeNanoSeconds(GRACE_MAYBE_UNUSED std::vector<Value>& args);
 
-static Value ListAppend(const std::vector<Value>& args);
-static Value ListSetAtIndex(const std::vector<Value>& args);
-static Value ListGetAtIndex(const std::vector<Value>& args);
-static Value ListLength(const std::vector<Value>& args);
+static Value ListAppend(std::vector<Value>& args);
+static Value ListSetAtIndex(std::vector<Value>& args);
+static Value ListGetAtIndex(std::vector<Value>& args);
+static Value ListLength(std::vector<Value>& args);
 
-static Value DictionaryInsert(const std::vector<Value>& args);
-static Value DictionaryGet(const std::vector<Value>& args);
-static Value DictionaryContainsKey(const std::vector<Value>& args);
+static Value DictionaryInsert(std::vector<Value>& args);
+static Value DictionaryGet(std::vector<Value>& args);
+static Value DictionaryContainsKey(std::vector<Value>& args);
 
-static Value FileWrite(const std::vector<Value>& args);
+static Value FileWrite(std::vector<Value>& args);
 
 void VM::RegisterNatives()
 {
@@ -71,90 +71,88 @@ void VM::RegisterNatives()
   m_NativeFunctions.emplace_back("__NATIVE_FILE_WRITE", 2, &FileWrite);
 }
 
-static Value SqrtFloat(const std::vector<Value>& args)
+static Value SqrtFloat(std::vector<Value>& args)
 {
   return Value(std::sqrt(args[0].Get<double>()));
 }
 
-static Value SqrtInt(const std::vector<Value>& args)
+static Value SqrtInt(std::vector<Value>& args)
 {
   return Value(std::sqrt(args[0].Get<std::int64_t>()));
 }
 
-static Value TimeHours(GRACE_MAYBE_UNUSED const std::vector<Value>& args)
+static Value TimeHours(GRACE_MAYBE_UNUSED std::vector<Value>& args)
 {
   return Value(static_cast<std::int64_t>(std::chrono::duration_cast<std::chrono::hours>(std::chrono::steady_clock::now().time_since_epoch()).count()));
 }
 
-static Value TimeMinutes(GRACE_MAYBE_UNUSED const std::vector<Value>& args)
+static Value TimeMinutes(GRACE_MAYBE_UNUSED std::vector<Value>& args)
 {
   return Value(static_cast<std::int64_t>(std::chrono::duration_cast<std::chrono::minutes>(std::chrono::steady_clock::now().time_since_epoch()).count()));
 }
 
-static Value TimeSeconds(GRACE_MAYBE_UNUSED const std::vector<Value>& args)
+static Value TimeSeconds(GRACE_MAYBE_UNUSED std::vector<Value>& args)
 {
   return Value(std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now().time_since_epoch()).count());
 }
 
-static Value TimeMilliSeconds(GRACE_MAYBE_UNUSED const std::vector<Value>& args)
+static Value TimeMilliSeconds(GRACE_MAYBE_UNUSED std::vector<Value>& args)
 {
   return Value(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count());
 }
 
-static Value TimeMicroSeconds(GRACE_MAYBE_UNUSED const std::vector<Value>& args)
+static Value TimeMicroSeconds(GRACE_MAYBE_UNUSED std::vector<Value>& args)
 {
   return Value(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now().time_since_epoch()).count());
 }
 
-static Value TimeNanoSeconds(GRACE_MAYBE_UNUSED const std::vector<Value>& args)
+static Value TimeNanoSeconds(GRACE_MAYBE_UNUSED std::vector<Value>& args)
 {
   return Value(std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count());
 }
 
-static Value ListAppend(const std::vector<Value>& args)
+static Value ListAppend(std::vector<Value>& args)
 {
-  dynamic_cast<Grace::GraceList*>(args[0].GetObject())->Append(args[1]);
+  dynamic_cast<Grace::GraceList*>(args[0].GetObject())->Append(std::move(args[1]));
   return Value();
 }
 
-static Value ListSetAtIndex(const std::vector<Value>& args)
+static Value ListSetAtIndex(std::vector<Value>& args)
 {
   auto l = dynamic_cast<Grace::GraceList*>(args[0].GetObject());
-  (*l)[args[1].Get<std::int64_t>()] = args[2];
+  (*l)[args[1].Get<std::int64_t>()] = std::move(args[2]);
   return Value();
 }
 
-static Value ListGetAtIndex(const std::vector<Value>& args)
+static Value ListGetAtIndex(std::vector<Value>& args)
 {
   return (*dynamic_cast<Grace::GraceList*>(args[0].GetObject()))[args[1].Get<std::int64_t>()];
 }
 
-static Value ListLength(const std::vector<Value>& args)
+static Value ListLength(std::vector<Value>& args)
 {
   return Value(static_cast<std::int64_t>(dynamic_cast<Grace::GraceList*>(args[0].GetObject())->Length()));
 }
 
-static Value DictionaryInsert(const std::vector<Value>& args)
+static Value DictionaryInsert(std::vector<Value>& args)
 {
   auto dict = dynamic_cast<Grace::GraceDictionary*>(args[0].GetObject());
-  auto key = args[1];
-  auto value = args[2];
-  return Value(dict->Insert(std::move(key), std::move(value)));
+  return Value(dict->Insert(std::move(args[1]), std::move(args[2])));
 }
 
-static Value DictionaryGet(const std::vector<Value>& args)
+static Value DictionaryGet(std::vector<Value>& args)
 {
   auto dict = dynamic_cast<Grace::GraceDictionary*>(args[0].GetObject());
   return dict->Get(args[1]);
 }
 
-static Value DictionaryContainsKey(const std::vector<Value>& args)
+static Value DictionaryContainsKey(std::vector<Value>& args)
 {
   auto dict = dynamic_cast<Grace::GraceDictionary*>(args[0].GetObject());
   return Value(dict->ContainsKey(args[1]));
 }
 
-static Value FileWrite(const std::vector<Value>& args)
+static Value FileWrite(std::vector<Value>& args)
 {
   auto& path = args[0];
   auto& text = args[1];
