@@ -142,7 +142,7 @@ InterpretResult VM::Start(bool verbose, const std::vector<std::string>& args)
   return res;
 }
 
-InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose, const std::vector<std::string>& args)
+InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose, const std::vector<std::string>& clArgs)
 {
 #define PRINT_LOCAL_MEMORY()                                          \
   do {                                                                \
@@ -158,7 +158,7 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose, const std::vector<std::
   localsList.reserve(16);
 
   std::vector<Value> argsAsValues;
-  for (const auto& a : args) {
+  for (const auto& a : clArgs) {
     argsAsValues.emplace_back(a);
   }
   localsList.push_back(Value::CreateObject<Grace::GraceList>(std::move(argsAsValues)));
