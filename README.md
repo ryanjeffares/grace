@@ -62,6 +62,7 @@ This will build the `grace` executable, which you can add to your path or move s
 * Install process 
 * Tests 
 * Documentation + comments 
+* Improve compiler errors and line numbering
 
 ## Long Term Goals 
 * Optional type annotations for use by a static analyzer
