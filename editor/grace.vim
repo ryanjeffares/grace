@@ -11,6 +11,8 @@ syn match graceComment "//.*$" contains=graceTodo
 syn region graceBlockComment start = "/\*" end = "\*/"
 
 syn match graceNumber "\v<\d+>"
+syn match graceNumber "\v0[xX]\x+"
+syn match graceNumber "\v0[bB]\d+"
 syn match graceNumber "\v<\d+\.\d+>"
 syn region graceString start='"' end='"'
 syn region graceChar start="'" end="'"

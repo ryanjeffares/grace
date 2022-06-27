@@ -21,3 +21,7 @@ end
 func export time_ns() :: Int:
   return __NATIVE_TIME_NS();
 end
+
+func export sleep(time_ns: Int):
+  __NATIVE_TIME_SLEEP(time_ns);
+end

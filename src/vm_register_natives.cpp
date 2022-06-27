@@ -10,8 +10,9 @@
  */
 
 #include <chrono>
+#include <cstdio>
 #include <fstream>
-#include <iostream>
+#include <thread>
 
 #include "grace.hpp"
 #include "vm.hpp"
@@ -30,6 +31,7 @@ static Value TimeSeconds(GRACE_MAYBE_UNUSED std::vector<Value>& args);
 static Value TimeMilliSeconds(GRACE_MAYBE_UNUSED std::vector<Value>& args);
 static Value TimeMicroSeconds(GRACE_MAYBE_UNUSED std::vector<Value>& args);
 static Value TimeNanoSeconds(GRACE_MAYBE_UNUSED std::vector<Value>& args);
+static Value Sleep(std::vector<Value>& args);
 
 static Value ListAppend(std::vector<Value>& args);
 static Value ListSetAtIndex(std::vector<Value>& args);
@@ -41,6 +43,9 @@ static Value DictionaryGet(std::vector<Value>& args);
 static Value DictionaryContainsKey(std::vector<Value>& args);
 
 static Value FileWrite(std::vector<Value>& args);
+
+static Value FlushStdout(GRACE_MAYBE_UNUSED std::vector<Value>& args);
+static Value FlushStderr(GRACE_MAYBE_UNUSED std::vector<Value>& args);
 
 void VM::RegisterNatives()
 {
@@ -55,6 +60,7 @@ void VM::RegisterNatives()
   m_NativeFunctions.emplace_back("__NATIVE_TIME_MS", 0, &TimeMilliSeconds);
   m_NativeFunctions.emplace_back("__NATIVE_TIME_US", 0, &TimeMicroSeconds);
   m_NativeFunctions.emplace_back("__NATIVE_TIME_NS", 0, &TimeNanoSeconds);
+  m_NativeFunctions.emplace_back("__NATIVE_TIME_SLEEP", 1, &Sleep);
 
   // List functions
   m_NativeFunctions.emplace_back("__NATIVE_APPEND_LIST", 2, &ListAppend);
@@ -69,6 +75,10 @@ void VM::RegisterNatives()
 
   // File functions
   m_NativeFunctions.emplace_back("__NATIVE_FILE_WRITE", 2, &FileWrite);
+
+  // Console IO functions
+  m_NativeFunctions.emplace_back("__NATIVE_FLUSH_STDOUT", 0, &FlushStdout);
+  m_NativeFunctions.emplace_back("__NATIVE_FLUSH_STDERR", 0, &FlushStderr);
 }
 
 static Value SqrtFloat(std::vector<Value>& args)
@@ -109,6 +119,12 @@ static Value TimeMicroSeconds(GRACE_MAYBE_UNUSED std::vector<Value>& args)
 static Value TimeNanoSeconds(GRACE_MAYBE_UNUSED std::vector<Value>& args)
 {
   return Value(std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count());
+}
+
+static Value Sleep(std::vector<Value>& args)
+{
+  std::this_thread::sleep_for(std::chrono::milliseconds(args[0].Get<std::int64_t>()));
+  return Value();
 }
 
 static Value ListAppend(std::vector<Value>& args)
@@ -167,5 +183,17 @@ static Value FileWrite(std::vector<Value>& args)
     );
   }
 
+  return Value();
+}
+
+static Value FlushStdout(GRACE_MAYBE_UNUSED std::vector<Value>& args)
+{
+  std::fflush(stdout);
+  return Value();
+}
+
+static Value FlushStderr(GRACE_MAYBE_UNUSED std::vector<Value>& args)
+{
+  std::fflush(stderr);
   return Value();
 }

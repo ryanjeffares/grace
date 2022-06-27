@@ -2115,7 +2115,7 @@ static void String(CompilerContext& compiler)
   for (std::size_t i = 1; i < text.length() - 1; i++) {
     if (text[i] == '\\') {
       i++;
-      if (i == text.length() - 2) {
+      if (i == text.length() - 1) {
         MessageAtPrevious("Expected escape character", LogLevel::Error, compiler);
         return;
       }

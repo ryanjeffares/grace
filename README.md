@@ -44,7 +44,6 @@ This will build the `grace` executable, which you can add to your path or move s
 
 ## Alpha Release Roadmap
 * Why does examples/euler/problem03.gr use so much memory?
-* Fix dictionary iteration
 * Prevent integer overflow by automatically promoting to a `BigInt` class
 * Experiment with string interning
 * Investigate wide chars over regular chars
