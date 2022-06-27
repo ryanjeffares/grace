@@ -86,7 +86,7 @@ namespace Grace
     return !m_Data.empty();
   }
 
-  GraceDictionary::Iterator GraceDictionary::Begin()
+  GraceDictionary::IteratorType GraceDictionary::Begin()
   {
     for (auto it = m_Data.begin(); it != m_Data.end(); ++it) {
       if (it->GetType() != VM::Value::Type::Null) {
@@ -96,16 +96,17 @@ namespace Grace
     return m_Data.end();
   }
 
-  GraceDictionary::Iterator GraceDictionary::End()
+  GraceDictionary::IteratorType GraceDictionary::End()
   {
     return m_Data.end();
   }
 
-  void GraceDictionary::IncrementIterator(Iterator& toIncrement) const
+  void GraceDictionary::IncrementIterator(IteratorType& toIncrement) const
   {
+    GRACE_ASSERT(toIncrement != m_Data.end(), "Iterator already at end");
     do {
       toIncrement++;
-    } while (toIncrement->GetType() == VM::Value::Type::Null && toIncrement != m_Data.end());
+    } while (toIncrement != m_Data.end() && toIncrement->GetType() == VM::Value::Type::Null);
   }
 
   bool GraceDictionary::Insert(VM::Value&& key, VM::Value&& value)
@@ -170,8 +171,14 @@ namespace Grace
             GraceException::Type::KeyNotFound,
             fmt::format("Dict did not contain key {}", key)
           );
-        case CellState::Occupied:
-          return m_Data[index];
+        case CellState::Occupied: {
+          auto kvp = dynamic_cast<GraceKeyValuePair*>(m_Data[index].GetObject());
+          if (key == kvp->Key()) {
+            return kvp->Value();
+          }
+          index++;
+          break;
+        }
         case CellState::Tombstone:
           index++;
           break;
@@ -190,20 +197,24 @@ namespace Grace
     auto hash = m_Hasher(key);
     auto index = hash % m_Capacity;
     while (true) {
-    if (index >= m_Capacity) {
-      index = 0;
-    }
-    switch (m_CellStates[index]) {
-      case CellState::NeverUsed:
-        return false;
-      case CellState::Occupied:
-        return true;
-      case CellState::Tombstone:
-        index++;
-        break;
-      default:
-        GRACE_UNREACHABLE();
-        break;
+      if (index >= m_Capacity) {
+        index = 0;
+      }
+      switch (m_CellStates[index]) {
+        case CellState::NeverUsed:
+          return false;
+        case CellState::Occupied:
+          if (key != dynamic_cast<GraceKeyValuePair*>(m_Data[index].GetObject())->Key()) {
+            index++;
+            break;
+          }
+          return true;
+        case CellState::Tombstone:
+          index++;
+          break;
+        default:
+          GRACE_UNREACHABLE();
+          break;
       }
     }
 
@@ -249,7 +260,7 @@ namespace Grace
             m_Data[i] = std::move(pair);
             m_CellStates[i] = CellState::Occupied;
             break;
-          }          
+          }
         }
       }
     }

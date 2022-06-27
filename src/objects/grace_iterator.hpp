@@ -1,7 +1,7 @@
 /*
  *  The Grace Programming Language.
  *
- *  This file contains the GraceIterator class, which represents a value used to iterate over a collection in Grace.
+ *  This file contains the GraceIterator class, which represents a value used to iterate over a collection in Grace, and the GraceIterable class, the base class for iterable objects in Grace.
  *
  *  Copyright (c) 2022 - Present, Ryan Jeffares.
  *  All rights reserved.
@@ -25,67 +25,45 @@
 
 namespace Grace
 {
-  template<class IteratorType>
   class GraceIterable;
 
-  template<class IteratorType>
   class GraceIterator : public GraceObject
   {
     public:
+
+      enum class IterableType
+      {
+        List,
+        Dictionary,
+      };
+
+      using IteratorType = std::vector<VM::Value>::iterator;
+
       GraceIterator() = delete;
-      GraceIterator(GraceIterable<IteratorType>* iterable)
-        : m_Iterable(iterable)
-      {
-        m_IsValid = true;
-        m_Iterable->IncreaseRef();
-        m_Iterable->AddIterator(this);
-        m_Iterator = m_Iterable->Begin();
-      }
+      GraceIterator(GraceIterable* iterable, IterableType type);
 
-      ~GraceIterator()
-      {
-        m_Iterable->RemoveIterator(this);
+      ~GraceIterator();
 
-        if (m_Iterable->DecreaseRef() == 0) {
-#ifdef GRACE_DEBUG
-          ObjectTracker::StopTrackingObject(m_Iterable);
-#endif
-          delete m_Iterable;
-        }
-      }
+      void Increment();
 
-      void Increment()
-      {
-        if (!m_IsValid) {
-          throw GraceException(
-            GraceException::Type::InvalidIterator,
-            "Iterator is no longer valid, due to either being incremented past the end of the collection or the collection being modified"
-          );
-        }
-        m_Iterable->IncrementIterator(m_Iterator);
-      }
-
-      GRACE_NODISCARD bool IsAtEnd() const
-      {
-        return m_Iterator == m_Iterable->End();
-      }
+      GRACE_NODISCARD bool IsAtEnd() const;
 
       void Invalidate()
       {
         m_IsValid = false;
       }
 
-      void DebugPrint() const override
+      GRACE_INLINE void DebugPrint() const override
       {
         fmt::print("Iterator: {}\n", ToString());
       }
 
-      void Print(bool err) const override
+      GRACE_INLINE void Print(bool err) const override
       {
         Value().Print(err);
       }
 
-      void PrintLn(bool err) const override
+      GRACE_INLINE void PrintLn(bool err) const override
       {
         Value().PrintLn(err);
       }
@@ -121,27 +99,34 @@ namespace Grace
         return *m_Iterator;
       }
 
+      GRACE_NODISCARD GRACE_INLINE IterableType GetType() const
+      {
+        return m_IterableType;
+      }
+
     private:
-      GraceIterable<IteratorType>* m_Iterable;
+      GraceIterable* m_Iterable;
       IteratorType m_Iterator;
       bool m_IsValid{};
+      IterableType m_IterableType;
   };
 
-  template<class IteratorType>
   class GraceIterable : public GraceObject
   {
     public:
-      ~GraceIterable() override = default;
+
+      using IteratorType = std::vector<VM::Value>::iterator;
+
       virtual IteratorType Begin() = 0;
       virtual IteratorType End() = 0;
       virtual void IncrementIterator(IteratorType&) const = 0;
 
-      void AddIterator(GraceIterator<IteratorType>* iterator)
+      void AddIterator(GraceIterator* iterator)
       {
         m_ActiveIterators.push_back(iterator);
       }
 
-      void RemoveIterator(GraceIterator<IteratorType>* iterator)
+      void RemoveIterator(GraceIterator* iterator)
       {
         auto it = std::find(m_ActiveIterators.begin(), m_ActiveIterators.end(), iterator);
         if (it == m_ActiveIterators.end()) {
@@ -161,7 +146,7 @@ namespace Grace
         }
       }
 
-      std::vector<GraceIterator<IteratorType>*> m_ActiveIterators;
+      std::vector<GraceIterator*> m_ActiveIterators;
   };
 } // namespace Grace::VM
 

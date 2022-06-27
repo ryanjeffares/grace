@@ -1,0 +1,27 @@
+import std::dict;
+import std::time;
+
+func fib(n: Int, dict: Dict) :: Int:
+  if std::dict::contains_key(dict, n):
+    return std::dict::get(dict, n);
+  end
+
+  var res;
+  if n < 2:
+    res = n;
+  else:
+    res = fib(n - 1, dict) + fib(n - 2, dict);
+  end
+  std::dict::insert(dict, n, res);
+  return res;
+end
+
+func main():
+  final start = std::time::time_ms();
+  final results = {};
+  for i in [0..100]:
+    println(fib(i, results));
+  end
+
+  println("Completed in " + (std::time::time_ms() - start) + " ms");
+end

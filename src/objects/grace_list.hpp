@@ -20,10 +20,9 @@
 
 namespace Grace
 {
-  class GraceList : public GraceIterable<std::vector<VM::Value>::iterator>
+  class GraceList : public GraceIterable
   {
     public:
-      using Iterator = std::vector<VM::Value>::iterator;
 
       GraceList() = default;
       explicit GraceList(const VM::Value&);
@@ -58,17 +57,17 @@ namespace Grace
         return m_Data.size();
       }
 
-      GRACE_NODISCARD GRACE_INLINE Iterator Begin() override
+      GRACE_NODISCARD GRACE_INLINE IteratorType Begin() override
       {
         return m_Data.begin();
       }
 
-      GRACE_NODISCARD GRACE_INLINE Iterator End() override
+      GRACE_NODISCARD GRACE_INLINE IteratorType End() override
       {
         return m_Data.end();
       }
 
-      GRACE_INLINE void IncrementIterator(Iterator& toIncrement) const override
+      GRACE_INLINE void IncrementIterator(IteratorType& toIncrement) const override
       {
         toIncrement++;
       }
