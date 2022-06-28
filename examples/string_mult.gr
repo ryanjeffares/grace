@@ -13,6 +13,7 @@ func main():
   println(multiply_string(1234, 20));
 
   for c in List(multiply_string("hello ", 5)):
-    println(c);
+    print(c);
   end
+  println();
 end 
