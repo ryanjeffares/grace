@@ -55,7 +55,7 @@ struct Local
 
 struct CompilerContext
 {
-  CompilerContext(std::string&& fileName, std::string&& code)
+  CompilerContext(const std::string& fileName, std::string&& code)
     : currentFileName(fileName)
   {
     Scanner::InitScanner(fileName, std::move(code));
@@ -166,12 +166,12 @@ static void MessageAtCurrent(const std::string& message, LogLevel level, Compile
 static void MessageAtPrevious(const std::string& message, LogLevel level, CompilerContext& compiler);
 static void Message(const std::optional<Scanner::Token>& token, const std::string& message, LogLevel level, CompilerContext& compiler);
 
-GRACE_NODISCARD static VM::InterpretResult Finalise(bool verbose, const std::vector<std::string>& args);
+GRACE_NODISCARD static VM::InterpretResult Finalise(const std::string& mainFileName, bool verbose, const std::vector<std::string>& args);
 
 static bool s_Verbose, s_WarningsError;
 static std::stack<CompilerContext> s_CompilerContextStack;
 
-VM::InterpretResult Grace::Compiler::Compile(std::string&& fileName, std::string&& code, bool verbose, bool warningsError, const std::vector<std::string>& args)
+VM::InterpretResult Grace::Compiler::Compile(const std::string& fileName, std::string&& code, bool verbose, bool warningsError, const std::vector<std::string>& args)
 {
   using namespace std::chrono;
 
@@ -180,7 +180,7 @@ VM::InterpretResult Grace::Compiler::Compile(std::string&& fileName, std::string
   s_Verbose = verbose;
   s_WarningsError = warningsError;
  
-  s_CompilerContextStack.emplace(std::move(fileName), std::move(code));
+  s_CompilerContextStack.emplace(fileName, std::move(code));
   
   Advance(s_CompilerContextStack.top());
   
@@ -216,21 +216,21 @@ VM::InterpretResult Grace::Compiler::Compile(std::string&& fileName, std::string
         fmt::print("Compilation succeeded in {} μs.\n", duration);
       }
     }
-    return Finalise(verbose, args);
+    return Finalise(fileName, verbose, args);
   }
 
   return VM::InterpretResult::RuntimeError;
 }
 
-static VM::InterpretResult Finalise(bool verbose, const std::vector<std::string>& args)
+static VM::InterpretResult Finalise(const std::string& mainFileName, bool verbose, const std::vector<std::string>& args)
 {
  #ifdef GRACE_DEBUG
    if (verbose) {
      VM::VM::GetInstance().PrintOps();
    }
  #endif
-   if (VM::VM::GetInstance().CombineFunctions(verbose)) {
-     return VM::VM::GetInstance().Start(verbose, args);
+   if (VM::VM::GetInstance().CombineFunctions(mainFileName, verbose)) {
+     return VM::VM::GetInstance().Start(mainFileName, verbose, args);
    }
   return VM::InterpretResult::RuntimeError;
 }

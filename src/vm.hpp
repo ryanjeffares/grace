@@ -126,15 +126,17 @@ namespace Grace::VM
 
       GRACE_INLINE void PushOp(Ops op, std::size_t line)
       {
-        m_FunctionList.at(m_LastFunctionHash).m_OpList.emplace_back(op, line);
+        m_FunctionLookup.at(m_LastFileName).at(m_LastFunctionHash).m_OpList.emplace_back(op, line);
       }
 
       void PrintOps() const
       {
-        for (const auto& [name, func] : m_FunctionList) {
-          fmt::print("<function `{}`>\n", func.m_Name);
-          for (const auto [op, line] : func.m_OpList) {
-            fmt::print("{:>5} | {}\n", line, op);
+        for (const auto& [fileName, funcList] : m_FunctionLookup) {
+          for (const auto& [name, func] : funcList) {
+            fmt::print("<function `{}`> in file {}\n", name, fileName);
+            for (const auto [op, line] : func.m_OpList) {
+              fmt::print("{:>5} | {}\n", line, op);
+            }
           }
         }
       }
@@ -142,29 +144,28 @@ namespace Grace::VM
       template<BuiltinGraceType T>
       constexpr GRACE_INLINE void PushConstant(const T& value)
       {
-        m_FunctionList.at(m_LastFunctionHash).m_ConstantList.emplace_back(value);
+        m_FunctionLookup.at(m_LastFileName).at(m_LastFunctionHash).m_ConstantList.emplace_back(value);
       }
 
       GRACE_NODISCARD GRACE_INLINE std::size_t GetNumConstants() const
       {
-        return m_FunctionList.at(m_LastFunctionHash).m_ConstantList.size();
+        return m_FunctionLookup.at(m_LastFileName).at(m_LastFunctionHash).m_ConstantList.size();
       }
 
       GRACE_NODISCARD GRACE_INLINE std::size_t GetNumOps() const
       {
-        return m_FunctionList.at(m_LastFunctionHash).m_OpList.size();
+        return m_FunctionLookup.at(m_LastFileName).at(m_LastFunctionHash).m_OpList.size();
       }
 
       template<BuiltinGraceType T>
       constexpr GRACE_INLINE void SetConstantAtIndex(std::size_t index, const T& value)
       {
-        m_FunctionList.at(m_LastFunctionHash).m_ConstantList[index] = value;
+        m_FunctionLookup.at(m_LastFileName).at(m_LastFunctionHash).m_ConstantList[index] = value;
       }
 
-      GRACE_NODISCARD
-      GRACE_INLINE const std::string& GetLastFunctionName() const 
+      GRACE_NODISCARD GRACE_INLINE const std::string& GetLastFunctionName() const 
       {
-        return m_FunctionList.at(m_LastFunctionHash).m_Name;
+        return m_FunctionLookup.at(m_LastFileName).at(m_LastFunctionHash).m_Name;
       }
 
       GRACE_NODISCARD bool AddFunction(std::string&& name, std::size_t line, std::size_t arity, const std::string& fileName, bool exported);
@@ -184,8 +185,8 @@ namespace Grace::VM
         return m_NativeFunctions[index];
       }
 
-      GRACE_NODISCARD bool CombineFunctions(bool verbose);
-      GRACE_NODISCARD InterpretResult Start(bool verbose, const std::vector<std::string>& args);
+      GRACE_NODISCARD bool CombineFunctions(const std::string& mainFileName, bool verbose);
+      GRACE_NODISCARD InterpretResult Start(const std::string& mainFileName, bool verbose, const std::vector<std::string>& args);
 
     private:
 
@@ -193,7 +194,7 @@ namespace Grace::VM
       using CallStack = std::vector<std::tuple<std::int64_t, std::int64_t, std::size_t, std::string>>;
 
       void RegisterNatives();
-      GRACE_NODISCARD InterpretResult Run(bool verbose, const std::vector<std::string>& clArgs);
+      GRACE_NODISCARD InterpretResult Run(const std::string& mainFileName, bool verbose, const std::vector<std::string>& clArgs);
       void RuntimeError(const GraceException& exception, std::size_t line, const CallStack& callStack);
 
     private:
@@ -241,15 +242,16 @@ namespace Grace::VM
         }
       };
 
-      //using FunctionLookup = std::unordered_map<std::string, std::unordered_map<std::int64_t, Function>>;
-      //FunctionLookup m_FunctionLookup;
+      using FunctionLookup = std::unordered_map<std::string, std::unordered_map<std::int64_t, Function>>;
+      FunctionLookup m_FunctionLookup;
 
-      std::unordered_map<std::int64_t, Function> m_FunctionList;
+      // std::unordered_map<std::int64_t, Function> m_FunctionList;
       std::vector<Native::NativeFunction> m_NativeFunctions;
 
       std::vector<OpLine> m_FullOpList;
       std::vector<Value> m_FullConstantList;
 
+      std::string m_LastFileName;
       std::int64_t m_LastFunctionHash{};
       std::hash<std::string> m_Hasher;
   };
