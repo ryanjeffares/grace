@@ -91,6 +91,7 @@ namespace Grace::VM
     Return,
     ShiftLeft,
     ShiftRight,
+    StartNewNamespace,
     Subtract,
     Throw,
     Typename
@@ -234,21 +235,14 @@ namespace Grace::VM
           }
         }
 
-        bool CompareNamespace(const std::vector<std::string>& nameSpace) const
+        GRACE_INLINE bool CompareNamespace(const std::vector<std::string>& nameSpace) const
         {
-          if (nameSpace.size() != m_NamespaceVec.size()) {
-            return false;
-          }
-          
-          for (std::size_t i = 0; i < nameSpace.size(); i++) {
-            if (nameSpace[i] != m_NamespaceVec[i]) {
-              return false;
-            }
-          }
-
-          return true;
+          return std::equal(m_NamespaceVec.begin(), m_NamespaceVec.end(), nameSpace.begin());
         }
       };
+
+      //using FunctionLookup = std::unordered_map<std::string, std::unordered_map<std::int64_t, Function>>;
+      //FunctionLookup m_FunctionLookup;
 
       std::unordered_map<std::int64_t, Function> m_FunctionList;
       std::vector<Native::NativeFunction> m_NativeFunctions;
@@ -274,6 +268,7 @@ struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
       case Ops::Add: name = "Ops::Add"; break;
       case Ops::And: name = "Ops::And"; break;
       case Ops::AppendNamespace: name = "Ops::AppendNamespace"; break;
+      case Ops::StartNewNamespace: name = "Ops::StartNewNamespace"; break;
       case Ops::Assert: name = "Ops::Assert"; break;
       case Ops::AssertWithMessage: name = "Ops::AssertWithMessage"; break;
       case Ops::AssignIteratorBegin: name = "Ops::AssignIteratorBegin"; break;

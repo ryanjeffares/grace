@@ -181,13 +181,14 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose, const std::vector<std::
   // if an exception is caught
   struct VMState
   {
-    std::size_t stackSize{}, numLocals{}, callStackSize{}, opOffsetSize{}, localsOffsetsSize{}, heldIteratorIndexesSize{};
+    std::size_t stackSize{}, numLocals{}, callStackSize{}, opOffsetSize{}, localsOffsetsSize{}, heldIteratorIndexesSize{}, namespaceStackSize{};
     std::int64_t opIndexToJump{}, constIndexToJump{};
   };
 
   std::stack<VMState> vmStateStack;
   std::stack<std::size_t> heldIteratorIndexes;
-  std::vector<std::string> currentNamespaceLookup; // used to keep track of what namespace we look for a call in
+  std::stack<std::vector<std::string>> namespaceLookupStack; // used to keep track of what namespace we look for a call in
+  namespaceLookupStack.emplace();
 
   bool inTryBlock = false;
 
@@ -358,7 +359,10 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose, const std::vector<std::
           fmt::print(stderr, "\t");
           break;
         case Ops::AppendNamespace:
-          currentNamespaceLookup.push_back(m_FullConstantList[constantCurrent++].Get<std::string>());
+          namespaceLookupStack.top().push_back(m_FullConstantList[constantCurrent++].Get<std::string>());
+          break;
+        case Ops::StartNewNamespace:
+          namespaceLookupStack.emplace();
           break;
         case Ops::Call: {
           auto calleeNameHash = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
@@ -379,8 +383,9 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose, const std::vector<std::
           const auto& calleeFunc = it->second;
 
           if (std::get<3>(callStack.back()) != calleeFunc.m_FileName) {
-            if (!calleeFunc.CompareNamespace(currentNamespaceLookup)) {
-              if (currentNamespaceLookup.empty()) {
+            const auto& currentNamespace = namespaceLookupStack.top();
+            if (!calleeFunc.CompareNamespace(currentNamespace)) {
+              if (currentNamespace.empty()) {
                 throw GraceException(
                   GraceException::Type::FunctionNotFound,
                   fmt::format("function `{}` does not exist in this namespace", calleeFunc.m_Name)
@@ -388,7 +393,7 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose, const std::vector<std::
               } else {
                 throw GraceException(
                   GraceException::Type::FunctionNotFound,
-                  fmt::format("function `{}` is not a member of namespace `{}`", calleeFunc.m_Name, fmt::join(currentNamespaceLookup, "::"))
+                  fmt::format("function `{}` is not a member of namespace `{}`", calleeFunc.m_Name, fmt::join(currentNamespace, "::"))
                 );
               }
             }
@@ -401,7 +406,7 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose, const std::vector<std::
             }
           }
 
-          currentNamespaceLookup.clear();
+          namespaceLookupStack.pop();
 
           auto arity = calleeFunc.m_Arity;
 
@@ -793,6 +798,7 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose, const std::vector<std::
             opConstOffsets.size(),
             localsOffsets.size(),
             heldIteratorIndexes.size(),
+            namespaceLookupStack.size(),
             opIdx,
             constIdx
           });
@@ -820,7 +826,7 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose, const std::vector<std::
     } catch(const GraceException& ge) {
       if (inTryBlock) {
         // jump to the catch block and put the exception on the stack to be assigned
-        auto vmState = vmStateStack.top();
+        const auto& vmState = vmStateStack.top();
 
         // we need to "unwind" the call stack back to its state before we entered the try block...
         while (heldIteratorIndexes.size() != vmState.heldIteratorIndexesSize) {
@@ -845,7 +851,9 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose, const std::vector<std::
 
         valueStack.push_back(Value::CreateObject<GraceException>(ge));
 
-        currentNamespaceLookup.clear();
+        while (namespaceLookupStack.size() != vmState.namespaceStackSize) {
+          namespaceLookupStack.pop();
+        }
       } else {
         // exception unhandled, report the error and quit
         RuntimeError(ge, line, callStack);

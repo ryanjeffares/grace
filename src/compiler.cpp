@@ -82,6 +82,7 @@ struct CompilerContext
 
   bool continueJumpNeedsIndexes = false;
   bool breakJumpNeedsIndexes = false;
+
   // const idx, op idx
   using IndexStack = std::stack<std::vector<std::pair<std::int64_t, std::int64_t>>>;
   IndexStack breakIdxPairs, continueIdxPairs;
@@ -1960,6 +1961,8 @@ static void Identifier(bool canAssign, CompilerContext& compiler)
   }
 
   if (Match(Scanner::TokenType::LeftParen, compiler)) {
+    EmitOp(VM::Ops::StartNewNamespace, compiler.previous.value().GetLine());  // TODO: Account for static/const fields when we do those
+
     static std::hash<std::string> hasher;
     auto hash = static_cast<std::int64_t>(hasher(prevText));
     auto nativeCall = prevText.starts_with("__");
@@ -2011,6 +2014,7 @@ static void Identifier(bool canAssign, CompilerContext& compiler)
     } else {
       EmitConstant(prevText);
       EmitOp(VM::Ops::Call, compiler.previous.value().GetLine());
+
     }
 
     if (!compiler.usingExpressionResult) {
