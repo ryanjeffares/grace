@@ -142,18 +142,18 @@ namespace Grace::Scanner
   static std::stack<ScannerContext> s_ScannerContextStack;
   static std::unordered_map<std::string, std::string> s_CodeStringsLookup;
 
-  bool Grace::Scanner::HasFile(const std::string& fileName)
+  bool HasFile(const std::string& fileName)
   {
     return s_CodeStringsLookup.find(fileName) != s_CodeStringsLookup.end();
   }
 
-  void Grace::Scanner::InitScanner(const std::string& fileName, std::string&& code)
+  void InitScanner(const std::string& fileName, std::string&& code)
   {
     s_CodeStringsLookup.try_emplace(fileName, code);
     s_ScannerContextStack.emplace(std::move(code));
   }
 
-  void Grace::Scanner::PopScanner()
+  void PopScanner()
   {
     s_ScannerContextStack.pop();
   }
@@ -169,7 +169,7 @@ namespace Grace::Scanner
     return MakeToken(defaultType);
   }
 
-  Token Grace::Scanner::ScanToken()
+  Token ScanToken()
   {
     SkipWhitespace();
     s_ScannerContextStack.top().scannerStart = s_ScannerContextStack.top().scannerCurrent;
@@ -215,7 +215,7 @@ namespace Grace::Scanner
     }
   }
 
-  std::string Grace::Scanner::GetCodeAtLine(const std::string& fileName, std::size_t line)
+  std::string GetCodeAtLine(const std::string& fileName, std::size_t line)
   {
     if (s_CodeStringsLookup.find(fileName) == s_CodeStringsLookup.end()) {
       return fmt::format("Couldn't find file `{}`\n", fileName);
