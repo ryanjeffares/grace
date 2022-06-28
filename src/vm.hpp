@@ -259,7 +259,7 @@ template<>
 struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
 {
   template<typename FormatContext>
-  constexpr auto format(Grace::VM::Ops type, FormatContext& context) -> decltype(context.out())
+  auto format(Grace::VM::Ops type, FormatContext& context) -> decltype(context.out())
   {
     using namespace Grace::VM;
 

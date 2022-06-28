@@ -406,7 +406,10 @@ InterpretResult VM::Run(GRACE_MAYBE_UNUSED bool verbose, const std::vector<std::
             }
           }
 
-          namespaceLookupStack.pop();
+          if (namespaceLookupStack.size() > 1) {
+            // keep the size at 1 for the file that was ran
+            namespaceLookupStack.pop();
+          }
 
           auto arity = calleeFunc.m_Arity;
 

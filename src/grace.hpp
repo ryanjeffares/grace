@@ -29,16 +29,6 @@
 
 #include <cassert>
 
-#ifdef _MSC_VER
-# ifndef GRACE_MSC
-#   define GRACE_MSC          _MSC_VER
-# endif
-#elif defined(__clang__) || defined(__GNUC__)
-# ifndef GRACE_GCC_CLANG
-#   define GRACE_GCC_CLANG
-# endif
-#endif
-
 #ifdef GRACE_MSC    // __cplusplus isn't always set correctly on MSVC
 # if (_MSVC_LANG < 202002L)
 #   error "C++20 is required"

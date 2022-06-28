@@ -1,11 +1,10 @@
-import std::math;
 import std::time;
+import std::list;
+
+import lib::lib;
 
 func main():
-  lib::lib::say_hello();
-  final start = std::time::time_us();
-  for i in [0..100]:
-    println(std::math::sqrt(i));
-  end
-  println("Found 100 square roots in " + (std::time::time_us() - start) + " us");
+  final list = [0];
+  std::list::set(list, 0, std::time::time_ms());
+  println(list);
 end

@@ -7,7 +7,7 @@ func append_row(row: List, text: String) :: String:
     if col == 0:
       text = text + ' ';
     else:
-      text = text + "■";
+      text = text + '@';
     end
   end
   return text + '\n';
@@ -15,15 +15,17 @@ end
 
 func main(final args: List):
 
-  assert(std::list::length(args) >= 1);
-  final size: Int = Int(std::list::at(args, 0));
-  assert(size > 0);
-
   var write_to_file: Bool = false;
-  if std::list::length(args) > 1:
-    if std::list::at(args, 1) == "--write":
-      write_to_file = true;
-    end
+  var size: Int = 0;
+
+  final num_args = std::list::length(args);
+  if num_args == 1:
+    size = Int(std::list::at(args, 0));
+  else if num_args == 2:
+    size = Int(std::list::at(args, 0));
+    write_to_file = std::list::at(args, 1) == "--write";
+  else:
+    throw("Incorrect arg count, expected `grace rule110.gr -- <size> [--write]`");
   end
 
   var previous: List = [0] * size;
@@ -60,8 +62,7 @@ func main(final args: List):
         res = res | (std::list::at(previous, temp) << (2 - to_shift));
       end
 
-      final rule = std::dict::get(rules, res);
-      std::list::set(next, index, rule);
+      std::list::set(next, index, std::dict::get(rules, res));
     end
 
     previous = next;

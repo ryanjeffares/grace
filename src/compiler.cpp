@@ -78,6 +78,8 @@ struct CompilerContext
 
   bool passedImports = false;
 
+  bool namespaceQualifierUsed = true;
+
   bool usingExpressionResult = false;
 
   bool continueJumpNeedsIndexes = false;
@@ -1961,7 +1963,7 @@ static void Identifier(bool canAssign, CompilerContext& compiler)
   }
 
   if (Match(Scanner::TokenType::LeftParen, compiler)) {
-    EmitOp(VM::Ops::StartNewNamespace, compiler.previous.value().GetLine());  // TODO: Account for static/const fields when we do those
+    compiler.namespaceQualifierUsed = true;
 
     static std::hash<std::string> hasher;
     auto hash = static_cast<std::int64_t>(hasher(prevText));
@@ -2033,6 +2035,10 @@ static void Identifier(bool canAssign, CompilerContext& compiler)
       return;
     }
 
+    if (compiler.namespaceQualifierUsed) {
+      EmitOp(VM::Ops::StartNewNamespace, prev.GetLine());
+      compiler.namespaceQualifierUsed = false;
+    }
     EmitConstant(prevText);
     EmitOp(VM::Ops::AppendNamespace, prev.GetLine());
     Expression(canAssign, compiler);

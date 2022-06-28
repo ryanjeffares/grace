@@ -117,11 +117,11 @@ namespace Grace::Scanner
     public:
 
       Token(TokenType,
-          std::size_t start,
-          std::size_t length,
-          std::size_t line,
-          std::size_t column,
-          const std::string& code
+        std::size_t start,
+        std::size_t length,
+        std::size_t line,
+        std::size_t column,
+        const std::string& code
       );
 
       Token(TokenType, std::size_t line, std::size_t column, std::string&& errorMessage);
@@ -133,7 +133,7 @@ namespace Grace::Scanner
       GRACE_NODISCARD GRACE_INLINE std::string GetErrorMessage() const { return m_ErrorMessage; }
       GRACE_NODISCARD GRACE_INLINE std::size_t GetLength() const { return m_Length; }
       GRACE_NODISCARD GRACE_INLINE std::string_view GetText() const { return m_Text.substr(0, m_Length); }
-      GRACE_NODISCARD const char* GetData() const { return m_Text.data(); }
+      GRACE_NODISCARD GRACE_INLINE const char* GetData() const { return m_Text.data(); }
 
     private:
 
@@ -146,16 +146,17 @@ namespace Grace::Scanner
 
   void InitScanner(const std::string& fileName, std::string&& code);
   void PopScanner();
-  Token ScanToken();
-  bool HasFile(const std::string& fileName);
-  std::string GetCodeAtLine(const std::string& fileName, std::size_t line);
+
+  GRACE_NODISCARD Token ScanToken();
+  GRACE_NODISCARD bool HasFile(const std::string& fileName);
+  GRACE_NODISCARD std::string GetCodeAtLine(const std::string& fileName, std::size_t line);
 } // namespace Grace::Scanner
 
 template<>
 struct fmt::formatter<Grace::Scanner::TokenType> : fmt::formatter<std::string_view>
 {
   template<typename FormatContext>
-  constexpr auto format(Grace::Scanner::TokenType type, FormatContext& context) -> decltype(context.out())
+  auto format(Grace::Scanner::TokenType type, FormatContext& context) -> decltype(context.out())
   {
     using namespace Grace::Scanner;
 

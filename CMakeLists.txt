@@ -32,6 +32,7 @@ endif()
 
 
 if(MSVC)
+  target_compile_definitions(grace PRIVATE GRACE_MSC)
   target_compile_options(grace PRIVATE /W4 /WX)
 else()
   target_compile_options(grace PRIVATE -Wall -Wextra -Wpedantic -Werror)
