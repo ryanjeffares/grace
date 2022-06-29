@@ -1,7 +1,9 @@
-func main(final args: List):
-  for arg: String in args:
-    println("Got CL arg: " + arg);
+func f():
+  for i in []:
+    return false;
   end
+end
 
-  println("Hello world!");
+func main(final args: List):
+  f(); 
 end
