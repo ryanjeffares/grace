@@ -180,7 +180,7 @@ InterpretResult VM::Run(const std::string& mainFileName, GRACE_MAYBE_UNUSED bool
   opConstOffsets.emplace_back(mainFunc.m_OpIndexStart, mainFunc.m_ConstantIndexStart);
 
   std::stack<std::size_t> localsOffsets;
-  localsOffsets.push(0);
+  localsOffsets.push(0);  // [0] is args
 
   CallStack callStack;
   callStack.emplace_back(static_cast<std::int64_t>(m_Hasher("file")), funcNameHash, 1, mainFunc.m_FileName);

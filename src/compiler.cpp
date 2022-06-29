@@ -648,6 +648,12 @@ static void FuncDeclaration(CompilerContext& compiler)
     Advance(compiler);
   }
 
+  // cl args are still assigned in the VM if the user doesn't state it
+  // so the compiler needs to be aware of that
+  if (isMainFunction && parameters.size() == 0) {
+    compiler.locals.emplace_back("args", true, false, 0);
+  }
+
   Consume(Scanner::TokenType::Colon, "Expected ':' after function signature", compiler);
 
   if (!VM::VM::GetInstance().AddFunction(std::move(name), compiler.previous.value().GetLine(), parameters.size(), compiler.currentFileName, exportFunction)) {
@@ -1241,11 +1247,11 @@ static void ForStatement(CompilerContext& compiler)
     if (compiler.locals.size() != static_cast<std::size_t>(numLocalsStart)) {
       EmitConstant(numLocalsStart);
       EmitOp(VM::Ops::PopLocals, line);
-
-      while (compiler.locals.size() != static_cast<std::size_t>(numLocalsStart)) {
-        compiler.locals.pop_back();
-      }
     }
+  }
+  
+  while (compiler.locals.size() != static_cast<std::size_t>(numLocalsStart)) {
+    compiler.locals.pop_back();
   }
 
   VM::VM::GetInstance().SetConstantAtIndex(endJumpConstantIndex, static_cast<std::int64_t>(VM::VM::GetInstance().GetNumConstants()));
@@ -1676,11 +1682,11 @@ static void WhileStatement(CompilerContext& compiler)
     if (compiler.locals.size() != static_cast<std::size_t>(numLocalsStart)) {
       EmitConstant(numLocalsStart);
       EmitOp(VM::Ops::PopLocals, line);
-
-      while (compiler.locals.size() != static_cast<std::size_t>(numLocalsStart)) {
-        compiler.locals.pop_back();
-      }
     }
+  }
+  
+  while (compiler.locals.size() != static_cast<std::size_t>(numLocalsStart)) {
+    compiler.locals.pop_back();
   }
 
   numConstants = static_cast<std::int64_t>(VM::VM::GetInstance().GetNumConstants());
@@ -1688,7 +1694,6 @@ static void WhileStatement(CompilerContext& compiler)
 
   VM::VM::GetInstance().SetConstantAtIndex(endConstantJumpIdx, numConstants);
   VM::VM::GetInstance().SetConstantAtIndex(endOpJumpIdx, numOps);
-
 
   compiler.codeContextStack.pop_back();
 }
