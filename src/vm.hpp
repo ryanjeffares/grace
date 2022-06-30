@@ -234,21 +234,18 @@ namespace Grace::VM
 
         bool m_Exported;
 
-      private:
-
-        std::hash<std::string> m_Hasher;
-
       public:
 
         Function(std::string&& name, std::int64_t nameHash, std::size_t arity, std::size_t line, const std::string& fileName, bool exported)
-          : m_Name(std::move(name)), m_NameHash(nameHash), m_Line(line), m_Arity(arity), m_FileName(fileName), 
-          m_FileNameHash(static_cast<std::int64_t>(m_Hasher(fileName))), m_Exported(exported)
+          : m_Name(std::move(name)), m_NameHash(nameHash), m_Line(line), m_Arity(arity), m_FileName(fileName), m_Exported(exported)
         {
+          std::hash<std::string> hasher;
+          m_FileNameHash = static_cast<std::int64_t>(hasher(fileName));
           std::stringstream ss(m_FileName.substr(0, m_FileName.find_last_of('.')));
           std::string part;
           while (std::getline(ss, part, '/')) {
             m_NamespaceVec.push_back(part);
-            m_NamespaceHashVec.push_back(static_cast<std::int64_t>(m_Hasher(part)));
+            m_NamespaceHashVec.push_back(static_cast<std::int64_t>(hasher(part)));
           }
         }
 
