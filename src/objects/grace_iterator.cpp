@@ -14,13 +14,13 @@
 namespace Grace
 {
   GraceIterator::GraceIterator(GraceIterable* iterable, IterableType type)
-      : m_Iterable(iterable),
-      m_IterableType(type)
+    : m_Iterable(iterable),
+    m_IterableType(type)
   {
-      m_IsValid = true;
-      m_Iterable->IncreaseRef();
-      m_Iterable->AddIterator(this);
-      m_Iterator = m_Iterable->Begin();
+    m_IsValid = true;
+    m_Iterable->IncreaseRef();
+    m_Iterable->AddIterator(this);
+    m_Iterator = m_Iterable->Begin();
   }
 
   GraceIterator::~GraceIterator()
@@ -38,10 +38,10 @@ namespace Grace
   void GraceIterator::Increment()
   {
     if (!m_IsValid) {
-        throw GraceException(
-            GraceException::Type::InvalidIterator,
-            "Iterator is no longer valid, due to either being incremented past the end of the collection or the collection being modified"
-        );
+      throw GraceException(
+        GraceException::Type::InvalidIterator,
+        "Iterator is no longer valid, due to either being incremented past the end of the collection or the collection being modified"
+      );
     }
     m_Iterable->IncrementIterator(m_Iterator);
   }
@@ -49,5 +49,33 @@ namespace Grace
   bool GraceIterator::IsAtEnd() const
   {
     return m_Iterator == m_Iterable->End();
+  }
+
+  void GraceIterator::Print(bool err) const
+  {
+    if (m_Iterator == m_Iterable->End()) {
+      fmt::print(err ? stderr : stdout, "null");
+    }
+    else {
+      Value().Print(err);
+    }
+  }
+
+  void GraceIterator::PrintLn(bool err) const
+  {
+    if (m_Iterator == m_Iterable->End()) {
+      fmt::print(err ? stderr : stdout, "null\n");
+    }
+    else {
+      Value().PrintLn(err);
+    }
+  }
+
+  std::string GraceIterator::ToString() const
+  {
+    if (m_Iterator == m_Iterable->End()) {
+      return "null";
+    }
+    return Value().AsString();
   }
 } // namespace Grace

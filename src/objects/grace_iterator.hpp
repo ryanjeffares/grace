@@ -58,20 +58,10 @@ namespace Grace
         fmt::print("Iterator: {}\n", ToString());
       }
 
-      GRACE_INLINE void Print(bool err) const override
-      {
-        Value().Print(err);
-      }
+      void Print(bool err) const override;
+      void PrintLn(bool err) const override;
 
-      GRACE_INLINE void PrintLn(bool err) const override
-      {
-        Value().PrintLn(err);
-      }
-
-      GRACE_NODISCARD std::string ToString() const override
-      {
-        return Value().AsString();
-      }
+      GRACE_NODISCARD std::string ToString() const override;
 
       GRACE_NODISCARD bool AsBool() const override
       {

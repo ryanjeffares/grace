@@ -1,3 +1,5 @@
+import lib::lib;
+
 func f():
   for i in []:
     return false;
@@ -5,5 +7,5 @@ func f():
 end
 
 func main(final args: List):
-  f(); 
+  lib::lib::say_hello();
 end

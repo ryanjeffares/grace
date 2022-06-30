@@ -35,9 +35,10 @@ enum class CodeContext
   Catch,
   Function,
   If,
-  Loop,
+  ForLoop,
   TopLevel,
   Try,
+  WhileLoop,
 };
 
 struct Local
@@ -73,7 +74,6 @@ struct CompilerContext
   std::optional<Scanner::Token> current, previous;
   std::vector<Local> locals;
 
-  bool functionHadReturn = false;
   bool panicMode = false, hadError = false, hadWarning = false;
 
   bool passedImports = false;
@@ -662,9 +662,6 @@ static void FuncDeclaration(CompilerContext& compiler)
   }
 
   while (!Match(Scanner::TokenType::End, compiler)) {
-    // set this to false before every declaration
-    // so that we know if the last declaration was a return
-    compiler.functionHadReturn = false;
     Declaration(compiler);
     if (compiler.current.value().GetType() == Scanner::TokenType::EndOfFile) {
       MessageAtCurrent("Expected `end` after function", LogLevel::Error, compiler);
@@ -674,7 +671,7 @@ static void FuncDeclaration(CompilerContext& compiler)
 
   // implicitly return if the user didn't write a return so the VM knows to return to the caller
   // functions with no return will implicitly return null, so setting a call equal to a variable is valid
-  if (!compiler.functionHadReturn) {
+  if (VM::VM::GetInstance().GetLastOp() != VM::Ops::Return) {
     if (!compiler.locals.empty()) {
       EmitConstant(std::int64_t{0});
       EmitOp(VM::Ops::PopLocals, compiler.previous.value().GetLine());
@@ -995,7 +992,7 @@ static void BreakStatement(CompilerContext& compiler)
 {
   bool insideLoop = false;
   for (auto it = compiler.codeContextStack.crbegin(); it != compiler.codeContextStack.crend(); ++it) {
-    if (*it == CodeContext::Loop) {
+    if (*it == CodeContext::ForLoop || *it == CodeContext::WhileLoop) {
       insideLoop = true;
       break;
     }
@@ -1019,7 +1016,7 @@ static void ContinueStatement(CompilerContext& compiler)
 {
   bool insideLoop = false;
   for (auto it = compiler.codeContextStack.crbegin(); it != compiler.codeContextStack.crend(); ++it) {
-    if (*it == CodeContext::Loop) {
+    if (*it == CodeContext::ForLoop || *it == CodeContext::WhileLoop) {
       insideLoop = true;
       break;
     }
@@ -1050,7 +1047,7 @@ static std::unordered_map<Scanner::TokenType, std::int64_t> s_CastOps = {
 
 static void ForStatement(CompilerContext& compiler)
 {
-  compiler.codeContextStack.emplace_back(CodeContext::Loop);
+  compiler.codeContextStack.emplace_back(CodeContext::ForLoop);
 
   compiler.breakIdxPairs.emplace();
   compiler.continueIdxPairs.emplace();
@@ -1460,10 +1457,19 @@ static void ReturnStatement(CompilerContext& compiler)
     return;
   } 
 
+  // don't destroy these locals here in the compiler's list because this could be an early return
+  // that is handled at the end of `FuncDeclaration()`
+  // but the VM needs to destroy any locals made up until this point
+  if (!compiler.locals.empty()) {
+    EmitConstant(std::int64_t{0});
+    EmitOp(VM::Ops::PopLocals, compiler.previous.value().GetLine());
+  }
+
   if (Match(Scanner::TokenType::Semicolon, compiler)) {
+    auto line = compiler.previous.value().GetLine();
     EmitConstant(nullptr);
-    EmitOp(VM::Ops::LoadConstant, compiler.previous.value().GetLine());
-    EmitOp(VM::Ops::Return, compiler.previous.value().GetLine());
+    EmitOp(VM::Ops::LoadConstant, line);
+    EmitOp(VM::Ops::Return, line);
     return;
   }
 
@@ -1473,15 +1479,6 @@ static void ReturnStatement(CompilerContext& compiler)
   compiler.usingExpressionResult = prevUsing;
   EmitOp(VM::Ops::Return, compiler.previous.value().GetLine());
   Consume(Scanner::TokenType::Semicolon, "Expected ';' after expression", compiler);
-  compiler.functionHadReturn = true;
-
-  // don't destroy these locals here in the compiler's list because this could be an early return
-  // that is handled at the end of `FuncDeclaration()`
-  // but the VM needs to destroy any locals made up until this point
-  if (!compiler.locals.empty()) {
-    EmitConstant(std::int64_t{0});
-    EmitOp(VM::Ops::PopLocals, compiler.previous.value().GetLine());
-  }
 }
 
 static void TryStatement(CompilerContext& compiler)
@@ -1610,7 +1607,7 @@ static void ThrowStatement(CompilerContext& compiler)
 
 static void WhileStatement(CompilerContext& compiler)
 {
-  compiler.codeContextStack.emplace_back(CodeContext::Loop);
+  compiler.codeContextStack.emplace_back(CodeContext::WhileLoop);
 
   compiler.breakIdxPairs.emplace();
   compiler.continueIdxPairs.emplace();
@@ -2044,7 +2041,10 @@ static void Identifier(bool canAssign, CompilerContext& compiler)
       EmitOp(VM::Ops::StartNewNamespace, prev.GetLine());
       compiler.namespaceQualifierUsed = false;
     }
+
+    static std::hash<std::string> hasher;
     EmitConstant(prevText);
+    EmitConstant(static_cast<std::int64_t>(hasher(prevText)));
     EmitOp(VM::Ops::AppendNamespace, prev.GetLine());
     Expression(canAssign, compiler);
   } else {

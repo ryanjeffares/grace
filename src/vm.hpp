@@ -126,7 +126,7 @@ namespace Grace::VM
 
       GRACE_INLINE void PushOp(Ops op, std::size_t line)
       {
-        m_FunctionLookup.at(m_LastFileName).at(m_LastFunctionHash).m_OpList.emplace_back(op, line);
+        m_FunctionLookup.at(m_LastFileNameHash).at(m_LastFunctionHash).m_OpList.emplace_back(op, line);
       }
 
       void PrintOps() const
@@ -144,28 +144,33 @@ namespace Grace::VM
       template<BuiltinGraceType T>
       constexpr GRACE_INLINE void PushConstant(const T& value)
       {
-        m_FunctionLookup.at(m_LastFileName).at(m_LastFunctionHash).m_ConstantList.emplace_back(value);
+        m_FunctionLookup.at(m_LastFileNameHash).at(m_LastFunctionHash).m_ConstantList.emplace_back(value);
       }
 
       GRACE_NODISCARD GRACE_INLINE std::size_t GetNumConstants() const
       {
-        return m_FunctionLookup.at(m_LastFileName).at(m_LastFunctionHash).m_ConstantList.size();
+        return m_FunctionLookup.at(m_LastFileNameHash).at(m_LastFunctionHash).m_ConstantList.size();
       }
 
       GRACE_NODISCARD GRACE_INLINE std::size_t GetNumOps() const
       {
-        return m_FunctionLookup.at(m_LastFileName).at(m_LastFunctionHash).m_OpList.size();
+        return m_FunctionLookup.at(m_LastFileNameHash).at(m_LastFunctionHash).m_OpList.size();
       }
 
       template<BuiltinGraceType T>
       constexpr GRACE_INLINE void SetConstantAtIndex(std::size_t index, const T& value)
       {
-        m_FunctionLookup.at(m_LastFileName).at(m_LastFunctionHash).m_ConstantList[index] = value;
+        m_FunctionLookup.at(m_LastFileNameHash).at(m_LastFunctionHash).m_ConstantList[index] = value;
+      }
+
+      GRACE_NODISCARD GRACE_INLINE Ops GetLastOp() const
+      {
+        return m_FunctionLookup.at(m_LastFileNameHash).at(m_LastFunctionHash).m_OpList.back().m_Op;
       }
 
       GRACE_NODISCARD GRACE_INLINE const std::string& GetLastFunctionName() const 
       {
-        return m_FunctionLookup.at(m_LastFileName).at(m_LastFunctionHash).m_Name;
+        return m_FunctionLookup.at(m_LastFileNameHash).at(m_LastFunctionHash).m_Name;
       }
 
       GRACE_NODISCARD bool AddFunction(std::string&& name, std::size_t line, std::size_t arity, const std::string& fileName, bool exported);
@@ -190,11 +195,11 @@ namespace Grace::VM
 
     private:
 
-      // hash of caller, hash of callee, line, file name
-      using CallStack = std::vector<std::tuple<std::int64_t, std::int64_t, std::size_t, std::string>>;
+      // hash of caller, hash of callee, line, file name, file name hash
+      using CallStack = std::vector<std::tuple<std::int64_t, std::int64_t, std::size_t, std::string, std::int64_t>>;
 
       void RegisterNatives();
-      GRACE_NODISCARD InterpretResult Run(const std::string& mainFileName, bool verbose, const std::vector<std::string>& clArgs);
+      GRACE_NODISCARD InterpretResult Run(std::int64_t mainFileNameHash, bool verbose, const std::vector<std::string>& clArgs);
       void RuntimeError(const GraceException& exception, std::size_t line, const CallStack& callStack);
 
     private:
@@ -218,40 +223,50 @@ namespace Grace::VM
         std::size_t m_Line, m_Arity;
 
         std::string m_FileName;
+        std::int64_t m_FileNameHash;
         std::vector<std::string> m_NamespaceVec;
-        bool m_Exported;
+        std::vector<std::int64_t> m_NamespaceHashVec;
 
         std::vector<OpLine> m_OpList;
         std::vector<Value> m_ConstantList;
 
         std::size_t m_OpIndexStart = 0, m_ConstantIndexStart = 0;
 
+        bool m_Exported;
+
+      private:
+
+        std::hash<std::string> m_Hasher;
+
+      public:
+
         Function(std::string&& name, std::int64_t nameHash, std::size_t arity, std::size_t line, const std::string& fileName, bool exported)
-          : m_Name(std::move(name)), m_NameHash(nameHash), m_Line(line), m_Arity(arity), m_FileName(fileName), m_Exported(exported)
+          : m_Name(std::move(name)), m_NameHash(nameHash), m_Line(line), m_Arity(arity), m_FileName(fileName), 
+          m_FileNameHash(static_cast<std::int64_t>(m_Hasher(fileName))), m_Exported(exported)
         {
           std::stringstream ss(m_FileName.substr(0, m_FileName.find_last_of('.')));
           std::string part;
           while (std::getline(ss, part, '/')) {
             m_NamespaceVec.push_back(part);
+            m_NamespaceHashVec.push_back(static_cast<std::int64_t>(m_Hasher(part)));
           }
         }
 
         GRACE_INLINE bool CompareNamespace(const std::vector<std::string>& nameSpace) const
         {
-          return std::equal(m_NamespaceVec.begin(), m_NamespaceVec.end(), nameSpace.begin());
+          return m_NamespaceVec == nameSpace;
         }
       };
 
-      using FunctionLookup = std::unordered_map<std::string, std::unordered_map<std::int64_t, Function>>;
+      using FunctionLookup = std::unordered_map<std::int64_t, std::unordered_map<std::int64_t, Function>>;
       FunctionLookup m_FunctionLookup;
 
-      // std::unordered_map<std::int64_t, Function> m_FunctionList;
       std::vector<Native::NativeFunction> m_NativeFunctions;
 
       std::vector<OpLine> m_FullOpList;
       std::vector<Value> m_FullConstantList;
 
-      std::string m_LastFileName;
+      std::int64_t m_LastFileNameHash;
       std::int64_t m_LastFunctionHash{};
       std::hash<std::string> m_Hasher;
   };
