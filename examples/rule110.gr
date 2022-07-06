@@ -1,0 +1,76 @@
+import std::dict;
+import std::file;
+import std::list;
+
+func append_row(row: List, text: String) :: String:
+  for col in row:
+    if col == 0:
+      text = text + ' ';
+    else:
+      text = text + '@';
+    end
+  end
+  return text + '\n';
+end
+
+func main(final args: List):
+
+  var write_to_file: Bool = false;
+  var size: Int = 0;
+
+  final num_args = std::list::length(args);
+  if num_args == 1:
+    size = Int(std::list::at(args, 0));
+  else if num_args == 2:
+    size = Int(std::list::at(args, 0));
+    write_to_file = std::list::at(args, 1) == "--write";
+  else:
+    throw("Incorrect arg count, expected `grace rule110.gr -- <size> [--write]`");
+  end
+
+  var previous: List = [0] * size;
+  std::list::set(previous, size - 1, 1);
+
+  final rules: Dict = {
+    7: 0,
+    6: 1,
+    5: 1,
+    4: 0,
+    3: 1,
+    2: 1,
+    1: 1,
+    0: 0,
+  };
+
+  var full_text: String = "";
+
+  for i in [0..size]:
+    full_text = append_row(previous, full_text);
+
+    var next: List = [0] * size;
+    for index in [0..size]:
+
+      var res: Int = 0;
+      
+      for mod, to_shift in [-1..2]:
+        var temp: Int = index + mod;
+        if temp == -1:
+          temp = size - 1;
+        else if temp == size:
+          temp = 0;
+        end
+        res = res | (std::list::at(previous, temp) << (2 - to_shift));
+      end
+
+      std::list::set(next, index, std::dict::get(rules, res));
+    end
+
+    previous = next;
+  end
+
+  if write_to_file:
+    std::file::write("rule110_output.txt", full_text);
+  else:
+    println(full_text);
+  end
+end

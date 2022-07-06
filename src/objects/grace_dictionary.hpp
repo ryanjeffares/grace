@@ -15,17 +15,15 @@
 #include <functional>
 #include <vector>
 
-#include "grace_exception.hpp"
 #include "grace_iterator.hpp"
 #include "grace_keyvaluepair.hpp"
 #include "../value.hpp"
 
 namespace Grace
 {
-  class GraceDictionary : public GraceIterable<std::vector<VM::Value>::iterator>
+  class GraceDictionary : public GraceIterable
   {
     public:
-      using Iterator = std::vector<VM::Value>::iterator;
 
       GraceDictionary();
       GraceDictionary(const GraceDictionary&);
@@ -49,16 +47,23 @@ namespace Grace
         return true;
       }
 
-      GRACE_NODISCARD Iterator Begin() override;
-      GRACE_NODISCARD Iterator End() override;
-      void IncrementIterator(Iterator& toIncrement) const override;
+      GRACE_NODISCARD IteratorType Begin() override;
+      GRACE_NODISCARD IteratorType End() override;
+      void IncrementIterator(IteratorType& toIncrement) const override;
 
       GRACE_NODISCARD GRACE_INLINE std::size_t Size() const
       {
         return m_Size;
       }
 
+      GRACE_NODISCARD GRACE_INLINE std::size_t Capacity() const
+      {
+        return m_Capacity;
+      }
+
       bool Insert(VM::Value&& key, VM::Value&& value);
+      GRACE_NODISCARD VM::Value Get(const VM::Value& key);
+      GRACE_NODISCARD bool ContainsKey(const VM::Value& key);
 
       GRACE_NODISCARD std::vector<VM::Value> ToVector() const;
 
@@ -71,9 +76,11 @@ namespace Grace
         NeverUsed, Tombstone, Occupied
       };
 
+      std::size_t m_Size, m_Capacity;
+
       std::vector<VM::Value> m_Data;
       std::vector<CellState> m_CellStates;
-      std::size_t m_Size;
+      
       std::hash<VM::Value> m_Hasher{};
   };
 }

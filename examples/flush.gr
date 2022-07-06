@@ -1,0 +1,20 @@
+import std::console;
+import std::time;
+
+func main():
+  for i in [0..101]:
+    print("\rProgress: " + i + "%...  ");
+    std::time::sleep(50);
+    std::console::flush();
+  end
+  println();
+  
+  var n = 100;
+  while n >= 0:
+    print("\rRemaining: " + n + "  ");
+    n = n - 1;
+    std::time::sleep(50);
+    std::console::flush();
+  end
+  println();
+end

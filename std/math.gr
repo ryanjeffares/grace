@@ -1,9 +1,13 @@
-func sqrt(n):
-  if instanceof(n, float):
-    return __NATIVE_SQRT_FLOAT(n);
-  else if instanceof(n, int):
-    return __NATIVE_SQRT_INT(n);
+func export sqrti(n: Int) :: Float:
+  if !instanceof(n, Int):
+    throw("Expected argument for std::math::sqrti(n) to be `Int` but got `" + typename(n) + "`");
   end
+  return __NATIVE_SQRT_INT(n);
+end
 
-  throw("Expected argument to `sqrt` to be an `Int` or `Float`");
+func export sqrtf(n: Float) :: Float:
+  if !instanceof(n, Float):
+    throw("Expected argument for std::math::sqrti(n) to be `Float` but got `" + typename(n) + "`");
+  end
+  return __NATIVE_SQRT_FLOAT(n);
 end

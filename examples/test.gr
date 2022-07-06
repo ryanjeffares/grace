@@ -1,0 +1,11 @@
+import lib::lib;
+
+func f():
+  for i in []:
+    return false;
+  end
+end
+
+func main(final args: List):
+  lib::lib::say_hello();
+end

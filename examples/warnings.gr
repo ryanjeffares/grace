@@ -1,7 +1,20 @@
 func main():
-  var i = "hello";
-  for i in [0..10]:   // warning - i already exists and will be reassigned in the loop
+  //var i = "hello";
+  //for i in [0..10]:   // warning - i already exists and will be reassigned in the loop
+  //end
+
+  //println(instanceof(i, null)); // warning - prefer == over instanceof for null checks
+
+  for final number, index in [0..10]:
+    println("Index: " + index + ", Value: " + number);
+    index = 0;
   end
 
-  println(instanceof(i, null)); // warning - prefer == over instanceof for null checks
+  //for i in [0..10]:
+  //  println(i);
+  //  for i in ["ryan", "syl", "hays"]:
+  //    println(i);
+  //  end
+  //  println(i);
+  //end
 end

@@ -1,0 +1,10 @@
+import std::time;
+import std::list;
+
+import lib::lib;
+
+func main():
+  final list = [0];
+  std::list::set(list, 0, std::time::time_ms());
+  println(list);
+end

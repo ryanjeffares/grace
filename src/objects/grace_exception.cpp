@@ -18,6 +18,8 @@ using namespace Grace;
 
 std::unordered_map<GraceException::Type, const char*> GraceException::s_ExceptionMessages = {
   {GraceException::Type::AssertionFailed, "Assertion failed"},
+  {GraceException::Type::FileWriteFailed, "File write failed"},
+  {GraceException::Type::FunctionNotExported, "Function not exported"},
   {GraceException::Type::FunctionNotFound, "Function not found"},
   {GraceException::Type::IncorrectArgCount, "Incorrect argument count"},
   {GraceException::Type::IndexOutOfRange, "Index out of range"},
@@ -26,6 +28,8 @@ std::unordered_map<GraceException::Type, const char*> GraceException::s_Exceptio
   {GraceException::Type::InvalidCast, "Invalid cast"},
   {GraceException::Type::InvalidOperand, "Invalid operand"},
   {GraceException::Type::InvalidType, "Invalid type"},
+  {GraceException::Type::KeyNotFound, "Key not found"},
+  {GraceException::Type::NamespaceNotFound, "Namespace not found"},
   {GraceException::Type::ThrownException, "Thrown exception"},
 };
 

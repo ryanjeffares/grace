@@ -1,0 +1,18 @@
+struct Person:
+  name: String;
+  age: Int;
+
+  init(a, n):
+    name = n;
+    age = n;
+  end
+end
+
+func say_hello(this Person p):
+  println("Hello! My name is " + p.name + " and I am " + age + " years old");
+end
+
+func main():
+  final ryan = Person(23, "Ryan");
+  ryan.say_hello();
+end

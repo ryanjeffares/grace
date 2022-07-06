@@ -1,0 +1,3 @@
+func export say_hello():
+  println("hello");
+end

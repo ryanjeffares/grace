@@ -25,12 +25,14 @@ namespace Grace::Scanner
   enum class TokenType
   {
     // Lexical tokens
+    BinaryLiteral,
     Char,
     EndOfFile,
     Error,
     Double,
     Identifier,
     Integer,
+    HexLiteral,
     String,
     IntIdent,
     FloatIdent,
@@ -42,6 +44,7 @@ namespace Grace::Scanner
 
     // Symbols
     Colon,
+    ColonColon,
     Semicolon,
     LeftParen,
     RightParen,
@@ -85,13 +88,16 @@ namespace Grace::Scanner
     End,
     Eprint,
     EprintLn,
+    Export,
     False,
     Final,
     For,
     Func,
     If,
+    Import,
     In,
     InstanceOf,
+    IsObject,
     Null,
     Or,
     Print,
@@ -111,11 +117,11 @@ namespace Grace::Scanner
     public:
 
       Token(TokenType,
-          std::size_t start,
-          std::size_t length,
-          std::size_t line,
-          std::size_t column,
-          const std::string& code
+        std::size_t start,
+        std::size_t length,
+        std::size_t line,
+        std::size_t column,
+        const std::string& code
       );
 
       Token(TokenType, std::size_t line, std::size_t column, std::string&& errorMessage);
@@ -127,7 +133,7 @@ namespace Grace::Scanner
       GRACE_NODISCARD GRACE_INLINE std::string GetErrorMessage() const { return m_ErrorMessage; }
       GRACE_NODISCARD GRACE_INLINE std::size_t GetLength() const { return m_Length; }
       GRACE_NODISCARD GRACE_INLINE std::string_view GetText() const { return m_Text.substr(0, m_Length); }
-      GRACE_NODISCARD const char* GetData() const { return m_Text.data(); }
+      GRACE_NODISCARD GRACE_INLINE const char* GetData() const { return m_Text.data(); }
 
     private:
 
@@ -138,21 +144,26 @@ namespace Grace::Scanner
       std::string m_ErrorMessage;
   };
 
-  void InitScanner(std::string&& code);
-  Token ScanToken();
-  std::string GetCodeAtLine(std::size_t line);
+  void InitScanner(const std::string& fileName, std::string&& code);
+  void PopScanner();
+
+  GRACE_NODISCARD Token ScanToken();
+  GRACE_NODISCARD bool HasFile(const std::string& fileName);
+  GRACE_NODISCARD std::string GetCodeAtLine(const std::string& fileName, std::size_t line);
 } // namespace Grace::Scanner
 
 template<>
 struct fmt::formatter<Grace::Scanner::TokenType> : fmt::formatter<std::string_view>
 {
   template<typename FormatContext>
-  constexpr auto format(Grace::Scanner::TokenType type, FormatContext& context) -> decltype(context.out())
+  auto format(Grace::Scanner::TokenType type, FormatContext& context) -> decltype(context.out())
   {
     using namespace Grace::Scanner;
 
     std::string_view name = "unknown";
     switch (type) {
+      case TokenType::BinaryLiteral: name = "TokenType::BinaryLiteral"; break;
+      case TokenType::HexLiteral: name = "TokenType::HexLiteral"; break;
       case TokenType::Char: name = "TokenType::Char"; break;
       case TokenType::EndOfFile: name = "TokenType::EndOfFile"; break;
       case TokenType::Error: name = "TokenType::Error"; break;
@@ -161,6 +172,7 @@ struct fmt::formatter<Grace::Scanner::TokenType> : fmt::formatter<std::string_vi
       case TokenType::Integer: name = "TokenType::Integer"; break;
       case TokenType::String: name = "TokenType::String"; break;
       case TokenType::Colon: name = "TokenType::Colon"; break;
+      case TokenType::ColonColon: name = "TokenType::ColonColon"; break;
       case TokenType::Semicolon: name = "TokenType::Semicolon"; break;
       case TokenType::LeftParen: name = "TokenType::LeftParen"; break;
       case TokenType::RightParen: name = "TokenType::RightParen"; break;
@@ -198,14 +210,17 @@ struct fmt::formatter<Grace::Scanner::TokenType> : fmt::formatter<std::string_vi
       case TokenType::For: name = "TokenType::For"; break;
       case TokenType::Func: name = "TokenType::Func"; break;
       case TokenType::If: name = "TokenType::If"; break;
+      case TokenType::Import: name = "TokenType::Import"; break;
       case TokenType::In: name = "TokenType::In"; break;
       case TokenType::InstanceOf: name = "TokenType::InstanceOf"; break;
+      case TokenType::IsObject: name = "TokenType::IsObject"; break;
       case TokenType::Null: name = "TokenType::Null"; break;
       case TokenType::While: name = "TokenType::While"; break;
       case TokenType::Print: name = "TokenType::Print"; break;
       case TokenType::PrintLn: name = "TokenType::PrintLn"; break;
       case TokenType::Eprint: name = "TokenType::Eprint"; break;
       case TokenType::EprintLn: name = "TokenType::EprintLn"; break;
+      case TokenType::Export: name = "TokenType::Export"; break;
       case TokenType::Return: name = "TokenType::Return"; break;
       case TokenType::This: name = "TokenType::This"; break;
       case TokenType::Throw: name = "TokenType::Throw"; break;

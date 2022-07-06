@@ -10,7 +10,7 @@ The goal of Grace is to combine the ease of use and portability of an interprete
 
 An important aspiration of Grace is to be unambiguous and predictable. By keeping syntax and operators to a minimum, Grace can avoid unexpected behaviour and having many ways to do the exact same thing, which can be hostile things for newcomers and programming beginners.
 
-Performance will stay predictable due to the use of reference counting over garbage collection.
+Performance will stay predictable due to the use of reference counting over garbage collection (notice how I said "predictable" and not "good").
 
 ## Spec and Guidelines
 
@@ -43,25 +43,31 @@ python3 build.py <Release/Debug/All>
 This will build the `grace` executable, which you can add to your path or move somewhere that is on your path. Full installation process as well as documentation is WIP.
 
 ## Alpha Release Roadmap
-* Fix compiler issue found in `bitwise.gr`
+* Why does examples/euler/problem03.gr use so much memory?
 * Prevent integer overflow by automatically promoting to a `BigInt` class
 * Experiment with string interning
 * Investigate wide chars over regular chars
 * Classes
   * Reference counting
   * Cyclic references handled through a "cyclic reference tracker" - if a cyclic reference is detected, start tracking the two objects, and when those objects' only remaining references are each other they can be safely destroyed 
+  * Maybe we could use structs that only hold variables, and just use extension methods...
 * Lambdas 
 * Global const fields 
 * Imports 
+  * Obviously importing the same file multiple times is allowed, we will only compile it the first time - but how do we warn the user about two files with the same but different contents?
 * Extension methods
 * Standard library
-* Filesystem handling
+* Default function parameter values
+* Ability to exit early from `main()`
 * Install process 
 * Tests 
 * Documentation + comments 
+* Improve compiler errors and line numbering
 
 ## Long Term Goals 
 * Optional type annotations for use by a static analyzer
+  * Type annotations in, expand syntax to allow for List/Dict inner types eg `Dict[String, Float]`, `List[List[Int]]`
+  * Not a huge priority since no static analyzer exists yet
 * Package management similar to cargo - new projects, type checking, adding libraries, tests
 * Optimisation mode which allows the bytecode compiler to perform optimisations such as loop unrolling, constant folding, dead code elimination - slower initial compile time in return for better run time performance for scripts that will run for a long time
 

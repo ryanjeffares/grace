@@ -1,0 +1,7 @@
+func export flush():
+  __NATIVE_FLUSH_STDOUT();
+end
+
+func export eflush():
+  __NATIVE_FLUSH_STDERR();
+end

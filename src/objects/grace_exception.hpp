@@ -33,6 +33,8 @@ namespace Grace
       enum class Type
       {
         AssertionFailed,
+        FileWriteFailed,
+        FunctionNotExported,
         FunctionNotFound,
         IncorrectArgCount,
         IndexOutOfRange,
@@ -41,6 +43,8 @@ namespace Grace
         InvalidIterator,
         InvalidOperand,
         InvalidType,
+        KeyNotFound,
+        NamespaceNotFound,
         ThrownException,
       };
 
@@ -106,6 +110,8 @@ struct fmt::formatter<Grace::GraceException::Type> : fmt::formatter<std::string_
     std::string_view name = "unknown";
     switch (type) {
       case GraceException::Type::AssertionFailed: name = "AssertionFailed"; break;
+      case GraceException::Type::FileWriteFailed: name = "FileWriteFailed"; break;
+      case GraceException::Type::FunctionNotExported: name = "FunctionNotExported"; break;
       case GraceException::Type::FunctionNotFound: name = "FunctionNotFound"; break;
       case GraceException::Type::IncorrectArgCount: name = "IncorrectArgCount"; break;
       case GraceException::Type::IndexOutOfRange: name = "IndexOutOfRange"; break;
@@ -114,6 +120,8 @@ struct fmt::formatter<Grace::GraceException::Type> : fmt::formatter<std::string_
       case GraceException::Type::InvalidIterator: name = "InvalidIterator"; break;
       case GraceException::Type::InvalidOperand: name = "InvalidOperand"; break;
       case GraceException::Type::InvalidType: name = "InvalidType"; break;
+      case GraceException::Type::KeyNotFound: name = "KeyNotFound"; break;
+      case GraceException::Type::NamespaceNotFound: name = "NamespaceNotFound"; break;
       case GraceException::Type::ThrownException: name = "ThrownException"; break;
     }
     return fmt::formatter<std::string_view>::format(name, context);
