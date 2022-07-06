@@ -1,0 +1,6 @@
+import std::system;
+
+func main():
+  eprintln("Exiting!");
+  std::system::exit(1);
+end

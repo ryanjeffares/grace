@@ -11,6 +11,7 @@
 
 #include <chrono>
 #include <cstdio>
+#include <cstdlib>
 #include <fstream>
 #include <thread>
 
@@ -47,6 +48,8 @@ static Value FileWrite(std::vector<Value>& args);
 static Value FlushStdout(GRACE_MAYBE_UNUSED std::vector<Value>& args);
 static Value FlushStderr(GRACE_MAYBE_UNUSED std::vector<Value>& args);
 
+GRACE_NORETURN static Value Exit(std::vector<Value>& args);
+
 void VM::RegisterNatives()
 {
   // Math functions
@@ -79,6 +82,9 @@ void VM::RegisterNatives()
   // Console IO functions
   m_NativeFunctions.emplace_back("__NATIVE_FLUSH_STDOUT", 0, &FlushStdout);
   m_NativeFunctions.emplace_back("__NATIVE_FLUSH_STDERR", 0, &FlushStderr);
+
+  // System functions
+  m_NativeFunctions.emplace_back("__NATIVE_SYSTEM_EXIT", 1, &Exit);
 }
 
 static Value SqrtFloat(std::vector<Value>& args)
@@ -196,4 +202,9 @@ static Value FlushStderr(GRACE_MAYBE_UNUSED std::vector<Value>& args)
 {
   std::fflush(stderr);
   return Value();
+}
+
+static Value Exit(std::vector<Value>& args)
+{
+  std::exit(args[0].Get<std::int64_t>());
 }

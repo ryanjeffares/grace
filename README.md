@@ -58,7 +58,6 @@ This will build the `grace` executable, which you can add to your path or move s
 * Extension methods
 * Standard library
 * Default function parameter values
-* Ability to exit early from `main()`
 * Install process 
 * Tests 
 * Documentation + comments 

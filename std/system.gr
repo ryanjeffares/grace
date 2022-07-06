@@ -1,0 +1,6 @@
+func export exit(final exit_code: Int):
+  if !instanceof(exit_code, Int):
+    throw("Expected argument for std::system::exit(exit_code) to be `Int` but got `" + typename(exit_code) + '`');
+  end
+  __NATIVE_SYSTEM_EXIT(exit_code);
+end
