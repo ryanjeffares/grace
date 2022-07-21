@@ -4,3 +4,11 @@ func export exit(final exit_code: Int):
   end
   __NATIVE_SYSTEM_EXIT(exit_code);
 end
+
+func export run(final command: String) :: Int:
+  println("COMMAND: " + command);
+  if !instanceof(command, String):
+    throw("Expected argument for std::system::run(command) to be `String` but got + `" + typename(command) + '`');
+  end
+  return __NATIVE_SYSTEM_RUN(command);
+end

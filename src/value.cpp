@@ -41,7 +41,7 @@ Value::Value(Value&& other)
   m_Type = other.m_Type;
   m_Data = other.m_Data;
   
-  if (other.m_Type == Type::String || other.m_Type == Type::Object) {
+  if (other.m_Type == Type::Object || other.m_Type == Type::String) {
     other.m_Data.m_Null = nullptr;
     other.m_Type = Type::Null;
   }

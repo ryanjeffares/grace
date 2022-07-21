@@ -48,7 +48,8 @@ static Value FileWrite(std::vector<Value>& args);
 static Value FlushStdout(GRACE_MAYBE_UNUSED std::vector<Value>& args);
 static Value FlushStderr(GRACE_MAYBE_UNUSED std::vector<Value>& args);
 
-GRACE_NORETURN static Value Exit(std::vector<Value>& args);
+GRACE_NORETURN static Value SystemExit(std::vector<Value>& args);
+static Value SystemRun(std::vector<Value>& args);
 
 void VM::RegisterNatives()
 {
@@ -84,7 +85,8 @@ void VM::RegisterNatives()
   m_NativeFunctions.emplace_back("__NATIVE_FLUSH_STDERR", 0, &FlushStderr);
 
   // System functions
-  m_NativeFunctions.emplace_back("__NATIVE_SYSTEM_EXIT", 1, &Exit);
+  m_NativeFunctions.emplace_back("__NATIVE_SYSTEM_EXIT", 1, &SystemExit);
+  m_NativeFunctions.emplace_back("__NATIVE_SYSTEM_RUN", 1, &SystemRun);
 }
 
 static Value SqrtFloat(std::vector<Value>& args)
@@ -204,7 +206,14 @@ static Value FlushStderr(GRACE_MAYBE_UNUSED std::vector<Value>& args)
   return Value();
 }
 
-static Value Exit(std::vector<Value>& args)
+static Value SystemExit(std::vector<Value>& args)
 {
   std::exit(args[0].Get<std::int64_t>());
+}
+
+static Value SystemRun(std::vector<Value>& args)
+{
+  fmt::print("{}\n", args[0]);
+  auto res = std::system(args[0].Get<std::string>().c_str());
+  return Value(std::int64_t(res));
 }

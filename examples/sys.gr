@@ -1,0 +1,7 @@
+import std::system;
+
+func main():
+  final command = "ls -l";
+  final res = std::system::run(command);
+  std::system::exit(res);
+end

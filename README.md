@@ -53,8 +53,6 @@ This will build the `grace` executable, which you can add to your path or move s
   * Maybe we could use structs that only hold variables, and just use extension methods...
 * Lambdas 
 * Global const fields 
-* Imports 
-  * Obviously importing the same file multiple times is allowed, we will only compile it the first time - but how do we warn the user about two files with the same but different contents?
 * Extension methods
 * Standard library
 * Default function parameter values
