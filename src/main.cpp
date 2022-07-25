@@ -30,7 +30,7 @@ static void Usage()
 {
   fmt::print("Grace {}.{}.{}\n\n", GRACE_MAJOR_VERSION, GRACE_MINOR_VERSION, GRACE_PATCH_NUMBER);
   fmt::print("USAGE:\n");
-  fmt::print("  grace [options] file\n\n");
+  fmt::print("  grace [options] file [grace_options]\n\n");
   fmt::print("OPTIONS:\n");
   fmt::print("  -h, --help                    Print help info and exit\n");
   fmt::print("  -V, --version                 Print version info and exit\n");
@@ -85,12 +85,14 @@ int main(int argc, const char* argv[])
         warningsError = true;
       }
     } else if (args[i].ends_with(".gr")) {
+      // first .gr file will be used as the file to run
+      // any other command line flags for the interpreter, e.g. -v, should be given before the file
+      // any args after the first .gr file will be given to the main function in the grace script
       if (appendToGraceArgs) {
         graceMainArgs.push_back(args[i]);
       } else {
         filePath = args[i];
       }
-    } else if (args[i] == "--") {
       appendToGraceArgs = true;
     } else {
       if (appendToGraceArgs) {
@@ -102,6 +104,11 @@ int main(int argc, const char* argv[])
       }
     }
   }
+
+  if (filePath.empty()) {
+    Error("no '.gr' file given");
+    return 1;
+  }
   
   if (!std::filesystem::exists(filePath)) {
     Error(fmt::format("provided file '{}' does not exist", filePath.string()));
@@ -110,7 +117,7 @@ int main(int argc, const char* argv[])
 
   std::stringstream inStream;
   try {
-    std::ifstream inFile(args[1]);
+    std::ifstream inFile(filePath);
     inStream << inFile.rdbuf();
   } catch (const std::exception& e) {
     Error(e.what());

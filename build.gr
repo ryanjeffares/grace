@@ -1,0 +1,89 @@
+import std::directory;
+import std::list;
+import std::system;
+
+func usage():
+  println("USAGE: build.gr <Release/Debug/All> [--install]");
+end
+
+func main(final args: List):
+  final argc = std::list::length(args);
+  var config;
+  var install: Bool = false;
+
+  if argc == 1:
+    config = std::list::at(args, 0);
+  else if argc == 2:
+    config = std::list::at(args, 0);
+    install = std::list::at(args, 1) == "--install"; 
+  else:
+    usage();
+    std::system::exit(1);
+  end
+
+  if !std::directory::exists("build"):
+    std::directory::create("build");
+  end
+
+  if config == "Release" or config == "Debug":
+    println("INFO: Generating CMake project for configuration: " + config);
+    std::system::run("cmake -DCMAKE_BUILD_TYPE=" + config + " -S . -B build");
+    println();
+    println("INFO: Building configuration: " + config);
+    if std::system::platform() == "Win32" or std::system::platform() == "Win64":
+      if install:
+        std::system::run("cmake --build build --config " + config + " --target install");
+      else:
+        std::system::run("cmake --build build --config " + config);
+      end
+    else:
+      if install:
+        std::system::run("cmake --build build --config " + config + " --target install -- -j8");
+      else:
+        std::system::run("cmake --build build --config " + config + " -- -j8");
+      end
+    end
+  else if config == "All":
+    println("INFO: Generating CMake project for configuration: Debug");
+    std::system::run("cmake -DCMAKE_BUILD_TYPE=Debug -S . -B build");
+    println();
+    println("INFO: Building configuration: Debug");
+
+    if std::system::platform() == "Win32" or std::system::platform() == "Win64":
+      if install:
+        std::system::run("cmake --build build --config Debug --target install");
+      else:
+        std::system::run("cmake --build build --config Debug");
+      end
+    else:
+      if install:
+        std::system::run("cmake --build build --config Debug --target install -- -j8");
+      else:
+        std::system::run("cmake --build build --config Debug -- -j8");
+      end
+    end
+
+    println();
+
+    println("INFO: Generating CMake project for configuration: Release");
+    std::system::run("cmake -DCMAKE_BUILD_TYPE=Release -S . -B build");
+    println();
+    println("INFO: Building configuration: Release");
+
+    if std::system::platform() == "Win32" or std::system::platform() == "Win64":
+      if install:
+        std::system::run("cmake --build build --config Release --target install");
+      else:
+        std::system::run("cmake --build build --config Release");
+      end
+    else:
+      if install:
+        std::system::run("cmake --build build --config Release --target install -- -j8");
+      else:
+        std::system::run("cmake --build build --config Release -- -j8");
+      end
+    end
+  else:
+    throw("'config' must match 'Debug' or 'Release' or 'All'");
+  end
+end

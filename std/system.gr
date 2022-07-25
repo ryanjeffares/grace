@@ -11,3 +11,7 @@ func export run(final command: String) :: Int:
   end
   return __NATIVE_SYSTEM_RUN(command);
 end
+
+func export platform() :: String:
+  return __NATIVE_SYSTEM_PLATFORM();
+end

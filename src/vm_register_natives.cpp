@@ -12,6 +12,7 @@
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
+#include <filesystem>
 #include <fstream>
 #include <thread>
 
@@ -50,6 +51,10 @@ static Value FlushStderr(GRACE_MAYBE_UNUSED std::vector<Value>& args);
 
 static Value SystemExit(std::vector<Value>& args);
 static Value SystemRun(std::vector<Value>& args);
+static Value SystemPlatform(GRACE_MAYBE_UNUSED std::vector<Value>& args);
+
+static Value DirectoryExists(std::vector<Value>& args);
+static Value DirectoryCreate(std::vector<Value>& args);
 
 void VM::RegisterNatives()
 {
@@ -87,6 +92,11 @@ void VM::RegisterNatives()
   // System functions
   m_NativeFunctions.emplace_back("__NATIVE_SYSTEM_EXIT", 1, &SystemExit);
   m_NativeFunctions.emplace_back("__NATIVE_SYSTEM_RUN", 1, &SystemRun);
+  m_NativeFunctions.emplace_back("__NATIVE_SYSTEM_PLATFORM", 0, &SystemPlatform);
+
+  // Directory functions
+  m_NativeFunctions.emplace_back("__NATIVE_DIRECTORY_EXISTS", 1, &DirectoryExists);
+  m_NativeFunctions.emplace_back("__NATIVE_DIRECTORY_CREATE", 1, &DirectoryCreate);
 }
 
 static Value SqrtFloat(std::vector<Value>& args)
@@ -215,4 +225,37 @@ static Value SystemRun(std::vector<Value>& args)
 {
   auto res = std::system(args[0].Get<std::string>().c_str());
   return Value(std::int64_t(res));
+}
+
+static Value SystemPlatform(GRACE_MAYBE_UNUSED std::vector<Value>& args)
+{
+#ifdef _WIN32
+  return Value(std::string("Win32"));
+#elif _WIN64
+  return Value(std::string("Win64"));
+#elif __APPLE__ || __MACH__
+  return Value(std::string("macOS"));
+#elif __linux__
+  return Value(std::string("Linux"));
+#elif __FreeBSD__
+  return Value(std::string("FreeBSD"));
+#elif __unix || __unix__
+  return Value(std::string("Unix"));
+#else
+  return Value(std::string("Other"));
+#endif
+}
+
+static Value DirectoryExists(std::vector<Value>& args)
+{
+  const auto& path = args[0].Get<std::string>();
+  auto exists = std::filesystem::is_directory(path);
+  return Value(exists);
+}
+
+static Value DirectoryCreate(std::vector<Value>& args)
+{
+  const auto& path = args[0].Get<std::string>();
+  auto result = std::filesystem::create_directories(path);
+  return Value(result);
 }

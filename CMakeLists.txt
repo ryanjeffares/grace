@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.22)
 project(grace)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -30,10 +30,12 @@ if (CMAKE_BUILD_TYPE MATCHES Debug)
   target_compile_definitions(grace PRIVATE GRACE_DEBUG)
 endif()
 
-
 if(MSVC)
   target_compile_definitions(grace PRIVATE GRACE_MSC)
   target_compile_options(grace PRIVATE /W4 /WX)
 else()
   target_compile_options(grace PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
+
+install(TARGETS grace DESTINATION bin)
+install(DIRECTORY std DESTINATION std)
