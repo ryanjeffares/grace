@@ -100,6 +100,7 @@ GRACE_INLINE static void EmitOp(VM::Ops op, std::size_t line)
 {
   VM::VM::GetInstance().PushOp(op, line);
 }
+
 template<typename T>
 GRACE_INLINE static void EmitConstant(const T& value)
 {
@@ -383,7 +384,7 @@ static void Declaration(CompilerContext& compiler)
     VarDeclaration(compiler);
   } else if (Match(Scanner::TokenType::Final, compiler)) {
     compiler.passedImports = true;
-    FinalDeclaration(compiler);    
+    FinalDeclaration(compiler);
   } else {
     Statement(compiler);
   }
@@ -1457,14 +1458,6 @@ static void ReturnStatement(CompilerContext& compiler)
     return;
   } 
 
-  // don't destroy these locals here in the compiler's list because this could be an early return
-  // that is handled at the end of `FuncDeclaration()`
-  // but the VM needs to destroy any locals made up until this point
-  if (!compiler.locals.empty()) {
-    EmitConstant(std::int64_t{0});
-    EmitOp(VM::Ops::PopLocals, compiler.previous.value().GetLine());
-  }
-
   if (Match(Scanner::TokenType::Semicolon, compiler)) {
     auto line = compiler.previous.value().GetLine();
     EmitConstant(nullptr);
@@ -1477,6 +1470,17 @@ static void ReturnStatement(CompilerContext& compiler)
   compiler.usingExpressionResult = true;
   Expression(false, compiler);
   compiler.usingExpressionResult = prevUsing;
+
+  // don't destroy these locals here in the compiler's list because this could be an early return
+  // that is handled at the end of `FuncDeclaration()`
+  // but the VM needs to destroy any locals made up until this point
+  // emit this instruction here since a local may have been used in the return expression
+  // the result of the expression will be living on the stack still after PopLocals for Return to use
+  if (!compiler.locals.empty()) {
+    EmitConstant(std::int64_t{ 0 });
+    EmitOp(VM::Ops::PopLocals, compiler.previous.value().GetLine());
+  }
+
   EmitOp(VM::Ops::Return, compiler.previous.value().GetLine());
   Consume(Scanner::TokenType::Semicolon, "Expected ';' after expression", compiler);
 }

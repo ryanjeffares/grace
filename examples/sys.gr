@@ -1,7 +1,6 @@
 import std::system;
 
-func main():
-  final command = "ls -l";
-  final res = std::system::run(command);
+func main(final args: List):
+  final res = std::system::run("dir");
   std::system::exit(res);
 end

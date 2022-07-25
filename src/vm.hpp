@@ -133,7 +133,7 @@ namespace Grace::VM
       {
         for (const auto& [fileName, funcList] : m_FunctionLookup) {
           for (const auto& [name, func] : funcList) {
-            fmt::print("<function `{}`> in file {}\n", name, fileName);
+            fmt::print("<function `{}`> in file {}\n", func.m_Name, m_FileNameLookup.at(fileName));
             for (const auto [op, line] : func.m_OpList) {
               fmt::print("{:>5} | {}\n", line, op);
             }
@@ -257,6 +257,7 @@ namespace Grace::VM
 
       using FunctionLookup = std::unordered_map<std::int64_t, std::unordered_map<std::int64_t, Function>>;
       FunctionLookup m_FunctionLookup;
+      std::unordered_map<std::int64_t, std::string> m_FileNameLookup;
 
       std::vector<Native::NativeFunction> m_NativeFunctions;
 

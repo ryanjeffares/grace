@@ -79,6 +79,7 @@ bool VM::AddFunction(std::string&& name, std::size_t line, std::size_t arity, co
   
   if (m_FunctionLookup.find(fileNameHash) == m_FunctionLookup.end()) {
     m_FunctionLookup.insert({ fileNameHash, {} });
+    m_FileNameLookup.insert({ fileNameHash, fileName });
   }
 
   auto [it, res] = m_FunctionLookup.at(fileNameHash).try_emplace(funcNameHash, Function(std::move(name), funcNameHash, arity, line, fileName, exported));

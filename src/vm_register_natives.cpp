@@ -48,7 +48,7 @@ static Value FileWrite(std::vector<Value>& args);
 static Value FlushStdout(GRACE_MAYBE_UNUSED std::vector<Value>& args);
 static Value FlushStderr(GRACE_MAYBE_UNUSED std::vector<Value>& args);
 
-GRACE_NORETURN static Value SystemExit(std::vector<Value>& args);
+static Value SystemExit(std::vector<Value>& args);
 static Value SystemRun(std::vector<Value>& args);
 
 void VM::RegisterNatives()
@@ -208,12 +208,11 @@ static Value FlushStderr(GRACE_MAYBE_UNUSED std::vector<Value>& args)
 
 static Value SystemExit(std::vector<Value>& args)
 {
-  std::exit(args[0].Get<std::int64_t>());
+  std::exit(static_cast<int>(args[0].Get<std::int64_t>()));
 }
 
 static Value SystemRun(std::vector<Value>& args)
 {
-  fmt::print("{}\n", args[0]);
   auto res = std::system(args[0].Get<std::string>().c_str());
   return Value(std::int64_t(res));
 }
