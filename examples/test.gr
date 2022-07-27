@@ -1,11 +1,7 @@
-import lib::lib;
+import std::list; 
 
-func f():
-  for i in []:
-    return false;
-  end
-end
-
-func main(final args: List):
-  lib::lib::say_hello();
+func main():
+  final l = [0];
+  println(std::list::at(l, 0));
+  println(l.at(0));
 end

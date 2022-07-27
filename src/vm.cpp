@@ -72,7 +72,7 @@ VM::VM()
   RegisterNatives();
 }
 
-bool VM::AddFunction(std::string&& name, std::size_t line, std::size_t arity, const std::string& fileName, bool exported)
+bool VM::AddFunction(std::string&& name, std::size_t arity, const std::string& fileName, bool exported, bool extension, ObjectType objectType)
 {
   auto funcNameHash = static_cast<std::int64_t>(m_Hasher(name));
   auto fileNameHash = static_cast<std::int64_t>(m_Hasher(fileName));
@@ -82,7 +82,13 @@ bool VM::AddFunction(std::string&& name, std::size_t line, std::size_t arity, co
     m_FileNameLookup.insert({ fileNameHash, fileName });
   }
 
-  auto [it, res] = m_FunctionLookup.at(fileNameHash).try_emplace(funcNameHash, Function(std::move(name), funcNameHash, arity, line, fileName, exported));
+  auto func = std::make_shared<Function>(std::move(name), funcNameHash, arity, fileName, exported, extension);
+
+  if (extension) {
+    m_ExtensionMethodLookup[objectType].push_back(func);
+  }
+
+  auto [it, res] = m_FunctionLookup.at(fileNameHash).try_emplace(funcNameHash, func);
   if (res) {
     m_LastFileNameHash = fileNameHash;
     m_LastFunctionHash = funcNameHash;
@@ -103,21 +109,21 @@ bool VM::CombineFunctions(const std::string& mainFileName, GRACE_MAYBE_UNUSED bo
     return false;
   }
 
-  m_FullOpList = it->second.m_OpList;
-  m_FullConstantList = it->second.m_ConstantList;
+  m_FullOpList = it->second->opList;
+  m_FullConstantList = it->second->constantList;
   for (auto& [fileName, funcList] : m_FunctionLookup) {
     for (auto& [name, func] : funcList) {
       if (name == mainHash) {
         continue;
       }
 
-      auto& opList = func.m_OpList;
-      func.m_OpIndexStart = m_FullOpList.size();
+      auto& opList = func->opList;
+      func->opIndexStart = m_FullOpList.size();
       m_FullOpList.reserve(opList.size());
       m_FullOpList.insert(m_FullOpList.end(), opList.begin(), opList.end());
 
-      auto& constantList = func.m_ConstantList;
-      func.m_ConstantIndexStart = m_FullConstantList.size();
+      auto& constantList = func->constantList;
+      func->constantIndexStart = m_FullConstantList.size();
       m_FullConstantList.reserve(constantList.size());
       m_FullConstantList.insert(m_FullConstantList.end(), constantList.begin(), constantList.end());
     }
@@ -162,8 +168,8 @@ InterpretResult VM::Run(std::int64_t mainFileNameHash, GRACE_MAYBE_UNUSED bool v
 #define PRINT_LOCAL_MEMORY()                                                                    \
   do {                                                                                          \
     if (verbose) {                                                                              \
-      PrintStack(valueStack, m_FunctionLookup.at(fileNameStack.top()).at(funcNameHash).m_Name); \
-      PrintLocals(localsList, m_FunctionLookup.at(fileNameStack.top()).at(funcNameHash).m_Name);\
+      PrintStack(valueStack, m_FunctionLookup.at(fileNameStack.top()).at(funcNameHash)->name);  \
+      PrintLocals(localsList, m_FunctionLookup.at(fileNameStack.top()).at(funcNameHash)->name); \
     }                                                                                           \
   } while (false)                                                                               \
 
@@ -184,13 +190,13 @@ InterpretResult VM::Run(std::int64_t mainFileNameHash, GRACE_MAYBE_UNUSED bool v
 
   std::vector<std::pair<std::size_t, std::size_t>> opConstOffsets;
   opConstOffsets.reserve(32);
-  opConstOffsets.emplace_back(mainFunc.m_OpIndexStart, mainFunc.m_ConstantIndexStart);
+  opConstOffsets.emplace_back(mainFunc->opIndexStart, mainFunc->constantIndexStart);
 
   std::stack<std::size_t> localsOffsets;
   localsOffsets.push(0);  // [0] is args
 
   CallStack callStack;
-  callStack.emplace_back(static_cast<std::int64_t>(m_Hasher("file")), funcNameHash, 1, mainFunc.m_FileName, mainFunc.m_FileNameHash);
+  callStack.emplace_back(static_cast<std::int64_t>(m_Hasher("file")), funcNameHash, 1, mainFunc->fileName, mainFunc->fileNameHash);
 
   std::stack<std::int64_t> fileNameStack;
   fileNameStack.push(mainFileNameHash);
@@ -408,7 +414,7 @@ InterpretResult VM::Run(std::int64_t mainFileNameHash, GRACE_MAYBE_UNUSED bool v
               );
             }
 
-            calleeFunc = &(funcIt->second);
+            calleeFunc = funcIt->second.get();
           } else {
             // build out the file path to search...
             std::stringstream path;
@@ -437,7 +443,7 @@ InterpretResult VM::Run(std::int64_t mainFileNameHash, GRACE_MAYBE_UNUSED bool v
             }
 
             auto funcIt = funcListIt->second.find(calleeNameHash);
-            if (funcIt == funcListIt->second.end() || !funcIt->second.m_Exported) {
+            if (funcIt == funcListIt->second.end() || !funcIt->second->exported) {
               std::string toDisplay;
               for (std::size_t i = 0; i < namespaceToSearch.size(); ++i) {
                 toDisplay.append(namespaceToSearch[i].first);
@@ -455,7 +461,7 @@ InterpretResult VM::Run(std::int64_t mainFileNameHash, GRACE_MAYBE_UNUSED bool v
               );
             }
 
-            calleeFunc = &(funcIt->second);
+            calleeFunc = funcIt->second.get();
           }          
           
           // increment this here to get past the string function name
@@ -467,12 +473,12 @@ InterpretResult VM::Run(std::int64_t mainFileNameHash, GRACE_MAYBE_UNUSED bool v
             namespaceLookupStack.pop();
           }
 
-          auto arity = calleeFunc->m_Arity;
+          auto arity = calleeFunc->arity;
 
           if (numArgsGiven != arity) {            
             throw GraceException(
               GraceException::Type::IncorrectArgCount, 
-              fmt::format("Incorrect number of arguments given to function '{}', expected {} but got {}", calleeFunc->m_Name, arity, numArgsGiven)
+              fmt::format("Incorrect number of arguments given to function '{}', expected {} but got {}", calleeFunc->name, arity, numArgsGiven)
             );
           }
 
@@ -482,13 +488,13 @@ InterpretResult VM::Run(std::int64_t mainFileNameHash, GRACE_MAYBE_UNUSED bool v
             localsList[arity - i - 1 + localsOffsets.top()] = Pop(valueStack);
           }
 
-          callStack.emplace_back(funcNameHash, calleeNameHash, line, calleeFunc->m_FileName, calleeFunc->m_FileNameHash);
+          callStack.emplace_back(funcNameHash, calleeNameHash, line, calleeFunc->fileName, calleeFunc->fileNameHash);
           valueStack.emplace_back(static_cast<std::int64_t>(opCurrent));
           valueStack.emplace_back(static_cast<std::int64_t>(constantCurrent));
-          fileNameStack.push(calleeFunc->m_FileNameHash);
+          fileNameStack.push(calleeFunc->fileNameHash);
 
-          opCurrent = calleeFunc->m_OpIndexStart;
-          constantCurrent = calleeFunc->m_ConstantIndexStart; 
+          opCurrent = calleeFunc->opIndexStart;
+          constantCurrent = calleeFunc->constantIndexStart; 
           opConstOffsets.emplace_back(opCurrent, constantCurrent);
           
           funcNameHash = calleeNameHash;
@@ -951,9 +957,7 @@ exit:
 
 void VM::RuntimeError(const GraceException& exception, std::size_t line, const CallStack& callStack)
 {
-  fmt::print(stderr, "\n");
-  
-  fmt::print(stderr, "Call stack (most recent call last):\n");
+  fmt::print(stderr, "\nCall stack (most recent call last):\n");
 
   auto callStackSize = callStack.size();
   if (callStackSize > 15) {
@@ -968,7 +972,7 @@ void VM::RuntimeError(const GraceException& exception, std::size_t line, const C
       for (std::size_t i = 1; i < callStack.size(); i++) {
         const auto& [caller, callee, ln, fileName, fileNameHash] = callStack[i];
         const auto& callerFunc = m_FunctionLookup.at(fileNameHash).at(caller);
-        fmt::print(stderr, "in {}:{}:{}\n", fileName, callerFunc.m_Name, ln);
+        fmt::print(stderr, "in {}:{}:{}\n", fileName, callerFunc->name, ln);
         fmt::print(stderr, "{:>4}\n", Scanner::GetCodeAtLine(fileName, ln));
       }
     } else {
@@ -976,7 +980,7 @@ void VM::RuntimeError(const GraceException& exception, std::size_t line, const C
       for (auto i = callStackSize - 15; i < callStackSize; i++) {
         const auto& [caller, callee, ln, fileName, fileNameHash] = callStack[i];
         const auto& callerFunc = m_FunctionLookup.at(fileNameHash).at(caller);
-        fmt::print(stderr, "in {}:{}:{}\n", fileName, callerFunc.m_Name, ln);
+        fmt::print(stderr, "in {}:{}:{}\n", fileName, callerFunc->name, ln);
         fmt::print(stderr, "{:>4}\n", Scanner::GetCodeAtLine(fileName, ln));
       }
     }
@@ -984,14 +988,14 @@ void VM::RuntimeError(const GraceException& exception, std::size_t line, const C
     for (std::size_t i = 1; i < callStack.size(); i++) {
       const auto& [caller, callee, ln, fileName, fileNameHash] = callStack[i];
       const auto& callerFunc = m_FunctionLookup.at(fileNameHash).at(caller);
-      fmt::print(stderr, "in {}:{}:{}\n", fileName, callerFunc.m_Name, ln);
+      fmt::print(stderr, "in {}:{}:{}\n", fileName, callerFunc->name, ln);
       fmt::print(stderr, "{:>4}\n", Scanner::GetCodeAtLine(fileName, ln));
     }
   }
 
   const auto& calleeFunc = m_FunctionLookup.at(std::get<4>(callStack.back())).at(std::get<1>(callStack.back()));
-  fmt::print(stderr, "in {}:{}:{}\n", calleeFunc.m_FileName, calleeFunc.m_Name, line);
-  fmt::print(stderr, "{:>4}\n", Scanner::GetCodeAtLine(calleeFunc.m_FileName, line));
+  fmt::print(stderr, "in {}:{}:{}\n", calleeFunc->fileName, calleeFunc->name, line);
+  fmt::print(stderr, "{:>4}\n", Scanner::GetCodeAtLine(calleeFunc->fileName, line));
 
   fmt::print(stderr, "\n");
   fmt::print(stderr, fmt::fg(fmt::color::red) | fmt::emphasis::bold, "ERROR: ");

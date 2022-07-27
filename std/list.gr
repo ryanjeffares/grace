@@ -1,4 +1,4 @@
-func export at(list: List, index: Int):
+func export at(this List list, index: Int):
   if !instanceof(index, Int):
     throw("Expected `Int` for list::get(list, index) but got `" + typename(index) + "`");
   end

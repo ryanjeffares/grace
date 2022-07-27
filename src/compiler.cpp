@@ -148,6 +148,7 @@ static void Unary(bool canAssign, CompilerContext& compiler);
 static void Call(bool canAssign, CompilerContext& compiler);
 static void Primary(bool canAssign, CompilerContext& compiler);
 
+static void FunctionCall(const Scanner::Token& funcNameToken, CompilerContext& compiler);
 static void Identifier(bool canAssign, CompilerContext& compiler);
 static void Char(CompilerContext& compiler);
 static void String(CompilerContext& compiler);
@@ -438,6 +439,21 @@ static void Statement(CompilerContext& compiler)
   }
 }
 
+static bool IsTypeIdent(Scanner::TokenType type)
+{
+  static const std::vector<Scanner::TokenType> typeIdents = {
+    Scanner::TokenType::IntIdent,
+    Scanner::TokenType::FloatIdent,
+    Scanner::TokenType::BoolIdent,
+    Scanner::TokenType::StringIdent,
+    Scanner::TokenType::CharIdent,
+    Scanner::TokenType::ListIdent
+  };
+  return std::any_of(typeIdents.begin(), typeIdents.end(), [type](Scanner::TokenType t) {
+    return t == type;
+  });
+}
+
 static bool IsValidTypeAnnotation(const Scanner::TokenType& token)
 {
   static const std::vector<Scanner::TokenType> valid = {
@@ -575,12 +591,14 @@ static void FuncDeclaration(CompilerContext& compiler)
   auto funcNameToken = compiler.previous;
   auto name = std::string(compiler.previous.value().GetText());
   if (name.starts_with("__")) {
-    MessageAtPrevious("Function names beginning with double underscore `__` are reserved for internal use", LogLevel::Error, compiler);
+    MessageAtPrevious("Names beginning with double underscore `__` are reserved for internal use", LogLevel::Error, compiler);
     return;
   }
   auto isMainFunction = name == "main";
 
   Consume(Scanner::TokenType::LeftParen, "Expected '(' after function name", compiler);
+
+  auto isExtensionMethod = false;
 
   std::vector<std::string> parameters;
   while (!Match(Scanner::TokenType::RightParen, compiler)) {
@@ -592,6 +610,12 @@ static void FuncDeclaration(CompilerContext& compiler)
     if (Match(Scanner::TokenType::Final, compiler)) {
       Consume(Scanner::TokenType::Identifier, "Expected identifier after `final`", compiler);
       auto p = std::string(compiler.previous.value().GetText());
+
+      if (p.starts_with("__")) {
+        MessageAtPrevious("Names beginning with double underscore `__` are reserved for internal use", LogLevel::Error, compiler);
+        return;
+      }
+
       if (std::find(parameters.begin(), parameters.end(), p) != parameters.end()) {
         MessageAtPrevious("Function parameters with the same name already defined", LogLevel::Error, compiler);
         return;
@@ -610,10 +634,16 @@ static void FuncDeclaration(CompilerContext& compiler)
       if (!Check(Scanner::TokenType::RightParen, compiler)) {
         Consume(Scanner::TokenType::Comma, "Expected ',' after function parameter", compiler);
       }
-    } else if (Match(Scanner::TokenType::Identifier, compiler)) {
+    }
+    else if (Match(Scanner::TokenType::Identifier, compiler)) {
       auto p = std::string(compiler.previous.value().GetText());
       if (std::find(parameters.begin(), parameters.end(), p) != parameters.end()) {
         MessageAtPrevious("Function parameters with the same name already defined", LogLevel::Error, compiler);
+        return;
+      }
+
+      if (p.starts_with("__")) {
+        MessageAtPrevious("Names beginning with double underscore `__` are reserved for internal use", LogLevel::Error, compiler);
         return;
       }
 
@@ -627,6 +657,46 @@ static void FuncDeclaration(CompilerContext& compiler)
         }
         Advance(compiler);
       }
+
+      if (!Check(Scanner::TokenType::RightParen, compiler)) {
+        Consume(Scanner::TokenType::Comma, "Expected ',' after function parameter", compiler);
+      }
+    } else if (Match(Scanner::TokenType::This, compiler)) {
+      if (isMainFunction) {
+        MessageAtPrevious("`this` not allowed in main function", LogLevel::Error, compiler);
+        return;
+      }
+
+      if (!parameters.empty()) {
+        MessageAtPrevious("`this` can only appear before the first function parameter to make an extension method", LogLevel::Error, compiler);
+        return;
+      }
+
+      auto type = compiler.current.value().GetType();
+      if (!(IsTypeIdent(type) || type == Scanner::TokenType::Identifier)) {
+        MessageAtCurrent("Expected type identifier for extension method after `this`", LogLevel::Error, compiler);
+        return;
+      }
+
+      Advance(compiler);
+      isExtensionMethod = true;
+
+      Consume(Scanner::TokenType::Identifier, "Expected identifier after type identifier", compiler);
+
+      auto p = std::string(compiler.previous.value().GetText());
+      
+      if (p.starts_with("__")) {
+        MessageAtPrevious("Names beginning with double underscore `__` are reserved for internal use", LogLevel::Error, compiler);
+        return;
+      }
+
+      if (std::find(parameters.begin(), parameters.end(), p) != parameters.end()) {
+        MessageAtPrevious("Function parameters with the same name already defined", LogLevel::Error, compiler);
+        return;
+      }
+
+      parameters.push_back(p);
+      compiler.locals.emplace_back(std::move(p), false, false, compiler.locals.size());
 
       if (!Check(Scanner::TokenType::RightParen, compiler)) {
         Consume(Scanner::TokenType::Comma, "Expected ',' after function parameter", compiler);
@@ -651,13 +721,14 @@ static void FuncDeclaration(CompilerContext& compiler)
 
   // cl args are still assigned in the VM if the user doesn't state it
   // so the compiler needs to be aware of that
+  // but don't use up the name "args" which would be used as standard...
   if (isMainFunction && parameters.size() == 0) {
-    compiler.locals.emplace_back("args", true, false, 0);
+    compiler.locals.emplace_back("__ARGS", true, false, 0);
   }
 
   Consume(Scanner::TokenType::Colon, "Expected ':' after function signature", compiler);
 
-  if (!VM::VM::GetInstance().AddFunction(std::move(name), compiler.previous.value().GetLine(), parameters.size(), compiler.currentFileName, exportFunction)) {
+  if (!VM::VM::GetInstance().AddFunction(std::move(name), parameters.size(), compiler.currentFileName, exportFunction, isExtensionMethod)) {
     Message(funcNameToken, "Duplicate function definitions", LogLevel::Error, compiler);
     return;
   }
@@ -717,6 +788,12 @@ static void VarDeclaration(CompilerContext& compiler)
   }
 
   std::string localName(nameToken.GetText());
+
+  if (localName.starts_with("__")) {
+    MessageAtPrevious("Names beginning with double underscore `__` are reserved for internal use", LogLevel::Error, compiler);
+    return;
+  }
+
   auto it = std::find_if(compiler.locals.begin(), compiler.locals.end(), [&localName] (const Local& l) { return l.name == localName; });
   if (it != compiler.locals.end()) {
     MessageAtPrevious("A local variable with the same name already exists", LogLevel::Error, compiler);
@@ -764,6 +841,12 @@ static void FinalDeclaration(CompilerContext& compiler)
   }
 
   std::string localName(nameToken.GetText());
+  
+  if (localName.starts_with("__")) {
+    MessageAtPrevious("Names beginning with double underscore `__` are reserved for internal use", LogLevel::Error, compiler);
+    return;
+  }
+
   auto it = std::find_if(compiler.locals.begin(), compiler.locals.end(), [&localName] (const Local& l) { return l.name == localName; });
   if (it != compiler.locals.end()) {
     MessageAtPrevious("A local variable with the same name already exists", LogLevel::Error, compiler);
@@ -1868,21 +1951,6 @@ static void Call(bool canAssign, CompilerContext& compiler)
   Primary(canAssign, compiler);
 }
 
-static bool IsTypeIdent(Scanner::TokenType type)
-{
-  static const std::vector<Scanner::TokenType> typeIdents {
-    Scanner::TokenType::IntIdent,
-    Scanner::TokenType::FloatIdent,
-    Scanner::TokenType::BoolIdent,
-    Scanner::TokenType::StringIdent,
-    Scanner::TokenType::CharIdent,
-    Scanner::TokenType::ListIdent
-  };
-  return std::any_of(typeIdents.begin(), typeIdents.end(), [type](Scanner::TokenType t) {
-    return t == type;
-  });
-}
-
 static void Primary(bool canAssign, CompilerContext& compiler)
 {
   if (Match(Scanner::TokenType::True, compiler)) {
@@ -1954,7 +2022,19 @@ static void Primary(bool canAssign, CompilerContext& compiler)
   } else if (Match(Scanner::TokenType::Typename, compiler)) {
     Typename(compiler);
   } else {
+    // Unreachable?
     Expression(canAssign, compiler);
+  }
+
+  if (Match(Scanner::TokenType::Dot, compiler)) {
+    // TODO: account for class member access, not just function calls...
+    Consume(Scanner::TokenType::Identifier, "Expected identifier after '.'", compiler);
+    if (!Check(Scanner::TokenType::LeftParen, compiler)) {
+      MessageAtCurrent("Expected function call", LogLevel::Error, compiler);
+      return;
+    }
+
+
   }
 }
 
@@ -1969,68 +2049,7 @@ static void Identifier(bool canAssign, CompilerContext& compiler)
   }
 
   if (Match(Scanner::TokenType::LeftParen, compiler)) {
-    compiler.namespaceQualifierUsed = true;
-
-    static std::hash<std::string> hasher;
-    auto hash = static_cast<std::int64_t>(hasher(prevText));
-    auto nativeCall = prevText.starts_with("__");
-    std::size_t nativeIndex{};
-    if (nativeCall) {
-      auto [exists, index] = VM::VM::GetInstance().HasNativeFunction(prevText);
-      if (!exists) {
-        Message(prev, fmt::format("No native function matching the given signature `{}` was found", prevText), LogLevel::Error, compiler);
-        return;
-      } else {
-        nativeIndex = index;
-      }
-    }
-
-    std::int64_t numArgs = 0;
-    if (!Match(Scanner::TokenType::RightParen, compiler)) {
-      while (true) {
-        auto prevUsing = compiler.usingExpressionResult;
-        compiler.usingExpressionResult = true;      
-        Expression(false, compiler);
-        compiler.usingExpressionResult = prevUsing;
-        numArgs++;
-        if (Match(Scanner::TokenType::RightParen, compiler)) {
-          break;
-        }
-        Consume(Scanner::TokenType::Comma, "Expected ',' after function call argument", compiler);
-      }
-    }
-
-    if (nativeCall) {
-      auto arity = VM::VM::GetInstance().GetNativeFunction(nativeIndex).GetArity();
-      if (numArgs != arity) {
-        MessageAtPrevious(fmt::format("Incorrect number of arguments given to native call - got {} but expected {}", numArgs, arity), LogLevel::Error, compiler);
-        return;
-      }
-    }
-
-    // TODO: in a script that is not being ran as the main script, 
-    // there may be a function called 'main' that you should be allowed to call
-    if (prevText == "main") {
-      Message(prev, "Cannot call the `main` function", LogLevel::Error, compiler);
-      return;
-    }
-    
-    EmitConstant(nativeCall ? static_cast<std::int64_t>(nativeIndex) : hash);
-    EmitConstant(numArgs);
-    if (nativeCall) {
-      EmitOp(VM::Ops::NativeCall, compiler.previous.value().GetLine());
-    } else {
-      EmitConstant(prevText);
-      EmitOp(VM::Ops::Call, compiler.previous.value().GetLine());
-
-    }
-
-    if (!compiler.usingExpressionResult) {
-      // pop unused return value
-      EmitOp(VM::Ops::Pop, compiler.previous.value().GetLine());
-    }
-  } else if (Match(Scanner::TokenType::Dot, compiler)) {
-    // TODO: account for dot
+    FunctionCall(prev, compiler);
   } else if (Match(Scanner::TokenType::ColonColon, compiler)) {
     if (!Check(Scanner::TokenType::Identifier, compiler)) {
       MessageAtCurrent("Expected identifier after `::`", LogLevel::Error, compiler);
@@ -2070,6 +2089,72 @@ static void Identifier(bool canAssign, CompilerContext& compiler)
         return;
       }
     }
+  }
+}
+
+static void FunctionCall(const Scanner::Token& funcNameToken, CompilerContext& compiler)
+{
+  compiler.namespaceQualifierUsed = true;
+
+  static std::hash<std::string> hasher;
+  auto funcNameText = std::string(funcNameToken.GetText());
+  auto hash = static_cast<std::int64_t>(hasher(funcNameText));
+  auto nativeCall = funcNameText.starts_with("__");
+  std::size_t nativeIndex{};
+  if (nativeCall) {
+    auto [exists, index] = VM::VM::GetInstance().HasNativeFunction(funcNameText);
+    if (!exists) {
+      Message(funcNameToken, fmt::format("No native function matching the given signature `{}` was found", funcNameText), LogLevel::Error, compiler);
+      return;
+    }
+    else {
+      nativeIndex = index;
+    }
+  }
+
+  std::int64_t numArgs = 0;
+  if (!Match(Scanner::TokenType::RightParen, compiler)) {
+    while (true) {
+      auto prevUsing = compiler.usingExpressionResult;
+      compiler.usingExpressionResult = true;
+      Expression(false, compiler);
+      compiler.usingExpressionResult = prevUsing;
+      numArgs++;
+      if (Match(Scanner::TokenType::RightParen, compiler)) {
+        break;
+      }
+      Consume(Scanner::TokenType::Comma, "Expected ',' after function call argument", compiler);
+    }
+  }
+
+  if (nativeCall) {
+    auto arity = VM::VM::GetInstance().GetNativeFunction(nativeIndex).GetArity();
+    if (numArgs != arity) {
+      MessageAtPrevious(fmt::format("Incorrect number of arguments given to native call - got {} but expected {}", numArgs, arity), LogLevel::Error, compiler);
+      return;
+    }
+  }
+
+  // TODO: in a script that is not being ran as the main script, 
+  // there may be a function called 'main' that you should be allowed to call
+  if (funcNameText == "main") {
+    Message(funcNameToken, "Cannot call the `main` function", LogLevel::Error, compiler);
+    return;
+  }
+
+  EmitConstant(nativeCall ? static_cast<std::int64_t>(nativeIndex) : hash);
+  EmitConstant(numArgs);
+  if (nativeCall) {
+    EmitOp(VM::Ops::NativeCall, compiler.previous.value().GetLine());
+  }
+  else {
+    EmitConstant(funcNameText);
+    EmitOp(VM::Ops::Call, compiler.previous.value().GetLine());
+  }
+
+  if (!compiler.usingExpressionResult) {
+    // pop unused return value
+    EmitOp(VM::Ops::Pop, compiler.previous.value().GetLine());
   }
 }
 

@@ -14,6 +14,7 @@
 
 #include <cstdint>
 #include <exception>
+#include <memory>
 #include <sstream>
 #include <string>
 #include <tuple>
@@ -103,6 +104,17 @@ namespace Grace::VM
     RuntimeError,
   };
 
+  // TODO: there will be user defined objects that can have extension methods...
+  enum class ObjectType
+  {
+    Bool,
+    Char,
+    Dict,
+    Float,
+    Int,
+    List,
+  };
+
   class VM
   {
     public:
@@ -126,15 +138,15 @@ namespace Grace::VM
 
       GRACE_INLINE void PushOp(Ops op, std::size_t line)
       {
-        m_FunctionLookup.at(m_LastFileNameHash).at(m_LastFunctionHash).m_OpList.emplace_back(op, line);
+        m_FunctionLookup.at(m_LastFileNameHash).at(m_LastFunctionHash)->opList.push_back({ op, line });
       }
 
       void PrintOps() const
       {
         for (const auto& [fileName, funcList] : m_FunctionLookup) {
           for (const auto& [name, func] : funcList) {
-            fmt::print("<function `{}`> in file {}\n", func.m_Name, m_FileNameLookup.at(fileName));
-            for (const auto [op, line] : func.m_OpList) {
+            fmt::print("<function `{}`> in file {}\n", func->name, m_FileNameLookup.at(fileName));
+            for (const auto [op, line] : func->opList) {
               fmt::print("{:>5} | {}\n", line, op);
             }
           }
@@ -144,36 +156,36 @@ namespace Grace::VM
       template<BuiltinGraceType T>
       constexpr GRACE_INLINE void PushConstant(const T& value)
       {
-        m_FunctionLookup.at(m_LastFileNameHash).at(m_LastFunctionHash).m_ConstantList.emplace_back(value);
+        m_FunctionLookup.at(m_LastFileNameHash).at(m_LastFunctionHash)->constantList.emplace_back(value);
       }
 
       GRACE_NODISCARD GRACE_INLINE std::size_t GetNumConstants() const
       {
-        return m_FunctionLookup.at(m_LastFileNameHash).at(m_LastFunctionHash).m_ConstantList.size();
+        return m_FunctionLookup.at(m_LastFileNameHash).at(m_LastFunctionHash)->constantList.size();
       }
 
       GRACE_NODISCARD GRACE_INLINE std::size_t GetNumOps() const
       {
-        return m_FunctionLookup.at(m_LastFileNameHash).at(m_LastFunctionHash).m_OpList.size();
+        return m_FunctionLookup.at(m_LastFileNameHash).at(m_LastFunctionHash)->opList.size();
       }
 
       template<BuiltinGraceType T>
       constexpr GRACE_INLINE void SetConstantAtIndex(std::size_t index, const T& value)
       {
-        m_FunctionLookup.at(m_LastFileNameHash).at(m_LastFunctionHash).m_ConstantList[index] = value;
+        m_FunctionLookup.at(m_LastFileNameHash).at(m_LastFunctionHash)->constantList[index] = value;
       }
 
       GRACE_NODISCARD GRACE_INLINE Ops GetLastOp() const
       {
-        return m_FunctionLookup.at(m_LastFileNameHash).at(m_LastFunctionHash).m_OpList.back().m_Op;
+        return m_FunctionLookup.at(m_LastFileNameHash).at(m_LastFunctionHash)->opList.back().op;
       }
 
       GRACE_NODISCARD GRACE_INLINE const std::string& GetLastFunctionName() const 
       {
-        return m_FunctionLookup.at(m_LastFileNameHash).at(m_LastFunctionHash).m_Name;
+        return m_FunctionLookup.at(m_LastFileNameHash).at(m_LastFunctionHash)->name;
       }
 
-      GRACE_NODISCARD bool AddFunction(std::string&& name, std::size_t line, std::size_t arity, const std::string& fileName, bool exported);
+      GRACE_NODISCARD bool AddFunction(std::string&& name, std::size_t arity, const std::string& fileName, bool exported, bool extension, ObjectType objectType = {});
 
       std::tuple<bool, std::size_t> HasNativeFunction(const std::string& name)
       {
@@ -190,7 +202,7 @@ namespace Grace::VM
         return m_NativeFunctions[index];
       }
 
-      GRACE_NODISCARD bool CombineFunctions(const std::string& mainFileName, bool verbose);
+      GRACE_NODISCARD bool CombineFunctions(const std::string& mainFileName, GRACE_MAYBE_UNUSED bool verbose);
       GRACE_NODISCARD InterpretResult Start(const std::string& mainFileName, bool verbose, const std::vector<std::string>& args);
 
     private:
@@ -199,64 +211,58 @@ namespace Grace::VM
       using CallStack = std::vector<std::tuple<std::int64_t, std::int64_t, std::size_t, std::string, std::int64_t>>;
 
       void RegisterNatives();
-      GRACE_NODISCARD InterpretResult Run(std::int64_t mainFileNameHash, bool verbose, const std::vector<std::string>& clArgs);
+      GRACE_NODISCARD InterpretResult Run(std::int64_t mainFileNameHash, GRACE_MAYBE_UNUSED bool verbose, const std::vector<std::string>& clArgs);
       void RuntimeError(const GraceException& exception, std::size_t line, const CallStack& callStack);
 
     private:
 
       struct OpLine
       {
-        Ops m_Op;
-        std::size_t m_Line;
-
-        OpLine(Ops op, std::size_t line) 
-          : m_Op(op), m_Line(line)
-        {
-
-        }
+        Ops op;
+        std::size_t line;
       };
 
       struct Function 
       {
-        std::string m_Name;
-        std::int64_t m_NameHash;
-        std::size_t m_Line, m_Arity;
+        std::string name;
+        std::int64_t nameHash;
+        std::size_t arity;
 
-        std::string m_FileName;
-        std::int64_t m_FileNameHash;
-        std::vector<std::string> m_NamespaceVec;
-        std::vector<std::int64_t> m_NamespaceHashVec;
+        std::string fileName;
+        std::int64_t fileNameHash;
+        std::vector<std::string> namespaceVec;
+        std::vector<std::int64_t> namespaceHashVec;
 
-        std::vector<OpLine> m_OpList;
-        std::vector<Value> m_ConstantList;
+        std::vector<OpLine> opList;
+        std::vector<Value> constantList;
 
-        std::size_t m_OpIndexStart = 0, m_ConstantIndexStart = 0;
+        std::size_t opIndexStart{}, constantIndexStart{};
 
-        bool m_Exported;
+        // TODO: it's possible that the Function won't need to know if it's an extension or not
+        bool exported{}, extensionMethod{};
 
-      public:
-
-        Function(std::string&& name, std::int64_t nameHash, std::size_t arity, std::size_t line, const std::string& fileName, bool exported)
-          : m_Name(std::move(name)), m_NameHash(nameHash), m_Line(line), m_Arity(arity), m_FileName(fileName), m_Exported(exported)
+        Function(std::string&& name_, std::int64_t nameHash_, std::size_t arity_, const std::string& fileName_, bool exported_, bool extension)
+          : name(std::move(name_)), nameHash(nameHash_), arity(arity_), fileName(fileName_), exported(exported_), extensionMethod(extension)
         {
-          std::hash<std::string> hasher;
-          m_FileNameHash = static_cast<std::int64_t>(hasher(fileName));
-          std::stringstream ss(m_FileName.substr(0, m_FileName.find_last_of('.')));
+          static std::hash<std::string> hasher;
+          fileNameHash = static_cast<std::int64_t>(hasher(fileName_));
+          std::stringstream ss(fileName.substr(0, fileName.find_last_of('.')));
           std::string part;
           while (std::getline(ss, part, '/')) {
-            m_NamespaceVec.push_back(part);
-            m_NamespaceHashVec.push_back(static_cast<std::int64_t>(hasher(part)));
+            namespaceVec.push_back(part);
+            namespaceHashVec.push_back(static_cast<std::int64_t>(hasher(part)));
           }
         }
 
         GRACE_INLINE bool CompareNamespace(const std::vector<std::string>& nameSpace) const
         {
-          return m_NamespaceVec == nameSpace;
+          return namespaceVec == nameSpace;
         }
-      };
+      };      
 
-      using FunctionLookup = std::unordered_map<std::int64_t, std::unordered_map<std::int64_t, Function>>;
-      FunctionLookup m_FunctionLookup;
+      // { filename { function name, function } }
+      std::unordered_map<std::int64_t, std::unordered_map<std::int64_t, std::shared_ptr<Function>>> m_FunctionLookup;
+      std::unordered_map<ObjectType, std::vector<std::shared_ptr<Function>>> m_ExtensionMethodLookup;
       std::unordered_map<std::int64_t, std::string> m_FileNameLookup;
 
       std::vector<Native::NativeFunction> m_NativeFunctions;
