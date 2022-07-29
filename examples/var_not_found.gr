@@ -1,0 +1,6 @@
+func main():
+  var kitten;
+  var sitting;
+  var sittin;
+  println(sitten);
+end

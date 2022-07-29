@@ -14,6 +14,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <limits>
 #include <stack>
 #include <unordered_map>
 #include <variant>
@@ -871,6 +872,59 @@ static void FinalDeclaration(CompilerContext& compiler)
   Consume(Scanner::TokenType::Semicolon, "Expected ';' after `final` declaration", compiler);
 }
 
+// returns higher values for less similar strings
+static std::size_t GetEditDistance(const std::string& first, const std::string& second)
+{
+  auto l1 = first.length();
+  auto l2 = second.length();
+
+  if (l1 == 0) {
+    return l2;
+  }
+
+  if (l2 == 0) {
+    return l1;
+  }
+
+  std::vector<std::vector<std::size_t>> matrix(l1 + 1);
+  for (std::size_t i = 0; i < matrix.size(); i++) {
+    matrix[i].resize(l2 + 1);
+  }
+
+  for (std::size_t i = 1; i <= l1; i++) {
+    matrix[i][0] = i;
+  }
+  for (std::size_t j = 1; j <= l2; j++) {
+    matrix[0][j] = j;
+  }
+
+  for (std::size_t i = 1; i <= l1; i++) {
+    for (std::size_t j = 1; j <= l2; j++) {
+      std::size_t weight = first[i - 1] == second[j - 1] ? 0 : 1;
+      matrix[i][j] = std::min({ matrix[i - 1][j] + 1, matrix[i][j - 1] + 1, matrix[i - 1][j - 1] + weight });
+    }
+  }
+
+  return matrix[l1][l2];
+}
+
+static std::optional<std::string> FindMostSimilarVarName(const std::string& varName, const std::vector<Local>& localList)
+{
+  std::optional<std::string> res = std::nullopt;
+  std::size_t current = std::numeric_limits<std::size_t>::max();
+
+  for (const auto& l : localList) {
+    if (l.name == "__ARGS") continue;
+    auto editDistance = GetEditDistance(varName, l.name);
+    if (editDistance < current) {
+      current = editDistance;
+      res = l.name;
+    }
+  }
+
+  return res;
+}
+
 static void Expression(bool canAssign, CompilerContext& compiler)
 {
   if (IsOperator(compiler.current.value().GetType())) {
@@ -897,7 +951,13 @@ static void Expression(bool canAssign, CompilerContext& compiler)
       auto localName = std::string(compiler.previous.value().GetText());
       auto it = std::find_if(compiler.locals.begin(), compiler.locals.end(), [&localName](const Local& l) { return l.name == localName; });
       if (it == compiler.locals.end()) {
-        MessageAtPrevious(fmt::format("Cannot find variable '{}' in this scope", localName), LogLevel::Error, compiler);
+        auto mostSimilarVar = FindMostSimilarVarName(localName, compiler.locals);
+        if (mostSimilarVar.has_value()) {
+          MessageAtPrevious(fmt::format("Cannot find variable '{}' in this scope, did you mean '{}'?", localName, *mostSimilarVar), LogLevel::Error, compiler);
+        }
+        else {
+          MessageAtPrevious(fmt::format("Cannot find variable '{}' in this scope", localName), LogLevel::Error, compiler);
+        }
         return;
       }
 
@@ -2078,7 +2138,12 @@ static void Identifier(bool canAssign, CompilerContext& compiler)
     if (!Check(Scanner::TokenType::Equal, compiler)) {
       auto it = std::find_if(compiler.locals.begin(), compiler.locals.end(), [&prevText](const Local& l){ return l.name == prevText; });
       if (it == compiler.locals.end()) {
-        MessageAtPrevious(fmt::format("Cannot find variable '{}' in this scope", prevText), LogLevel::Error, compiler);
+        auto mostSimilarVar = FindMostSimilarVarName(prevText, compiler.locals);
+        if (mostSimilarVar.has_value()) {
+          MessageAtPrevious(fmt::format("Cannot find variable '{}' in this scope, did you mean '{}'?", prevText, *mostSimilarVar), LogLevel::Error, compiler);
+        } else {
+          MessageAtPrevious(fmt::format("Cannot find variable '{}' in this scope", prevText), LogLevel::Error, compiler);
+        }
         return;
       }
       if (compiler.usingExpressionResult) {
