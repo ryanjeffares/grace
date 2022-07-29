@@ -109,7 +109,7 @@ namespace Grace
     } while (toIncrement != m_Data.end() && toIncrement->GetType() == VM::Value::Type::Null);
   }
 
-  bool GraceDictionary::Insert(VM::Value&& key, VM::Value&& value)
+  void GraceDictionary::Insert(VM::Value&& key, VM::Value&& value)
   {
     auto fullness = static_cast<float>(m_Size) / static_cast<float>(m_Capacity);
     if (fullness > s_GrowFactor) {
@@ -130,10 +130,12 @@ namespace Grace
         m_Data[index] = VM::Value::CreateObject<GraceKeyValuePair>(std::move(key), std::move(value));
         m_CellStates[index] = CellState::Occupied;
         m_Size++;
-        return true;
+        return;
       case CellState::Occupied: {
         if (dynamic_cast<GraceKeyValuePair*>(m_Data[index].GetObject())->Key() == key) {
-          return false;
+          m_Data[index] = VM::Value::CreateObject<GraceKeyValuePair>(std::move(key), std::move(value));
+          m_CellStates[index] = CellState::Occupied;
+          return;
         }
         for (auto i = index + 1; ; ++i) {
           if (i == m_Capacity) {
@@ -141,19 +143,21 @@ namespace Grace
           }
           if (m_CellStates[i] == CellState::Occupied) {
             if (dynamic_cast<GraceKeyValuePair*>(m_Data[i].GetObject())->Key() == key) {
-              return false;
+              m_Data[index] = VM::Value::CreateObject<GraceKeyValuePair>(std::move(key), std::move(value));
+              m_CellStates[index] = CellState::Occupied;
+              return;
             }
-            continue;
+          } else {
+            m_Data[i] = VM::Value::CreateObject<GraceKeyValuePair>(std::move(key), std::move(value));
+            m_CellStates[i] = CellState::Occupied;
+            m_Size++;
+            return;
           }
-          m_Data[i] = VM::Value::CreateObject<GraceKeyValuePair>(std::move(key), std::move(value));
-          m_CellStates[i] = CellState::Occupied;
-          m_Size++;
-          return true;
         }
       }
       default:
         GRACE_UNREACHABLE();
-        return false;
+        break;
     }
   }
 
@@ -208,6 +212,38 @@ namespace Grace
             index++;
             break;
           }
+          return true;
+        case CellState::Tombstone:
+          index++;
+          break;
+        default:
+          GRACE_UNREACHABLE();
+          break;
+      }
+    }
+
+    GRACE_UNREACHABLE();
+    return false;
+  }
+
+  bool GraceDictionary::Remove(const VM::Value& key)
+  {
+    auto hash = m_Hasher(key);
+    auto index = hash % m_Capacity;
+    while (true) {
+      if (index >= m_Capacity) {
+        index = 0;
+      }
+      switch (m_CellStates[index]) {
+        case CellState::NeverUsed:
+          return false;
+        case CellState::Occupied:
+          if (key != dynamic_cast<GraceKeyValuePair*>(m_Data[index].GetObject())->Key()) {
+            index++;
+            break;
+          }
+          m_Data[index] = VM::Value();
+          m_CellStates[index] = CellState::Tombstone;
           return true;
         case CellState::Tombstone:
           index++;

@@ -61,9 +61,10 @@ namespace Grace
         return m_Capacity;
       }
 
-      bool Insert(VM::Value&& key, VM::Value&& value);
+      void Insert(VM::Value&& key, VM::Value&& value);
       GRACE_NODISCARD VM::Value Get(const VM::Value& key);
       GRACE_NODISCARD bool ContainsKey(const VM::Value& key);
+      GRACE_NODISCARD bool Remove(const VM::Value& key);
 
       GRACE_NODISCARD std::vector<VM::Value> ToVector() const;
 

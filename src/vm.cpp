@@ -165,13 +165,13 @@ InterpretResult VM::Start(const std::string& mainFileName, bool verbose, const s
 
 InterpretResult VM::Run(std::int64_t mainFileNameHash, GRACE_MAYBE_UNUSED bool verbose, const std::vector<std::string>& clArgs)
 {
-#define PRINT_LOCAL_MEMORY()                                                                    \
-  do {                                                                                          \
-    if (verbose) {                                                                              \
-      PrintStack(valueStack, m_FunctionLookup.at(fileNameStack.top()).at(funcNameHash)->name);  \
-      PrintLocals(localsList, m_FunctionLookup.at(fileNameStack.top()).at(funcNameHash)->name); \
-    }                                                                                           \
-  } while (false)                                                                               \
+#define PRINT_LOCAL_MEMORY()                                                                          \
+  do {                                                                                                \
+    if (verbose) {                                                                                    \
+      PrintStack(valueStack, m_FunctionLookup.at(fileNameStack.top().first).at(funcNameHash)->name);  \
+      PrintLocals(localsList, m_FunctionLookup.at(fileNameStack.top().first).at(funcNameHash)->name); \
+    }                                                                                                 \
+  } while (false)                                                                                     \
 
   auto funcNameHash = static_cast<std::int64_t>(m_Hasher("main"));
   std::vector<Value> valueStack, localsList;
@@ -195,11 +195,11 @@ InterpretResult VM::Run(std::int64_t mainFileNameHash, GRACE_MAYBE_UNUSED bool v
   std::stack<std::size_t> localsOffsets;
   localsOffsets.push(0);  // [0] is args
 
-  CallStack callStack;
-  callStack.emplace_back(static_cast<std::int64_t>(m_Hasher("file")), funcNameHash, 1, mainFunc->fileName, mainFunc->fileNameHash);
+  std::vector<CallStackEntry> callStack;
+  callStack.push_back({ static_cast<std::int64_t>(m_Hasher("file")), funcNameHash, 1, mainFunc->fileName, mainFunc->fileName, mainFunc->fileNameHash, mainFunc->fileNameHash });
 
-  std::stack<std::int64_t> fileNameStack;
-  fileNameStack.push(mainFileNameHash);
+  std::stack<std::pair<std::int64_t, std::string>> fileNameStack;
+  fileNameStack.push({ mainFileNameHash, mainFunc->fileName });
 
   // used to restore the "state" of the VM before entering a try block
   // if an exception is caught
@@ -402,7 +402,7 @@ InterpretResult VM::Run(std::int64_t mainFileNameHash, GRACE_MAYBE_UNUSED bool v
           const auto& namespaceToSearch = namespaceLookupStack.top();
           if (namespaceToSearch.empty()) {
             // calling a function in the same file
-            auto& funcList = m_FunctionLookup.at(fileNameStack.top());
+            auto& funcList = m_FunctionLookup.at(fileNameStack.top().first);
             auto funcIt = funcList.find(calleeNameHash);
             if (funcIt == funcList.end()) {
               throw GraceException(
@@ -488,10 +488,10 @@ InterpretResult VM::Run(std::int64_t mainFileNameHash, GRACE_MAYBE_UNUSED bool v
             localsList[arity - i - 1 + localsOffsets.top()] = Pop(valueStack);
           }
 
-          callStack.emplace_back(funcNameHash, calleeNameHash, line, calleeFunc->fileName, calleeFunc->fileNameHash);
+          callStack.push_back({ funcNameHash, calleeNameHash, line, fileNameStack.top().second, calleeFunc->fileName, fileNameStack.top().first, calleeFunc->fileNameHash });
           valueStack.emplace_back(static_cast<std::int64_t>(opCurrent));
           valueStack.emplace_back(static_cast<std::int64_t>(constantCurrent));
-          fileNameStack.push(calleeFunc->fileNameHash);
+          fileNameStack.push({ calleeFunc->fileNameHash, calleeFunc->fileName });
 
           opCurrent = calleeFunc->opIndexStart;
           constantCurrent = calleeFunc->constantIndexStart; 
@@ -515,12 +515,100 @@ InterpretResult VM::Run(std::int64_t mainFileNameHash, GRACE_MAYBE_UNUSED bool v
 
           std::vector<Value> args(arity);
           for (std::uint32_t i = 0; i < arity; i++) {
-            auto value = Pop(valueStack);
-            args[arity - i - 1] = std::move(value);
+            args[arity - i - 1] = Pop(valueStack);
           }
 
           auto res = calleeFunc(args);
           valueStack.push_back(std::move(res));
+          break;
+        }
+        case Ops::MemberCall: {
+          auto calleeFuncName = m_FullConstantList[constantCurrent++].Get<std::string>();
+          auto calleeNameHash = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+          auto numArgs = static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>());
+
+          std::vector<Value> argsGiven(numArgs);
+          for (std::size_t i = 0; i < numArgs; i++) {
+            argsGiven[numArgs - i - 1] = Pop(valueStack);
+          }
+
+          auto callerObject = Pop(valueStack);
+          auto type = callerObject.GetType();
+          ObjectType callerType;
+          switch (type) {
+            case Value::Type::Bool:
+              callerType = ObjectType::Bool;
+              break;
+            case Value::Type::Char:
+              callerType = ObjectType::Char;
+              break;
+            case Value::Type::Double:
+              callerType = ObjectType::Float;
+              break;
+            case Value::Type::Int:
+              callerType = ObjectType::Int;
+              break;
+            case Value::Type::Null:
+              throw GraceException(GraceException::Type::InvalidType, "`null` has no callable methods");
+            case Value::Type::String:
+              callerType = ObjectType::String;
+              break;
+            case Value::Type::Object: {
+              if (callerObject.GetTypeName() == "List") {
+                callerType = ObjectType::List;
+              } else if (callerObject.GetTypeName() == "Dict") {
+                callerType = ObjectType::Dict;
+              } else {
+                throw GraceException(GraceException::Type::InvalidType, fmt::format("Type `{}` has no callable methods", callerObject.GetTypeName()));
+              }
+              break;
+            }
+            default:
+              GRACE_UNREACHABLE();
+              throw GraceException(GraceException::Type::InvalidType, "`null` has no callable methods");
+          }
+
+          auto funcListIt = m_ExtensionMethodLookup.find(callerType);
+          if (funcListIt == m_ExtensionMethodLookup.end()) {
+            throw GraceException(GraceException::Type::FunctionNotFound, fmt::format("Member function `{}` for type `{}` not found, you might be missing an import", calleeFuncName, callerObject.GetTypeName()));
+          }
+
+          auto funcIt = std::find_if(funcListIt->second.begin(), funcListIt->second.end(), [&calleeFuncName](const std::shared_ptr<Function>& func) {
+              return func->name == calleeFuncName;
+          });
+          if (funcIt == funcListIt->second.end()) {
+            throw GraceException(GraceException::Type::FunctionNotFound, fmt::format("Member function `{}` for type `{}` not found, you might be missing an import", calleeFuncName, callerObject.GetTypeName()));
+          }
+
+          auto calleeFunc = funcIt->get();
+          auto arity = calleeFunc->arity;
+
+          // first arg for the function will be the value we popped from the stack above...
+          if (arity != numArgs + 1) {
+            throw GraceException(
+              GraceException::Type::IncorrectArgCount,
+              fmt::format("Incorrect number of arguments given to function '{}', expected {} but got {}", calleeFunc->name, arity, numArgs)
+            );
+          }
+
+          localsOffsets.push(localsList.size());
+          localsList.resize(localsList.size() + arity);
+          for (std::size_t i = 0; i < arity - 1; i++) {
+            localsList[arity - i - 1 + localsOffsets.top()] = std::move(argsGiven.back());
+            argsGiven.pop_back();
+          }
+          localsList[localsOffsets.top()] = std::move(callerObject);
+
+          callStack.push_back({ funcNameHash, calleeNameHash, line, fileNameStack.top().second, calleeFunc->fileName, fileNameStack.top().first, calleeFunc->fileNameHash });
+          valueStack.emplace_back(static_cast<std::int64_t>(opCurrent));
+          valueStack.emplace_back(static_cast<std::int64_t>(constantCurrent));
+          fileNameStack.push({ calleeFunc->fileNameHash, calleeFunc->fileName });
+
+          opCurrent = calleeFunc->opIndexStart;
+          constantCurrent = calleeFunc->constantIndexStart;
+          opConstOffsets.emplace_back(opCurrent, constantCurrent);
+
+          funcNameHash = calleeNameHash;
           break;
         }
         case Ops::AssignLocal: {
@@ -662,7 +750,7 @@ InterpretResult VM::Run(std::int64_t mainFileNameHash, GRACE_MAYBE_UNUSED bool v
           PRINT_LOCAL_MEMORY();
 #endif
 
-          funcNameHash = std::get<0>(callStack.back());
+          funcNameHash = callStack.back().callerHash;
           callStack.pop_back();
           fileNameStack.pop();
 
@@ -915,7 +1003,7 @@ InterpretResult VM::Run(std::int64_t mainFileNameHash, GRACE_MAYBE_UNUSED bool v
         opCurrent = vmState.opIndexToJump + opOffset;
         constantCurrent = vmState.constIndexToJump + constOffset;
 
-        funcNameHash = std::get<1>(callStack.back());
+        funcNameHash = callStack.back().calleeHash;
 
         valueStack.push_back(Value::CreateObject<GraceException>(ge));
 
@@ -955,7 +1043,7 @@ exit:
 #undef PRINT_LOCAL_MEMORY
 }
 
-void VM::RuntimeError(const GraceException& exception, std::size_t line, const CallStack& callStack)
+void VM::RuntimeError(const GraceException& exception, std::size_t line, const std::vector<CallStackEntry>& callStack)
 {
   fmt::print(stderr, "\nCall stack (most recent call last):\n");
 
@@ -970,7 +1058,7 @@ void VM::RuntimeError(const GraceException& exception, std::size_t line, const C
     if (auto showFull = std::getenv("GRACE_SHOW_FULL_CALLSTACK")) {
 #endif
       for (std::size_t i = 1; i < callStack.size(); i++) {
-        const auto& [caller, callee, ln, fileName, fileNameHash] = callStack[i];
+        const auto& [caller, callee, ln, fileName, calleeFileName, fileNameHash, calleeFileNameHash] = callStack[i];
         const auto& callerFunc = m_FunctionLookup.at(fileNameHash).at(caller);
         fmt::print(stderr, "in {}:{}:{}\n", fileName, callerFunc->name, ln);
         fmt::print(stderr, "{:>4}\n", Scanner::GetCodeAtLine(fileName, ln));
@@ -978,7 +1066,7 @@ void VM::RuntimeError(const GraceException& exception, std::size_t line, const C
     } else {
       fmt::print(stderr, "{} more calls before - set environment variable `GRACE_SHOW_FULL_CALLSTACK` to see full callstack\n", callStackSize - 15);
       for (auto i = callStackSize - 15; i < callStackSize; i++) {
-        const auto& [caller, callee, ln, fileName, fileNameHash] = callStack[i];
+        const auto& [caller, callee, ln, fileName, calleeFileName, fileNameHash, calleeFileNameHash] = callStack[i];
         const auto& callerFunc = m_FunctionLookup.at(fileNameHash).at(caller);
         fmt::print(stderr, "in {}:{}:{}\n", fileName, callerFunc->name, ln);
         fmt::print(stderr, "{:>4}\n", Scanner::GetCodeAtLine(fileName, ln));
@@ -986,14 +1074,14 @@ void VM::RuntimeError(const GraceException& exception, std::size_t line, const C
     }
   } else {
     for (std::size_t i = 1; i < callStack.size(); i++) {
-      const auto& [caller, callee, ln, fileName, fileNameHash] = callStack[i];
+      const auto& [caller, callee, ln, fileName, calleeFileName, fileNameHash, calleeFileNameHash] = callStack[i];
       const auto& callerFunc = m_FunctionLookup.at(fileNameHash).at(caller);
       fmt::print(stderr, "in {}:{}:{}\n", fileName, callerFunc->name, ln);
       fmt::print(stderr, "{:>4}\n", Scanner::GetCodeAtLine(fileName, ln));
     }
   }
 
-  const auto& calleeFunc = m_FunctionLookup.at(std::get<4>(callStack.back())).at(std::get<1>(callStack.back()));
+  const auto& calleeFunc = m_FunctionLookup.at(callStack.back().calleeFileNameHash).at(callStack.back().calleeHash);
   fmt::print(stderr, "in {}:{}:{}\n", calleeFunc->fileName, calleeFunc->name, line);
   fmt::print(stderr, "{:>4}\n", Scanner::GetCodeAtLine(calleeFunc->fileName, line));
 

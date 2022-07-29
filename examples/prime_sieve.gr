@@ -1,24 +1,25 @@
 import std::list;
 import std::math;
+import std::int;
 import std::time;
 
 func reset(bits: List):
-  final len: Int = std::list::length(bits);
+  final len: Int = bits.length();
   for i: Int in [0..len]:
-    std::list::set(bits, i, true);
+    bits.set(i, true);
   end
 end
 
 func get_bit(bits: List, i: Int) :: Bool:
-  return i % 2 > 0 and std::list::at(bits, i / 2);
+  return i % 2 > 0 and bits.at(i / 2);
 end
 
 func clear_bit(bits: List, i: Int):
-  std::list::set(bits, i / 2, false);
+  bits.set(i / 2, false);
 end
 
 func run_sieve(bits: List):
-  final max: Int = Int(std::math::sqrti(1000000));
+  final max: Int = Int(1000000.sqrt());
   var factor: Int = 3;
 
   while factor < max:

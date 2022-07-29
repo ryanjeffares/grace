@@ -43,6 +43,7 @@ static Value ListLength(std::vector<Value>& args);
 static Value DictionaryInsert(std::vector<Value>& args);
 static Value DictionaryGet(std::vector<Value>& args);
 static Value DictionaryContainsKey(std::vector<Value>& args);
+static Value DictionaryRemove(std::vector<Value>& args);
 
 static Value FileWrite(std::vector<Value>& args);
 
@@ -81,6 +82,7 @@ void VM::RegisterNatives()
   m_NativeFunctions.emplace_back("__NATIVE_DICTIONARY_INSERT", 3, &DictionaryInsert);
   m_NativeFunctions.emplace_back("__NATIVE_DICTIONARY_GET", 2, &DictionaryGet);
   m_NativeFunctions.emplace_back("__NATIVE_DICTIONARY_CONTAINS_KEY", 2, &DictionaryContainsKey);
+  m_NativeFunctions.emplace_back("__NATIVE_DICTIONARY_REMOVE", 2, &DictionaryRemove);
 
   // File functions
   m_NativeFunctions.emplace_back("__NATIVE_FILE_WRITE", 2, &FileWrite);
@@ -171,7 +173,8 @@ static Value ListLength(std::vector<Value>& args)
 static Value DictionaryInsert(std::vector<Value>& args)
 {
   auto dict = dynamic_cast<Grace::GraceDictionary*>(args[0].GetObject());
-  return Value(dict->Insert(std::move(args[1]), std::move(args[2])));
+  dict->Insert(std::move(args[1]), std::move(args[2]));
+  return Value();
 }
 
 static Value DictionaryGet(std::vector<Value>& args)
@@ -184,6 +187,12 @@ static Value DictionaryContainsKey(std::vector<Value>& args)
 {
   auto dict = dynamic_cast<Grace::GraceDictionary*>(args[0].GetObject());
   return Value(dict->ContainsKey(args[1]));
+}
+
+static Value DictionaryRemove(std::vector<Value>& args)
+{
+  auto dict = dynamic_cast<Grace::GraceDictionary*>(args[0].GetObject());
+  return Value(dict->Remove(args[1]));
 }
 
 static Value FileWrite(std::vector<Value>& args)

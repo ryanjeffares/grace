@@ -70,6 +70,7 @@ namespace Grace::VM
     LessEqual,
     LoadConstant,
     LoadLocal,
+    MemberCall,
     Mod,
     Multiply,
     NativeCall,
@@ -113,6 +114,7 @@ namespace Grace::VM
     Float,
     Int,
     List,
+    String,
   };
 
   class VM
@@ -185,7 +187,7 @@ namespace Grace::VM
         return m_FunctionLookup.at(m_LastFileNameHash).at(m_LastFunctionHash)->name;
       }
 
-      GRACE_NODISCARD bool AddFunction(std::string&& name, std::size_t arity, const std::string& fileName, bool exported, bool extension, ObjectType objectType = {});
+      GRACE_NODISCARD bool AddFunction(std::string&& name, std::size_t arity, const std::string& fileName, bool exported, bool extension, ObjectType objectType);
 
       std::tuple<bool, std::size_t> HasNativeFunction(const std::string& name)
       {
@@ -208,11 +210,17 @@ namespace Grace::VM
     private:
 
       // hash of caller, hash of callee, line, file name, file name hash
-      using CallStack = std::vector<std::tuple<std::int64_t, std::int64_t, std::size_t, std::string, std::int64_t>>;
+      struct CallStackEntry
+      {
+        std::int64_t callerHash{}, calleeHash{};
+        std::size_t line{};
+        std::string fileName, calleeFileName;
+        std::int64_t fileNameHash{}, calleeFileNameHash;
+      };
 
       void RegisterNatives();
       GRACE_NODISCARD InterpretResult Run(std::int64_t mainFileNameHash, GRACE_MAYBE_UNUSED bool verbose, const std::vector<std::string>& clArgs);
-      void RuntimeError(const GraceException& exception, std::size_t line, const CallStack& callStack);
+      void RuntimeError(const GraceException& exception, std::size_t line, const std::vector<CallStackEntry>& callStack);
 
     private:
 
@@ -319,6 +327,7 @@ struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
       case Ops::LessEqual: name = "Ops::LessEqual"; break;
       case Ops::LoadConstant: name = "Ops::LoadConstant"; break;
       case Ops::LoadLocal: name = "Ops::LoadLocal"; break;
+      case Ops::MemberCall: name = "Ops::MemberCall"; break;
       case Ops::Mod: name = "Ops::Mod"; break;
       case Ops::Multiply: name = "Ops::Multiply"; break;
       case Ops::NativeCall: name = "Ops::NativeCall"; break;

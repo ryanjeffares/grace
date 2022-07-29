@@ -149,7 +149,8 @@ static void Unary(bool canAssign, CompilerContext& compiler);
 static void Call(bool canAssign, CompilerContext& compiler);
 static void Primary(bool canAssign, CompilerContext& compiler);
 
-static void FunctionCall(const Scanner::Token& funcNameToken, CompilerContext& compiler);
+static void FreeFunctionCall(const Scanner::Token& funcNameToken, CompilerContext& compiler);
+static void DotFunctionCall(const Scanner::Token& funcNameToken, CompilerContext& compiler);
 static void Identifier(bool canAssign, CompilerContext& compiler);
 static void Char(CompilerContext& compiler);
 static void String(CompilerContext& compiler);
@@ -448,7 +449,8 @@ static bool IsTypeIdent(Scanner::TokenType type)
     Scanner::TokenType::BoolIdent,
     Scanner::TokenType::StringIdent,
     Scanner::TokenType::CharIdent,
-    Scanner::TokenType::ListIdent
+    Scanner::TokenType::ListIdent,
+    Scanner::TokenType::DictIdent
   };
   return std::any_of(typeIdents.begin(), typeIdents.end(), [type](Scanner::TokenType t) {
     return t == type;
@@ -599,6 +601,7 @@ static void FuncDeclaration(CompilerContext& compiler)
 
   Consume(Scanner::TokenType::LeftParen, "Expected '(' after function name", compiler);
 
+  VM::ObjectType extensionObjectType{};
   auto isExtensionMethod = false;
 
   std::vector<std::string> parameters;
@@ -674,9 +677,32 @@ static void FuncDeclaration(CompilerContext& compiler)
       }
 
       auto type = compiler.current.value().GetType();
-      if (!(IsTypeIdent(type) || type == Scanner::TokenType::Identifier)) {
-        MessageAtCurrent("Expected type identifier for extension method after `this`", LogLevel::Error, compiler);
-        return;
+      
+      switch (type) {
+        case Scanner::TokenType::IntIdent:
+          extensionObjectType = VM::ObjectType::Int;
+          break;
+        case Scanner::TokenType::FloatIdent:
+          extensionObjectType = VM::ObjectType::Float;
+          break;
+        case Scanner::TokenType::BoolIdent:
+          extensionObjectType = VM::ObjectType::Bool;
+          break;
+        case Scanner::TokenType::StringIdent:
+          extensionObjectType = VM::ObjectType::String;
+          break;
+        case Scanner::TokenType::CharIdent:
+          extensionObjectType = VM::ObjectType::Char;
+          break;
+        case Scanner::TokenType::ListIdent:
+          extensionObjectType = VM::ObjectType::List;
+          break;
+        case Scanner::TokenType::DictIdent:
+          extensionObjectType = VM::ObjectType::Dict;
+          break;
+        default:
+          MessageAtCurrent("Unrecognised object type for extension method", LogLevel::Error, compiler);
+          return;
       }
 
       Advance(compiler);
@@ -729,7 +755,7 @@ static void FuncDeclaration(CompilerContext& compiler)
 
   Consume(Scanner::TokenType::Colon, "Expected ':' after function signature", compiler);
 
-  if (!VM::VM::GetInstance().AddFunction(std::move(name), parameters.size(), compiler.currentFileName, exportFunction, isExtensionMethod)) {
+  if (!VM::VM::GetInstance().AddFunction(std::move(name), parameters.size(), compiler.currentFileName, exportFunction, isExtensionMethod, extensionObjectType)) {
     Message(funcNameToken, "Duplicate function definitions", LogLevel::Error, compiler);
     return;
   }
@@ -2094,7 +2120,8 @@ static void Primary(bool canAssign, CompilerContext& compiler)
       return;
     }
 
-
+    auto funcNameToken = compiler.previous.value();
+    DotFunctionCall(funcNameToken, compiler);
   }
 }
 
@@ -2109,7 +2136,7 @@ static void Identifier(bool canAssign, CompilerContext& compiler)
   }
 
   if (Match(Scanner::TokenType::LeftParen, compiler)) {
-    FunctionCall(prev, compiler);
+    FreeFunctionCall(prev, compiler);
   } else if (Match(Scanner::TokenType::ColonColon, compiler)) {
     if (!Check(Scanner::TokenType::Identifier, compiler)) {
       MessageAtCurrent("Expected identifier after `::`", LogLevel::Error, compiler);
@@ -2146,18 +2173,45 @@ static void Identifier(bool canAssign, CompilerContext& compiler)
         }
         return;
       }
-      if (compiler.usingExpressionResult) {
-        EmitConstant(it->index);
-        EmitOp(VM::Ops::LoadLocal, prev.GetLine());
-      } else {
-        MessageAtPrevious("Expected expression", LogLevel::Error, compiler);
-        return;
-      }
+      EmitConstant(it->index);
+      EmitOp(VM::Ops::LoadLocal, prev.GetLine());
     }
   }
 }
 
-static void FunctionCall(const Scanner::Token& funcNameToken, CompilerContext& compiler)
+static void DotFunctionCall(const Scanner::Token& funcNameToken, CompilerContext& compiler)
+{
+  Advance(compiler);  // consume the '('
+  // the last object on the stack is the object we are calling
+  std::int64_t numArgs = 0;
+  if (!Match(Scanner::TokenType::RightParen, compiler)) {
+    while (true) {
+      auto prevUsing = compiler.usingExpressionResult;
+      compiler.usingExpressionResult = true;
+      Expression(false, compiler);
+      compiler.usingExpressionResult = prevUsing;
+      numArgs++;
+      if (Match(Scanner::TokenType::RightParen, compiler)) {
+        break;
+      }
+      Consume(Scanner::TokenType::Comma, "Expected ',' after function call argument", compiler);
+    }
+  }
+
+  static std::hash<std::string> hasher;
+  auto funcName = std::string(funcNameToken.GetText());
+  EmitConstant(funcName);
+  EmitConstant(static_cast<std::int64_t>(hasher(funcName)));
+  EmitConstant(numArgs);
+  EmitOp(VM::Ops::MemberCall, funcNameToken.GetLine());
+  
+  if (!compiler.usingExpressionResult) {
+    // pop unused return value
+    EmitOp(VM::Ops::Pop, compiler.previous.value().GetLine());
+  }
+}
+
+static void FreeFunctionCall(const Scanner::Token& funcNameToken, CompilerContext& compiler)
 {
   compiler.namespaceQualifierUsed = true;
 
