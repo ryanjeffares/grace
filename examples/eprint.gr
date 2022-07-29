@@ -1,0 +1,8 @@
+func main():
+  try:
+    println("This goes to stdout");
+    throw("an exception");
+   catch e:
+    eprintln("Printing exception to stderr: " + e);
+   end
+end

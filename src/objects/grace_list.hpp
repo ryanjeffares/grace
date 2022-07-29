@@ -20,10 +20,9 @@
 
 namespace Grace
 {
-  class GraceList : public GraceIterable<std::vector<VM::Value>::iterator>
+  class GraceList : public GraceIterable
   {
     public:
-      using Iterator = std::vector<VM::Value>::iterator;
 
       GraceList() = default;
       explicit GraceList(const VM::Value&);
@@ -31,7 +30,7 @@ namespace Grace
       GraceList(const GraceList& other, std::int64_t multiple);
       GraceList(const VM::Value& min, const VM::Value& max, const VM::Value& increment);
 
-      ~GraceList();
+      ~GraceList() override;
 
       GRACE_INLINE void Append(const VM::Value& value)
       {
@@ -58,28 +57,35 @@ namespace Grace
         return m_Data.size();
       }
 
-      GRACE_NODISCARD GRACE_INLINE Iterator Begin() override
+      GRACE_NODISCARD GRACE_INLINE IteratorType Begin() override
       {
         return m_Data.begin();
       }
 
-      GRACE_NODISCARD GRACE_INLINE Iterator End() override
+      GRACE_NODISCARD GRACE_INLINE IteratorType End() override
       {
         return m_Data.end();
       }
 
+      GRACE_INLINE void IncrementIterator(IteratorType& toIncrement) const override
+      {
+        toIncrement++;
+      }
+
       void DebugPrint() const override;
-      void Print() const override;
-      void PrintLn() const override;
+      void Print(bool err) const override;
+      void PrintLn(bool err) const override;
       GRACE_NODISCARD std::string ToString() const override;
       GRACE_NODISCARD bool AsBool() const override;
-      GRACE_NODISCARD std::string ObjectName() const override;
-      VM::Value Deref() const override
+
+      GRACE_NODISCARD GRACE_INLINE constexpr const char* ObjectName() const override
       {
-        throw GraceException(
-          GraceException::Type::InvalidType,
-          "List cannot be dereferenced"
-        );
+        return "List";
+      }
+
+      GRACE_NODISCARD GRACE_INLINE constexpr bool IsIterable() const override
+      {
+        return true;
       }
       
       GRACE_INLINE VM::Value& operator[](std::size_t index)
@@ -103,10 +109,6 @@ namespace Grace
         }
         return m_Data[index];
       }
-
-      void AddIterator(GraceIterator<Iterator>*) override;
-      void RemoveIterator(GraceIterator<Iterator>*) override;
-      void InvalidateIterators() override;
 
     private:
       std::vector<VM::Value> m_Data;

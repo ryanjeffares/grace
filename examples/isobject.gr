@@ -1,0 +1,6 @@
+func main():
+  println(isobject(5));
+  println(isobject("Hello"));
+  println(isobject([1..10]));
+  println(isobject({"name": "Ryan"}));
+end

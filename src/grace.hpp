@@ -29,19 +29,9 @@
 
 #include <cassert>
 
-#ifdef _MSC_VER
-# ifndef GRACE_MSC
-#   define GRACE_MSC          _MSC_VER
-# endif
-#elif defined(__clang__) || defined(__GNUC__)
-# ifndef GRACE_GCC_CLANG
-#   define GRACE_GCC_CLANG
-# endif
-#endif
-
 #ifdef GRACE_MSC    // __cplusplus isn't always set correctly on MSVC
-# if (_MSVC_LANG < 201703L)
-#   error "C++17 is required"
+# if (_MSVC_LANG < 202002L)
+#   error "C++20 is required"
 # endif
 #else
 # if (__cplusplus < 202002L)
@@ -62,21 +52,11 @@
 #endif
 
 #ifndef GRACE_LIKELY
-# define GRACE_LIKELY       [[likely]]
+# define GRACE_LIKELY         [[likely]]
 #endif
 
 #ifndef GRACE_UNLIKELY
-# define GRACE_UNLIKELY     [[unlikely]]
-#endif
-
-#ifndef GRACE_INLINE
-# ifdef GRACE_MSC 
-#   define GRACE_INLINE       __forceinline
-# elif defined GRACE_GCC_CLANG
-#   define GRACE_INLINE       __attribute__((always_inline))
-# else
-#   define GRACE_INLINE       inline
-# endif
+# define GRACE_UNLIKELY       [[unlikely]]
 #endif
 
 #ifndef GRACE_NODISCARD
@@ -87,8 +67,18 @@
 # define GRACE_MAYBE_UNUSED   [[maybe_unused]]
 #endif
 
-#ifndef GRACE_NOEXCEPT
-# define GRACE_NOEXCEPT       noexcept
+#ifndef GRACE_NORETURN
+# define GRACE_NORETURN       [[noreturn]]
+#endif
+
+#ifndef GRACE_INLINE
+# ifdef GRACE_MSC 
+#   define GRACE_INLINE       __forceinline
+# elif defined GRACE_GCC_CLANG
+#   define GRACE_INLINE       __attribute__((always_inline))
+# else
+#   define GRACE_INLINE       inline
+# endif
 #endif
 
 #ifndef GRACE_UNREACHABLE

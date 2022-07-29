@@ -1,0 +1,33 @@
+func export at(this List list, index: Int):
+  if !instanceof(index, Int):
+    throw("Expected `Int` for list::get(list, index) but got `" + typename(index) + "`");
+  end
+  if !instanceof(list, List):
+    throw("Expected `List` for list::get(list, index) but got `" + typename(list) + "`");
+  end
+  return __NATIVE_GET_LIST_AT_INDEX(list, index);
+end
+
+func export set(this List list, index: Int, value):
+  if !instanceof(index, Int):
+    throw("Expected `Int` for list::set(list, index) but got `" + typename(index) + "`");
+  end
+  if !instanceof(list, List):
+    throw("Expected `List` for list::set(list, index) but got `" + typename(list) + "`");
+  end
+  __NATIVE_SET_LIST_AT_INDEX(list, index, value);
+end
+
+func export append(this List list, value):
+  if !instanceof(list, List):
+    throw("Expected `List` for list::append(list) but got `" + typename(list) + "`");
+  end
+  __NATIVE_APPEND_LIST(list, value);
+end
+
+func export length(this List list) :: Int:
+  if !instanceof(list, List):
+    throw("Expected `List` for list::length(list) but got `" + typename(list) + "`");
+  end
+  return __NATIVE_LIST_LENGTH(list);
+end

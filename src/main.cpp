@@ -30,7 +30,7 @@ static void Usage()
 {
   fmt::print("Grace {}.{}.{}\n\n", GRACE_MAJOR_VERSION, GRACE_MINOR_VERSION, GRACE_PATCH_NUMBER);
   fmt::print("USAGE:\n");
-  fmt::print("  grace [options] file\n\n");
+  fmt::print("  grace [options] file [grace_options]\n\n");
   fmt::print("OPTIONS:\n");
   fmt::print("  -h, --help                    Print help info and exit\n");
   fmt::print("  -V, --version                 Print version info and exit\n");
@@ -55,24 +55,59 @@ int main(int argc, const char* argv[])
   bool verbose = false;
   bool warningsError = false;
 
+  std::vector<std::string> graceMainArgs;
+  auto appendToGraceArgs = false;
   for (auto i = 1; i < argc; i++) {
     if (args[i] == "--version" || args[i] == "-V") {
-      fmt::print("Grace {}.{}.{}\n", GRACE_MAJOR_VERSION, GRACE_MINOR_VERSION, GRACE_PATCH_NUMBER);
-      return 0;
+      if (appendToGraceArgs) {
+        graceMainArgs.push_back(args[i]);
+      } else {
+        fmt::print("Grace {}.{}.{}\n", GRACE_MAJOR_VERSION, GRACE_MINOR_VERSION, GRACE_PATCH_NUMBER);
+        return 0;
+      }
     } else if (args[i] == "--help" || args[i] == "-h") {
-      Usage();
-      return 0;
+      if (appendToGraceArgs) {
+        graceMainArgs.push_back(args[i]);
+      } else {
+        Usage();
+        return 0;
+      }
     } else if (args[i] == "--verbose" || args[i] == "-v") {
-      verbose = true;
+      if (appendToGraceArgs) {
+        graceMainArgs.push_back(args[i]);
+      } else {
+        verbose = true;
+      }
     } else if (args[i] == "--warnings-error" || args[i] == "-we") {
-      warningsError = true;
+      if (appendToGraceArgs) {
+        graceMainArgs.push_back(args[i]);
+      } else {
+        warningsError = true;
+      }
     } else if (args[i].ends_with(".gr")) {
-      filePath = args[i];
+      // first .gr file will be used as the file to run
+      // any other command line flags for the interpreter, e.g. -v, should be given before the file
+      // any args after the first .gr file will be given to the main function in the grace script
+      if (appendToGraceArgs) {
+        graceMainArgs.push_back(args[i]);
+      } else {
+        filePath = args[i];
+      }
+      appendToGraceArgs = true;
     } else {
-      Error(fmt::format("Unrecognised argument '{}'\n", args[i]));
-      Usage();
-      return 1;
+      if (appendToGraceArgs) {
+        graceMainArgs.push_back(args[i]);
+      } else {
+        Error(fmt::format("Unrecognised argument '{}'\n", args[i]));
+        Usage();
+        return 1;
+      }
     }
+  }
+
+  if (filePath.empty()) {
+    Error("no '.gr' file given");
+    return 1;
   }
   
   if (!std::filesystem::exists(filePath)) {
@@ -82,7 +117,7 @@ int main(int argc, const char* argv[])
 
   std::stringstream inStream;
   try {
-    std::ifstream inFile(args[1]);
+    std::ifstream inFile(filePath);
     inStream << inFile.rdbuf();
   } catch (const std::exception& e) {
     Error(e.what());
@@ -91,7 +126,7 @@ int main(int argc, const char* argv[])
 
   return static_cast<int>(
     Grace::Compiler::Compile(
-      filePath.filename().string(), inStream.str(), verbose, warningsError
+      filePath.string(), inStream.str(), verbose, warningsError, graceMainArgs
     )
   );
 }

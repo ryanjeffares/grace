@@ -1,10 +1,10 @@
 func main():
-  if char(97) == 'a':
+  if Char(97) == 'a':
     println("utf8 babee");
   end 
 
   var num = 1234;
-  var str = string(num);
+  var str = String(num);
   println(str * 3);
-  println(int(str) * 3);
+  println(Int(str) * 3);
 end

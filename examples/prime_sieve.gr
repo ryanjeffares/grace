@@ -1,54 +1,30 @@
-// ================================================================
+import std::list;
+import std::math;
+import std::int;
+import std::time;
 
-func list_get(l, index):
-  return __NATIVE_GET_LIST_AT_INDEX(l, index);
-end
-
-func list_set(l, index, value):
-  __NATIVE_SET_LIST_AT_INDEX(l, index, value); 
-end
-
-func list_length(l):
-  return __NATIVE_LIST_LENGTH(l);
-end
-
-func time_ms():
-  return __NATIVE_TIME_MS();
-end
-
-func sqrt(n):
-  if instanceof(n, int):
-    return __NATIVE_SQRT_INT(n);
-  else if instanceof(n, float):
-    return __NATIVE_SQRT_FLOAT(n);
-  end
-  assert(false, "Arg for `sqrt` should be `int` or `float`");
-end
-
-// ================================================================
-
-func reset(bits):
-  final len = list_length(bits);
-  for i in [0..len]:
-    list_set(bits, *i, true);
+func reset(bits: List):
+  final len: Int = bits.length();
+  for i: Int in [0..len]:
+    bits.set(i, true);
   end
 end
 
-func get_bit(bits, i):
-  return i % 2 > 0 and list_get(bits, i / 2);
+func get_bit(bits: List, i: Int) :: Bool:
+  return i % 2 > 0 and bits.at(i / 2);
 end
 
-func clear_bit(bits, i):
-  list_set(bits, i / 2, false);
+func clear_bit(bits: List, i: Int):
+  bits.set(i / 2, false);
 end
 
-func run_sieve(bits):
-  final max = int(sqrt(1000000));
-  var factor = 3;
+func run_sieve(bits: List):
+  final max: Int = Int(1000000.sqrt());
+  var factor: Int = 3;
 
   while factor < max:
-    var f = factor;
-    while f < 1000000:
+    var f: Int = factor;
+    while f < 1000:
       if get_bit(bits, f):
         factor = f;
         break;
@@ -56,10 +32,10 @@ func run_sieve(bits):
       f = f + 1;
     end
 
-    final min = factor * 3;
-    final jump = factor * 2;
-    for i in [min..1000000 by jump]:
-      clear_bit(bits, *i);
+    final min: Int = factor * 3;
+    final jump: Int = factor * 2;
+    for i: Int in [min..1000000 by jump]:
+      clear_bit(bits, i);
     end
 
     factor = factor + 2;
@@ -67,24 +43,24 @@ func run_sieve(bits):
 end
 
 func main():
-  final sieve_count = 1000000;
-  final bit_count = (sieve_count + 1) / 2;
-  final correct_count = 78498;
+  final sieve_count: Int = 1000000;
+  final bit_count: Int = (sieve_count + 1) / 2;
+  final correct_count: Int = 78498;
 
-  var passes = 0;
+  var passes: Int = 0;
 
-  final start = time_ms();
+  final start: Int = std::time::time_ms();
 
   var bits;
-  while (time_ms() - start) < 5000:
+  while (std::time::time_ms() - start) < 5000:
     bits = [true] * bit_count;
     run_sieve(bits);
     passes = passes + 1;
   end
 
-  var count = 0;
-  for i in [0..bit_count]:
-    if list_get(bits, *i):
+  var count: Int = 0;
+  for b: Bool in bits:
+    if b:
       count = count + 1;
     end
   end

@@ -13,6 +13,7 @@
 #include <fmt/format.h>
 
 #include "grace_list.hpp"
+#include "grace_dictionary.hpp"
 
 using namespace Grace;
 using namespace Grace::VM;
@@ -29,7 +30,11 @@ GraceList::GraceList(const Value& value)
       m_Data.emplace_back(c);
     }
   } else {
-    m_Data.push_back(value);
+    if (auto dict = dynamic_cast<GraceDictionary*>(value.GetObject())) {
+      m_Data = dict->ToVector();
+    } else {
+      m_Data.push_back(value);
+    }
   }
 }
 
@@ -88,14 +93,16 @@ void GraceList::DebugPrint() const
   fmt::print("GraceList: {}\n", ToString());
 }
 
-void GraceList::Print() const
+void GraceList::Print(bool err) const
 {
-  fmt::print("{}", ToString());
+  auto stream = err ? stderr : stdout;
+  fmt::print(stream, "{}", ToString());
 }
 
-void GraceList::PrintLn() const
+void GraceList::PrintLn(bool err) const
 {
-  fmt::print("{}\n", ToString());
+  auto stream = err ? stderr : stdout;
+  fmt::print(stream, "{}\n", ToString());
 }
 
 std::string GraceList::ToString() const
@@ -129,33 +136,4 @@ std::string GraceList::ToString() const
 bool GraceList::AsBool() const
 {
   return !m_Data.empty();
-}
-
-std::string GraceList::ObjectName() const
-{
-  return "List";
-}
-
-void GraceList::AddIterator(GraceIterator<Iterator>* iterator)
-{
-  m_ActiveIterators.push_back(iterator);
-}
-
-void GraceList::RemoveIterator(GraceIterator<Iterator>* iterator)
-{
-  auto it = std::find(m_ActiveIterators.begin(), m_ActiveIterators.end(), iterator);
-  if (it == m_ActiveIterators.end()) {
-#ifdef GRACE_DEBUG
-    GRACE_ASSERT(false, "Trying to remove an iterator that wasn't added");
-#endif
-    return;
-  }
-  m_ActiveIterators.erase(it);
-}
-
-void GraceList::InvalidateIterators()
-{
-  for (auto it : m_ActiveIterators) {
-    it->Invalidate();
-  }
 }

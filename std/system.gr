@@ -1,0 +1,17 @@
+func export exit(final exit_code: Int):
+  if !instanceof(exit_code, Int):
+    throw("Expected argument for std::system::exit(exit_code) to be `Int` but got `" + typename(exit_code) + '`');
+  end
+  __NATIVE_SYSTEM_EXIT(exit_code);
+end
+
+func export run(final command: String) :: Int:
+  if !instanceof(command, String):
+    throw("Expected argument for std::system::run(command) to be `String` but got + `" + typename(command) + '`');
+  end
+  return __NATIVE_SYSTEM_RUN(command);
+end
+
+func export platform() :: String:
+  return __NATIVE_SYSTEM_PLATFORM();
+end

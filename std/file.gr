@@ -1,0 +1,6 @@
+func export write(path: String, contents):
+  if !instanceof(path, String):
+    throw("Expected `String` for argument to std::file::write(path, text) but got `" + typename(path) + "`");
+  end
+  __NATIVE_FILE_WRITE(path, contents);
+end

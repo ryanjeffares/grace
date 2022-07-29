@@ -11,9 +11,17 @@
 
 #include <charconv>
 #include <chrono>
+#include <cstdlib>
+#include <filesystem>
+#include <fstream>
+#include <limits>
 #include <stack>
 #include <unordered_map>
 #include <variant>
+
+#ifdef GRACE_MSC
+# include <stdlib.h>
+#endif
 
 #include <fmt/color.h>
 #include <fmt/core.h>
@@ -28,19 +36,20 @@ enum class CodeContext
   Catch,
   Function,
   If,
-  Loop,
+  ForLoop,
   TopLevel,
   Try,
+  WhileLoop,
 };
 
 struct Local
 {
   std::string name;
-  bool isFinal;
+  bool isFinal, isIterator;
   std::int64_t index;
 
-  Local(std::string&& name, bool final, std::int64_t index)
-    : name(std::move(name)), isFinal(final), index(index)
+  Local(std::string&& name, bool final, bool iterator, std::int64_t index)
+    : name(std::move(name)), isFinal(final), isIterator(iterator), index(index)
   {
 
   }
@@ -48,10 +57,16 @@ struct Local
 
 struct CompilerContext
 {
-  CompilerContext(std::string&& fileName, std::string&& code)
+  CompilerContext(const std::string& fileName, std::string&& code)
     : currentFileName(fileName)
   {
-    Scanner::InitScanner(std::move(code));
+    Scanner::InitScanner(fileName, std::move(code));
+    codeContextStack.push_back(CodeContext::TopLevel);
+  }
+
+  ~CompilerContext()
+  {
+    Scanner::PopScanner();
   }
 
   std::vector<CodeContext> codeContextStack;
@@ -60,15 +75,17 @@ struct CompilerContext
   std::optional<Scanner::Token> current, previous;
   std::vector<Local> locals;
 
-  bool functionHadReturn = false;
   bool panicMode = false, hadError = false, hadWarning = false;
 
+  bool passedImports = false;
+
+  bool namespaceQualifierUsed = true;
+
   bool usingExpressionResult = false;
-  bool verbose = false;
-  bool warningsError = false;
 
   bool continueJumpNeedsIndexes = false;
   bool breakJumpNeedsIndexes = false;
+
   // const idx, op idx
   using IndexStack = std::stack<std::vector<std::pair<std::int64_t, std::int64_t>>>;
   IndexStack breakIdxPairs, continueIdxPairs;
@@ -80,10 +97,11 @@ GRACE_NODISCARD static bool Check(Scanner::TokenType expected, CompilerContext& 
 static void Consume(Scanner::TokenType expected, const std::string& message, CompilerContext& compiler);
 static void Synchronize(CompilerContext& compiler);
 
-GRACE_INLINE static void EmitOp(VM::Ops op, int line)
+GRACE_INLINE static void EmitOp(VM::Ops op, std::size_t line)
 {
   VM::VM::GetInstance().PushOp(op, line);
 }
+
 template<typename T>
 GRACE_INLINE static void EmitConstant(const T& value)
 {
@@ -93,6 +111,7 @@ GRACE_INLINE static void EmitConstant(const T& value)
 static void Advance(CompilerContext& compiler);
 
 static void Declaration(CompilerContext& compiler);
+static void ImportDeclaration(CompilerContext& compiler);
 static void ClassDeclaration(CompilerContext& compiler);
 static void FuncDeclaration(CompilerContext& compiler);
 static void VarDeclaration(CompilerContext& compiler);
@@ -107,6 +126,8 @@ static void ForStatement(CompilerContext& compiler);
 static void IfStatement(CompilerContext& compiler);
 static void PrintStatement(CompilerContext& compiler);
 static void PrintLnStatement(CompilerContext& compiler);
+static void EPrintStatement(CompilerContext& compiler);
+static void EPrintLnStatement(CompilerContext& compiler);
 static void ReturnStatement(CompilerContext& compiler);
 static void TryStatement(CompilerContext& compiler);
 static void ThrowStatement(CompilerContext& compiler);
@@ -116,19 +137,29 @@ static void Expression(bool canAssign, CompilerContext& compiler);
 
 static void Or(bool canAssign, bool skipFirst, CompilerContext& compiler);
 static void And(bool canAssign, bool skipFirst, CompilerContext& compiler);
+static void BitwiseOr(bool canAssign, bool skipFirst, CompilerContext& compiler);
+static void BitwiseXOr(bool canAssign, bool skipFirst, CompilerContext& compiler);
+static void BitwiseAnd(bool canAssign, bool skipFirst, CompilerContext& compiler);
 static void Equality(bool canAssign, bool skipFirst, CompilerContext& compiler);
 static void Comparison(bool canAssign, bool skipFirst, CompilerContext& compiler);
+static void Shift(bool canAssign, bool skipFirst, CompilerContext& compiler);
 static void Term(bool canAssign, bool skipFirst, CompilerContext& compiler);
 static void Factor(bool canAssign, bool skipFirst, CompilerContext& compiler);
 static void Unary(bool canAssign, CompilerContext& compiler);
 static void Call(bool canAssign, CompilerContext& compiler);
 static void Primary(bool canAssign, CompilerContext& compiler);
 
+static void FreeFunctionCall(const Scanner::Token& funcNameToken, CompilerContext& compiler);
+static void DotFunctionCall(const Scanner::Token& funcNameToken, CompilerContext& compiler);
+static void Identifier(bool canAssign, CompilerContext& compiler);
 static void Char(CompilerContext& compiler);
 static void String(CompilerContext& compiler);
 static void InstanceOf(CompilerContext& compiler);
+static void IsObject(CompilerContext& compiler);
 static void Cast(CompilerContext& compiler);
 static void List(CompilerContext& compiler);
+static void Dictionary(CompilerContext& compiler);
+static void Typename(CompilerContext& compiler);
 
 enum class LogLevel
 {
@@ -139,35 +170,48 @@ static void MessageAtCurrent(const std::string& message, LogLevel level, Compile
 static void MessageAtPrevious(const std::string& message, LogLevel level, CompilerContext& compiler);
 static void Message(const std::optional<Scanner::Token>& token, const std::string& message, LogLevel level, CompilerContext& compiler);
 
-GRACE_NODISCARD static VM::InterpretResult Finalise(CompilerContext& compiler);
+GRACE_NODISCARD static VM::InterpretResult Finalise(const std::string& mainFileName, bool verbose, const std::vector<std::string>& args);
 
-VM::InterpretResult Grace::Compiler::Compile(std::string&& fileName, std::string&& code, bool verbose, bool warningsError)
+static bool s_Verbose, s_WarningsError;
+static std::stack<CompilerContext> s_CompilerContextStack;
+
+VM::InterpretResult Grace::Compiler::Compile(const std::string& fileName, std::string&& code, bool verbose, bool warningsError, const std::vector<std::string>& args)
 {
   using namespace std::chrono;
 
   auto start = steady_clock::now();
+
+  s_Verbose = verbose;
+  s_WarningsError = warningsError;
  
-  CompilerContext compiler(std::move(fileName), std::move(code));
+  s_CompilerContextStack.emplace(fileName, std::move(code));
   
-  compiler.warningsError = warningsError;
-  compiler.verbose = verbose;
-  compiler.codeContextStack.emplace_back(CodeContext::TopLevel);
+  Advance(s_CompilerContextStack.top());
   
-  Advance(compiler);
-  
-  while (!Match(Scanner::TokenType::EndOfFile, compiler)) {
-    Declaration(compiler);
-    if (compiler.hadError) {
+  auto hadError = false, hadWarning = false;
+  while (!s_CompilerContextStack.empty()) {
+    if (Match(Scanner::TokenType::EndOfFile, s_CompilerContextStack.top())) {
+      s_CompilerContextStack.pop();
+      continue;
+    }
+    Declaration(s_CompilerContextStack.top());
+    hadError = s_CompilerContextStack.top().hadError;
+    hadWarning = s_CompilerContextStack.top().hadWarning;
+    if (s_CompilerContextStack.top().hadError) {
       break;
     }
   }
 
-  if (compiler.hadError) {
+  while (!s_CompilerContextStack.empty()) {
+    s_CompilerContextStack.pop();
+  }
+
+  if (hadError) {
     fmt::print(stderr, "Terminating process due to compilation errors.\n");
-  } else if (compiler.hadWarning && compiler.warningsError) {
+  } else if (hadWarning && warningsError) {
     fmt::print(stderr, "Terminating process due to compilation warnings treated as errors.\n");
   } else {
-    if (compiler.verbose) {
+    if (verbose) {
       auto end = steady_clock::now();
       auto duration = duration_cast<microseconds>(end - start).count();
       if (duration > 1000) {
@@ -176,21 +220,21 @@ VM::InterpretResult Grace::Compiler::Compile(std::string&& fileName, std::string
         fmt::print("Compilation succeeded in {} μs.\n", duration);
       }
     }
-    return Finalise(compiler);
+    return Finalise(fileName, verbose, args);
   }
 
   return VM::InterpretResult::RuntimeError;
 }
 
-static VM::InterpretResult Finalise(CompilerContext& compiler)
+static VM::InterpretResult Finalise(const std::string& mainFileName, bool verbose, const std::vector<std::string>& args)
 {
  #ifdef GRACE_DEBUG
-   if (compiler.verbose) {
+   if (verbose) {
      VM::VM::GetInstance().PrintOps();
    }
  #endif
-   if (VM::VM::GetInstance().CombineFunctions(compiler.verbose)) {
-     return VM::VM::GetInstance().Start(compiler.verbose);
+   if (VM::VM::GetInstance().CombineFunctions(mainFileName, verbose)) {
+     return VM::VM::GetInstance().Start(mainFileName, verbose, args);
    }
   return VM::InterpretResult::RuntimeError;
 }
@@ -201,7 +245,7 @@ static void Advance(CompilerContext& compiler)
   compiler.current = Scanner::ScanToken();
 
 #ifdef GRACE_DEBUG
-  if (compiler.verbose) {
+  if (s_Verbose) {
     fmt::print("{}\n", compiler.current.value().ToString());
   }
 #endif 
@@ -211,9 +255,9 @@ static void Advance(CompilerContext& compiler)
   }
 }
 
-static bool Match(Scanner::TokenType type, CompilerContext& compiler)
+static bool Match(Scanner::TokenType expected, CompilerContext& compiler)
 {
-  if (!Check(type, compiler)) {
+  if (!Check(expected, compiler)) {
     return false;
   }
 
@@ -221,9 +265,9 @@ static bool Match(Scanner::TokenType type, CompilerContext& compiler)
   return true;
 }
 
-static bool Check(Scanner::TokenType type, CompilerContext& compiler)
+static bool Check(Scanner::TokenType expected, CompilerContext& compiler)
 {
-  return compiler.current.has_value() && compiler.current.value().GetType() == type;
+  return compiler.current.has_value() && compiler.current.value().GetType() == expected;
 }
 
 static void Consume(Scanner::TokenType expected, const std::string& message, CompilerContext& compiler)
@@ -254,6 +298,8 @@ static void Synchronize(CompilerContext& compiler)
       case Scanner::TokenType::While:
       case Scanner::TokenType::Print:
       case Scanner::TokenType::PrintLn:
+      case Scanner::TokenType::Eprint:
+      case Scanner::TokenType::EprintLn:
       case Scanner::TokenType::Return:
       case Scanner::TokenType::Var:
         return;
@@ -281,6 +327,9 @@ static bool IsKeyword(Scanner::TokenType type, std::string& outKeyword)
     case Scanner::TokenType::Or: outKeyword = "or"; return true;
     case Scanner::TokenType::Print: outKeyword = "print"; return true;
     case Scanner::TokenType::PrintLn: outKeyword = "println"; return true;
+    case Scanner::TokenType::Eprint: outKeyword = "eprint"; return true;
+    case Scanner::TokenType::EprintLn: outKeyword = "eprintln"; return true;
+    case Scanner::TokenType::Export: outKeyword = "export"; return true;
     case Scanner::TokenType::Return: outKeyword = "return"; return true;
     case Scanner::TokenType::Throw: outKeyword = "throw"; return true;
     case Scanner::TokenType::Try: outKeyword = "try"; return true;
@@ -302,6 +351,7 @@ static bool IsOperator(Scanner::TokenType type)
     Scanner::TokenType::DotDot,
     Scanner::TokenType::Plus,
     Scanner::TokenType::Slash,
+    Scanner::TokenType::Star,
     Scanner::TokenType::StarStar,
     Scanner::TokenType::BangEqual,
     Scanner::TokenType::Equal,
@@ -310,6 +360,11 @@ static bool IsOperator(Scanner::TokenType type)
     Scanner::TokenType::GreaterThan,
     Scanner::TokenType::LessEqual,
     Scanner::TokenType::GreaterEqual,
+    Scanner::TokenType::Bar,
+    Scanner::TokenType::Ampersand,
+    Scanner::TokenType::Caret,
+    Scanner::TokenType::ShiftRight,
+    Scanner::TokenType::ShiftLeft,
   };
 
   return std::any_of(symbols.begin(), symbols.end(), [type](Scanner::TokenType t) {
@@ -319,14 +374,20 @@ static bool IsOperator(Scanner::TokenType type)
 
 static void Declaration(CompilerContext& compiler)
 {
-  if (Match(Scanner::TokenType::Class, compiler)) {
+  if (Match(Scanner::TokenType::Import, compiler)) {
+    ImportDeclaration(compiler);
+  } else if (Match(Scanner::TokenType::Class, compiler)) {
+    compiler.passedImports = true;
     ClassDeclaration(compiler);
   } else if (Match(Scanner::TokenType::Func, compiler)) {
+    compiler.passedImports = true;
     FuncDeclaration(compiler);
   } else if (Match(Scanner::TokenType::Var, compiler)) {
+    compiler.passedImports = true;
     VarDeclaration(compiler);
   } else if (Match(Scanner::TokenType::Final, compiler)) {
-    FinalDeclaration(compiler);    
+    compiler.passedImports = true;
+    FinalDeclaration(compiler);
   } else {
     Statement(compiler);
   }
@@ -351,6 +412,10 @@ static void Statement(CompilerContext& compiler)
     PrintStatement(compiler);
   } else if (Match(Scanner::TokenType::PrintLn, compiler)) {
     PrintLnStatement(compiler);
+  } else if (Match(Scanner::TokenType::Eprint, compiler)) {
+    EPrintStatement(compiler);
+  } else if (Match(Scanner::TokenType::EprintLn, compiler)) {
+    EPrintLnStatement(compiler);
   } else if (Match(Scanner::TokenType::Return, compiler)) {
     ReturnStatement(compiler);
   } else if (Match(Scanner::TokenType::While, compiler)) {
@@ -376,6 +441,134 @@ static void Statement(CompilerContext& compiler)
   }
 }
 
+static bool IsTypeIdent(Scanner::TokenType type)
+{
+  static const std::vector<Scanner::TokenType> typeIdents = {
+    Scanner::TokenType::IntIdent,
+    Scanner::TokenType::FloatIdent,
+    Scanner::TokenType::BoolIdent,
+    Scanner::TokenType::StringIdent,
+    Scanner::TokenType::CharIdent,
+    Scanner::TokenType::ListIdent,
+    Scanner::TokenType::DictIdent
+  };
+  return std::any_of(typeIdents.begin(), typeIdents.end(), [type](Scanner::TokenType t) {
+    return t == type;
+  });
+}
+
+static bool IsValidTypeAnnotation(const Scanner::TokenType& token)
+{
+  static const std::vector<Scanner::TokenType> valid = {
+    Scanner::TokenType::Identifier,
+    Scanner::TokenType::IntIdent,
+    Scanner::TokenType::FloatIdent,
+    Scanner::TokenType::BoolIdent,
+    Scanner::TokenType::CharIdent,
+    Scanner::TokenType::Null,
+    Scanner::TokenType::StringIdent,
+    Scanner::TokenType::ListIdent,
+    Scanner::TokenType::DictIdent,
+  };
+  return std::any_of(valid.begin(), valid.end(), [token] (Scanner::TokenType t) {
+    return t == token;
+  });
+}
+
+static void ImportDeclaration(CompilerContext& compiler)
+{
+  if (compiler.passedImports) {
+    MessageAtPrevious("`import` only allowed before any other declarations", LogLevel::Error, compiler);
+    return;
+  }
+
+  std::optional<Scanner::Token> lastPathToken;
+  std::optional<bool> isStdImport = std::nullopt;
+  std::string importPath;
+  while (true) {
+    if (!Match(Scanner::TokenType::Identifier, compiler)) {
+      MessageAtCurrent("Expected path", LogLevel::Error, compiler);
+      return;
+    }
+    auto txt = compiler.previous.value().GetText();
+    if (!isStdImport.has_value() && txt == "std") {
+      isStdImport = true;
+    }
+    importPath.append(txt);
+    lastPathToken = compiler.previous;
+    if (Match(Scanner::TokenType::Semicolon, compiler)) {
+      importPath.append(".gr");
+      break;
+    }
+    if (Match(Scanner::TokenType::EndOfFile, compiler)) {
+      MessageAtPrevious("Unterminated `import` statement", LogLevel::Error, compiler);
+      return;
+    }
+    Consume(Scanner::TokenType::ColonColon, "Expected `::` for path continuation", compiler);
+    importPath.push_back('/');
+  }
+
+  namespace fs = std::filesystem;
+
+  fs::path inPath;
+  // if it was an std import, get the std path env variable and look there
+  if (isStdImport.has_value()) {
+    std::string stdPath;
+
+#ifdef GRACE_MSC
+    std::size_t size;
+    getenv_s(&size, NULL, 0, "GRACE_STD_PATH");
+    if (size == 0) {
+      fmt::print(stderr, "The `GRACE_STD_PATH` environment variable has not been set, so cannot continue importing file {}\n", importPath);
+      return;
+    }
+    char* libPath = (char*)std::malloc(size * sizeof(char));
+    getenv_s(&size, libPath, size, "GRACE_STD_PATH");
+    if (libPath == NULL) {
+      fmt::print(stderr, "Failed to retrive the `GRACE_STD_PATH` environment variable, so cannot continue importing file {}\n", importPath);
+      return;
+    }
+    stdPath = libPath;
+    std::free(libPath);
+#else
+    char* pathPtr = std::getenv("GRACE_STD_PATH");
+    if (pathPtr == nullptr) {
+      fmt::print(stderr, "The `GRACE_STD_PATH` environment variable has not been set, so cannot continue importing file {}\n", importPath);
+      return;
+    }
+    stdPath = pathPtr;
+#endif
+
+    inPath = fs::path(stdPath) / fs::path(importPath.substr(4));  // trim off 'std/' because that's contained within the path environment variable
+  } else {
+    auto basePath = fs::path(compiler.currentFileName).parent_path();
+    inPath = basePath / fs::path(importPath);
+  }
+
+  if (!fs::exists(inPath)) {
+    Message(lastPathToken, fmt::format("Could not find file `{}` to import", importPath), LogLevel::Error, compiler);
+    return;
+  }
+
+  if (Scanner::HasFile(importPath)) {
+    // don't produce a warning, but silently ignore the duplicate import
+    // TODO: maybe ignore this in the std, but warn the user if they have duplicate imports in one file?
+    return;
+  }
+
+  std::stringstream inFileStream;
+  try {
+    std::ifstream inFile(inPath);
+    inFileStream << inFile.rdbuf();
+  } catch (const std::exception& e) {
+    fmt::print(stderr, "Error reading imported file `{}`: {}. This import will be ignored.\n", inPath.string(), e.what());
+    return;
+  }
+
+  s_CompilerContextStack.emplace(std::move(importPath), inFileStream.str());
+  Advance(s_CompilerContextStack.top());
+}
+
 static void ClassDeclaration(GRACE_MAYBE_UNUSED CompilerContext& compiler)
 {
   GRACE_NOT_IMPLEMENTED();
@@ -390,41 +583,147 @@ static void FuncDeclaration(CompilerContext& compiler)
     }
   }
 
+  auto exportFunction = false;
   compiler.codeContextStack.emplace_back(CodeContext::Function);
 
+  if (Match(Scanner::TokenType::Export, compiler)) {
+    exportFunction = true;
+  }
+
   Consume(Scanner::TokenType::Identifier, "Expected function name", compiler);
+  auto funcNameToken = compiler.previous;
   auto name = std::string(compiler.previous.value().GetText());
   if (name.starts_with("__")) {
-    MessageAtPrevious("Function names beginning with double underscore `__` are reserved for internal use", LogLevel::Error, compiler);
+    MessageAtPrevious("Names beginning with double underscore `__` are reserved for internal use", LogLevel::Error, compiler);
     return;
   }
   auto isMainFunction = name == "main";
 
   Consume(Scanner::TokenType::LeftParen, "Expected '(' after function name", compiler);
 
+  VM::ObjectType extensionObjectType{};
+  auto isExtensionMethod = false;
+
   std::vector<std::string> parameters;
   while (!Match(Scanner::TokenType::RightParen, compiler)) {
+    if (isMainFunction && parameters.size() > 1) {
+      Message(funcNameToken, fmt::format("`main` function can only take 0 or 1 parameter(s) but got {}", parameters.size()), LogLevel::Error, compiler);
+      return;
+    }
+
     if (Match(Scanner::TokenType::Final, compiler)) {
       Consume(Scanner::TokenType::Identifier, "Expected identifier after `final`", compiler);
       auto p = std::string(compiler.previous.value().GetText());
+
+      if (p.starts_with("__")) {
+        MessageAtPrevious("Names beginning with double underscore `__` are reserved for internal use", LogLevel::Error, compiler);
+        return;
+      }
+
       if (std::find(parameters.begin(), parameters.end(), p) != parameters.end()) {
         MessageAtPrevious("Function parameters with the same name already defined", LogLevel::Error, compiler);
         return;
       }
       parameters.push_back(p);
-      compiler.locals.emplace_back(std::move(p), true, compiler.locals.size());
+      compiler.locals.emplace_back(std::move(p), true, false, compiler.locals.size());
+
+      if (Match(Scanner::TokenType::Colon, compiler)) {
+        if (!IsValidTypeAnnotation(compiler.current.value().GetType())) {
+          MessageAtCurrent("Expected type name after type annotation", LogLevel::Error, compiler);
+          return;
+        }
+        Advance(compiler);
+      }
 
       if (!Check(Scanner::TokenType::RightParen, compiler)) {
         Consume(Scanner::TokenType::Comma, "Expected ',' after function parameter", compiler);
       }
-    } else if (Match(Scanner::TokenType::Identifier, compiler)) {
+    }
+    else if (Match(Scanner::TokenType::Identifier, compiler)) {
       auto p = std::string(compiler.previous.value().GetText());
       if (std::find(parameters.begin(), parameters.end(), p) != parameters.end()) {
         MessageAtPrevious("Function parameters with the same name already defined", LogLevel::Error, compiler);
         return;
       }
+
+      if (p.starts_with("__")) {
+        MessageAtPrevious("Names beginning with double underscore `__` are reserved for internal use", LogLevel::Error, compiler);
+        return;
+      }
+
       parameters.push_back(p);
-      compiler.locals.emplace_back(std::move(p), false, compiler.locals.size());
+      compiler.locals.emplace_back(std::move(p), false, false, compiler.locals.size());
+
+      if (Match(Scanner::TokenType::Colon, compiler)) {
+        if (!IsValidTypeAnnotation(compiler.current.value().GetType())) {
+          MessageAtCurrent("Expected type name after type annotation", LogLevel::Error, compiler);
+          return;
+        }
+        Advance(compiler);
+      }
+
+      if (!Check(Scanner::TokenType::RightParen, compiler)) {
+        Consume(Scanner::TokenType::Comma, "Expected ',' after function parameter", compiler);
+      }
+    } else if (Match(Scanner::TokenType::This, compiler)) {
+      if (isMainFunction) {
+        MessageAtPrevious("`this` not allowed in main function", LogLevel::Error, compiler);
+        return;
+      }
+
+      if (!parameters.empty()) {
+        MessageAtPrevious("`this` can only appear before the first function parameter to make an extension method", LogLevel::Error, compiler);
+        return;
+      }
+
+      auto type = compiler.current.value().GetType();
+      
+      switch (type) {
+        case Scanner::TokenType::IntIdent:
+          extensionObjectType = VM::ObjectType::Int;
+          break;
+        case Scanner::TokenType::FloatIdent:
+          extensionObjectType = VM::ObjectType::Float;
+          break;
+        case Scanner::TokenType::BoolIdent:
+          extensionObjectType = VM::ObjectType::Bool;
+          break;
+        case Scanner::TokenType::StringIdent:
+          extensionObjectType = VM::ObjectType::String;
+          break;
+        case Scanner::TokenType::CharIdent:
+          extensionObjectType = VM::ObjectType::Char;
+          break;
+        case Scanner::TokenType::ListIdent:
+          extensionObjectType = VM::ObjectType::List;
+          break;
+        case Scanner::TokenType::DictIdent:
+          extensionObjectType = VM::ObjectType::Dict;
+          break;
+        default:
+          MessageAtCurrent("Unrecognised object type for extension method", LogLevel::Error, compiler);
+          return;
+      }
+
+      Advance(compiler);
+      isExtensionMethod = true;
+
+      Consume(Scanner::TokenType::Identifier, "Expected identifier after type identifier", compiler);
+
+      auto p = std::string(compiler.previous.value().GetText());
+      
+      if (p.starts_with("__")) {
+        MessageAtPrevious("Names beginning with double underscore `__` are reserved for internal use", LogLevel::Error, compiler);
+        return;
+      }
+
+      if (std::find(parameters.begin(), parameters.end(), p) != parameters.end()) {
+        MessageAtPrevious("Function parameters with the same name already defined", LogLevel::Error, compiler);
+        return;
+      }
+
+      parameters.push_back(p);
+      compiler.locals.emplace_back(std::move(p), false, false, compiler.locals.size());
 
       if (!Check(Scanner::TokenType::RightParen, compiler)) {
         Consume(Scanner::TokenType::Comma, "Expected ',' after function parameter", compiler);
@@ -435,17 +734,33 @@ static void FuncDeclaration(CompilerContext& compiler)
     } 
   }
 
+  if (Match(Scanner::TokenType::ColonColon, compiler)) {
+    if (isMainFunction) {
+      MessageAtPrevious("`main` does not return a value", LogLevel::Error, compiler);
+      return;
+    }
+    if (!IsValidTypeAnnotation(compiler.current.value().GetType())) {
+      MessageAtCurrent("Expected type name after type annotation", LogLevel::Error, compiler);
+      return;
+    }
+    Advance(compiler);
+  }
+
+  // cl args are still assigned in the VM if the user doesn't state it
+  // so the compiler needs to be aware of that
+  // but don't use up the name "args" which would be used as standard...
+  if (isMainFunction && parameters.size() == 0) {
+    compiler.locals.emplace_back("__ARGS", true, false, 0);
+  }
+
   Consume(Scanner::TokenType::Colon, "Expected ':' after function signature", compiler);
 
-  if (!VM::VM::GetInstance().AddFunction(std::move(name), compiler.previous.value().GetLine(), static_cast<int>(parameters.size()))) {
-    MessageAtPrevious("Duplicate function definitions", LogLevel::Error, compiler);
+  if (!VM::VM::GetInstance().AddFunction(std::move(name), parameters.size(), compiler.currentFileName, exportFunction, isExtensionMethod, extensionObjectType)) {
+    Message(funcNameToken, "Duplicate function definitions", LogLevel::Error, compiler);
     return;
   }
 
   while (!Match(Scanner::TokenType::End, compiler)) {
-    // set this to false before every declaration
-    // so that we know if the last declaration was a return
-    compiler.functionHadReturn = false;
     Declaration(compiler);
     if (compiler.current.value().GetType() == Scanner::TokenType::EndOfFile) {
       MessageAtCurrent("Expected `end` after function", LogLevel::Error, compiler);
@@ -455,10 +770,11 @@ static void FuncDeclaration(CompilerContext& compiler)
 
   // implicitly return if the user didn't write a return so the VM knows to return to the caller
   // functions with no return will implicitly return null, so setting a call equal to a variable is valid
-  if (!compiler.functionHadReturn) {
-    EmitConstant(true);
-    EmitConstant(std::int64_t{0});
-    EmitOp(VM::Ops::PopLocals, compiler.previous.value().GetLine());
+  if (VM::VM::GetInstance().GetLastOp() != VM::Ops::Return) {
+    if (!compiler.locals.empty()) {
+      EmitConstant(std::int64_t{0});
+      EmitOp(VM::Ops::PopLocals, compiler.previous.value().GetLine());
+    }
 
     if (!isMainFunction) {
       EmitConstant(nullptr);
@@ -483,18 +799,38 @@ static void VarDeclaration(CompilerContext& compiler)
     return;
   }
 
-  Consume(Scanner::TokenType::Identifier, "Expected identifier after `var`", compiler);
-  auto it = std::find_if(compiler.locals.begin(), compiler.locals.end(), [&] (const Local& l) { return l.name == compiler.previous.value().GetText(); });
+  if (!Match(Scanner::TokenType::Identifier, compiler)) {
+    MessageAtCurrent("Expected identifier after `var`", LogLevel::Error, compiler);
+    return;
+  }
+
+  auto nameToken = compiler.previous.value();
+
+  if (Match(Scanner::TokenType::Colon, compiler)) {
+    if (!IsValidTypeAnnotation(compiler.current.value().GetType())) {
+      MessageAtCurrent("Expected typename after type annotation", LogLevel::Error, compiler);
+      return;
+    }
+    Advance(compiler);
+  }
+
+  std::string localName(nameToken.GetText());
+
+  if (localName.starts_with("__")) {
+    MessageAtPrevious("Names beginning with double underscore `__` are reserved for internal use", LogLevel::Error, compiler);
+    return;
+  }
+
+  auto it = std::find_if(compiler.locals.begin(), compiler.locals.end(), [&localName] (const Local& l) { return l.name == localName; });
   if (it != compiler.locals.end()) {
     MessageAtPrevious("A local variable with the same name already exists", LogLevel::Error, compiler);
     return;
   }
 
-  std::string localName(compiler.previous.value().GetText());
-  int line = compiler.previous.value().GetLine();
+  auto line = compiler.previous.value().GetLine();
 
   auto localId = static_cast<std::int64_t>(compiler.locals.size());
-  compiler.locals.emplace_back(std::move(localName), false, localId);
+  compiler.locals.emplace_back(std::move(localName), false, false, localId);
   EmitOp(VM::Ops::DeclareLocal, line);
 
   if (Match(Scanner::TokenType::Equal, compiler)) {
@@ -516,19 +852,38 @@ static void FinalDeclaration(CompilerContext& compiler)
     return;
   } 
 
-  Consume(Scanner::TokenType::Identifier, "Expected identifier after `final`", compiler);
+  if (!Match(Scanner::TokenType::Identifier, compiler)) {
+    MessageAtCurrent("Expected identifier after `final`", LogLevel::Error, compiler);
+    return;
+  }
 
-  auto it = std::find_if(compiler.locals.begin(), compiler.locals.end(), [&] (const Local& l) { return l.name == compiler.previous.value().GetText(); });
+  auto nameToken = compiler.previous.value();
+
+  if (Match(Scanner::TokenType::Colon, compiler)) {
+    if (!IsValidTypeAnnotation(compiler.current.value().GetType())) {
+      MessageAtCurrent("Expected typename after type annotation", LogLevel::Error, compiler);
+      return;
+    }
+    Advance(compiler);
+  }
+
+  std::string localName(nameToken.GetText());
+  
+  if (localName.starts_with("__")) {
+    MessageAtPrevious("Names beginning with double underscore `__` are reserved for internal use", LogLevel::Error, compiler);
+    return;
+  }
+
+  auto it = std::find_if(compiler.locals.begin(), compiler.locals.end(), [&localName] (const Local& l) { return l.name == localName; });
   if (it != compiler.locals.end()) {
     MessageAtPrevious("A local variable with the same name already exists", LogLevel::Error, compiler);
     return;
   }
 
-  std::string localName(compiler.previous.value().GetText());
-  int line = compiler.previous.value().GetLine();
+  auto line = compiler.previous.value().GetLine();
 
   auto localId = static_cast<std::int64_t>(compiler.locals.size());
-  compiler.locals.emplace_back(std::move(localName), true, localId);
+  compiler.locals.emplace_back(std::move(localName), true, false, localId);
   EmitOp(VM::Ops::DeclareLocal, line);
 
   Consume(Scanner::TokenType::Equal, "Must assign to `final` upon declaration", compiler);
@@ -541,6 +896,59 @@ static void FinalDeclaration(CompilerContext& compiler)
   EmitOp(VM::Ops::AssignLocal, line);
 
   Consume(Scanner::TokenType::Semicolon, "Expected ';' after `final` declaration", compiler);
+}
+
+// returns higher values for less similar strings
+static std::size_t GetEditDistance(const std::string& first, const std::string& second)
+{
+  auto l1 = first.length();
+  auto l2 = second.length();
+
+  if (l1 == 0) {
+    return l2;
+  }
+
+  if (l2 == 0) {
+    return l1;
+  }
+
+  std::vector<std::vector<std::size_t>> matrix(l1 + 1);
+  for (std::size_t i = 0; i < matrix.size(); i++) {
+    matrix[i].resize(l2 + 1);
+  }
+
+  for (std::size_t i = 1; i <= l1; i++) {
+    matrix[i][0] = i;
+  }
+  for (std::size_t j = 1; j <= l2; j++) {
+    matrix[0][j] = j;
+  }
+
+  for (std::size_t i = 1; i <= l1; i++) {
+    for (std::size_t j = 1; j <= l2; j++) {
+      std::size_t weight = first[i - 1] == second[j - 1] ? 0 : 1;
+      matrix[i][j] = std::min({ matrix[i - 1][j] + 1, matrix[i][j - 1] + 1, matrix[i - 1][j - 1] + weight });
+    }
+  }
+
+  return matrix[l1][l2];
+}
+
+static std::optional<std::string> FindMostSimilarVarName(const std::string& varName, const std::vector<Local>& localList)
+{
+  std::optional<std::string> res = std::nullopt;
+  std::size_t current = std::numeric_limits<std::size_t>::max();
+
+  for (const auto& l : localList) {
+    if (l.name == "__ARGS") continue;
+    auto editDistance = GetEditDistance(varName, l.name);
+    if (editDistance < current) {
+      current = editDistance;
+      res = l.name;
+    }
+  }
+
+  return res;
 }
 
 static void Expression(bool canAssign, CompilerContext& compiler)
@@ -567,15 +975,28 @@ static void Expression(bool canAssign, CompilerContext& compiler)
       }
 
       auto localName = std::string(compiler.previous.value().GetText());
-      auto it = std::find_if(compiler.locals.begin(), compiler.locals.end(), [&](const Local& l) { return l.name == localName; });
+      auto it = std::find_if(compiler.locals.begin(), compiler.locals.end(), [&localName](const Local& l) { return l.name == localName; });
       if (it == compiler.locals.end()) {
-        MessageAtPrevious(fmt::format("Cannot find variable '{}' in this scope", localName), LogLevel::Error, compiler);
+        auto mostSimilarVar = FindMostSimilarVarName(localName, compiler.locals);
+        if (mostSimilarVar.has_value()) {
+          MessageAtPrevious(fmt::format("Cannot find variable '{}' in this scope, did you mean '{}'?", localName, *mostSimilarVar), LogLevel::Error, compiler);
+        }
+        else {
+          MessageAtPrevious(fmt::format("Cannot find variable '{}' in this scope", localName), LogLevel::Error, compiler);
+        }
         return;
       }
 
       if (it->isFinal) {
         MessageAtPrevious(fmt::format("Cannot reassign to final '{}'", compiler.previous.value().GetText()), LogLevel::Error, compiler);
         return;
+      }
+
+      if (it->isIterator && (s_Verbose || s_WarningsError)) {
+        MessageAtPrevious(fmt::format("'{}' is an iterator variable and will be reassigned on each loop iteration", compiler.previous.value().GetText()), LogLevel::Warning, compiler);
+        if (s_WarningsError) {
+          return;
+        }
       }
 
       Advance(compiler);  // consume the equals
@@ -590,13 +1011,21 @@ static void Expression(bool canAssign, CompilerContext& compiler)
       Expression(false, compiler); // disallow x = y = z...
       compiler.usingExpressionResult = prevUsing;
 
-      int line = compiler.previous.value().GetLine();
       EmitConstant(it->index);
-      EmitOp(VM::Ops::AssignLocal, line);
+      EmitOp(VM::Ops::AssignLocal, compiler.previous.value().GetLine());
     } else {
       bool shouldBreak = false;
       while (!shouldBreak) {
         switch (compiler.current.value().GetType()) {
+          case Scanner::TokenType::Bar:
+            BitwiseOr(false, true, compiler);
+            break;
+          case Scanner::TokenType::Ampersand:
+            BitwiseAnd(false, true, compiler);
+            break;
+          case Scanner::TokenType::Caret:
+            BitwiseXOr(false, true, compiler);
+            break;
           case Scanner::TokenType::And:
             And(false, true, compiler);
             break;
@@ -623,12 +1052,18 @@ static void Expression(bool canAssign, CompilerContext& compiler)
           case Scanner::TokenType::Mod:
             Factor(false, true, compiler);
             break;
+          case Scanner::TokenType::ShiftLeft:
+          case Scanner::TokenType::ShiftRight:
+            Shift(false, true, compiler);
+            break;
           case Scanner::TokenType::Semicolon:
           case Scanner::TokenType::RightParen:
           case Scanner::TokenType::Comma:
           case Scanner::TokenType::Colon:
           case Scanner::TokenType::LeftSquareParen:
           case Scanner::TokenType::RightSquareParen:
+          case Scanner::TokenType::LeftCurlyParen:
+          case Scanner::TokenType::RightCurlyParen:
           case Scanner::TokenType::DotDot:
           case Scanner::TokenType::By:
             shouldBreak = true;
@@ -645,9 +1080,9 @@ static void Expression(bool canAssign, CompilerContext& compiler)
   }
 }
 
-static std::optional<std::string> TryParseInt(const Scanner::Token& token, std::int64_t& result)
+static std::optional<std::string> TryParseInt(const Scanner::Token& token, std::int64_t& result, int base = 10, int offset = 0)
 {
-  auto [ptr, ec] = std::from_chars(token.GetData(), token.GetData() + token.GetLength(), result);
+  auto [ptr, ec] = std::from_chars(token.GetData() + offset, token.GetData() + token.GetLength(), result, base);
   if (ec == std::errc()) {
     return {};
   }
@@ -727,7 +1162,7 @@ static void BreakStatement(CompilerContext& compiler)
 {
   bool insideLoop = false;
   for (auto it = compiler.codeContextStack.crbegin(); it != compiler.codeContextStack.crend(); ++it) {
-    if (*it == CodeContext::Loop) {
+    if (*it == CodeContext::ForLoop || *it == CodeContext::WhileLoop) {
       insideLoop = true;
       break;
     }
@@ -751,7 +1186,7 @@ static void ContinueStatement(CompilerContext& compiler)
 {
   bool insideLoop = false;
   for (auto it = compiler.codeContextStack.crbegin(); it != compiler.codeContextStack.crend(); ++it) {
-    if (*it == CodeContext::Loop) {
+    if (*it == CodeContext::ForLoop || *it == CodeContext::WhileLoop) {
       insideLoop = true;
       break;
     }
@@ -782,20 +1217,38 @@ static std::unordered_map<Scanner::TokenType, std::int64_t> s_CastOps = {
 
 static void ForStatement(CompilerContext& compiler)
 {
-  compiler.codeContextStack.emplace_back(CodeContext::Loop);
+  compiler.codeContextStack.emplace_back(CodeContext::ForLoop);
 
   compiler.breakIdxPairs.emplace();
   compiler.continueIdxPairs.emplace();
 
-  // parse iterator variable
+  // parse terator variable
+  auto firstItIsFinal = false;
+  if (Match(Scanner::TokenType::Final, compiler)) {
+    firstItIsFinal = true;
+  }
   Consume(Scanner::TokenType::Identifier, "Expected identifier after `for`", compiler);
-  auto iteratorNeedsPop = false;
+  auto iteratorNeedsPop = false, secondIteratorNeedsPop = false, twoIterators = false;
   auto iteratorName = std::string(compiler.previous.value().GetText());
   std::int64_t iteratorId;
-  auto it = std::find_if(compiler.locals.begin(), compiler.locals.end(), [&](const Local& l) { return l.name == iteratorName; });
+
+  if (Match(Scanner::TokenType::Colon, compiler)) {
+    if (!IsValidTypeAnnotation(compiler.current.value().GetType())) {
+      MessageAtCurrent("Expected typename after type annotation", LogLevel::Error, compiler);
+      return;
+    }
+    Advance(compiler);
+  }
+
+  auto it = std::find_if(
+    compiler.locals.begin(),
+    compiler.locals.end(),
+    [&iteratorName](const Local& l) {
+      return l.name == iteratorName;
+    });
   if (it == compiler.locals.end()) {
     iteratorId = static_cast<std::int64_t>(compiler.locals.size());
-    compiler.locals.emplace_back(std::move(iteratorName), false, iteratorId);
+    compiler.locals.emplace_back(std::move(iteratorName), firstItIsFinal, true, iteratorId);
     EmitOp(VM::Ops::DeclareLocal, compiler.previous.value().GetLine());
     iteratorNeedsPop = true;
   } else {
@@ -803,15 +1256,83 @@ static void ForStatement(CompilerContext& compiler)
       MessageAtPrevious(fmt::format("Loop variable '{}' has already been declared as `final`", iteratorName), LogLevel::Error, compiler);
       return;
     }
-    iteratorId = it->index;
-    if (compiler.verbose || compiler.warningsError) {
-      MessageAtPrevious(fmt::format("There is already a local variable called '{}' in this scope which will be reassigned inside the `for` loop", iteratorName), 
-          LogLevel::Warning, compiler);
-      if (compiler.warningsError) {
+
+    if (it->isIterator && (s_Verbose || s_WarningsError)) {
+      MessageAtPrevious(fmt::format("'{}' is an iterator variable and will be reassigned on each iteration", iteratorName), LogLevel::Warning, compiler);
+      if (s_WarningsError) {
         return;
       }
     }
+
+    if (s_Verbose || s_WarningsError) {
+      MessageAtPrevious(fmt::format("There is already a local variable called '{}' in this scope which will be reassigned inside the `for` loop", iteratorName),
+                        LogLevel::Warning, compiler);
+      if (s_WarningsError) {
+        return;
+      }
+    }
+    iteratorId = it->index;
   }
+
+  // parse second iterator variable, if it exists
+  std::int64_t secondIteratorId{};
+  if (Match(Scanner::TokenType::Comma, compiler)) {
+    twoIterators = true;
+    auto secondItIsFinal = false;
+    if (Match(Scanner::TokenType::Final, compiler)) {
+      secondItIsFinal = true;
+    }
+    if (!Match(Scanner::TokenType::Identifier, compiler)) {
+      MessageAtCurrent("Expected identifier", LogLevel::Error, compiler);
+      return;
+    }
+    auto secondIteratorName = std::string(compiler.previous.value().GetText());
+    auto secondIt = std::find_if(
+      compiler.locals.begin(),
+      compiler.locals.end(),
+      [&secondIteratorName](const Local& l) {
+        return l.name == secondIteratorName;
+      });
+
+    if (Match(Scanner::TokenType::Colon, compiler)) {
+      if (!IsValidTypeAnnotation(compiler.current.value().GetType())) {
+        MessageAtCurrent("Expected typename after type annotation", LogLevel::Error, compiler);
+        return;
+      }
+      Advance(compiler);
+    }
+
+    if (secondIt == compiler.locals.end()) {
+      secondIteratorId = static_cast<std::int64_t>(compiler.locals.size());
+      compiler.locals.emplace_back(std::move(secondIteratorName), secondItIsFinal, true, secondIteratorId);
+      auto line = compiler.previous.value().GetLine();
+      EmitOp(VM::Ops::DeclareLocal, line);
+      secondIteratorNeedsPop = true;
+    } else {
+      if (secondIt->isFinal) {
+        MessageAtPrevious(fmt::format("Loop variable '{}' has already been declared as `final`", secondIteratorName), LogLevel::Error, compiler);
+        return;
+      }
+
+      if (it->isIterator && (s_Verbose || s_WarningsError)) {
+        MessageAtPrevious(fmt::format("'{}' is an iterator variable will be reassigned on each iteration", it->name), LogLevel::Warning, compiler);
+        if (s_WarningsError) {
+          return;
+        }
+      }
+
+      if (s_Verbose || s_WarningsError) {
+        MessageAtPrevious(fmt::format("There is already a local variable called '{}' in this scope which will be reassigned inside the `for` loop", secondIteratorName),
+                          LogLevel::Warning, compiler);
+        if (s_WarningsError) {
+          return;
+        }
+      }
+      secondIteratorId = secondIt->index;
+    }
+  }
+
+  auto line = compiler.previous.value().GetLine();
 
   auto numLocalsStart = static_cast<std::int64_t>(compiler.locals.size());
 
@@ -824,9 +1345,11 @@ static void ForStatement(CompilerContext& compiler)
 
   Consume(Scanner::TokenType::Colon, "Expected ':' after `for` statement", compiler);
 
-  auto line = compiler.previous.value().GetLine();
+  line = compiler.previous.value().GetLine();
 
+  EmitConstant(twoIterators);
   EmitConstant(iteratorId);
+  EmitConstant(secondIteratorId);
   EmitOp(VM::Ops::AssignIteratorBegin, line);
 
   // constant and op index to jump to after each iteration
@@ -834,10 +1357,7 @@ static void ForStatement(CompilerContext& compiler)
   auto startOpIdx = static_cast<std::int64_t>(VM::VM::GetInstance().GetNumOps());
 
   // evaluate the condition
-  EmitConstant(iteratorId);
-  EmitOp(VM::Ops::LoadLocal, line);
-  EmitConstant(s_CastOps[Scanner::TokenType::BoolIdent]);
-  EmitOp(VM::Ops::Cast, line);
+  EmitOp(VM::Ops::CheckIteratorEnd, line);
 
   auto endJumpConstantIndex = VM::VM::GetInstance().GetNumConstants();
   EmitConstant(std::int64_t{});
@@ -866,13 +1386,16 @@ static void ForStatement(CompilerContext& compiler)
   }
 
   // increment iterator
+  EmitConstant(twoIterators);
   EmitConstant(iteratorId);
+  EmitConstant(secondIteratorId);
   EmitOp(VM::Ops::IncrementIterator, line);
 
   // pop any locals created within the loop scope
-  EmitConstant(true);
-  EmitConstant(numLocalsStart);
-  EmitOp(VM::Ops::PopLocals, line);
+  if (compiler.locals.size() != static_cast<std::size_t>(numLocalsStart)) {
+    EmitConstant(numLocalsStart);
+    EmitOp(VM::Ops::PopLocals, line);
+  }
 
   // always jump back to re-evaluate the condition
   EmitConstant(startConstantIdx);
@@ -888,31 +1411,33 @@ static void ForStatement(CompilerContext& compiler)
     compiler.breakIdxPairs.pop();
     compiler.breakJumpNeedsIndexes = !compiler.breakIdxPairs.empty();
 
-    EmitConstant(true);
-  } else {
-    EmitConstant(false);
+    if (compiler.locals.size() != static_cast<std::size_t>(numLocalsStart)) {
+      EmitConstant(numLocalsStart);
+      EmitOp(VM::Ops::PopLocals, line);
+    }
   }
-
-  EmitConstant(numLocalsStart);
-  EmitOp(VM::Ops::PopLocals, line);
+  
+  while (compiler.locals.size() != static_cast<std::size_t>(numLocalsStart)) {
+    compiler.locals.pop_back();
+  }
 
   VM::VM::GetInstance().SetConstantAtIndex(endJumpConstantIndex, static_cast<std::int64_t>(VM::VM::GetInstance().GetNumConstants()));
   VM::VM::GetInstance().SetConstantAtIndex(endJumpOpIndex, static_cast<std::int64_t>(VM::VM::GetInstance().GetNumOps()));
 
-  while (compiler.locals.size() != static_cast<std::size_t>(numLocalsStart)) {
-    compiler.locals.pop_back();
+
+  if (twoIterators) {
+    if (secondIteratorNeedsPop) {
+      compiler.locals.pop_back();
+      EmitOp(VM::Ops::PopLocal, line);
+    }
   }
 
   if (iteratorNeedsPop) {
     compiler.locals.pop_back();
     EmitOp(VM::Ops::PopLocal, line);
-  } else {
-    // set this iterator to be null after the collection is exhausted
-    EmitConstant(nullptr);
-    EmitOp(VM::Ops::LoadConstant, line);
-    EmitConstant(iteratorId);
-    EmitOp(VM::Ops::AssignLocal, line);
   }
+
+  EmitOp(VM::Ops::DestroyHeldIterator, line);
   
   compiler.codeContextStack.pop_back();  
 }
@@ -945,6 +1470,10 @@ static void IfStatement(CompilerContext& compiler)
   bool elseIfBlockFound = false;
   bool needsElseBlock = true;
   while (true) {
+    if (needsElseBlock && Match(Scanner::TokenType::End, compiler)) {
+      break;
+    }
+
     if (Match(Scanner::TokenType::Else, compiler)) {
       // make any unreachable 'else' blocks a compiler error
       if (elseBlockFound) {
@@ -993,10 +1522,6 @@ static void IfStatement(CompilerContext& compiler)
       MessageAtPrevious("Unterminated `if` statement", LogLevel::Error, compiler);
       return;
     }
-
-    if (needsElseBlock && Match(Scanner::TokenType::End, compiler)) {
-      break;
-    }
   }
 
   auto numConstants = static_cast<std::int64_t>(VM::VM::GetInstance().GetNumConstants());
@@ -1013,14 +1538,15 @@ static void IfStatement(CompilerContext& compiler)
     VM::VM::GetInstance().SetConstantAtIndex(topOpIdxToJump, numOps);
   }
 
-  while (compiler.locals.size() != static_cast<std::size_t>(numLocalsStart)) {
-    compiler.locals.pop_back();
-  }
+  if (compiler.locals.size() != static_cast<std::size_t>(numLocalsStart)) {
+    auto line = compiler.previous.value().GetLine();
+    EmitConstant(numLocalsStart);
+    EmitOp(VM::Ops::PopLocals, line);
 
-  auto line = compiler.previous.value().GetLine();
-  EmitConstant(true);
-  EmitConstant(numLocalsStart);
-  EmitOp(VM::Ops::PopLocals, line);
+    while (compiler.locals.size() != static_cast<std::size_t>(numLocalsStart)) {
+      compiler.locals.pop_back();
+    }
+  }
 
   compiler.codeContextStack.pop_back();
 }
@@ -1036,7 +1562,6 @@ static void PrintStatement(CompilerContext& compiler)
     Expression(false, compiler);
     compiler.usingExpressionResult = prevUsing;
     EmitOp(VM::Ops::Print, compiler.current.value().GetLine());
-    EmitOp(VM::Ops::Pop, compiler.current.value().GetLine());
     Consume(Scanner::TokenType::RightParen, "Expected ')' after expression", compiler);
   }
   Consume(Scanner::TokenType::Semicolon, "Expected ';' after expression", compiler);
@@ -1053,7 +1578,38 @@ static void PrintLnStatement(CompilerContext& compiler)
     Expression(false, compiler);
     compiler.usingExpressionResult = prevUsing;
     EmitOp(VM::Ops::PrintLn, compiler.current.value().GetLine());
-    EmitOp(VM::Ops::Pop, compiler.current.value().GetLine());
+    Consume(Scanner::TokenType::RightParen, "Expected ')' after expression", compiler);
+  }
+  Consume(Scanner::TokenType::Semicolon, "Expected ';' after expression", compiler);
+}
+
+static void EPrintStatement(CompilerContext& compiler)
+{
+  Consume(Scanner::TokenType::LeftParen, "Expected '(' after 'eprint'", compiler);
+  if (Match(Scanner::TokenType::RightParen, compiler)) {
+    EmitOp(VM::Ops::EPrintTab, compiler.current.value().GetLine());
+  } else {
+    auto prevUsing = compiler.usingExpressionResult;
+    compiler.usingExpressionResult = true;
+    Expression(false, compiler);
+    compiler.usingExpressionResult = prevUsing;
+    EmitOp(VM::Ops::EPrint, compiler.current.value().GetLine());
+    Consume(Scanner::TokenType::RightParen, "Expected ')' after expression", compiler);
+  }
+  Consume(Scanner::TokenType::Semicolon, "Expected ';' after expression", compiler);
+}
+
+static void EPrintLnStatement(CompilerContext& compiler)
+{
+  Consume(Scanner::TokenType::LeftParen, "Expected '(' after 'eprintln'", compiler);
+  if (Match(Scanner::TokenType::RightParen, compiler)) {
+    EmitOp(VM::Ops::EPrintEmptyLine, compiler.current.value().GetLine());
+  } else {
+    auto prevUsing = compiler.usingExpressionResult;
+    compiler.usingExpressionResult = true;
+    Expression(false, compiler);
+    compiler.usingExpressionResult = prevUsing;
+    EmitOp(VM::Ops::EPrintLn, compiler.current.value().GetLine());
     Consume(Scanner::TokenType::RightParen, "Expected ')' after expression", compiler);
   }
   Consume(Scanner::TokenType::Semicolon, "Expected ';' after expression", compiler);
@@ -1061,14 +1617,7 @@ static void PrintLnStatement(CompilerContext& compiler)
 
 static void ReturnStatement(CompilerContext& compiler)
 {
-  bool insideFunction = false;
-  for (auto it = compiler.codeContextStack.crbegin(); it != compiler.codeContextStack.crend(); ++it) {
-    if (*it == CodeContext::Function) {
-      insideFunction = true;
-      break;
-    }
-  }
-  if (!insideFunction) {
+  if (std::find(compiler.codeContextStack.begin(), compiler.codeContextStack.end(), CodeContext::Function) == compiler.codeContextStack.end()) {
     MessageAtPrevious("`return` only allowed inside functions", LogLevel::Error, compiler);
     return;
   }
@@ -1079,9 +1628,10 @@ static void ReturnStatement(CompilerContext& compiler)
   } 
 
   if (Match(Scanner::TokenType::Semicolon, compiler)) {
+    auto line = compiler.previous.value().GetLine();
     EmitConstant(nullptr);
-    EmitOp(VM::Ops::LoadConstant, compiler.previous.value().GetLine());
-    EmitOp(VM::Ops::Return, compiler.previous.value().GetLine());
+    EmitOp(VM::Ops::LoadConstant, line);
+    EmitOp(VM::Ops::Return, line);
     return;
   }
 
@@ -1089,16 +1639,19 @@ static void ReturnStatement(CompilerContext& compiler)
   compiler.usingExpressionResult = true;
   Expression(false, compiler);
   compiler.usingExpressionResult = prevUsing;
-  EmitOp(VM::Ops::Return, compiler.previous.value().GetLine());
-  Consume(Scanner::TokenType::Semicolon, "Expected ';' after expression", compiler);
-  compiler.functionHadReturn = true;
 
   // don't destroy these locals here in the compiler's list because this could be an early return
   // that is handled at the end of `FuncDeclaration()`
   // but the VM needs to destroy any locals made up until this point
-  for (std::size_t i = 0; i < compiler.locals.size(); i++) {
-    EmitOp(VM::Ops::PopLocal, compiler.previous.value().GetLine());
+  // emit this instruction here since a local may have been used in the return expression
+  // the result of the expression will be living on the stack still after PopLocals for Return to use
+  if (!compiler.locals.empty()) {
+    EmitConstant(std::int64_t{ 0 });
+    EmitOp(VM::Ops::PopLocals, compiler.previous.value().GetLine());
   }
+
+  EmitOp(VM::Ops::Return, compiler.previous.value().GetLine());
+  Consume(Scanner::TokenType::Semicolon, "Expected ';' after expression", compiler);
 }
 
 static void TryStatement(CompilerContext& compiler)
@@ -1154,21 +1707,29 @@ static void TryStatement(CompilerContext& compiler)
 
   auto exceptionVarName = std::string(compiler.previous.value().GetText());
   std::int64_t exceptionVarId;
-  auto it = std::find_if(compiler.locals.begin(), compiler.locals.end(), [&](const Local& l) { return l.name == exceptionVarName; });
+  auto it = std::find_if(compiler.locals.begin(), compiler.locals.end(), [&exceptionVarName](const Local& l) { return l.name == exceptionVarName; });
   if (it == compiler.locals.end()) {
     exceptionVarId = static_cast<std::int64_t>(compiler.locals.size());
-    compiler.locals.emplace_back(std::move(exceptionVarName), false, exceptionVarId);
+    compiler.locals.emplace_back(std::move(exceptionVarName), false, false, exceptionVarId);
     EmitOp(VM::Ops::DeclareLocal, compiler.previous.value().GetLine());
   } else {
     if (it->isFinal) {
       MessageAtPrevious(fmt::format("Exception variable '{}' has already been declared as `final`", exceptionVarName), LogLevel::Error, compiler);
       return;
     }
+
+    if (it->isIterator && (s_Verbose || s_WarningsError)) {
+      MessageAtPrevious(fmt::format("'{}' is an iterator variable will be reassigned on each loop iteration", exceptionVarName), LogLevel::Warning, compiler);
+      if (s_WarningsError) {
+        return;
+      }
+    }
+
     exceptionVarId = it->index;
-    if (compiler.verbose || compiler.warningsError) {
+    if (s_Verbose || s_WarningsError) {
       MessageAtPrevious(fmt::format("There is already a local variable called '{}' in this scope which will be reassigned inside the `catch` block", exceptionVarName),
           LogLevel::Warning, compiler);
-      if (compiler.warningsError) {
+      if (s_WarningsError) {
         return;
       }
     }
@@ -1190,12 +1751,13 @@ static void TryStatement(CompilerContext& compiler)
     }
   }
 
-  EmitConstant(true);
-  EmitConstant(numLocalsStart);
-  EmitOp(VM::Ops::PopLocals, compiler.previous.value().GetLine());
+  if (compiler.locals.size() != static_cast<std::size_t>(numLocalsStart)) {
+    EmitConstant(numLocalsStart);
+    EmitOp(VM::Ops::PopLocals, compiler.previous.value().GetLine());
 
-  while (compiler.locals.size() != static_cast<std::size_t>(numLocalsStart)) {
-    compiler.locals.pop_back();
+    while (compiler.locals.size() != static_cast<std::size_t>(numLocalsStart)) {
+      compiler.locals.pop_back();
+    }
   }
 
   VM::VM::GetInstance().SetConstantAtIndex(skipCatchConstJumpIdx, static_cast<std::int64_t>(VM::VM::GetInstance().GetNumConstants()));
@@ -1207,8 +1769,10 @@ static void TryStatement(CompilerContext& compiler)
 static void ThrowStatement(CompilerContext& compiler)
 {
   Consume(Scanner::TokenType::LeftParen, "Expected '(' after `throw`", compiler);
-  Consume(Scanner::TokenType::String, "Expected string inside `throw` statement", compiler);
-  EmitConstant(std::string(compiler.previous.value().GetText()));
+  auto prevUsing = compiler.usingExpressionResult;
+  compiler.usingExpressionResult = true;
+  Expression(false, compiler);
+  compiler.usingExpressionResult = prevUsing;
   EmitOp(VM::Ops::Throw, compiler.previous.value().GetLine());
   Consume(Scanner::TokenType::RightParen, "Expected ')' after `throw` message", compiler);
   Consume(Scanner::TokenType::Semicolon, "Expected ';' after `throw` statement", compiler);
@@ -1216,7 +1780,7 @@ static void ThrowStatement(CompilerContext& compiler)
 
 static void WhileStatement(CompilerContext& compiler)
 {
-  compiler.codeContextStack.emplace_back(CodeContext::Loop);
+  compiler.codeContextStack.emplace_back(CodeContext::WhileLoop);
 
   compiler.breakIdxPairs.emplace();
   compiler.continueIdxPairs.emplace();
@@ -1262,9 +1826,10 @@ static void WhileStatement(CompilerContext& compiler)
     compiler.continueJumpNeedsIndexes = !compiler.continueIdxPairs.empty();
   }
 
-  EmitConstant(true);
-  EmitConstant(numLocalsStart);
-  EmitOp(VM::Ops::PopLocals, line);
+  if (compiler.locals.size() != static_cast<std::size_t>(numLocalsStart)) {
+    EmitConstant(numLocalsStart);
+    EmitOp(VM::Ops::PopLocals, line);
+  }
 
   // jump back up to the expression so it can be re-evaluated
   EmitConstant(constantIdx);
@@ -1273,9 +1838,6 @@ static void WhileStatement(CompilerContext& compiler)
 
   numConstants = static_cast<std::int64_t>(VM::VM::GetInstance().GetNumConstants());
   numOps = static_cast<std::int64_t>(VM::VM::GetInstance().GetNumOps());
-
-  VM::VM::GetInstance().SetConstantAtIndex(endConstantJumpIdx, numConstants);
-  VM::VM::GetInstance().SetConstantAtIndex(endOpJumpIdx, numOps);
 
   if (compiler.breakJumpNeedsIndexes) {
     for (auto& p : compiler.breakIdxPairs.top()) {
@@ -1287,18 +1849,22 @@ static void WhileStatement(CompilerContext& compiler)
 
     // if we broke, we missed the PopLocals instruction before the end of the loop
     // so tell the VM to still pop those locals IF we broke
-    EmitConstant(true);
-  } else {
-    EmitConstant(false);
+    if (compiler.locals.size() != static_cast<std::size_t>(numLocalsStart)) {
+      EmitConstant(numLocalsStart);
+      EmitOp(VM::Ops::PopLocals, line);
+    }
   }
   
-  EmitConstant(numLocalsStart);
-  EmitOp(VM::Ops::PopLocals, line);
- 
   while (compiler.locals.size() != static_cast<std::size_t>(numLocalsStart)) {
     compiler.locals.pop_back();
   }
-  
+
+  numConstants = static_cast<std::int64_t>(VM::VM::GetInstance().GetNumConstants());
+  numOps = static_cast<std::int64_t>(VM::VM::GetInstance().GetNumOps());
+
+  VM::VM::GetInstance().SetConstantAtIndex(endConstantJumpIdx, numConstants);
+  VM::VM::GetInstance().SetConstantAtIndex(endOpJumpIdx, numOps);
+
   compiler.codeContextStack.pop_back();
 }
 
@@ -1316,11 +1882,44 @@ static void Or(bool canAssign, bool skipFirst, CompilerContext& compiler)
 static void And(bool canAssign, bool skipFirst, CompilerContext& compiler)
 {
   if (!skipFirst) {
-    Equality(canAssign, false, compiler);
+    BitwiseOr(canAssign, false, compiler);
   }
   while (Match(Scanner::TokenType::And, compiler)) {
-    Equality(canAssign, false, compiler);
+    BitwiseOr(canAssign, false, compiler);
     EmitOp(VM::Ops::And, compiler.current.value().GetLine());
+  }
+}
+
+static void BitwiseOr(bool canAssign, bool skipFirst, CompilerContext& compiler)
+{
+  if (!skipFirst) {
+    BitwiseXOr(canAssign, false, compiler);
+  }
+  while (Match(Scanner::TokenType::Bar, compiler)) {
+    BitwiseXOr(canAssign, false, compiler);
+    EmitOp(VM::Ops::BitwiseOr, compiler.current.value().GetLine());
+  }
+}
+
+static void BitwiseXOr(bool canAssign, bool skipFirst, CompilerContext& compiler)
+{
+  if (!skipFirst) {
+    BitwiseAnd(canAssign, false, compiler);
+  }
+  while (Match(Scanner::TokenType::Caret, compiler)) {
+    BitwiseAnd(canAssign, false, compiler);
+    EmitOp(VM::Ops::BitwiseXOr, compiler.current.value().GetLine());
+  }
+}
+
+static void BitwiseAnd(bool canAssign, bool skipFirst, CompilerContext& compiler)
+{
+  if (!skipFirst) {
+    Equality(canAssign, false, compiler);
+  }
+  while (Match(Scanner::TokenType::Ampersand, compiler)) {
+    Equality(canAssign, false, compiler);
+    EmitOp(VM::Ops::BitwiseAnd, compiler.current.value().GetLine());
   }
 }
 
@@ -1341,20 +1940,34 @@ static void Equality(bool canAssign, bool skipFirst, CompilerContext& compiler)
 static void Comparison(bool canAssign, bool skipFirst, CompilerContext& compiler)
 {
   if (!skipFirst) {
-    Term(canAssign, false, compiler);
+    Shift(canAssign, false, compiler);
   }
   if (Match(Scanner::TokenType::GreaterThan, compiler)) {
-    Term(canAssign, false, compiler);
+    Shift(canAssign, false, compiler);
     EmitOp(VM::Ops::Greater, compiler.current.value().GetLine());
   } else if (Match(Scanner::TokenType::GreaterEqual, compiler)) {
-    Term(canAssign, false, compiler);
+    Shift(canAssign, false, compiler);
     EmitOp(VM::Ops::GreaterEqual, compiler.current.value().GetLine());
   } else if (Match(Scanner::TokenType::LessThan, compiler)) {
-    Term(canAssign, false, compiler);
+    Shift(canAssign, false, compiler);
     EmitOp(VM::Ops::Less, compiler.current.value().GetLine());
   } else if (Match(Scanner::TokenType::LessEqual, compiler)) {
-    Term(canAssign, false, compiler);
+    Shift(canAssign, false, compiler);
     EmitOp(VM::Ops::LessEqual, compiler.current.value().GetLine());
+  }
+}
+
+static void Shift(bool canAssign, bool skipFirst, CompilerContext& compiler)
+{
+  if (!skipFirst) {
+    Term(canAssign, false, compiler);
+  }
+  if (Match(Scanner::TokenType::ShiftRight, compiler)) {
+    Term(canAssign, false, compiler);
+    EmitOp(VM::Ops::ShiftRight, compiler.current.value().GetLine());
+  } else if (Match(Scanner::TokenType::ShiftLeft, compiler)) {
+    Term(canAssign, false, compiler);
+    EmitOp(VM::Ops::ShiftLeft, compiler.current.value().GetLine());
   }
 }
 
@@ -1410,10 +2023,10 @@ static void Unary(bool canAssign, CompilerContext& compiler)
     auto line = compiler.previous.value().GetLine();
     Unary(canAssign, compiler);
     EmitOp(VM::Ops::Negate, line);
-  } else if (Match(Scanner::TokenType::Star, compiler)) {
+  } else if (Match(Scanner::TokenType::Tilde, compiler)) {
     auto line = compiler.previous.value().GetLine();
     Unary(canAssign, compiler);
-    EmitOp(VM::Ops::Deref, line);
+    EmitOp(VM::Ops::BitwiseNot, line);
   } else {
     Call(canAssign, compiler);
   }
@@ -1422,104 +2035,6 @@ static void Unary(bool canAssign, CompilerContext& compiler)
 static void Call(bool canAssign, CompilerContext& compiler)
 {
   Primary(canAssign, compiler);
-
-  auto prev = compiler.previous.value();
-  auto prevText = std::string(compiler.previous.value().GetText());
-
-  if (prev.GetType() != Scanner::TokenType::Identifier && Check(Scanner::TokenType::LeftParen, compiler)) {
-    MessageAtCurrent("'(' only allowed after functions and classes", LogLevel::Error, compiler);
-    return;
-  }
-
-  if (prev.GetType() == Scanner::TokenType::Identifier) {
-    if (Match(Scanner::TokenType::LeftParen, compiler)) {
-      static std::hash<std::string> hasher;
-      auto hash = static_cast<std::int64_t>(hasher(prevText));
-      auto nativeCall = prevText.starts_with("__");
-      std::size_t nativeIndex;
-      if (nativeCall) {
-        auto [exists, index] = VM::VM::GetInstance().HasNativeFunction(prevText);
-        if (!exists) {
-          MessageAtPrevious(fmt::format("No native function matching the given signature `{}` was found", prevText), LogLevel::Error, compiler);
-          return;
-        } else {
-          nativeIndex = index;
-        }
-      }
-
-      std::int64_t numArgs = 0;
-      if (!Match(Scanner::TokenType::RightParen, compiler)) {
-        while (true) {
-          auto prev = compiler.usingExpressionResult;
-          compiler.usingExpressionResult = true;      
-          Expression(false, compiler);
-          compiler.usingExpressionResult = prev;
-          numArgs++;
-          if (Match(Scanner::TokenType::RightParen, compiler)) {
-            break;
-          }
-          Consume(Scanner::TokenType::Comma, "Expected ',' after function call argument", compiler);
-        }
-      }
-
-      // TODO: in a script that is not being ran as the main script, 
-      // there may be a function called 'main' that you should be allowed to call
-      if (prevText == "main") {
-        Message(prev, "Cannot call the `main` function", LogLevel::Error, compiler);
-        return;
-      }
-      
-      EmitConstant(nativeCall ? static_cast<std::int64_t>(nativeIndex) : hash);
-      EmitConstant(numArgs);
-      if (nativeCall) {
-        EmitOp(VM::Ops::NativeCall, compiler.previous.value().GetLine());
-      } else {
-        EmitConstant(prevText);
-        EmitOp(VM::Ops::Call, compiler.previous.value().GetLine());
-      }
-
-      if (!compiler.usingExpressionResult) {
-        // pop unused return value
-        EmitOp(VM::Ops::Pop, compiler.previous.value().GetLine());
-      }
-    } else if (Match(Scanner::TokenType::Dot, compiler)) {
-      // TODO: account for dot
-    } else {
-      // not a call or member access, so we are just trying to call on the value of the local
-      // or reassign it 
-      // if it's not a reassignment, we are trying to load its value
-      // Primary() has already but the variable's id on the stack
-      if (!Check(Scanner::TokenType::Equal, compiler)) {
-        auto it = std::find_if(compiler.locals.begin(), compiler.locals.end(), [&](const Local& l){ return l.name == prevText; });
-        if (it == compiler.locals.end()) {
-          MessageAtPrevious(fmt::format("Cannot find variable '{}' in this scope", prevText), LogLevel::Error, compiler);
-          return;
-        }
-        if (compiler.usingExpressionResult) {
-          EmitConstant(it->index);
-          EmitOp(VM::Ops::LoadLocal, prev.GetLine());
-        } else {
-          MessageAtPrevious("Expected expression", LogLevel::Error, compiler);
-          return;
-        }
-      }
-    }
-  }
-}
-
-static bool IsTypeIdent(Scanner::TokenType type)
-{
-  static const std::vector<Scanner::TokenType> typeIdents {
-    Scanner::TokenType::IntIdent,
-    Scanner::TokenType::FloatIdent,
-    Scanner::TokenType::BoolIdent,
-    Scanner::TokenType::StringIdent,
-    Scanner::TokenType::CharIdent,
-    Scanner::TokenType::ListIdent
-  };
-  return std::any_of(typeIdents.begin(), typeIdents.end(), [type](Scanner::TokenType t) {
-    return t == type;
-  });
 }
 
 static void Primary(bool canAssign, CompilerContext& compiler)
@@ -1536,7 +2051,25 @@ static void Primary(bool canAssign, CompilerContext& compiler)
     std::int64_t value;
     auto result = TryParseInt(compiler.previous.value(), value);
     if (result.has_value()) {
-      MessageAtPrevious(fmt::format("Scanner::Token could not be parsed as an int: {}", result.value()), LogLevel::Error, compiler);
+      MessageAtPrevious(fmt::format("Token could not be parsed as an int: {}", result.value()), LogLevel::Error, compiler);
+      return;
+    }
+    EmitOp(VM::Ops::LoadConstant, compiler.previous.value().GetLine());
+    EmitConstant(value);
+  } else if (Match(Scanner::TokenType::HexLiteral, compiler)) {
+    std::int64_t value;
+    auto result = TryParseInt(compiler.previous.value(), value, 16, 2);
+    if (result.has_value()) {
+      MessageAtPrevious(fmt::format("Token could not be parsed as a hex literal int: {}", result.value()), LogLevel::Error, compiler);
+      return;
+    }
+    EmitOp(VM::Ops::LoadConstant, compiler.previous.value().GetLine());
+    EmitConstant(value);
+  } else if (Match(Scanner::TokenType::BinaryLiteral, compiler)) {
+    std::int64_t value;
+    auto result = TryParseInt(compiler.previous.value(), value, 2, 2);
+    if (result.has_value()) {
+      MessageAtPrevious(fmt::format("Token could not be parsed as a binary literal int: {}", result.value()), LogLevel::Error, compiler);
       return;
     }
     EmitOp(VM::Ops::LoadConstant, compiler.previous.value().GetLine());
@@ -1545,7 +2078,7 @@ static void Primary(bool canAssign, CompilerContext& compiler)
     double value;
     auto result = TryParseDouble(compiler.previous.value(), value);
     if (result.has_value()) {
-      MessageAtPrevious(fmt::format("Scanner::Token could not be parsed as an float: {}", result.value().what()), LogLevel::Error, compiler);
+      MessageAtPrevious(fmt::format("Token could not be parsed as an float: {}", result.value().what()), LogLevel::Error, compiler);
       return;
     }
     EmitOp(VM::Ops::LoadConstant, compiler.previous.value().GetLine());
@@ -1555,9 +2088,7 @@ static void Primary(bool canAssign, CompilerContext& compiler)
   } else if (Match(Scanner::TokenType::Char, compiler)) {
     Char(compiler);
   } else if (Match(Scanner::TokenType::Identifier, compiler)) {
-    // TODO: warn against use of __, we'll need to know if we're in a std library file
-    // do nothing, but consume the identifier and return
-    // caller functions will handle it
+    Identifier(canAssign, compiler);
   } else if (Match(Scanner::TokenType::Null, compiler)) {
     EmitConstant(nullptr);
     EmitOp(VM::Ops::LoadConstant, compiler.previous.value().GetLine());
@@ -1566,12 +2097,183 @@ static void Primary(bool canAssign, CompilerContext& compiler)
     Consume(Scanner::TokenType::RightParen, "Expected ')'", compiler);
   } else if (Match(Scanner::TokenType::InstanceOf, compiler)) {
     InstanceOf(compiler);
+  } else if (Match(Scanner::TokenType::IsObject, compiler)) {
+    IsObject(compiler);
   } else if (IsTypeIdent(compiler.current.value().GetType())) {
     Cast(compiler);
   } else if (Match(Scanner::TokenType::LeftSquareParen, compiler)) {
     List(compiler);
+  } else if (Match(Scanner::TokenType::LeftCurlyParen, compiler)) {
+    Dictionary(compiler);
+  } else if (Match(Scanner::TokenType::Typename, compiler)) {
+    Typename(compiler);
   } else {
+    // Unreachable?
     Expression(canAssign, compiler);
+  }
+
+  if (Match(Scanner::TokenType::Dot, compiler)) {
+    // TODO: account for class member access, not just function calls...
+    Consume(Scanner::TokenType::Identifier, "Expected identifier after '.'", compiler);
+    if (!Check(Scanner::TokenType::LeftParen, compiler)) {
+      MessageAtCurrent("Expected function call", LogLevel::Error, compiler);
+      return;
+    }
+
+    auto funcNameToken = compiler.previous.value();
+    DotFunctionCall(funcNameToken, compiler);
+  }
+}
+
+static void Identifier(bool canAssign, CompilerContext& compiler)
+{
+  auto prev = compiler.previous.value();
+  auto prevText = std::string(compiler.previous.value().GetText());
+
+  if (prev.GetType() != Scanner::TokenType::Identifier && Check(Scanner::TokenType::LeftParen, compiler)) {
+    MessageAtCurrent("'(' only allowed after functions and classes", LogLevel::Error, compiler);
+    return;
+  }
+
+  if (Match(Scanner::TokenType::LeftParen, compiler)) {
+    FreeFunctionCall(prev, compiler);
+  } else if (Match(Scanner::TokenType::ColonColon, compiler)) {
+    if (!Check(Scanner::TokenType::Identifier, compiler)) {
+      MessageAtCurrent("Expected identifier after `::`", LogLevel::Error, compiler);
+      return;
+    }
+    if (IsLiteral(compiler.current.value().GetType())) {
+      MessageAtCurrent("Expected identifier after `::`", LogLevel::Error, compiler);
+      return;
+    }
+
+    if (compiler.namespaceQualifierUsed) {
+      EmitOp(VM::Ops::StartNewNamespace, prev.GetLine());
+      compiler.namespaceQualifierUsed = false;
+    }
+
+    static std::hash<std::string> hasher;
+    EmitConstant(prevText);
+    EmitConstant(static_cast<std::int64_t>(hasher(prevText)));
+    EmitOp(VM::Ops::AppendNamespace, prev.GetLine());
+    Expression(canAssign, compiler);
+  } else {
+    // not a call or member access, so we are just trying to call on the value of the local
+    // or reassign it 
+    // if it's not a reassignment, we are trying to load its value
+    // Primary() has already but the variable's id on the stack
+    if (!Check(Scanner::TokenType::Equal, compiler)) {
+      auto it = std::find_if(compiler.locals.begin(), compiler.locals.end(), [&prevText](const Local& l){ return l.name == prevText; });
+      if (it == compiler.locals.end()) {
+        auto mostSimilarVar = FindMostSimilarVarName(prevText, compiler.locals);
+        if (mostSimilarVar.has_value()) {
+          MessageAtPrevious(fmt::format("Cannot find variable '{}' in this scope, did you mean '{}'?", prevText, *mostSimilarVar), LogLevel::Error, compiler);
+        } else {
+          MessageAtPrevious(fmt::format("Cannot find variable '{}' in this scope", prevText), LogLevel::Error, compiler);
+        }
+        return;
+      }
+      EmitConstant(it->index);
+      EmitOp(VM::Ops::LoadLocal, prev.GetLine());
+    }
+  }
+}
+
+static void DotFunctionCall(const Scanner::Token& funcNameToken, CompilerContext& compiler)
+{
+  Advance(compiler);  // consume the '('
+  // the last object on the stack is the object we are calling
+  std::int64_t numArgs = 0;
+  if (!Match(Scanner::TokenType::RightParen, compiler)) {
+    while (true) {
+      auto prevUsing = compiler.usingExpressionResult;
+      compiler.usingExpressionResult = true;
+      Expression(false, compiler);
+      compiler.usingExpressionResult = prevUsing;
+      numArgs++;
+      if (Match(Scanner::TokenType::RightParen, compiler)) {
+        break;
+      }
+      Consume(Scanner::TokenType::Comma, "Expected ',' after function call argument", compiler);
+    }
+  }
+
+  static std::hash<std::string> hasher;
+  auto funcName = std::string(funcNameToken.GetText());
+  EmitConstant(funcName);
+  EmitConstant(static_cast<std::int64_t>(hasher(funcName)));
+  EmitConstant(numArgs);
+  EmitOp(VM::Ops::MemberCall, funcNameToken.GetLine());
+  
+  if (!compiler.usingExpressionResult) {
+    // pop unused return value
+    EmitOp(VM::Ops::Pop, compiler.previous.value().GetLine());
+  }
+}
+
+static void FreeFunctionCall(const Scanner::Token& funcNameToken, CompilerContext& compiler)
+{
+  compiler.namespaceQualifierUsed = true;
+
+  static std::hash<std::string> hasher;
+  auto funcNameText = std::string(funcNameToken.GetText());
+  auto hash = static_cast<std::int64_t>(hasher(funcNameText));
+  auto nativeCall = funcNameText.starts_with("__");
+  std::size_t nativeIndex{};
+  if (nativeCall) {
+    auto [exists, index] = VM::VM::GetInstance().HasNativeFunction(funcNameText);
+    if (!exists) {
+      Message(funcNameToken, fmt::format("No native function matching the given signature `{}` was found", funcNameText), LogLevel::Error, compiler);
+      return;
+    }
+    else {
+      nativeIndex = index;
+    }
+  }
+
+  std::int64_t numArgs = 0;
+  if (!Match(Scanner::TokenType::RightParen, compiler)) {
+    while (true) {
+      auto prevUsing = compiler.usingExpressionResult;
+      compiler.usingExpressionResult = true;
+      Expression(false, compiler);
+      compiler.usingExpressionResult = prevUsing;
+      numArgs++;
+      if (Match(Scanner::TokenType::RightParen, compiler)) {
+        break;
+      }
+      Consume(Scanner::TokenType::Comma, "Expected ',' after function call argument", compiler);
+    }
+  }
+
+  if (nativeCall) {
+    auto arity = VM::VM::GetInstance().GetNativeFunction(nativeIndex).GetArity();
+    if (numArgs != arity) {
+      MessageAtPrevious(fmt::format("Incorrect number of arguments given to native call - got {} but expected {}", numArgs, arity), LogLevel::Error, compiler);
+      return;
+    }
+  }
+
+  // TODO: in a script that is not being ran as the main script, 
+  // there may be a function called 'main' that you should be allowed to call
+  if (funcNameText == "main") {
+    Message(funcNameToken, "Cannot call the `main` function", LogLevel::Error, compiler);
+    return;
+  }
+
+  EmitConstant(nativeCall ? static_cast<std::int64_t>(nativeIndex) : hash);
+  EmitConstant(numArgs);
+  if (nativeCall) {
+    EmitOp(VM::Ops::NativeCall, compiler.previous.value().GetLine());
+  }
+  else {
+    EmitConstant(funcNameText);
+    EmitOp(VM::Ops::Call, compiler.previous.value().GetLine());
+  }
+
+  if (!compiler.usingExpressionResult) {
+    // pop unused return value
+    EmitOp(VM::Ops::Pop, compiler.previous.value().GetLine());
   }
 }
 
@@ -1636,7 +2338,7 @@ static void String(CompilerContext& compiler)
   for (std::size_t i = 1; i < text.length() - 1; i++) {
     if (text[i] == '\\') {
       i++;
-      if (i == text.length() - 2) {
+      if (i == text.length() - 1) {
         MessageAtPrevious("Expected escape character", LogLevel::Error, compiler);
         return;
       }
@@ -1658,7 +2360,12 @@ static void String(CompilerContext& compiler)
 static void InstanceOf(CompilerContext& compiler)
 {
   Consume(Scanner::TokenType::LeftParen, "Expected '(' after 'instanceof'", compiler);
+
+  auto prevUsing = compiler.usingExpressionResult;
+  compiler.usingExpressionResult = true;
   Expression(false, compiler);
+  compiler.usingExpressionResult = prevUsing;
+
   Consume(Scanner::TokenType::Comma, "Expected ',' after expression", compiler);
 
   switch (compiler.current.value().GetType()) {
@@ -1676,9 +2383,9 @@ static void InstanceOf(CompilerContext& compiler)
       break;
     case Scanner::TokenType::Null:
       EmitConstant(std::int64_t(4));
-      if (compiler.verbose || compiler.warningsError) {
+      if (s_Verbose || s_WarningsError) {
         MessageAtCurrent("Prefer comparison `== null` over `instanceof` call for `null` check", LogLevel::Warning, compiler);
-        if (compiler.warningsError) {
+        if (s_WarningsError) {
           return;
         }
       }
@@ -1689,6 +2396,9 @@ static void InstanceOf(CompilerContext& compiler)
     case Scanner::TokenType::ListIdent:
       EmitConstant(std::int64_t(6));
       break;
+    case Scanner::TokenType::DictIdent:
+      EmitConstant(std::int64_t(7));
+      break;
     default:
       MessageAtCurrent("Expected type as second argument for `instanceof`", LogLevel::Error, compiler);
       return;
@@ -1696,11 +2406,26 @@ static void InstanceOf(CompilerContext& compiler)
 
   EmitOp(VM::Ops::CheckType, compiler.current.value().GetLine());
 
-  Advance(compiler);  // Consume the type ide, compilernt
+  Advance(compiler);  // Consume the type ident
   Consume(Scanner::TokenType::RightParen, "Expected ')'", compiler);
 
   if (!compiler.usingExpressionResult) {
     // pop unused return value
+    EmitOp(VM::Ops::Pop, compiler.previous.value().GetLine());
+  }
+}
+
+static void IsObject(CompilerContext& compiler)
+{
+  Consume(Scanner::TokenType::LeftParen, "Expected '(' after `isobject`", compiler);
+  auto prevUsing = compiler.usingExpressionResult;
+  compiler.usingExpressionResult = true;
+  Expression(false, compiler);
+  EmitOp(VM::Ops::IsObject, compiler.previous.value().GetLine());
+  compiler.usingExpressionResult = prevUsing;
+  Consume(Scanner::TokenType::RightParen, "Expected ')' after expression", compiler);
+
+  if (!compiler.usingExpressionResult) {
     EmitOp(VM::Ops::Pop, compiler.previous.value().GetLine());
   }
 }
@@ -1710,7 +2435,10 @@ static void Cast(CompilerContext& compiler)
   auto type = compiler.current.value().GetType();
   Advance(compiler);
   Consume(Scanner::TokenType::LeftParen, "Expected '(' after type ident", compiler);
+  auto prevUsing = compiler.usingExpressionResult;
+  compiler.usingExpressionResult = true;
   Expression(false, compiler);
+  compiler.usingExpressionResult = prevUsing;
   EmitConstant(s_CastOps[type]);
   EmitOp(VM::Ops::Cast, compiler.current.value().GetLine());
   Consume(Scanner::TokenType::RightParen, "Expected ')' after expression", compiler);
@@ -1730,7 +2458,10 @@ static void List(CompilerContext& compiler)
       break;
     }
 
+    auto prevUsing = compiler.usingExpressionResult;
+    compiler.usingExpressionResult = true;
     Expression(false, compiler);
+    compiler.usingExpressionResult = prevUsing;
 
     if (Match(Scanner::TokenType::DotDot, compiler)){
       if (singleItemParsed) {
@@ -1739,11 +2470,17 @@ static void List(CompilerContext& compiler)
       }
 
       // max
+      prevUsing = compiler.usingExpressionResult;
+      compiler.usingExpressionResult = true;
       Expression(false, compiler);
+      compiler.usingExpressionResult = prevUsing;
 
       // check for custom increment
       if (Match(Scanner::TokenType::By, compiler)) {
+        prevUsing = compiler.usingExpressionResult;
+        compiler.usingExpressionResult = true;
         Expression(false, compiler);
+        compiler.usingExpressionResult = prevUsing;
       } else {
         EmitConstant(std::int64_t{1});
         EmitOp(VM::Ops::LoadConstant, compiler.previous.value().GetLine());
@@ -1775,12 +2512,58 @@ static void List(CompilerContext& compiler)
     if (parsedRangeExpression) {
       EmitOp(VM::Ops::CreateRangeList, line);
     } else {
-      EmitOp(VM::Ops::CreateEmptyList, line);
+      EmitConstant(numItems);
+      EmitOp(VM::Ops::CreateList, line);
     }
   } else {
     EmitConstant(numItems);
-    EmitOp(VM::Ops::CreateList, line); 
+    EmitOp(VM::Ops::CreateList, line);
   }
+}
+
+static void Dictionary(CompilerContext& compiler)
+{
+  std::int64_t numItems = 0;
+
+  while (true) {
+    if (Match(Scanner::TokenType::RightCurlyParen, compiler)) {
+      break;
+    }
+
+    auto prevUsing = compiler.usingExpressionResult;
+    compiler.usingExpressionResult = true;
+    Expression(false, compiler);
+
+    if (!Match(Scanner::TokenType::Colon, compiler)) {
+      MessageAtCurrent("Expected ':' after key expression", LogLevel::Error, compiler);
+      return;
+    }
+
+    Expression(false, compiler);
+    compiler.usingExpressionResult = prevUsing;
+
+    numItems++;
+
+    if (Match(Scanner::TokenType::RightCurlyParen, compiler)) {
+      break;
+    }
+
+    Consume(Scanner::TokenType::Comma, "Expected `,` between dictionary pairs", compiler);
+  }
+
+  EmitConstant(numItems);
+  EmitOp(VM::Ops::CreateDictionary, compiler.previous.value().GetLine());
+}
+
+static void Typename(CompilerContext& compiler)
+{
+  Consume(Scanner::TokenType::LeftParen, "Expected '('", compiler);
+  auto prevUsing = compiler.usingExpressionResult;
+  compiler.usingExpressionResult = true;
+  Expression(false, compiler);
+  compiler.usingExpressionResult = prevUsing;
+  EmitOp(VM::Ops::Typename, compiler.previous.value().GetLine());
+  Consume(Scanner::TokenType::RightParen, "Expected ')'", compiler);
 }
 
 static void MessageAtCurrent(const std::string& message, LogLevel level, CompilerContext& compiler)
@@ -1795,7 +2578,7 @@ static void MessageAtPrevious(const std::string& message, LogLevel level, Compil
 
 static void Message(const std::optional<Scanner::Token>& token, const std::string& message, LogLevel level, CompilerContext& compiler)
 {
-  if (level == LogLevel::Error || compiler.warningsError) {
+  if (level == LogLevel::Error || s_WarningsError) {
     if (compiler.panicMode) return;
     compiler.panicMode = true;
   }
@@ -1818,11 +2601,11 @@ static void Message(const std::optional<Scanner::Token>& token, const std::strin
       break;
   }
 
-  auto lineNo = token.value().GetLine();
+  auto lineNo = static_cast<int>(token.value().GetLine());
   auto column = token.value().GetColumn() - token.value().GetLength();  // need the START of the token
   fmt::print(stderr, "       --> {}:{}:{}\n", compiler.currentFileName, lineNo, column + 1); 
   fmt::print(stderr, "        |\n");
-  fmt::print(stderr, "{:>7} | {}\n", lineNo, Scanner::GetCodeAtLine(lineNo));
+  fmt::print(stderr, "{:>7} | {}\n", lineNo, Scanner::GetCodeAtLine(compiler.currentFileName, lineNo));
   fmt::print(stderr, "        | ");
   for (std::size_t i = 0; i < column; i++) {
     fmt::print(stderr, " ");
@@ -1830,7 +2613,7 @@ static void Message(const std::optional<Scanner::Token>& token, const std::strin
   for (std::size_t i = 0; i < token.value().GetLength(); i++) {
     fmt::print(stderr, colour, "^");
   }
-  fmt::print("\n\n");
+  fmt::print(stderr, "\n\n");
 
   if (level == LogLevel::Error) {
     compiler.hadError = true;

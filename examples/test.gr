@@ -1,0 +1,31 @@
+import std::dict;
+import std::list; 
+
+func double(this Int i) :: Int:
+  return i * 2;
+end
+
+func main():
+  final l = [];
+  for i in [0..10]:
+    l.append(i);
+  end
+  println(l.at(5));
+  println(l.length());
+  for i in [0..l.length()]:
+    l.set(i, "HELLO");
+  end
+  println(l);
+  println(5.double());
+
+  final d = {"Ryan": "Jeffares"};
+  println(d.remove("Ryan"));
+  println(d.remove(1));
+  println(d);
+
+  d.insert("Syl", "Morrison");
+  println(d);
+  d.insert("Syl", "[redacted]");
+  println(d);
+  println(d.contains_key("Syl"));
+end

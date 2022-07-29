@@ -1,5 +1,5 @@
 func fib(final n):
-  assert(instanceof(n, int));
+  assert(instanceof(n, Int));
   if n < 2:
     return n;
   end

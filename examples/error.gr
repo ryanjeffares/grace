@@ -4,7 +4,7 @@ func get():
 end
 
 func main():
-  var a = int(get());
+  var a = Int(get());
   var b = null;
   function_that_doesnt_exist();
   println(a + b);

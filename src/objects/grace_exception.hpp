@@ -33,6 +33,8 @@ namespace Grace
       enum class Type
       {
         AssertionFailed,
+        FileWriteFailed,
+        FunctionNotExported,
         FunctionNotFound,
         IncorrectArgCount,
         IndexOutOfRange,
@@ -41,6 +43,8 @@ namespace Grace
         InvalidIterator,
         InvalidOperand,
         InvalidType,
+        KeyNotFound,
+        NamespaceNotFound,
         ThrownException,
       };
 
@@ -62,23 +66,31 @@ namespace Grace
 
       }
 
-      const char* what() const noexcept override
+      GRACE_NODISCARD const char* what() const noexcept override
       {
         return s_ExceptionMessages.at(m_Type);
       }
 
-      GRACE_INLINE std::string Message() const
+      GRACE_NODISCARD GRACE_INLINE std::string Message() const
       {
         return m_Message;
       }
 
       void DebugPrint() const override;
-      void Print() const override;
-      void PrintLn() const override;
+      void Print(bool err) const override;
+      void PrintLn(bool err) const override;
       GRACE_NODISCARD std::string ToString() const override;
       GRACE_NODISCARD bool AsBool() const override;
-      GRACE_NODISCARD std::string ObjectName() const override;
-      VM::Value Deref() const override;
+      
+      GRACE_NODISCARD GRACE_INLINE constexpr const char* ObjectName() const override
+      {
+        return "Exception";
+      }
+
+      GRACE_NODISCARD GRACE_INLINE constexpr bool IsIterable() const override
+      {
+        return false;
+      }
 
     private:
       Type m_Type;
@@ -98,6 +110,8 @@ struct fmt::formatter<Grace::GraceException::Type> : fmt::formatter<std::string_
     std::string_view name = "unknown";
     switch (type) {
       case GraceException::Type::AssertionFailed: name = "AssertionFailed"; break;
+      case GraceException::Type::FileWriteFailed: name = "FileWriteFailed"; break;
+      case GraceException::Type::FunctionNotExported: name = "FunctionNotExported"; break;
       case GraceException::Type::FunctionNotFound: name = "FunctionNotFound"; break;
       case GraceException::Type::IncorrectArgCount: name = "IncorrectArgCount"; break;
       case GraceException::Type::IndexOutOfRange: name = "IndexOutOfRange"; break;
@@ -106,10 +120,12 @@ struct fmt::formatter<Grace::GraceException::Type> : fmt::formatter<std::string_
       case GraceException::Type::InvalidIterator: name = "InvalidIterator"; break;
       case GraceException::Type::InvalidOperand: name = "InvalidOperand"; break;
       case GraceException::Type::InvalidType: name = "InvalidType"; break;
+      case GraceException::Type::KeyNotFound: name = "KeyNotFound"; break;
+      case GraceException::Type::NamespaceNotFound: name = "NamespaceNotFound"; break;
       case GraceException::Type::ThrownException: name = "ThrownException"; break;
     }
     return fmt::formatter<std::string_view>::format(name, context);
   }
 };
 
-#endif  // ifdef GRACE_EXCEPTION_HPP
+#endif  // ifndef GRACE_EXCEPTION_HPP

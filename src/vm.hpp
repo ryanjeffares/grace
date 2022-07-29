@@ -14,10 +14,12 @@
 
 #include <cstdint>
 #include <exception>
+#include <memory>
+#include <sstream>
+#include <string>
 #include <tuple>
 #include <unordered_map>
 #include <vector>
-#include <type_traits>
 
 #include <fmt/color.h>
 #include <fmt/core.h>
@@ -34,18 +36,24 @@ namespace Grace::VM
   {
     Add,
     And,
+    AppendNamespace,
     Assert,
     AssertWithMessage,
     AssignIteratorBegin,
     AssignLocal,
+    BitwiseAnd,
+    BitwiseNot,
+    BitwiseOr,
+    BitwiseXOr,
     Call,
     Cast,
+    CheckIteratorEnd,
     CheckType,
+    CreateDictionary,
     CreateList,
     CreateRangeList,
-    CreateEmptyList,
     DeclareLocal,
-    Deref,
+    DestroyHeldIterator,
     Divide,
     Dup,
     EnterTry,
@@ -55,12 +63,14 @@ namespace Grace::VM
     Greater,
     GreaterEqual,
     IncrementIterator,
+    IsObject,
     Jump,
     JumpIfFalse,
     Less,
     LessEqual,
     LoadConstant,
     LoadLocal,
+    MemberCall,
     Mod,
     Multiply,
     NativeCall,
@@ -76,15 +86,35 @@ namespace Grace::VM
     PrintEmptyLine,
     PrintLn,
     PrintTab,
+    EPrint,
+    EPrintEmptyLine,
+    EPrintLn,
+    EPrintTab,
     Return,
+    ShiftLeft,
+    ShiftRight,
+    StartNewNamespace,
     Subtract,
     Throw,
+    Typename
   };
 
   enum class InterpretResult
   {
     RuntimeOk,
     RuntimeError,
+  };
+
+  // TODO: there will be user defined objects that can have extension methods...
+  enum class ObjectType
+  {
+    Bool,
+    Char,
+    Dict,
+    Float,
+    Int,
+    List,
+    String,
   };
 
   class VM
@@ -108,52 +138,58 @@ namespace Grace::VM
         return vm;
       }
 
-      GRACE_INLINE void PushOp(Ops op, int line)
+      GRACE_INLINE void PushOp(Ops op, std::size_t line)
       {
-        m_FunctionList.at(m_LastFunctionHash).m_OpList.emplace_back(op, line);
+        m_FunctionLookup.at(m_LastFileNameHash).at(m_LastFunctionHash)->opList.push_back({ op, line });
       }
 
       void PrintOps() const
       {
-        for (const auto& [name, func] : m_FunctionList) {
-          fmt::print("<function `{}`>\n", func.m_Name);
-          for (const auto [op, line] : func.m_OpList) {
-            fmt::print("{:>5} | {}\n", line, op);
+        for (const auto& [fileName, funcList] : m_FunctionLookup) {
+          for (const auto& [name, func] : funcList) {
+            fmt::print("<function `{}`> in file {}\n", func->name, m_FileNameLookup.at(fileName));
+            for (const auto [op, line] : func->opList) {
+              fmt::print("{:>5} | {}\n", line, op);
+            }
           }
         }
       }
 
-      template<typename T>
+      template<BuiltinGraceType T>
       constexpr GRACE_INLINE void PushConstant(const T& value)
       {
-        m_FunctionList.at(m_LastFunctionHash).m_ConstantList.emplace_back(value);
+        m_FunctionLookup.at(m_LastFileNameHash).at(m_LastFunctionHash)->constantList.emplace_back(value);
       }
 
       GRACE_NODISCARD GRACE_INLINE std::size_t GetNumConstants() const
       {
-        return m_FunctionList.at(m_LastFunctionHash).m_ConstantList.size();
+        return m_FunctionLookup.at(m_LastFileNameHash).at(m_LastFunctionHash)->constantList.size();
       }
 
       GRACE_NODISCARD GRACE_INLINE std::size_t GetNumOps() const
       {
-        return m_FunctionList.at(m_LastFunctionHash).m_OpList.size();
+        return m_FunctionLookup.at(m_LastFileNameHash).at(m_LastFunctionHash)->opList.size();
       }
 
-      template<typename T>
+      template<BuiltinGraceType T>
       constexpr GRACE_INLINE void SetConstantAtIndex(std::size_t index, const T& value)
       {
-        m_FunctionList.at(m_LastFunctionHash).m_ConstantList[index] = value;
+        m_FunctionLookup.at(m_LastFileNameHash).at(m_LastFunctionHash)->constantList[index] = value;
       }
 
-      GRACE_NODISCARD
-      GRACE_INLINE const std::string& GetLastFunctionName() const 
+      GRACE_NODISCARD GRACE_INLINE Ops GetLastOp() const
       {
-        return m_FunctionList.at(m_LastFunctionHash).m_Name;
+        return m_FunctionLookup.at(m_LastFileNameHash).at(m_LastFunctionHash)->opList.back().op;
       }
 
-      GRACE_NODISCARD bool AddFunction(std::string&& name, int line, int arity);
+      GRACE_NODISCARD GRACE_INLINE const std::string& GetLastFunctionName() const 
+      {
+        return m_FunctionLookup.at(m_LastFileNameHash).at(m_LastFunctionHash)->name;
+      }
 
-      GRACE_INLINE std::tuple<bool, std::size_t> HasNativeFunction(const std::string& name)
+      GRACE_NODISCARD bool AddFunction(std::string&& name, std::size_t arity, const std::string& fileName, bool exported, bool extension, ObjectType objectType);
+
+      std::tuple<bool, std::size_t> HasNativeFunction(const std::string& name)
       {
         auto it = std::find_if(m_NativeFunctions.begin(), m_NativeFunctions.end(), 
             [&name](const Native::NativeFunction& fn) { return fn.GetName() == name;});
@@ -163,55 +199,86 @@ namespace Grace::VM
         return {true, it - m_NativeFunctions.begin()};
       }
 
-      GRACE_NODISCARD bool CombineFunctions(bool verbose);
-      GRACE_NODISCARD InterpretResult Start(bool verbose);
+      GRACE_NODISCARD GRACE_INLINE const Native::NativeFunction& GetNativeFunction(std::size_t index) const
+      {
+        return m_NativeFunctions[index];
+      }
+
+      GRACE_NODISCARD bool CombineFunctions(const std::string& mainFileName, GRACE_MAYBE_UNUSED bool verbose);
+      GRACE_NODISCARD InterpretResult Start(const std::string& mainFileName, bool verbose, const std::vector<std::string>& args);
 
     private:
 
-      using CallStack = std::vector<std::tuple<std::int64_t, std::int64_t, int>>;
+      // hash of caller, hash of callee, line, file name, file name hash
+      struct CallStackEntry
+      {
+        std::int64_t callerHash{}, calleeHash{};
+        std::size_t line{};
+        std::string fileName, calleeFileName;
+        std::int64_t fileNameHash{}, calleeFileNameHash;
+      };
 
       void RegisterNatives();
-      GRACE_NODISCARD InterpretResult Run(bool verbose);
-      void RuntimeError(const GraceException& exception, int line, const CallStack& callStack);
+      GRACE_NODISCARD InterpretResult Run(std::int64_t mainFileNameHash, GRACE_MAYBE_UNUSED bool verbose, const std::vector<std::string>& clArgs);
+      void RuntimeError(const GraceException& exception, std::size_t line, const std::vector<CallStackEntry>& callStack);
 
     private:
 
       struct OpLine
       {
-        Ops m_Op;
-        int m_Line;
-
-        OpLine(Ops op, int line) 
-          : m_Op(op), m_Line(line)
-        {
-
-        }
+        Ops op;
+        std::size_t line;
       };
 
       struct Function 
       {
-        std::string m_Name;
-        std::int64_t m_NameHash;
-        int m_Line, m_Arity;
+        std::string name;
+        std::int64_t nameHash;
+        std::size_t arity;
 
-        std::vector<OpLine> m_OpList;
-        std::vector<Value> m_ConstantList;
+        std::string fileName;
+        std::int64_t fileNameHash;
+        std::vector<std::string> namespaceVec;
+        std::vector<std::int64_t> namespaceHashVec;
 
-        std::size_t m_OpIndexStart = 0, m_ConstantIndexStart = 0;
+        std::vector<OpLine> opList;
+        std::vector<Value> constantList;
 
-        Function(std::string&& name, std::int64_t nameHash, int arity, int line)
-          : m_Name(std::move(name)), m_NameHash(nameHash), m_Line(line), m_Arity(arity)
+        std::size_t opIndexStart{}, constantIndexStart{};
+
+        // TODO: it's possible that the Function won't need to know if it's an extension or not
+        bool exported{}, extensionMethod{};
+
+        Function(std::string&& name_, std::int64_t nameHash_, std::size_t arity_, const std::string& fileName_, bool exported_, bool extension)
+          : name(std::move(name_)), nameHash(nameHash_), arity(arity_), fileName(fileName_), exported(exported_), extensionMethod(extension)
         {
-
+          static std::hash<std::string> hasher;
+          fileNameHash = static_cast<std::int64_t>(hasher(fileName_));
+          std::stringstream ss(fileName.substr(0, fileName.find_last_of('.')));
+          std::string part;
+          while (std::getline(ss, part, '/')) {
+            namespaceVec.push_back(part);
+            namespaceHashVec.push_back(static_cast<std::int64_t>(hasher(part)));
+          }
         }
-      };
 
-      std::unordered_map<std::int64_t, Function> m_FunctionList;
+        GRACE_INLINE bool CompareNamespace(const std::vector<std::string>& nameSpace) const
+        {
+          return namespaceVec == nameSpace;
+        }
+      };      
+
+      // { filename { function name, function } }
+      std::unordered_map<std::int64_t, std::unordered_map<std::int64_t, std::shared_ptr<Function>>> m_FunctionLookup;
+      std::unordered_map<ObjectType, std::vector<std::shared_ptr<Function>>> m_ExtensionMethodLookup;
+      std::unordered_map<std::int64_t, std::string> m_FileNameLookup;
+
       std::vector<Native::NativeFunction> m_NativeFunctions;
 
       std::vector<OpLine> m_FullOpList;
       std::vector<Value> m_FullConstantList;
 
+      std::int64_t m_LastFileNameHash;
       std::int64_t m_LastFunctionHash{};
       std::hash<std::string> m_Hasher;
   };
@@ -229,18 +296,21 @@ struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
     switch (type) {
       case Ops::Add: name = "Ops::Add"; break;
       case Ops::And: name = "Ops::And"; break;
+      case Ops::AppendNamespace: name = "Ops::AppendNamespace"; break;
+      case Ops::StartNewNamespace: name = "Ops::StartNewNamespace"; break;
       case Ops::Assert: name = "Ops::Assert"; break;
       case Ops::AssertWithMessage: name = "Ops::AssertWithMessage"; break;
       case Ops::AssignIteratorBegin: name = "Ops::AssignIteratorBegin"; break;
       case Ops::AssignLocal: name = "Ops::AssignLocal"; break;
       case Ops::Call: name = "Ops::Call"; break;
       case Ops::Cast: name = "Ops::Cast"; break;
+      case Ops::CheckIteratorEnd: name = "Ops::CheckIteratorEnd"; break;
       case Ops::CheckType: name = "Ops::CheckType"; break;
+      case Ops::CreateDictionary: name = "Ops::CreateDictionary"; break;
       case Ops::CreateList: name = "Ops::CreateList"; break;
       case Ops::CreateRangeList: name = "Ops::CreateRangeList"; break;
-      case Ops::CreateEmptyList: name = "Ops::CreateEmptyList"; break;
       case Ops::DeclareLocal: name = "Ops::DeclareLocal"; break;
-      case Ops::Deref: name = "Ops::Deref"; break;
+      case Ops::DestroyHeldIterator: name = "Ops::DestroyHeldIterator"; break;
       case Ops::Divide: name = "Ops::Divide"; break;
       case Ops::Dup: name = "Ops::Dup"; break;
       case Ops::EnterTry: name = "Ops::EnterTry"; break;
@@ -250,12 +320,14 @@ struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
       case Ops::Greater: name = "Ops::Greater"; break;
       case Ops::GreaterEqual: name = "Ops::GreaterEqual"; break;
       case Ops::IncrementIterator: name = "Ops::IncrementIterator"; break;
+      case Ops::IsObject: name = "Ops::IsObject"; break;
       case Ops::Jump: name = "Ops::Jump"; break;
       case Ops::JumpIfFalse: name = "Ops::JumpIfFalse"; break;
       case Ops::Less: name = "Ops::Less"; break;
       case Ops::LessEqual: name = "Ops::LessEqual"; break;
       case Ops::LoadConstant: name = "Ops::LoadConstant"; break;
       case Ops::LoadLocal: name = "Ops::LoadLocal"; break;
+      case Ops::MemberCall: name = "Ops::MemberCall"; break;
       case Ops::Mod: name = "Ops::Mod"; break;
       case Ops::Multiply: name = "Ops::Multiply"; break;
       case Ops::NativeCall: name = "Ops::NativeCall"; break;
@@ -271,9 +343,20 @@ struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
       case Ops::PrintEmptyLine: name = "Ops::PrintEmptyLine"; break;
       case Ops::PrintLn: name = "Ops::PrintLn"; break;
       case Ops::PrintTab: name = "Ops::PrintTab"; break;
+      case Ops::EPrint: name = "Ops::EPrint"; break;
+      case Ops::EPrintEmptyLine: name = "Ops::EPrintEmptyLine"; break;
+      case Ops::EPrintLn: name = "Ops::EPrintLn"; break;
+      case Ops::EPrintTab: name = "Ops::EPrintTab"; break;
       case Ops::Return: name = "Ops::Return"; break;
       case Ops::Subtract: name = "Ops::Subtract"; break;
       case Ops::Throw: name = "Ops::Throw"; break;
+      case Ops::Typename: name = "Ops::Typename"; break;
+      case Ops::BitwiseAnd: name = "Ops:BitwiseAnd"; break;
+      case Ops::BitwiseNot: name = "Ops:BitwiseNot"; break;
+      case Ops::BitwiseOr: name = "Ops:BitwiseOr"; break;
+      case Ops::BitwiseXOr: name = "Ops:BitwiseXOr"; break;
+      case Ops::ShiftLeft: name = "Ops:ShiftLeft"; break;
+      case Ops::ShiftRight: name = "Ops:ShiftRight"; break;
     }
     return fmt::formatter<std::string_view>::format(name, context);
   }

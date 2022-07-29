@@ -13,4 +13,20 @@ func main():
   catch e:
     println(e);
   end
+
+  final items = ["Ryan", false, null, [0..5], 2**4];
+  var index;
+  var item;
+  for item, index in items:
+    println("The item at index " + index + " is " + get_list(items, index));
+  end
+
+  println(index);
+  println(item);
+
+  for i in []: println(i); end
+
+  for i in [0..5]:
+    println(i);
+  end
 end

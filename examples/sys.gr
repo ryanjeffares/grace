@@ -1,0 +1,6 @@
+import std::system;
+
+func main(final args: List):
+  final res = std::system::run("dir");
+  std::system::exit(res);
+end

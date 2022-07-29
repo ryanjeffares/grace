@@ -1,0 +1,3 @@
+func export sqrt(this Int i) :: Int:
+  return __NATIVE_SQRT_INT(i);
+end

@@ -26,7 +26,8 @@ namespace Grace::Native
   {
     public:
 
-      using FuncDecl = VM::Value (*)(const std::vector<VM::Value>&);
+      // the arg vector is not const so that we can efficiently std::move the arguments to inner calls to Lists, Dicts etc
+      using FuncDecl = VM::Value (*)(std::vector<VM::Value>&);
 
       NativeFunction(std::string&& name, std::uint32_t arity, FuncDecl func)
         : m_Name(std::move(name)), m_Arity(arity), m_Function(func)
@@ -48,7 +49,7 @@ namespace Grace::Native
        *  Call the inner function. The length of the args list is expected to match the function's arity,
        *  and the types are expected to be correct
        */
-      VM::Value operator()(const std::vector<VM::Value>& args)
+      VM::Value operator()(std::vector<VM::Value>& args)
       {
         return m_Function(args);
       }

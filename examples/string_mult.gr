@@ -1,8 +1,8 @@
 func multiply_string(value, n):
-  if instanceof(value, string):
+  if instanceof(value, String):
     return value * n;
   else:
-    return string(value) * n;
+    return String(value) * n;
   end
 end
 
@@ -11,4 +11,9 @@ func main():
   println(multiply_string(s, 5));
   println(multiply_string(false, 10));
   println(multiply_string(1234, 20));
+
+  for c in List(multiply_string("hello ", 5)):
+    print(c);
+  end
+  println();
 end 

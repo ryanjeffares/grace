@@ -1,10 +1,11 @@
 func nested_loops():
   var n = 0;
+  if n: end
   while n < 101:
     println(n);
     n = n + 1;
 
-    for i in 0..50:
+    for i in [0..50]:
       if i > 25:
         println("breaking inner");
         break;
@@ -21,7 +22,7 @@ func nested_loops():
 end
 
 func main():
-  for i in 0..30:
+  for i in [0..30]:
     nested_loops();
   end
 end

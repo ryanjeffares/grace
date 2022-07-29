@@ -1,0 +1,20 @@
+func main():
+  final hex = 0xFFFF;
+  println(hex);
+  assert(instanceof(hex, Int));
+
+  final binary = 0b11001110;
+  println(binary);
+  assert(instanceof(binary, Int));
+
+  println(0XFF * 0B10); // capital X or B is also allowed
+
+  println(0xAbCdEf);  // hex characters can be upper or lower case
+  // println(0xABCDEFG);  // error at 'G'
+  // println(0b12); // error at '2'
+
+  var n = 0b1;
+  for i in [0..32]:
+    println(n << i);
+  end
+end

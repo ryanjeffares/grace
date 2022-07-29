@@ -22,13 +22,13 @@ namespace Grace
 
   namespace ObjectTracker
   {
-#ifdef GRACE_DEBUG  // these functions should not be called in Debug
+#ifdef GRACE_DEBUG // these functions should only be called in Debug
     void EnableVerbose();
     void TrackObject(GraceObject* object);
-    void StopTracking(GraceObject* object);
+    void StopTrackingObject(GraceObject* object);
     void Finalise();
 #endif
-  } // namesapce ObjectTracker
+  } // namespace ObjectTracker
 } // namespace Grace
 
 #endif  // ifndef GRACE_OBJECT_TRACKER_HPP
