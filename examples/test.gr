@@ -10,7 +10,7 @@ func main():
   for i in [0..10]:
     l.append(i);
   end
-  println(l.at(5));
+  println(l.at(5).double());
   println(l.length());
   for i in [0..l.length()]:
     l.set(i, "HELLO");

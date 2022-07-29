@@ -1068,6 +1068,21 @@ static void Expression(bool canAssign, CompilerContext& compiler)
           case Scanner::TokenType::By:
             shouldBreak = true;
             break;
+          case Scanner::TokenType::Dot: {
+            Advance(compiler);  // consume the .
+            if (!Match(Scanner::TokenType::Identifier, compiler)) {
+              MessageAtCurrent("Expected identifier after '.'", LogLevel::Error, compiler);
+              return;
+            }
+            if (!Check(Scanner::TokenType::LeftParen, compiler)) {
+              MessageAtCurrent("Expected function call", LogLevel::Error, compiler);
+              return;
+            }
+
+            auto funcNameToken = compiler.previous.value();
+            DotFunctionCall(funcNameToken, compiler);
+            break;
+          }
           default:
             MessageAtCurrent("Invalid token found in expression", LogLevel::Error, compiler);
             Advance(compiler);
@@ -2114,7 +2129,11 @@ static void Primary(bool canAssign, CompilerContext& compiler)
 
   if (Match(Scanner::TokenType::Dot, compiler)) {
     // TODO: account for class member access, not just function calls...
-    Consume(Scanner::TokenType::Identifier, "Expected identifier after '.'", compiler);
+    if (!Match(Scanner::TokenType::Identifier, compiler)) {
+      MessageAtCurrent("Expected identifier after '.'", LogLevel::Error, compiler);
+      return;
+    }
+
     if (!Check(Scanner::TokenType::LeftParen, compiler)) {
       MessageAtCurrent("Expected function call", LogLevel::Error, compiler);
       return;
