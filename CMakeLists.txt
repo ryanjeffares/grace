@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.22)
+cmake_minimum_required(VERSION 3.8)
 project(grace)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -26,7 +26,6 @@ set_target_properties(grace PROPERTIES
 )
 
 if (CMAKE_BUILD_TYPE MATCHES Debug)
-  add_compile_definitions(GRACE_DEBUG)
   target_compile_definitions(grace PRIVATE GRACE_DEBUG)
 endif()
 
