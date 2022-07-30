@@ -136,6 +136,7 @@ namespace Grace::Scanner
       GRACE_NODISCARD GRACE_INLINE std::string GetErrorMessage() const { return m_ErrorMessage; }
       GRACE_NODISCARD GRACE_INLINE std::size_t GetLength() const { return m_Length; }
       GRACE_NODISCARD GRACE_INLINE std::string_view GetText() const { return m_Text.substr(0, m_Length); }
+      GRACE_NODISCARD GRACE_INLINE std::string GetString() const { return std::string(m_Text.substr(0, m_Length)); }
       GRACE_NODISCARD GRACE_INLINE const char* GetData() const { return m_Text.data(); }
 
     private:

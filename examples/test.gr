@@ -1,8 +1,30 @@
 import std::dict;
-import std::list; 
+import std::list;
+
+class Person:
+  var name;
+  var age;
+
+  constructor(n, a):
+    name = n;
+    age = a;
+  end
+end
+
+func say_hello(this Person person):
+  println("Hello from Person()");
+end
 
 func double(this Int i) :: Int:
   return i * 2;
+end
+
+func make_list(value):
+  return [value];
+end
+
+func duplicate(this List list):
+  return list * 2;
 end
 
 func main():
@@ -28,4 +50,10 @@ func main():
   d.insert("Syl", "[redacted]");
   println(d);
   println(d.contains_key("Syl"));
+
+  println(make_list(5).duplicate());
+
+  var p = Person("Ryan", 23);
+  println(typename(p));
+  p.say_hello();
 end

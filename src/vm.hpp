@@ -188,7 +188,7 @@ namespace Grace::VM
         return m_FunctionLookup.at(m_LastFileNameHash).at(m_LastFunctionHash)->name;
       }
 
-      GRACE_NODISCARD bool AddFunction(std::string&& name, std::size_t arity, const std::string& fileName, bool exported, bool extension, ObjectType objectType = {});
+      GRACE_NODISCARD bool AddFunction(std::string&& name, std::size_t arity, const std::string& fileName, bool exported, bool extension, std::size_t objectNameHash = {});
       GRACE_NODISCARD bool AddClass(std::string&& name, const std::vector<std::string>& members, const std::string& fileName, bool exported);
 
       std::tuple<bool, std::size_t> HasNativeFunction(const std::string& name)
@@ -283,7 +283,8 @@ namespace Grace::VM
 
       // { filename { function name, function } }
       std::unordered_map<std::int64_t, std::unordered_map<std::int64_t, std::shared_ptr<Function>>> m_FunctionLookup;
-      std::unordered_map<ObjectType, std::vector<std::shared_ptr<Function>>> m_ExtensionMethodLookup;
+      // { hash of object name, list of functions }
+      std::unordered_map<std::size_t, std::vector<std::shared_ptr<Function>>> m_ExtensionMethodLookup;
       std::unordered_map<std::int64_t, std::string> m_FileNameLookup;
 
       std::vector<Native::NativeFunction> m_NativeFunctions;

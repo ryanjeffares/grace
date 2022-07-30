@@ -73,7 +73,7 @@ VM::VM()
   RegisterNatives();
 }
 
-bool VM::AddFunction(std::string&& name, std::size_t arity, const std::string& fileName, bool exported, bool extension, ObjectType objectType)
+bool VM::AddFunction(std::string&& name, std::size_t arity, const std::string& fileName, bool exported, bool extension, std::size_t objectNameHash)
 {
   auto funcNameHash = static_cast<std::int64_t>(m_Hasher(name));
   auto fileNameHash = static_cast<std::int64_t>(m_Hasher(fileName));
@@ -86,7 +86,7 @@ bool VM::AddFunction(std::string&& name, std::size_t arity, const std::string& f
   auto func = std::make_shared<Function>(std::move(name), funcNameHash, arity, fileName, exported, extension);
 
   if (extension) {
-    m_ExtensionMethodLookup[objectType].push_back(func);
+    m_ExtensionMethodLookup[objectNameHash].push_back(func);
   }
 
   auto [it, res] = m_FunctionLookup.at(fileNameHash).try_emplace(funcNameHash, func);
@@ -546,7 +546,7 @@ InterpretResult VM::Run(std::int64_t mainFileNameHash, GRACE_MAYBE_UNUSED bool v
         }
         case Ops::MemberCall: {
           auto calleeFuncName = m_FullConstantList[constantCurrent++].Get<std::string>();
-          auto calleeNameHash = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+          auto calleeNameHash = m_FullConstantList[constantCurrent++].Get<std::int64_t>();          
           auto numArgs = static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>());
 
           std::vector<Value> argsGiven(numArgs);
@@ -555,42 +555,9 @@ InterpretResult VM::Run(std::int64_t mainFileNameHash, GRACE_MAYBE_UNUSED bool v
           }
 
           auto callerObject = Pop(valueStack);
-          auto type = callerObject.GetType();
-          ObjectType callerType;
-          switch (type) {
-            case Value::Type::Bool:
-              callerType = ObjectType::Bool;
-              break;
-            case Value::Type::Char:
-              callerType = ObjectType::Char;
-              break;
-            case Value::Type::Double:
-              callerType = ObjectType::Float;
-              break;
-            case Value::Type::Int:
-              callerType = ObjectType::Int;
-              break;
-            case Value::Type::Null:
-              throw GraceException(GraceException::Type::InvalidType, "`null` has no callable methods");
-            case Value::Type::String:
-              callerType = ObjectType::String;
-              break;
-            case Value::Type::Object: {
-              if (callerObject.GetTypeName() == "List") {
-                callerType = ObjectType::List;
-              } else if (callerObject.GetTypeName() == "Dict") {
-                callerType = ObjectType::Dict;
-              } else {
-                throw GraceException(GraceException::Type::InvalidType, fmt::format("Type `{}` has no callable methods", callerObject.GetTypeName()));
-              }
-              break;
-            }
-            default:
-              GRACE_UNREACHABLE();
-              throw GraceException(GraceException::Type::InvalidType, "`null` has no callable methods");
-          }
-
-          auto funcListIt = m_ExtensionMethodLookup.find(callerType);
+          auto typeNameHash = m_Hasher(callerObject.GetTypeName());
+          
+          auto funcListIt = m_ExtensionMethodLookup.find(typeNameHash);
           if (funcListIt == m_ExtensionMethodLookup.end()) {
             throw GraceException(GraceException::Type::FunctionNotFound, fmt::format("Member function `{}` for type `{}` not found, you might be missing an import", calleeFuncName, callerObject.GetTypeName()));
           }

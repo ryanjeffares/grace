@@ -89,7 +89,7 @@ struct CompilerContext
   bool breakJumpNeedsIndexes = false;
 
   // const idx, op idx
-  using IndexStack = std::stack<std::vector<std::pair<std::int64_t, std::int64_t>>>;
+  using IndexStack = std::stack<std::vector<std::pair<std::size_t, std::size_t>>>;
   IndexStack breakIdxPairs, continueIdxPairs;
 };
 
@@ -811,7 +811,7 @@ static void FuncDeclaration(CompilerContext& compiler)
 
   Consume(Scanner::TokenType::LeftParen, "Expected '(' after function name", compiler);
 
-  VM::ObjectType extensionObjectType{};
+  std::size_t extensionObjectNameHash{};
   auto isExtensionMethod = false;
 
   std::vector<std::string> parameters;
@@ -863,34 +863,14 @@ static void FuncDeclaration(CompilerContext& compiler)
       }
 
       auto type = compiler.current.value().GetType();
-      
-      switch (type) {
-        case Scanner::TokenType::IntIdent:
-          extensionObjectType = VM::ObjectType::Int;
-          break;
-        case Scanner::TokenType::FloatIdent:
-          extensionObjectType = VM::ObjectType::Float;
-          break;
-        case Scanner::TokenType::BoolIdent:
-          extensionObjectType = VM::ObjectType::Bool;
-          break;
-        case Scanner::TokenType::StringIdent:
-          extensionObjectType = VM::ObjectType::String;
-          break;
-        case Scanner::TokenType::CharIdent:
-          extensionObjectType = VM::ObjectType::Char;
-          break;
-        case Scanner::TokenType::ListIdent:
-          extensionObjectType = VM::ObjectType::List;
-          break;
-        case Scanner::TokenType::DictIdent:
-          extensionObjectType = VM::ObjectType::Dict;
-          break;
-        default:
-          MessageAtCurrent("Unrecognised object type for extension method", LogLevel::Error, compiler);
-          return;
+      if (!IsTypeIdent(type) && type != Scanner::TokenType::Identifier) {
+        MessageAtCurrent("Expected type name for extension method", LogLevel::Error, compiler);
+        return;
       }
 
+      static std::hash<std::string> hasher;
+      extensionObjectNameHash = hasher(compiler.current.value().GetString());
+      
       Advance(compiler);
       isExtensionMethod = true;
 
@@ -941,7 +921,7 @@ static void FuncDeclaration(CompilerContext& compiler)
 
   Consume(Scanner::TokenType::Colon, "Expected ':' after function signature", compiler);
 
-  if (!VM::VM::GetInstance().AddFunction(std::move(name), parameters.size(), compiler.currentFileName, exportFunction, isExtensionMethod, extensionObjectType)) {
+  if (!VM::VM::GetInstance().AddFunction(std::move(name), parameters.size(), compiler.currentFileName, exportFunction, isExtensionMethod, extensionObjectNameHash)) {
     Message(funcNameToken, "A function or class in the same namespace already exists with the same name as this function", LogLevel::Error, compiler);
     return;
   }
@@ -1374,9 +1354,9 @@ static void BreakStatement(CompilerContext& compiler)
   }
 
   compiler.breakJumpNeedsIndexes = true;
-  auto constIdx = static_cast<std::int64_t>(VM::VM::GetInstance().GetNumConstants());
+  auto constIdx = VM::VM::GetInstance().GetNumConstants();
   EmitConstant(std::int64_t{});
-  auto opIdx = static_cast<std::int64_t>(VM::VM::GetInstance().GetNumConstants());
+  auto opIdx = VM::VM::GetInstance().GetNumConstants();
   EmitConstant(std::int64_t{});
   EmitOp(VM::Ops::Jump, compiler.previous.value().GetLine());
   compiler.breakIdxPairs.top().push_back(std::make_pair(constIdx, opIdx));
@@ -1398,9 +1378,9 @@ static void ContinueStatement(CompilerContext& compiler)
   }
 
   compiler.continueJumpNeedsIndexes = true;
-  auto constIdx = static_cast<std::int64_t>(VM::VM::GetInstance().GetNumConstants());
+  auto constIdx = VM::VM::GetInstance().GetNumConstants();
   EmitConstant(std::int64_t{});
-  auto opIdx = static_cast<std::int64_t>(VM::VM::GetInstance().GetNumConstants());
+  auto opIdx = VM::VM::GetInstance().GetNumConstants();
   EmitConstant(std::int64_t{});
   EmitOp(VM::Ops::Jump, compiler.previous.value().GetLine());
   compiler.continueIdxPairs.top().push_back(std::make_pair(constIdx, opIdx));
@@ -1423,7 +1403,7 @@ static void ForStatement(CompilerContext& compiler)
   compiler.breakIdxPairs.emplace();
   compiler.continueIdxPairs.emplace();
 
-  // parse terator variable
+  // parse iterator variable
   auto firstItIsFinal = false;
   if (Match(Scanner::TokenType::Final, compiler)) {
     firstItIsFinal = true;
@@ -1578,9 +1558,9 @@ static void ForStatement(CompilerContext& compiler)
 
   // 'continue' statements bring us here so the iterator is incremented and we hit the jump
   if (compiler.continueJumpNeedsIndexes) {
-    for (auto& p : compiler.continueIdxPairs.top()) {
-      VM::VM::GetInstance().SetConstantAtIndex(p.first, static_cast<std::int64_t>(VM::VM::GetInstance().GetNumConstants()));
-      VM::VM::GetInstance().SetConstantAtIndex(p.second, static_cast<std::int64_t>(VM::VM::GetInstance().GetNumOps()));
+    for (auto& [constantIdx, opIdx] : compiler.continueIdxPairs.top()) {
+      VM::VM::GetInstance().SetConstantAtIndex(constantIdx, static_cast<std::int64_t>(VM::VM::GetInstance().GetNumConstants()));
+      VM::VM::GetInstance().SetConstantAtIndex(opIdx, static_cast<std::int64_t>(VM::VM::GetInstance().GetNumOps()));
     }
     compiler.continueIdxPairs.pop();
     compiler.continueJumpNeedsIndexes = !compiler.continueIdxPairs.empty();
@@ -1605,9 +1585,9 @@ static void ForStatement(CompilerContext& compiler)
 
   // set indexes for breaks and when the condition fails, the iterator variable will need to be popped (if it's a new variable)
   if (compiler.breakJumpNeedsIndexes) {
-    for (auto& p : compiler.breakIdxPairs.top()) {
-      VM::VM::GetInstance().SetConstantAtIndex(p.first, static_cast<std::int64_t>(VM::VM::GetInstance().GetNumConstants()));
-      VM::VM::GetInstance().SetConstantAtIndex(p.second, static_cast<std::int64_t>(VM::VM::GetInstance().GetNumOps()));
+    for (auto& [constantIdx, opIdx] : compiler.breakIdxPairs.top()) {
+      VM::VM::GetInstance().SetConstantAtIndex(constantIdx, static_cast<std::int64_t>(VM::VM::GetInstance().GetNumConstants()));
+      VM::VM::GetInstance().SetConstantAtIndex(opIdx, static_cast<std::int64_t>(VM::VM::GetInstance().GetNumOps()));
     }
     compiler.breakIdxPairs.pop();
     compiler.breakJumpNeedsIndexes = !compiler.breakIdxPairs.empty();
@@ -2019,9 +1999,9 @@ static void WhileStatement(CompilerContext& compiler)
   auto numOps = static_cast<std::int64_t>(VM::VM::GetInstance().GetNumOps());
 
   if (compiler.continueJumpNeedsIndexes) {
-    for (auto& p : compiler.continueIdxPairs.top()) {
-      VM::VM::GetInstance().SetConstantAtIndex(p.first, numConstants);
-      VM::VM::GetInstance().SetConstantAtIndex(p.second, numOps);
+    for (auto& [c, o] : compiler.continueIdxPairs.top()) {
+      VM::VM::GetInstance().SetConstantAtIndex(c, numConstants);
+      VM::VM::GetInstance().SetConstantAtIndex(o, numOps);
     }
     compiler.continueIdxPairs.pop();
     compiler.continueJumpNeedsIndexes = !compiler.continueIdxPairs.empty();
@@ -2041,9 +2021,9 @@ static void WhileStatement(CompilerContext& compiler)
   numOps = static_cast<std::int64_t>(VM::VM::GetInstance().GetNumOps());
 
   if (compiler.breakJumpNeedsIndexes) {
-    for (auto& p : compiler.breakIdxPairs.top()) {
-      VM::VM::GetInstance().SetConstantAtIndex(p.first, numConstants);
-      VM::VM::GetInstance().SetConstantAtIndex(p.second, numOps);
+    for (auto& [c, o] : compiler.breakIdxPairs.top()) {
+      VM::VM::GetInstance().SetConstantAtIndex(c, numConstants);
+      VM::VM::GetInstance().SetConstantAtIndex(o, numOps);
     }
     compiler.breakIdxPairs.pop();
     compiler.breakJumpNeedsIndexes = !compiler.breakIdxPairs.empty();
