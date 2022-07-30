@@ -1,5 +1,3 @@
-import lib::lib;
-
 class Person:
   var name: String;
   var age: Int;
@@ -10,9 +8,22 @@ class Person:
   end
 end
 
+func say_hello(this Person person):
+  println("Hello, my name is " + person.name + " and I am " + person.age + " years old.");
+end
+
+func make_person(): end
+
 func main():
-  final ryan = Person(23, "Ryan");
-  final point = lib::lib::Point(1, 2);
-  println(ryan);
-  println(point);
+  //final ryan = Person(23, "Ryan");
+  //ryan.say_hello();
+  //final syl = Person(24, "Syl");
+  //syl.say_hello();
+
+  //syl.name = "Sylvan";
+  //syl.say_hello();
+//  make_person();
+  Person(0, "").name = "Hi";
+
+  println(Person(0, "Test").name);
 end

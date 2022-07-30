@@ -11,6 +11,7 @@
 
 #include <fmt/core.h>
 
+#include "grace_exception.hpp"
 #include "grace_instance.hpp"
 #include "../value.hpp"
 
@@ -56,5 +57,31 @@ namespace Grace
 	  }
 	}
 	return res + " ]";
+  }
+
+  GRACE_NODISCARD bool GraceInstance::AssignMember(const std::string& memberName, VM::Value&& value)
+  {
+	for (auto& [name, val] : m_Members) {
+	  if (name == memberName) {
+		val = value;
+		return true;
+	  }
+	}
+
+	return false;
+  }
+
+  GRACE_NODISCARD const VM::Value& GraceInstance::LoadMember(const std::string& memberName)
+  {
+	for (const auto& [name, val] : m_Members) {
+	  if (name == memberName) {
+		return val;
+	  }
+	}
+
+	throw GraceException(
+	  GraceException::Type::MemberNotFound,
+	  fmt::format("`{}` has no member name '{}'", ObjectName(), memberName)
+	);
   }
 } // namespace Grace

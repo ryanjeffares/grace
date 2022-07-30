@@ -600,6 +600,43 @@ InterpretResult VM::Run(std::int64_t mainFileNameHash, GRACE_MAYBE_UNUSED bool v
           funcNameHash = calleeNameHash;
           break;
         }
+        case Ops::AssignMember: {
+          auto value = Pop(valueStack);
+          auto parentValue = Pop(valueStack);
+          auto parentObject = parentValue.GetObject();
+          auto instance = dynamic_cast<GraceInstance*>(parentObject);
+          if (instance == nullptr) {
+            throw GraceException(
+              GraceException::Type::InvalidType,
+              fmt::format("`{}` has no members", parentValue.GetTypeName())
+            );
+          }
+
+          auto memberName = m_FullConstantList[constantCurrent++].Get<std::string>();
+
+          if (!instance->AssignMember(memberName, std::move(value))) {
+            throw GraceException(
+              GraceException::Type::MemberNotFound,
+              fmt::format("`{}` has no member named '{}'", parentValue.GetTypeName(), memberName)
+            );
+          }
+          break;
+        }
+        case Ops::LoadMember: {
+          auto parentValue = Pop(valueStack);
+          auto parentObject = parentValue.GetObject();
+          auto instance = dynamic_cast<GraceInstance*>(parentObject);
+          if (instance == nullptr) {
+            throw GraceException(
+              GraceException::Type::InvalidType,
+              fmt::format("`{}` has no members", parentValue.GetTypeName())
+            );
+          }
+
+          auto memberName = m_FullConstantList[constantCurrent++].Get<std::string>();
+          valueStack.push_back(instance->LoadMember(memberName));
+          break;
+        }
         case Ops::AssignLocal: {
           auto value = Pop(valueStack);
           localsList[m_FullConstantList[constantCurrent++].Get<std::int64_t>() + localsOffsets.top()] = std::move(value);

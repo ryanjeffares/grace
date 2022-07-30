@@ -57,6 +57,9 @@ namespace Grace
 	  return false;
 	}
 
+	GRACE_NODISCARD bool AssignMember(const std::string& memberName, VM::Value&& value);
+	GRACE_NODISCARD const VM::Value& LoadMember(const std::string& memberName);
+
   private:
 	std::string m_ClassName;
 	MemberList m_Members;

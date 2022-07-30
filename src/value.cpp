@@ -828,9 +828,8 @@ static std::hash<bool> s_BoolHash{};
 static std::hash<std::string> s_StringHash{};
 static std::hash<Grace::GraceObject*> s_ObjectHash{};
 
-std::size_t std::hash<Grace::VM::Value>::operator()(const Grace::VM::Value& value) const
+std::size_t std::hash<Value>::operator()(const Value& value) const
 {
-  using namespace Grace::VM;
   switch (value.GetType()) {
     case Value::Type::Bool:
       return s_BoolHash(value.Get<bool>());

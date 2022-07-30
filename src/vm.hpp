@@ -41,6 +41,7 @@ namespace Grace::VM
     AssertWithMessage,
     AssignIteratorBegin,
     AssignLocal,
+    AssignMember,
     BitwiseAnd,
     BitwiseNot,
     BitwiseOr,
@@ -71,11 +72,13 @@ namespace Grace::VM
     LessEqual,
     LoadConstant,
     LoadLocal,
+    LoadMember,
     MemberCall,
     Mod,
     Multiply,
     NativeCall,
     Negate,
+    NoOp,
     Not,
     NotEqual,
     Or,
@@ -180,7 +183,8 @@ namespace Grace::VM
 
       GRACE_NODISCARD GRACE_INLINE Ops GetLastOp() const
       {
-        return m_FunctionLookup.at(m_LastFileNameHash).at(m_LastFunctionHash)->opList.back().op;
+        const auto& opList = m_FunctionLookup.at(m_LastFileNameHash).at(m_LastFunctionHash)->opList;
+        return opList.empty() ? Ops::NoOp : opList.back().op;
       }
 
       GRACE_NODISCARD GRACE_INLINE const std::string& GetLastFunctionName() const 
@@ -319,6 +323,7 @@ struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
       case Ops::AssertWithMessage: name = "Ops::AssertWithMessage"; break;
       case Ops::AssignIteratorBegin: name = "Ops::AssignIteratorBegin"; break;
       case Ops::AssignLocal: name = "Ops::AssignLocal"; break;
+      case Ops::AssignMember: name = "Ops::AssignMember"; break;
       case Ops::Call: name = "Ops::Call"; break;
       case Ops::Cast: name = "Ops::Cast"; break;
       case Ops::CheckIteratorEnd: name = "Ops::CheckIteratorEnd"; break;
@@ -345,11 +350,13 @@ struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
       case Ops::LessEqual: name = "Ops::LessEqual"; break;
       case Ops::LoadConstant: name = "Ops::LoadConstant"; break;
       case Ops::LoadLocal: name = "Ops::LoadLocal"; break;
+      case Ops::LoadMember: name = "Ops::LoadMember"; break;
       case Ops::MemberCall: name = "Ops::MemberCall"; break;
       case Ops::Mod: name = "Ops::Mod"; break;
       case Ops::Multiply: name = "Ops::Multiply"; break;
       case Ops::NativeCall: name = "Ops::NativeCall"; break;
       case Ops::Negate: name = "Ops::Negate"; break;
+      case Ops::NoOp: name = "Ops::NoOp"; break;
       case Ops::Not: name = "Ops::Not"; break;
       case Ops::NotEqual: name = "Ops::NotEqual"; break;
       case Ops::Or: name = "Ops::Or"; break;

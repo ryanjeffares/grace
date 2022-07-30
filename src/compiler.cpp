@@ -104,7 +104,7 @@ GRACE_INLINE static void EmitOp(VM::Ops op, std::size_t line)
   VM::VM::GetInstance().PushOp(op, line);
 }
 
-template<typename T>
+template<VM::BuiltinGraceType T>
 GRACE_INLINE static void EmitConstant(const T& value)
 {
   VM::VM::GetInstance().PushConstant(value);
@@ -153,6 +153,7 @@ static void Primary(bool canAssign, CompilerContext& compiler);
 
 static void FreeFunctionCall(const Scanner::Token& funcNameToken, CompilerContext& compiler);
 static void DotFunctionCall(const Scanner::Token& funcNameToken, CompilerContext& compiler);
+static void Dot(bool canAssign, CompilerContext& compiler);
 static void Identifier(bool canAssign, CompilerContext& compiler);
 static void Char(CompilerContext& compiler);
 static void String(CompilerContext& compiler);
@@ -1236,17 +1237,7 @@ static void Expression(bool canAssign, CompilerContext& compiler)
             break;
           case Scanner::TokenType::Dot: {
             Advance(compiler);  // consume the .
-            if (!Match(Scanner::TokenType::Identifier, compiler)) {
-              MessageAtCurrent("Expected identifier after '.'", LogLevel::Error, compiler);
-              return;
-            }
-            if (!Check(Scanner::TokenType::LeftParen, compiler)) {
-              MessageAtCurrent("Expected function call", LogLevel::Error, compiler);
-              return;
-            }
-
-            auto funcNameToken = compiler.previous.value();
-            DotFunctionCall(funcNameToken, compiler);
+            Dot(canAssign, compiler);
             break;
           }
           default:
@@ -2295,18 +2286,89 @@ static void Primary(bool canAssign, CompilerContext& compiler)
 
   if (Match(Scanner::TokenType::Dot, compiler)) {
     // TODO: account for class member access, not just function calls...
-    if (!Match(Scanner::TokenType::Identifier, compiler)) {
-      MessageAtCurrent("Expected identifier after '.'", LogLevel::Error, compiler);
-      return;
-    }
+    Dot(canAssign, compiler);
+  }
+}
 
-    if (!Check(Scanner::TokenType::LeftParen, compiler)) {
-      MessageAtCurrent("Expected function call", LogLevel::Error, compiler);
-      return;
-    }
+static void Dot(bool canAssign, CompilerContext& compiler)
+{
+  if (!Match(Scanner::TokenType::Identifier, compiler)) {
+    MessageAtCurrent("Expected identifier after '.'", LogLevel::Error, compiler);
+    return;
+  }
+    
+  auto memberNameToken = compiler.previous.value();
+  if (Match(Scanner::TokenType::LeftParen, compiler)) {
+    // object.function()
+    DotFunctionCall(memberNameToken, compiler);
+  } else {
+    // accessing a member
+    // object.member
+    // could either be an assignment, loading the value, or more dots follow
+    // no other tokens would be valid
+    if (Match(Scanner::TokenType::Equal, compiler)) {
+      if (!canAssign) {
+        MessageAtPrevious("Assignment is not valid here", LogLevel::Error, compiler);
+        return;
+      }
 
-    auto funcNameToken = compiler.previous.value();
-    DotFunctionCall(funcNameToken, compiler);
+      // todo..
+      auto prevUsing = compiler.usingExpressionResult;
+      compiler.usingExpressionResult = true;
+      Expression(false, compiler);
+      compiler.usingExpressionResult = prevUsing;
+      EmitConstant(memberNameToken.GetString());
+      EmitOp(VM::Ops::AssignMember, compiler.previous.value().GetLine());
+
+    } else if (Match(Scanner::TokenType::Dot, compiler)) {
+      // load the member, then recurse
+      // the parent is on the top of the stack
+      EmitConstant(memberNameToken.GetString());
+      EmitOp(VM::Ops::LoadMember, memberNameToken.GetLine());
+      Dot(canAssign, compiler);
+    } else {
+      // no further access, end of expression
+      // so we need to just load the local
+      if (canAssign) {
+        // this was supposed to be an assignment
+        MessageAtCurrent("Expected expression", LogLevel::Error, compiler);
+        return;
+      }
+
+      EmitConstant(memberNameToken.GetString());
+      EmitOp(VM::Ops::LoadMember, memberNameToken.GetLine());
+    }
+  }    
+}
+
+static void DotFunctionCall(const Scanner::Token& funcNameToken, CompilerContext& compiler)
+{
+  // the last object on the stack is the object we are calling
+  std::int64_t numArgs = 0;
+  if (!Match(Scanner::TokenType::RightParen, compiler)) {
+    while (true) {
+      auto prevUsing = compiler.usingExpressionResult;
+      compiler.usingExpressionResult = true;
+      Expression(false, compiler);
+      compiler.usingExpressionResult = prevUsing;
+      numArgs++;
+      if (Match(Scanner::TokenType::RightParen, compiler)) {
+        break;
+      }
+      Consume(Scanner::TokenType::Comma, "Expected ',' after function call argument", compiler);
+    }
+  }
+
+  static std::hash<std::string> hasher;
+  auto funcName = std::string(funcNameToken.GetText());
+  EmitConstant(funcName);
+  EmitConstant(static_cast<std::int64_t>(hasher(funcName)));
+  EmitConstant(numArgs);
+  EmitOp(VM::Ops::MemberCall, funcNameToken.GetLine());
+
+  if (!compiler.usingExpressionResult) {
+    // pop unused return value
+    EmitOp(VM::Ops::Pop, compiler.previous.value().GetLine());
   }
 }
 
@@ -2361,38 +2423,6 @@ static void Identifier(bool canAssign, CompilerContext& compiler)
       EmitConstant(it->index);
       EmitOp(VM::Ops::LoadLocal, prev.GetLine());
     }
-  }
-}
-
-static void DotFunctionCall(const Scanner::Token& funcNameToken, CompilerContext& compiler)
-{
-  Advance(compiler);  // consume the '('
-  // the last object on the stack is the object we are calling
-  std::int64_t numArgs = 0;
-  if (!Match(Scanner::TokenType::RightParen, compiler)) {
-    while (true) {
-      auto prevUsing = compiler.usingExpressionResult;
-      compiler.usingExpressionResult = true;
-      Expression(false, compiler);
-      compiler.usingExpressionResult = prevUsing;
-      numArgs++;
-      if (Match(Scanner::TokenType::RightParen, compiler)) {
-        break;
-      }
-      Consume(Scanner::TokenType::Comma, "Expected ',' after function call argument", compiler);
-    }
-  }
-
-  static std::hash<std::string> hasher;
-  auto funcName = std::string(funcNameToken.GetText());
-  EmitConstant(funcName);
-  EmitConstant(static_cast<std::int64_t>(hasher(funcName)));
-  EmitConstant(numArgs);
-  EmitOp(VM::Ops::MemberCall, funcNameToken.GetLine());
-  
-  if (!compiler.usingExpressionResult) {
-    // pop unused return value
-    EmitOp(VM::Ops::Pop, compiler.previous.value().GetLine());
   }
 }
 
@@ -2456,7 +2486,7 @@ static void FreeFunctionCall(const Scanner::Token& funcNameToken, CompilerContex
     EmitOp(VM::Ops::Call, compiler.previous.value().GetLine());
   }
 
-  if (!compiler.usingExpressionResult) {
+  if (Check(Scanner::TokenType::Semicolon, compiler) && !compiler.usingExpressionResult) {
     // pop unused return value
     EmitOp(VM::Ops::Pop, compiler.previous.value().GetLine());
   }

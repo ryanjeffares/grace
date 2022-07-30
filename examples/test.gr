@@ -56,4 +56,7 @@ func main():
   var p = Person("Ryan", 23);
   println(typename(p));
   p.say_hello();
+
+  var k = {"Ryan": "Jeffares"}.contains_key("Syl");
+  println(k);
 end
