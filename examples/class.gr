@@ -1,6 +1,8 @@
 class Person:
   var name: String;
   var age: Int;
+  var parent;
+  var child;
 
   constructor(a, n):
     name = n;
@@ -15,15 +17,9 @@ end
 func make_person(): end
 
 func main():
-  //final ryan = Person(23, "Ryan");
-  //ryan.say_hello();
-  //final syl = Person(24, "Syl");
-  //syl.say_hello();
+  var parent = Person("Catherine", 52);
+  var child = Person("Ryan", 23);
 
-  //syl.name = "Sylvan";
-  //syl.say_hello();
-//  make_person();
-  Person(0, "").name = "Hi";
-
-  println(Person(0, "Test").name);
+  parent.child = child;
+  child.parent = parent;
 end

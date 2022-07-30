@@ -48,9 +48,7 @@ This will build the `grace` executable, which you can add to your path or move s
 * Experiment with string interning
 * Investigate wide chars over regular chars
 * Classes
-  * Reference counting
-  * Cyclic references handled through a "cyclic reference tracker" - if a cyclic reference is detected, start tracking the two objects, and when those objects' only remaining references are each other they can be safely destroyed 
-  * Maybe we could use structs that only hold variables, and just use extension methods...
+  * Classes with extension methods and member access is in, but we need to track cyclic references
 * Lambdas 
 * Global const fields 
 * Extension methods
@@ -61,6 +59,7 @@ This will build the `grace` executable, which you can add to your path or move s
 * Documentation + comments 
 * Improve compiler errors and line numbering
 * Can probably abstract more parts of the compiler, e.g. function parameters, to reduce code duplication
+* Make sure everything is always getting popped from the value stack when it needs to be
 
 ## Long Term Goals 
 * Optional type annotations for use by a static analyzer
