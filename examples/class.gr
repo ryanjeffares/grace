@@ -1,3 +1,5 @@
+import lib::lib;
+
 class Person:
   var name: String;
   var age: Int;
@@ -10,5 +12,7 @@ end
 
 func main():
   final ryan = Person(23, "Ryan");
+  final point = lib::lib::Point(1, 2);
   println(ryan);
+  println(point);
 end

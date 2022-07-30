@@ -1,3 +1,13 @@
+class export Point:
+  var x;
+  var y;
+
+  constructor(x_, y_):
+    x = x_;
+    y = y_;
+  end
+end
+
 func export say_hello():
   println("hello");
 end

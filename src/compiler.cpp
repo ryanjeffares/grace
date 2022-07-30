@@ -586,7 +586,7 @@ static void ClassDeclaration(CompilerContext& compiler)
 
   auto exported = false;
   if (Match(Scanner::TokenType::Export, compiler)) {
-    exported = false;
+    exported = true;
   }
 
   if (!Match(Scanner::TokenType::Identifier, compiler)) {
@@ -669,6 +669,12 @@ static void ClassDeclaration(CompilerContext& compiler)
             MessageAtPrevious("Function parameters with the same name already defined", LogLevel::Error, compiler);
             return;
           }
+
+          if (std::find(classMembers.begin(), classMembers.end(), p) != classMembers.end()) {
+            MessageAtPrevious("Function parameter shadows class member variable", LogLevel::Error, compiler);
+            return;
+          }
+
           parameters.push_back(p);
           compiler.locals.emplace_back(std::move(p), isFinal, false, compiler.locals.size());
 
@@ -691,7 +697,7 @@ static void ClassDeclaration(CompilerContext& compiler)
 
       Consume(Scanner::TokenType::Colon, "Expected ':' after constructor declaration", compiler);
 
-      if (!VM::VM::GetInstance().AddFunction(std::string(classNameToken.GetText()), parameters.size(), compiler.currentFileName, false, false)) {
+      if (!VM::VM::GetInstance().AddFunction(std::string(classNameToken.GetText()), parameters.size(), compiler.currentFileName, exported, false)) {
         Message(classNameToken, "A function or class in the same namespace already exists with the same name as this class", LogLevel::Error, compiler);
         return;
       }
@@ -734,9 +740,16 @@ static void ClassDeclaration(CompilerContext& compiler)
 
   // make an empty constructor if the user doesn't define one
   if (!hasDefinedConstructor) {
-    if (!VM::VM::GetInstance().AddFunction(std::string(classNameToken.GetText()), 0, compiler.currentFileName, false, false)) {
+    if (!VM::VM::GetInstance().AddFunction(std::string(classNameToken.GetText()), 0, compiler.currentFileName, exported, false)) {
       Message(classNameToken, "A function or class in the same namespace already exists with the same name as this class", LogLevel::Error, compiler);
       return;
+    }
+
+    for (std::size_t i = 0; i < classMembers.size(); i++) {
+      EmitOp(VM::Ops::DeclareLocal, compiler.previous.value().GetLine());
+      auto localId = static_cast<std::int64_t>(compiler.locals.size());
+      auto memberName = classMembers[i];
+      compiler.locals.emplace_back(std::move(memberName), false, false, localId);
     }
   }
 
