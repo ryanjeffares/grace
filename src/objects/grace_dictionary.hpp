@@ -29,7 +29,7 @@ namespace Grace
       GraceDictionary(const GraceDictionary&);
       GraceDictionary(GraceDictionary&&);
 
-      ~GraceDictionary() override = default;
+      ~GraceDictionary() override;
 
       void DebugPrint() const override;
       void Print(bool err) const override;

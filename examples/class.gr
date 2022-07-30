@@ -1,0 +1,14 @@
+class Person:
+  var name: String;
+  var age: Int;
+
+  constructor(a, n):
+    name = n;
+    age = a;
+  end
+end
+
+func main():
+  final ryan = Person(23, "Ryan");
+  println(ryan);
+end

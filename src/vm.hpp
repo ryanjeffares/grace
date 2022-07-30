@@ -50,6 +50,7 @@ namespace Grace::VM
     CheckIteratorEnd,
     CheckType,
     CreateDictionary,
+    CreateInstance,
     CreateList,
     CreateRangeList,
     DeclareLocal,
@@ -187,7 +188,8 @@ namespace Grace::VM
         return m_FunctionLookup.at(m_LastFileNameHash).at(m_LastFunctionHash)->name;
       }
 
-      GRACE_NODISCARD bool AddFunction(std::string&& name, std::size_t arity, const std::string& fileName, bool exported, bool extension, ObjectType objectType);
+      GRACE_NODISCARD bool AddFunction(std::string&& name, std::size_t arity, const std::string& fileName, bool exported, bool extension, ObjectType objectType = {});
+      GRACE_NODISCARD bool AddClass(std::string&& name, const std::vector<std::string>& members, const std::string& fileName, bool exported);
 
       std::tuple<bool, std::size_t> HasNativeFunction(const std::string& name)
       {
@@ -266,7 +268,18 @@ namespace Grace::VM
         {
           return namespaceVec == nameSpace;
         }
-      };      
+      };
+
+      struct Class
+      {       
+        std::string name;
+        std::vector<std::string> members;
+
+        std::string fileName;
+        std::int64_t fileNameHash;
+
+        bool exported;
+      };
 
       // { filename { function name, function } }
       std::unordered_map<std::int64_t, std::unordered_map<std::int64_t, std::shared_ptr<Function>>> m_FunctionLookup;
@@ -274,6 +287,9 @@ namespace Grace::VM
       std::unordered_map<std::int64_t, std::string> m_FileNameLookup;
 
       std::vector<Native::NativeFunction> m_NativeFunctions;
+
+      // { filename { function name, class } }
+      std::unordered_map<std::int64_t, std::unordered_map<std::int64_t, Class>> m_ClassLookup;
 
       std::vector<OpLine> m_FullOpList;
       std::vector<Value> m_FullConstantList;
@@ -307,6 +323,7 @@ struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
       case Ops::CheckIteratorEnd: name = "Ops::CheckIteratorEnd"; break;
       case Ops::CheckType: name = "Ops::CheckType"; break;
       case Ops::CreateDictionary: name = "Ops::CreateDictionary"; break;
+      case Ops::CreateInstance: name = "Ops::CreateInstance"; break;
       case Ops::CreateList: name = "Ops::CreateList"; break;
       case Ops::CreateRangeList: name = "Ops::CreateRangeList"; break;
       case Ops::DeclareLocal: name = "Ops::DeclareLocal"; break;

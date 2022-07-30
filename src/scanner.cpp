@@ -47,6 +47,7 @@ namespace Grace::Scanner
     std::make_pair("by", TokenType::By),
     std::make_pair("class", TokenType::Class),
     std::make_pair("catch", TokenType::Catch),
+    std::make_pair("constructor", TokenType::Constructor),
     std::make_pair("continue", TokenType::Continue),
     std::make_pair("end", TokenType::End),
     std::make_pair("else", TokenType::Else),

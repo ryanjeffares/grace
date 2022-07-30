@@ -48,6 +48,13 @@ namespace Grace
     other.m_Capacity = 0;
   }
 
+  GraceDictionary::~GraceDictionary()
+  {
+    for (auto it : m_ActiveIterators) {
+      it->Invalidate();
+    }
+  }
+
   void GraceDictionary::DebugPrint() const
   {
     fmt::print("Dictionary: {}\n", ToString());

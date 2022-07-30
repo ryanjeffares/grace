@@ -24,6 +24,7 @@
 #include "scanner.hpp"
 #include "vm.hpp"
 #include "objects/grace_exception.hpp"
+#include "objects/grace_instance.hpp"
 #include "objects/grace_iterator.hpp"
 #include "objects/grace_dictionary.hpp"
 #include "objects/grace_list.hpp"
@@ -94,6 +95,27 @@ bool VM::AddFunction(std::string&& name, std::size_t arity, const std::string& f
     m_LastFunctionHash = funcNameHash;
     return true;
   }
+  return false;
+}
+
+bool VM::AddClass(std::string&& name, const std::vector<std::string>& members, const std::string& fileName, bool exported)
+{
+  auto classNameHash = static_cast<std::int64_t>(m_Hasher(name));
+  auto fileNameHash = static_cast<std::int64_t>(m_Hasher(fileName));
+
+  if (m_ClassLookup.find(fileNameHash) == m_ClassLookup.end()) {
+    m_ClassLookup.insert({ fileNameHash, {} });
+    m_FileNameLookup.insert({ fileNameHash, fileName });
+  }
+
+  Class cls{ std::move(name), members, fileName, fileNameHash, exported };
+
+  auto [it, res] = m_ClassLookup.at(fileNameHash).try_emplace(classNameHash, cls);
+  if (res) {
+    m_LastFileNameHash = fileNameHash;
+    return true;
+  }
+
   return false;
 }
 
@@ -859,6 +881,24 @@ InterpretResult VM::Run(std::int64_t mainFileNameHash, GRACE_MAYBE_UNUSED bool v
           auto value = valueStack.back();
           valueStack.reserve(numDups);
           valueStack.insert(valueStack.end(), numDups, value);
+          break;
+        }
+        case Ops::CreateInstance: {
+          auto numMembers = static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>());
+
+          GraceInstance::MemberList memberList(numMembers);
+          auto localsStartIndex = localsList.size() - numMembers;
+          for (auto i = localsStartIndex; i < localsStartIndex + numMembers; i++) {
+            memberList[i - localsStartIndex] = { m_FullConstantList[constantCurrent++].Get<std::string>(), localsList[i] };
+          }
+
+          auto classNameHash = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+          auto classFileNameHash = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+
+          // i don't think we need to check these since the call to the constructor would have already failed...
+          auto& classType = m_ClassLookup.at(classFileNameHash).at(classNameHash);
+          auto className = classType.name;
+          valueStack.push_back(Value::CreateObject<GraceInstance>(std::move(className), std::move(memberList)));
           break;
         }
         case Ops::CreateDictionary: {

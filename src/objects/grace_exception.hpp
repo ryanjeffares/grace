@@ -66,6 +66,8 @@ namespace Grace
 
       }
 
+      ~GraceException() override = default;
+
       GRACE_NODISCARD const char* what() const noexcept override
       {
         return s_ExceptionMessages.at(m_Type);

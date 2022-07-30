@@ -34,9 +34,11 @@ using namespace Grace;
 enum class CodeContext
 {
   Catch,
+  Class,
+  Constructor,
+  ForLoop,
   Function,
   If,
-  ForLoop,
   TopLevel,
   Try,
   WhileLoop,
@@ -289,8 +291,10 @@ static void Synchronize(CompilerContext& compiler)
       return;
     }
 
+    // go until we find a keyword that should start a line
     switch (compiler.current.value().GetType()) {
       case Scanner::TokenType::Class:
+      case Scanner::TokenType::Constructor:
       case Scanner::TokenType::Func:
       case Scanner::TokenType::Final:
       case Scanner::TokenType::For:
@@ -318,6 +322,7 @@ static bool IsKeyword(Scanner::TokenType type, std::string& outKeyword)
     case Scanner::TokenType::By: outKeyword = "by"; return true;
     case Scanner::TokenType::Catch: outKeyword = "catch"; return true;
     case Scanner::TokenType::Class: outKeyword = "class"; return true;
+    case Scanner::TokenType::Constructor: outKeyword = "constructor"; return true;
     case Scanner::TokenType::End: outKeyword = "end"; return true;
     case Scanner::TokenType::Final: outKeyword = "final"; return true;
     case Scanner::TokenType::For: outKeyword = "for"; return true;
@@ -332,6 +337,7 @@ static bool IsKeyword(Scanner::TokenType type, std::string& outKeyword)
     case Scanner::TokenType::Export: outKeyword = "export"; return true;
     case Scanner::TokenType::Return: outKeyword = "return"; return true;
     case Scanner::TokenType::Throw: outKeyword = "throw"; return true;
+    case Scanner::TokenType::This: outKeyword = "this"; return true;
     case Scanner::TokenType::Try: outKeyword = "try"; return true;
     case Scanner::TokenType::Var: outKeyword = "var"; return true;
     case Scanner::TokenType::While: outKeyword = "while"; return true;
@@ -569,18 +575,209 @@ static void ImportDeclaration(CompilerContext& compiler)
   Advance(s_CompilerContextStack.top());
 }
 
-static void ClassDeclaration(GRACE_MAYBE_UNUSED CompilerContext& compiler)
+static void ClassDeclaration(CompilerContext& compiler)
 {
-  GRACE_NOT_IMPLEMENTED();
+  if (compiler.codeContextStack.back() != CodeContext::TopLevel) {
+    MessageAtPrevious("Classes only allowed at top level", LogLevel::Error, compiler);
+    return;
+  }
+
+  compiler.codeContextStack.push_back(CodeContext::Class);
+
+  auto exported = false;
+  if (Match(Scanner::TokenType::Export, compiler)) {
+    exported = false;
+  }
+
+  if (!Match(Scanner::TokenType::Identifier, compiler)) {
+    MessageAtCurrent("Expected identifier after `class`", LogLevel::Error, compiler);
+    return;
+  }
+
+  auto classNameToken = compiler.previous.value();
+
+  if (!Match(Scanner::TokenType::Colon, compiler)) {
+    MessageAtCurrent("Expected ':' after class name", LogLevel::Error, compiler);
+    return;
+  }
+
+  auto hasDefinedConstructor = false;  
+  std::vector<std::string> classMembers;
+
+  while (!Match(Scanner::TokenType::End, compiler)) {
+    if (Match(Scanner::TokenType::EndOfFile, compiler)) {
+      MessageAtPrevious("Unterminated class", LogLevel::Error, compiler);
+      return;
+    }
+
+
+    if (Match(Scanner::TokenType::Var, compiler)) {
+      if (hasDefinedConstructor) {
+        MessageAtPrevious("Member variable declarations can only come before the constructor", LogLevel::Error, compiler);
+        return;
+      }
+
+      Consume(Scanner::TokenType::Identifier, "Expected identifier after `var`", compiler);
+      
+      classMembers.push_back(std::string(compiler.previous.value().GetText()));
+
+      auto nameToken = compiler.previous.value();
+
+      if (Match(Scanner::TokenType::Colon, compiler)) {
+        if (!IsValidTypeAnnotation(compiler.current.value().GetType())) {
+          MessageAtCurrent("Expected typename after type annotation", LogLevel::Error, compiler);
+          return;
+        }
+        Advance(compiler);
+      }
+
+      std::string localName(nameToken.GetText());
+
+      if (localName.starts_with("__")) {
+        MessageAtPrevious("Names beginning with double underscore `__` are reserved for internal use", LogLevel::Error, compiler);
+        return;
+      }
+
+      auto it = std::find_if(compiler.locals.begin(), compiler.locals.end(), [&localName](const Local& l) { return l.name == localName; });
+      if (it != compiler.locals.end()) {
+        MessageAtPrevious("A class member with the same name already exists", LogLevel::Error, compiler);
+        return;
+      }
+      
+
+      Consume(Scanner::TokenType::Semicolon, "Expected ';'", compiler);
+    } else if (Match(Scanner::TokenType::Constructor, compiler)) {
+      compiler.codeContextStack.push_back(CodeContext::Constructor);
+      hasDefinedConstructor = true;
+      Consume(Scanner::TokenType::LeftParen, "Expected '(' after `constructor`", compiler);
+      // we will treat the constructor as a function in the VM with the name of the class name that returns the instance
+      std::vector<std::string> parameters;
+      while (!Match(Scanner::TokenType::RightParen, compiler)) {
+        if (Match(Scanner::TokenType::Identifier, compiler) || Match(Scanner::TokenType::Final, compiler)) {
+          auto isFinal = compiler.previous.value().GetType() == Scanner::TokenType::Final;
+          if (isFinal) {
+            Consume(Scanner::TokenType::Identifier, "Expected identifier after `final`", compiler);
+          }
+          auto p = std::string(compiler.previous.value().GetText());
+
+          if (p.starts_with("__")) {
+            MessageAtPrevious("Names beginning with double underscore `__` are reserved for internal use", LogLevel::Error, compiler);
+            return;
+          }
+
+          if (std::find(parameters.begin(), parameters.end(), p) != parameters.end()) {
+            MessageAtPrevious("Function parameters with the same name already defined", LogLevel::Error, compiler);
+            return;
+          }
+          parameters.push_back(p);
+          compiler.locals.emplace_back(std::move(p), isFinal, false, compiler.locals.size());
+
+          if (Match(Scanner::TokenType::Colon, compiler)) {
+            if (!IsValidTypeAnnotation(compiler.current.value().GetType())) {
+              MessageAtCurrent("Expected type name after type annotation", LogLevel::Error, compiler);
+              return;
+            }
+            Advance(compiler);
+          }
+
+          if (!Check(Scanner::TokenType::RightParen, compiler)) {
+            Consume(Scanner::TokenType::Comma, "Expected ',' after function parameter", compiler);
+          }
+        } else {
+          MessageAtCurrent("Expected identifier or `final`", LogLevel::Error, compiler);
+          return;
+        }
+      }
+
+      Consume(Scanner::TokenType::Colon, "Expected ':' after constructor declaration", compiler);
+
+      if (!VM::VM::GetInstance().AddFunction(std::string(classNameToken.GetText()), parameters.size(), compiler.currentFileName, false, false)) {
+        Message(classNameToken, "A function or class in the same namespace already exists with the same name as this class", LogLevel::Error, compiler);
+        return;
+      }
+      
+      // make the class' members at the start of the constructor
+      for (std::size_t i = 0; i < classMembers.size(); i++) {
+        EmitOp(VM::Ops::DeclareLocal, compiler.previous.value().GetLine());
+        auto localId = static_cast<std::int64_t>(compiler.locals.size());
+        auto memberName = classMembers[i];
+        compiler.locals.emplace_back(std::move(memberName), false, false, localId);
+      }
+      
+      auto numLocalsStart = compiler.locals.size();
+      // we can parse declarations in here as normal, but the "locals" will be the members of the newly created instance
+      while (!Match(Scanner::TokenType::End, compiler)) {
+        // so don't allow return statements here, we will implicitly return the instance at the end
+        if (Match(Scanner::TokenType::Return, compiler)) {
+          MessageAtPrevious("Cannot return from a constructor", LogLevel::Error, compiler);
+          return;
+        }
+        Declaration(compiler);
+        if (compiler.current.value().GetType() == Scanner::TokenType::EndOfFile) {
+          MessageAtCurrent("Expected `end` after constructor", LogLevel::Error, compiler);
+          return;
+        }
+      }
+
+      if (compiler.locals.size() > numLocalsStart) {
+        // pop locals we made inside the constructor
+        EmitConstant(static_cast<std::int64_t>(parameters.size()));
+        EmitOp(VM::Ops::PopLocals, compiler.previous.value().GetLine());
+      }
+
+      compiler.codeContextStack.pop_back();
+    } else {
+      MessageAtCurrent("Expected `var` or `constructor` inside class", LogLevel::Error, compiler);
+      return;
+    }
+  }
+
+  // make an empty constructor if the user doesn't define one
+  if (!hasDefinedConstructor) {
+    if (!VM::VM::GetInstance().AddFunction(std::string(classNameToken.GetText()), 0, compiler.currentFileName, false, false)) {
+      Message(classNameToken, "A function or class in the same namespace already exists with the same name as this class", LogLevel::Error, compiler);
+      return;
+    }
+  }
+
+  if (!VM::VM::GetInstance().AddClass(std::string(classNameToken.GetText()), classMembers, compiler.currentFileName, exported)) {
+    // technically unreachable, since it would have been caught by trying to add the constructor as a function
+    Message(classNameToken, "A class in the same namespace already exists with the same name", LogLevel::Error, compiler);
+    return;
+  } 
+
+  // ok so how do we return the instance...
+  // we tell the VM which type of class it should be, how many locals to rip off the stack to assign to its members
+  // the indexes of the members will line up with the indexes of the locals
+  // emit the ops here before we move classMembers
+
+  // at this point, the class' members we need to assign to are on the top of the stack
+  // with the constructor's parameters below them
+  EmitConstant(static_cast<std::int64_t>(classMembers.size()));
+  for (const auto& m : classMembers) {
+    EmitConstant(m);
+  }
+
+  static std::hash<std::string> hasher;
+  EmitConstant(static_cast<std::int64_t>(hasher(std::string(classNameToken.GetText()))));
+  EmitConstant(static_cast<std::int64_t>(hasher(compiler.currentFileName)));  
+
+  EmitOp(VM::Ops::CreateInstance, compiler.previous.value().GetLine());
+
+  EmitConstant(std::int64_t{ 0 });
+  EmitOp(VM::Ops::PopLocals, compiler.previous.value().GetLine());
+
+  EmitOp(VM::Ops::Return, compiler.previous.value().GetLine());
+
+  compiler.locals.clear();
+  compiler.codeContextStack.pop_back();
 }
 
 static void FuncDeclaration(CompilerContext& compiler)
 {
-  for (auto it = compiler.codeContextStack.crbegin(); it != compiler.codeContextStack.crend(); ++it) {
-    if (*it == CodeContext::Function) {
-      MessageAtPrevious("Nested functions are not permitted, prefer lambdas", LogLevel::Error, compiler);
-      return;
-    }
+  if (compiler.codeContextStack.back() != CodeContext::TopLevel) {
+    MessageAtPrevious("Functions are only allowed at top level", LogLevel::Error, compiler);
+    return;
   }
 
   auto exportFunction = false;
@@ -611,8 +808,11 @@ static void FuncDeclaration(CompilerContext& compiler)
       return;
     }
 
-    if (Match(Scanner::TokenType::Final, compiler)) {
-      Consume(Scanner::TokenType::Identifier, "Expected identifier after `final`", compiler);
+    if (Match(Scanner::TokenType::Identifier, compiler) || Match(Scanner::TokenType::Final, compiler)) {
+      auto isFinal = compiler.previous.value().GetType() == Scanner::TokenType::Final;
+      if (isFinal) {
+        Consume(Scanner::TokenType::Identifier, "Expected identifier after `final`", compiler);
+      }
       auto p = std::string(compiler.previous.value().GetText());
 
       if (p.starts_with("__")) {
@@ -625,34 +825,7 @@ static void FuncDeclaration(CompilerContext& compiler)
         return;
       }
       parameters.push_back(p);
-      compiler.locals.emplace_back(std::move(p), true, false, compiler.locals.size());
-
-      if (Match(Scanner::TokenType::Colon, compiler)) {
-        if (!IsValidTypeAnnotation(compiler.current.value().GetType())) {
-          MessageAtCurrent("Expected type name after type annotation", LogLevel::Error, compiler);
-          return;
-        }
-        Advance(compiler);
-      }
-
-      if (!Check(Scanner::TokenType::RightParen, compiler)) {
-        Consume(Scanner::TokenType::Comma, "Expected ',' after function parameter", compiler);
-      }
-    }
-    else if (Match(Scanner::TokenType::Identifier, compiler)) {
-      auto p = std::string(compiler.previous.value().GetText());
-      if (std::find(parameters.begin(), parameters.end(), p) != parameters.end()) {
-        MessageAtPrevious("Function parameters with the same name already defined", LogLevel::Error, compiler);
-        return;
-      }
-
-      if (p.starts_with("__")) {
-        MessageAtPrevious("Names beginning with double underscore `__` are reserved for internal use", LogLevel::Error, compiler);
-        return;
-      }
-
-      parameters.push_back(p);
-      compiler.locals.emplace_back(std::move(p), false, false, compiler.locals.size());
+      compiler.locals.emplace_back(std::move(p), isFinal, false, compiler.locals.size());
 
       if (Match(Scanner::TokenType::Colon, compiler)) {
         if (!IsValidTypeAnnotation(compiler.current.value().GetType())) {
@@ -756,7 +929,7 @@ static void FuncDeclaration(CompilerContext& compiler)
   Consume(Scanner::TokenType::Colon, "Expected ':' after function signature", compiler);
 
   if (!VM::VM::GetInstance().AddFunction(std::move(name), parameters.size(), compiler.currentFileName, exportFunction, isExtensionMethod, extensionObjectType)) {
-    Message(funcNameToken, "Duplicate function definitions", LogLevel::Error, compiler);
+    Message(funcNameToken, "A function or class in the same namespace already exists with the same name as this function", LogLevel::Error, compiler);
     return;
   }
 
@@ -827,7 +1000,7 @@ static void VarDeclaration(CompilerContext& compiler)
     return;
   }
 
-  auto line = compiler.previous.value().GetLine();
+  auto line = nameToken.GetLine();
 
   auto localId = static_cast<std::int64_t>(compiler.locals.size());
   compiler.locals.emplace_back(std::move(localName), false, false, localId);
@@ -880,7 +1053,7 @@ static void FinalDeclaration(CompilerContext& compiler)
     return;
   }
 
-  auto line = compiler.previous.value().GetLine();
+  auto line = nameToken.GetLine();
 
   auto localId = static_cast<std::int64_t>(compiler.locals.size());
   compiler.locals.emplace_back(std::move(localName), true, false, localId);

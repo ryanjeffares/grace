@@ -83,6 +83,7 @@ namespace Grace::Scanner
     By,
     Catch,
     Class,
+    Constructor,
     Continue,
     Else,
     End,
@@ -125,6 +126,8 @@ namespace Grace::Scanner
       );
 
       Token(TokenType, std::size_t line, std::size_t column, std::string&& errorMessage);
+      Token(const Token& other) = default;
+      Token& operator=(const Token& other) = default;
 
       GRACE_NODISCARD std::string ToString() const;
       GRACE_NODISCARD GRACE_INLINE TokenType GetType() const { return m_Type; }
@@ -202,6 +205,7 @@ struct fmt::formatter<Grace::Scanner::TokenType> : fmt::formatter<std::string_vi
       case TokenType::By: name = "TokenType::By"; break;
       case TokenType::Catch: name = "TokenType::Catch"; break;
       case TokenType::Class: name = "TokenType::Class"; break;
+      case TokenType::Constructor: name = "TokenType::Constructor"; break;
       case TokenType::Continue: name = "TokenType::Continue"; break;
       case TokenType::End: name = "TokenType::End"; break;
       case TokenType::Else: name = "TokenType::Else"; break;

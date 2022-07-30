@@ -60,6 +60,7 @@ This will build the `grace` executable, which you can add to your path or move s
 * Tests 
 * Documentation + comments 
 * Improve compiler errors and line numbering
+* Can probably abstract more parts of the compiler, e.g. function parameters, to reduce code duplication
 
 ## Long Term Goals 
 * Optional type annotations for use by a static analyzer

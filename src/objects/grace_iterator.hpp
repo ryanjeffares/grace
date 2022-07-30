@@ -42,7 +42,7 @@ namespace Grace
       GraceIterator() = delete;
       GraceIterator(GraceIterable* iterable, IterableType type);
 
-      ~GraceIterator();
+      ~GraceIterator() override;
 
       void Increment();
 

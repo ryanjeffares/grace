@@ -27,6 +27,7 @@ namespace Grace
 
       GraceKeyValuePair(VM::Value&& key, VM::Value&& value);
       GraceKeyValuePair(std::pair<VM::Value, VM::Value>&& pair);
+      ~GraceKeyValuePair() override = default;
 
       void DebugPrint() const override;
       void Print(bool err) const override;
