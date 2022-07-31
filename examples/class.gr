@@ -4,7 +4,7 @@ class Person:
   var parent;
   var child;
 
-  constructor(a, n):
+  constructor(n, a):
     name = n;
     age = a;
   end

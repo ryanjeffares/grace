@@ -28,6 +28,8 @@ namespace Grace
     void StopTrackingObject(GraceObject* object);
     void Finalise();
 #endif
+
+    void TrackCyclicReferences();
   } // namespace ObjectTracker
 } // namespace Grace
 

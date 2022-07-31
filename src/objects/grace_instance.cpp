@@ -25,7 +25,25 @@ namespace Grace
 
   void GraceInstance::DebugPrint() const
   {
-	fmt::print("GraceInstance<{}>: {}\n", m_ClassName, ToString());
+	std::string res = ToString() + " [ ";
+	for (std::size_t i = 0; i < m_Members.size(); i++) {
+	  const auto& [name, value] = m_Members[i];
+	  res.append(fmt::format("{}: ", name));
+	  if (value.GetType() == VM::Value::Type::String) {
+		res.append(fmt::format("\"{}\"", value));
+	  } else if (value.GetType() == VM::Value::Type::Char) {
+		res.append(fmt::format("'{}'", value));
+	  } else {
+		res.append(value.AsString());
+	  }
+
+	  if (i < m_Members.size() - 1) {
+		res.append(", ");
+	  }
+	}
+
+	res.append(" ]\n");
+	fmt::print("{}", res);
   }
 
   void GraceInstance::Print(bool err) const
@@ -41,22 +59,8 @@ namespace Grace
   }
 
   std::string GraceInstance::ToString() const
-  {
-	std::string res = m_ClassName + " [ ";
-	for (std::size_t i = 0; i < m_Members.size(); i++) {
-	  auto& [name, value] = m_Members[i];
-	  if (value.GetType() == VM::Value::Type::String) {
-		res += fmt::format("{}: \"{}\"", name, value);
-	  } else if (value.GetType() == VM::Value::Type::Char) {
-		res += fmt::format("{}: '{}'", name, value);
-	  } else {
-		res += fmt::format("{}: {}", name, value);
-	  }
-	  if (i < m_Members.size() - 1) {
-		res += ", ";
-	  }
-	}
-	return res + " ]";
+  {	
+	return fmt::format("<{} instance at {}>", m_ClassName, fmt::ptr(this));
   }
 
   GRACE_NODISCARD bool GraceInstance::AssignMember(const std::string& memberName, VM::Value&& value)

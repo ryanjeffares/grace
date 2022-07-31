@@ -231,7 +231,7 @@ namespace Grace
       GRACE_NODISCARD std::tuple<bool, std::optional<std::string>> AsChar(char& result) const;
 
       template<BuiltinGraceType T> 
-      GRACE_NODISCARD constexpr GRACE_INLINE T Get() const
+      GRACE_NODISCARD constexpr GRACE_INLINE const T& Get() const
       {
         if constexpr (std::is_same<T, std::int64_t>::value) {
           return m_Data.m_Int;

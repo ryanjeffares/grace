@@ -57,9 +57,14 @@ void ObjectTracker::Finalise()
   if (!s_TrackedObjects.empty()) {
     fmt::print(stderr, "Some objects are still being tracked:\n");
     for (const auto obj : s_TrackedObjects) {
-      fmt::print("\t{}: ", fmt::ptr(obj));
+      fmt::print(stderr, "\t{}: ", fmt::ptr(obj));
       obj->DebugPrint();
     }
   }
 }
 #endif
+
+void ObjectTracker::TrackCyclicReferences()
+{
+
+}
