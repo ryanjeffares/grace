@@ -84,6 +84,10 @@ namespace Grace
       Value();
       Value(const Value& other);
       Value(Value&& other);
+
+      // ONLY call with an object that already exists and has refs elsewhere, this is really only for use in the cycle cleaner
+      Value(GraceObject* object);
+
       ~Value();
 
       template<DerivedGraceObject T, typename... Args>
@@ -93,9 +97,7 @@ namespace Grace
         res.m_Type = Type::Object;
         res.m_Data.m_Object = new T(std::forward<Args>(args)...);
         res.m_Data.m_Object->IncreaseRef();
-      #ifdef GRACE_DEBUG 
         ObjectTracker::TrackObject(res.m_Data.m_Object);
-      #endif
         return res;
       }
 
@@ -108,9 +110,7 @@ namespace Grace
 
           if (m_Type == Type::Object) {
             if (m_Data.m_Object->DecreaseRef() == 0) {
-#ifdef GRACE_DEBUG
               ObjectTracker::StopTrackingObject(m_Data.m_Object);
-#endif
               delete m_Data.m_Object;
             }
           }
@@ -137,9 +137,7 @@ namespace Grace
           
           if (m_Type == Type::Object) {
             if (m_Data.m_Object->DecreaseRef() == 0) {
-#ifdef GRACE_DEBUG
               ObjectTracker::StopTrackingObject(m_Data.m_Object);
-#endif
               delete m_Data.m_Object;
             }
           }
@@ -164,9 +162,7 @@ namespace Grace
 
         if (m_Type == Type::Object) {
           if (m_Data.m_Object->DecreaseRef() == 0) {
-#ifdef GRACE_DEBUG
             ObjectTracker::StopTrackingObject(m_Data.m_Object);
-#endif
             delete m_Data.m_Object;
           }
         }

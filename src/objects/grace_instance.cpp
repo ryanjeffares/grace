@@ -61,22 +61,29 @@ namespace Grace
   std::string GraceInstance::ToString() const
   {	
 	return fmt::format("<{} instance at {}>", m_ClassName, fmt::ptr(this));
-  }
+  }  
 
-  GRACE_NODISCARD bool GraceInstance::AssignMember(const std::string& memberName, VM::Value&& value)
+  GRACE_NODISCARD void GraceInstance::AssignMember(const std::string& memberName, VM::Value&& value)
   {
+	GRACE_LOCK_OBJECT_MUTEX();
+
 	for (auto& [name, val] : m_Members) {
 	  if (name == memberName) {
 		val = value;
-		return true;
+		return;
 	  }
 	}
 
-	return false;
+	throw GraceException(
+	  GraceException::Type::MemberNotFound,
+	  fmt::format("`{}` has no member name '{}'", ObjectName(), memberName)
+	);
   }
 
   GRACE_NODISCARD const VM::Value& GraceInstance::LoadMember(const std::string& memberName)
   {
+	GRACE_LOCK_OBJECT_MUTEX();
+
 	for (const auto& [name, val] : m_Members) {
 	  if (name == memberName) {
 		return val;
@@ -87,5 +94,43 @@ namespace Grace
 	  GraceException::Type::MemberNotFound,
 	  fmt::format("`{}` has no member name '{}'", ObjectName(), memberName)
 	);
+  }
+
+  GRACE_NODISCARD std::vector<GraceObject*> GraceInstance::GetObjectMembers()
+  {
+	GRACE_LOCK_OBJECT_MUTEX();
+
+	std::vector<GraceObject*> res;
+	for (const auto& [name, value] : m_Members) {
+	  if (auto obj = value.GetObject()) {
+		res.push_back(obj);
+	  }
+	}
+
+	return res;
+  }
+
+  GRACE_NODISCARD bool GraceInstance::AnyMemberMatches(const GraceObject* match)
+  {
+	GRACE_LOCK_OBJECT_MUTEX();
+
+	for (const auto& [name, val] : m_Members) {
+	  if (val.GetObject() == match) {
+		return true;
+	  }
+	}
+
+	return false;
+  }
+
+  void GraceInstance::RemoveMember(GraceObject* object)
+  {
+	GRACE_LOCK_OBJECT_MUTEX();
+
+	auto it = std::find_if(m_Members.begin(), m_Members.end(),
+	  [object](const std::pair<std::string, VM::Value>& pair) {
+		return pair.second.GetObject() == object;
+	  });
+	m_Members.erase(it);
   }
 } // namespace Grace

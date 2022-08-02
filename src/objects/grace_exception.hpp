@@ -95,6 +95,11 @@ namespace Grace
         return false;
       }
 
+      GRACE_NODISCARD GRACE_INLINE constexpr GraceObjectType ObjectType() const override
+      {
+        return GraceObjectType::Exception;
+      }
+
     private:
       Type m_Type;
       std::string m_Message;

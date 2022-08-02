@@ -1,0 +1,14 @@
+import std::list;
+import std::dict;
+
+class Object:
+  var child;
+end
+
+func main():
+  var o = Object();
+  var l = [o];
+  o.child = l;
+  l.append(l);
+
+end

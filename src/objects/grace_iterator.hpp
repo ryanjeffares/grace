@@ -78,6 +78,11 @@ namespace Grace
         return false;
       }
 
+      GRACE_NODISCARD GRACE_INLINE constexpr GraceObjectType ObjectType() const override
+      {
+        return GraceObjectType::Iterator;
+      }
+
       GRACE_NODISCARD const VM::Value& Value() const
       {
         if (!m_IsValid) {

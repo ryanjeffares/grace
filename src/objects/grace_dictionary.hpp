@@ -13,6 +13,7 @@
 #define GRACE_DICTIONARY_HPP
 
 #include <functional>
+#include <mutex>
 #include <vector>
 
 #include "grace_iterator.hpp"
@@ -35,7 +36,7 @@ namespace Grace
       void Print(bool err) const override;
       void PrintLn(bool err) const override;
       GRACE_NODISCARD std::string ToString() const override;
-      GRACE_NODISCARD bool AsBool() const override;
+      GRACE_NODISCARD bool AsBool() const override;      
 
       GRACE_NODISCARD GRACE_INLINE constexpr const char* ObjectName() const override
       {
@@ -45,6 +46,11 @@ namespace Grace
       GRACE_NODISCARD GRACE_INLINE constexpr bool IsIterable() const override
       {
         return true;
+      }
+
+      GRACE_NODISCARD GRACE_INLINE constexpr GraceObjectType ObjectType() const override
+      {
+        return GraceObjectType::Dictionary;
       }
 
       GRACE_NODISCARD IteratorType Begin() override;
@@ -66,7 +72,13 @@ namespace Grace
       GRACE_NODISCARD bool ContainsKey(const VM::Value& key);
       GRACE_NODISCARD bool Remove(const VM::Value& key);
 
-      GRACE_NODISCARD std::vector<VM::Value> ToVector() const;
+      GRACE_NODISCARD std::vector<VM::Value> ToVector();
+
+      // needs to be thread safe
+      GRACE_NODISCARD std::vector<GraceObject*> GetObjectMembers() override;
+      // needs to be thread safe
+      GRACE_NODISCARD bool AnyMemberMatches(const GraceObject* match) override;
+      void RemoveMember(GraceObject* object) override;
 
     private:
 

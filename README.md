@@ -48,11 +48,13 @@ This will build the `grace` executable, which you can add to your path or move s
 * Experiment with string interning
 * Investigate wide chars over regular chars
 * Classes
-  * Classes with extension methods and member access is in, but we need to track cyclic references
+  * Finish cyclic reference tracker
+  * Think about how KeyValuePairs and Iterators relate to the cycles
+* Make KeyValuePairs a usable object 
+* Fix object's `ToString()` methods recursing and crashing if they have a cycle
 * Lambdas 
 * Global const fields 
-* Extension methods
-* Standard library
+* Expand standard library
 * Default function parameter values
 * Install process 
 * Tests 

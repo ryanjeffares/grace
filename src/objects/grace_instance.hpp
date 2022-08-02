@@ -12,6 +12,7 @@
 #ifndef GRACE_INSTANCE_HPP
 #define GRACE_INSTANCE_HPP
 
+#include <mutex>
 #include <tuple>
 #include <vector>
 
@@ -40,7 +41,7 @@ namespace Grace
 	void DebugPrint() const override;
 	void Print(bool err) const override;
 	void PrintLn(bool err) const override;
-	GRACE_NODISCARD std::string ToString() const override;
+	GRACE_NODISCARD std::string ToString() const override;	
 
 	GRACE_NODISCARD constexpr bool AsBool() const override
 	{
@@ -57,8 +58,19 @@ namespace Grace
 	  return false;
 	}
 
-	GRACE_NODISCARD bool AssignMember(const std::string& memberName, VM::Value&& value);
+	GRACE_NODISCARD GRACE_INLINE constexpr GraceObjectType ObjectType() const override
+	{
+	  return GraceObjectType::Instance;
+	}
+
+	GRACE_NODISCARD void AssignMember(const std::string& memberName, VM::Value&& value);
 	GRACE_NODISCARD const VM::Value& LoadMember(const std::string& memberName);
+
+	// needs to be thread safe
+	GRACE_NODISCARD std::vector<GraceObject*> GetObjectMembers() override;
+	// needs to be thread safe
+	GRACE_NODISCARD bool AnyMemberMatches(const GraceObject* match) override;
+	void RemoveMember(GraceObject* object) override;
 
   private:
 	std::string m_ClassName;

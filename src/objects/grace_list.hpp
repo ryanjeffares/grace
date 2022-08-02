@@ -12,6 +12,7 @@
 #ifndef GRACE_LIST_HPP
 #define GRACE_LIST_HPP
 
+#include <mutex>
 #include <vector>
 
 #include "grace_exception.hpp"
@@ -34,17 +35,15 @@ namespace Grace
 
       GRACE_INLINE void Append(const VM::Value& value)
       {
+        GRACE_LOCK_OBJECT_MUTEX();
         m_Data.push_back(value);
         InvalidateIterators();
       }
       
-      template<typename T>
+      template<VM::BuiltinGraceType T>
       constexpr GRACE_INLINE void Append(const T& value)
       {
-        static_assert(std::is_same<T, std::int64_t>::value || std::is_same<T, double>::value
-            || std::is_same<T, bool>::value || std::is_same<T, char>::value
-            || std::is_same<T, std::string>::value || std::is_same<T, VM::Value::NullValue>::value,
-            "Invalid type for Value<T>");
+        GRACE_LOCK_OBJECT_MUTEX();
         m_Data.emplace_back(value);
         InvalidateIterators();
       }
@@ -76,7 +75,7 @@ namespace Grace
       void Print(bool err) const override;
       void PrintLn(bool err) const override;
       GRACE_NODISCARD std::string ToString() const override;
-      GRACE_NODISCARD bool AsBool() const override;
+      GRACE_NODISCARD bool AsBool() const override;      
 
       GRACE_NODISCARD GRACE_INLINE constexpr const char* ObjectName() const override
       {
@@ -87,6 +86,11 @@ namespace Grace
       {
         return true;
       }
+
+      GRACE_NODISCARD GRACE_INLINE constexpr GraceObjectType ObjectType() const override
+      {
+        return GraceObjectType::List;
+      }
       
       GRACE_INLINE VM::Value& operator[](std::size_t index)
       {
@@ -96,6 +100,7 @@ namespace Grace
             fmt::format("Given index is {} but the length of the List is {}", index, m_Data.size())
           );
         }
+
         return m_Data[index];
       }
 
@@ -107,8 +112,13 @@ namespace Grace
             fmt::format("Given index is {} but the length of the List is {}", index, m_Data.size())
           );
         }
+
         return m_Data[index];
       }
+
+      GRACE_NODISCARD bool AnyMemberMatches(const GraceObject* match) override;
+      GRACE_NODISCARD std::vector<GraceObject*> GetObjectMembers() override;
+      void RemoveMember(GraceObject* object) override;
 
     private:
       std::vector<VM::Value> m_Data;
