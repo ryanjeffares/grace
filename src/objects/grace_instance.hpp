@@ -63,7 +63,7 @@ namespace Grace
 	  return GraceObjectType::Instance;
 	}
 
-	GRACE_NODISCARD void AssignMember(const std::string& memberName, VM::Value&& value);
+	void AssignMember(const std::string& memberName, VM::Value&& value);
 	GRACE_NODISCARD const VM::Value& LoadMember(const std::string& memberName);
 
 	// needs to be thread safe

@@ -63,7 +63,7 @@ namespace Grace
 	return fmt::format("<{} instance at {}>", m_ClassName, fmt::ptr(this));
   }  
 
-  GRACE_NODISCARD void GraceInstance::AssignMember(const std::string& memberName, VM::Value&& value)
+  void GraceInstance::AssignMember(const std::string& memberName, VM::Value&& value)
   {
 	GRACE_LOCK_OBJECT_MUTEX();
 

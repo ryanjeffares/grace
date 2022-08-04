@@ -132,6 +132,7 @@ static void CleanCyclesInternal()
   // they can be safely deleted, since if they were still being referenced by a local variable in the VM or something on the stack
   // they would simply have more than 1 ref
 
+  // all of this works for the above example, but not a complicated situations with collections and
   std::vector<GraceObject*> objectsWithOneRef, objectsToBeDeleted;
 
   for (auto object : s_TrackedObjects) {
