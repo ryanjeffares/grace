@@ -35,6 +35,7 @@ if(MSVC)
   target_compile_options(grace PRIVATE /W4 /WX)
 else()
   target_compile_options(grace PRIVATE -Wall -Wextra -Wpedantic -Werror)
+  target_link_libraries(grace pthread)
 endif()
 
 install(TARGETS grace DESTINATION bin)

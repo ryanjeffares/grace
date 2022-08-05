@@ -41,7 +41,7 @@ namespace Grace
       }
       
       template<VM::BuiltinGraceType T>
-      constexpr GRACE_INLINE void Append(const T& value)
+      GRACE_INLINE void Append(const T& value)
       {
         GRACE_LOCK_OBJECT_MUTEX();
         m_Data.emplace_back(value);
