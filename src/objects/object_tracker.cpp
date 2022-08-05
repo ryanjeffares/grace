@@ -78,6 +78,8 @@ void ObjectTracker::Finalise()
   }
 }
 
+// utility function to check if the root can be reached by traversing the "graph" of objects
+// i.e. it is caught in a cycle
 static bool FindObject(GraceObject* toFind, GraceObject* root, std::vector<GraceObject*>& visitedObjects)
 {
   for (auto object : root->GetObjectMembers()) {
@@ -135,6 +137,12 @@ static void CleanCyclesInternal()
 
     if (root->RefCount() > 1) continue;
 
+    auto type = root->ObjectType();
+    if (type == GraceObjectType::Exception || type == GraceObjectType::Iterator) {
+      // these objects don't have members/elements
+      continue;
+    }
+
     std::vector<GraceObject*> visitedObjects;
     if (FindObject(root, root, visitedObjects)) {
       objectsToBeDeleted.push_back(root);
@@ -161,35 +169,43 @@ static void CleanCyclesInternal()
     }
   }
 
-  // now we can deal with simple "one way" cycles
+  // now we can deal with simple "one way" cycles, like:
+  // 
+  // ```
+  // var o1 = Object();
+  // var o2 = Object();
+  // o1.member = o2;
+  // o2.member = o1;
+  // ```
+  // 
   // if any two objects have 1 reference left each and they are eachother, that is a cycle that can be deleted
   for (std::size_t i = 0; i < s_TrackedObjects.size(); i++) {
-    auto obj = s_TrackedObjects[i];
-    if (obj->RefCount() != 1) continue;
+    auto object = s_TrackedObjects[i];
+    if (object->RefCount() != 1) continue;
 
-    auto type = obj->ObjectType();
+    auto type = object->ObjectType();
     if (type == GraceObjectType::Exception || type == GraceObjectType::Iterator) {
       // these objects don't have members/elements
       continue;
     }
 
-    auto objectMembers = obj->GetObjectMembers();
+    auto objectMembers = object->GetObjectMembers();
     for (auto member : objectMembers) {
-      if (member->RefCount() == 1 && member->AnyMemberMatches(obj)) {
+      if (member->RefCount() == 1 && member->AnyMemberMatches(object)) {
         // at this point, we know we have two objects that are only referencing eachother
         s_TrackedObjects.erase(s_TrackedObjects.begin() + i);
 
         // to safely delete these objects, make another Value that holds the pointer to increase their ref counts
-        VM::Value memberValue(member), parentValue(obj);
+        VM::Value memberValue(member), parentValue(object);
 
         // remove the objects as members of one another - this will not decrease their refs to 0 and recursively invoke destructors
-        obj->RemoveMember(member);
+        object->RemoveMember(member);
 
         // but that object's member could be itself...
         // var o = Object();
         // o.member = o;
-        if (member != obj) {
-          member->RemoveMember(obj);
+        if (member != object) {
+          member->RemoveMember(object);
         }
 
         // now when the Value instances go out of scope, the objects will be deleted safely

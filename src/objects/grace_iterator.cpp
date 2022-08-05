@@ -28,9 +28,7 @@ namespace Grace
     m_Iterable->RemoveIterator(this);
 
     if (m_Iterable->DecreaseRef() == 0) {
-#ifdef GRACE_DEBUG
       ObjectTracker::StopTrackingObject(m_Iterable);
-#endif
       delete m_Iterable;
     }
   }
