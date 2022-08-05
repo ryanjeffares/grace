@@ -47,10 +47,12 @@ This will build the `grace` executable, which you can add to your path or move s
 * Prevent integer overflow by automatically promoting to a `BigInt` class
 * Experiment with string interning
 * Investigate wide chars over regular chars
-* Classes
-  * Finish cyclic reference tracker
-  * Think about how KeyValuePairs and Iterators relate to the cycles
-* Make KeyValuePairs a usable object 
+* Make KeyValuePairs and Exceptions constructible
+* Mark classes available in Grace or not
+* TEST THE CYCLE CLEANER
+  * Experiment with what is the optimal frequency to run it
+  * Add option to run async
+  * Expose options in Grace
 * Fix object's `ToString()` methods recursing and crashing if they have a cycle
 * Lambdas 
 * Global const fields 

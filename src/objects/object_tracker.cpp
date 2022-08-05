@@ -33,6 +33,8 @@ static std::vector<GraceObject*> s_TrackedObjects;
 static std::atomic<bool> s_CycleCleanerRunning;
 static std::condition_variable s_NotifyCleanerDone;
 static std::mutex s_Mutex;
+#else
+static bool s_CycleCleanerRunning;
 #endif
 
 static void CleanCyclesInternal();
@@ -73,7 +75,15 @@ void ObjectTracker::StopTrackingObject(GraceObject* object)
     }
 #endif
 
+    // if we're doing this async, the thread will wait
+    // but we're not then just don't bother
+#ifdef GRACE_CLEAN_CYCLES_ASYNC
     CleanCycles();
+#else
+    if (!s_CycleCleanerRunning) {
+      CleanCycles();
+    }
+#endif
   }
 }
 
@@ -112,6 +122,7 @@ static bool FindObject(GraceObject* toFind, GraceObject* root, std::vector<Grace
 
 static void CleanCyclesInternal()
 {
+  // fmt::print("")
   if (s_TrackedObjects.empty()) return;
 
 #ifdef GRACE_CLEAN_CYCLES_ASYNC
@@ -119,9 +130,9 @@ static void CleanCyclesInternal()
     std::unique_lock<std::mutex> lock(s_Mutex);
     s_NotifyCleanerDone.wait(lock);
   }
+#endif
 
   s_CycleCleanerRunning = true;
-#endif
 
   // First deal with objects caught in a weird complicated cycle, for example
   // 
@@ -182,6 +193,12 @@ static void CleanCyclesInternal()
       VM::Value tempObj(object), tempMember(member);
         
       objectsToBeDeleted.erase(objectsToBeDeleted.begin() + i);
+      
+      auto it = std::find(s_TrackedObjects.begin(), s_TrackedObjects.end(), object);
+      if (it != s_TrackedObjects.end()) {
+        s_TrackedObjects.erase(it);
+      }
+
       members.erase(members.begin() + j);
 
       object->RemoveMember(member);
@@ -237,8 +254,9 @@ static void CleanCyclesInternal()
     }
   }
 
-#ifdef GRACE_CLEAN_CYCLES_ASYNC
   s_CycleCleanerRunning = false;
+
+#ifdef GRACE_CLEAN_CYCLES_ASYNC
   s_NotifyCleanerDone.notify_one(); // notifying one will create a kind of queue if a bunch of threads try to start
 #endif
 }
