@@ -16,8 +16,6 @@ jobs:
       with:
         submodules: true
 
-    - name: configure
-      run: ./configure
     - name: build
       run: |        
         mkdir build
@@ -33,8 +31,6 @@ jobs:
       with:
         submodules: true
 
-    - name: configure
-      run: ./configure
     - name: build
       run: |        
         mkdir build
@@ -50,8 +46,6 @@ jobs:
       with:
         submodules: true
 
-    - name: configure
-      run: ./configure
     - name: build
       run: |        
         mkdir build
