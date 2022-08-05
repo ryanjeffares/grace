@@ -26,6 +26,8 @@ set_target_properties(grace PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BUILD_TYPE}
 )
 
+set_target_properties(grace PROPERTIES CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++2a")
+
 if (CMAKE_BUILD_TYPE MATCHES Debug)
   target_compile_definitions(grace PRIVATE GRACE_DEBUG)
 endif()

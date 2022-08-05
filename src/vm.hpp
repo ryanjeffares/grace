@@ -132,17 +132,7 @@ namespace Grace::VM
         m_FunctionLookup.at(m_LastFileNameHash).at(m_LastFunctionHash)->opList.push_back({ op, line });
       }
 
-      GRACE_INLINE static void PrintOps()
-      {
-        for (const auto& [fileName, funcList] : m_FunctionLookup) {
-          for (const auto& [name, func] : funcList) {
-            fmt::print("<function `{}`> in file {}\n", func->name, m_FileNameLookup.at(fileName));
-            for (const auto [op, line] : func->opList) {
-              fmt::print("{:>5} | {}\n", line, op);
-            }
-          }
-        }
-      }
+      static void PrintOps();
 
       template<BuiltinGraceType T>
       constexpr GRACE_INLINE static void PushConstant(const T& value)

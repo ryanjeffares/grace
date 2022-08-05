@@ -257,13 +257,7 @@ namespace Grace
         return m_Type;
       }
 
-      GRACE_NODISCARD GRACE_INLINE std::string GetTypeName() const
-      {
-        if (m_Type == Type::Object) {
-          return m_Data.m_Object->ObjectName();
-        }
-        return fmt::format("{}", m_Type);
-      }
+      GRACE_NODISCARD std::string GetTypeName() const;
 
     private:
 

@@ -246,6 +246,8 @@ namespace Grace::Scanner
       switch (Peek()) {
         case '\t':
           s_ScannerContextStack.top().scannerColumn += 8;
+          s_ScannerContextStack.top().scannerCurrent++;
+          break;
         case ' ':
         case '\r':
           Advance();
