@@ -28,9 +28,12 @@ using namespace Grace;
 
 static bool s_Verbose = false;
 static std::vector<GraceObject*> s_TrackedObjects;
+
+#ifdef GRACE_CLEAN_CYCLES_ASYNC
 static std::atomic<bool> s_CycleCleanerRunning;
 static std::condition_variable s_NotifyCleanerDone;
 static std::mutex s_Mutex;
+#endif
 
 static void CleanCyclesInternal();
 
