@@ -1,0 +1,25 @@
+class Person:
+  var name: String;
+  var age: Int;
+  var parent;
+  var child;
+
+  constructor(n, a):
+    name = n;
+    age = a;
+  end
+end
+
+func say_hello(this Person person):
+  println("Hello, my name is " + person.name + " and I am " + person.age + " years old.");
+end
+
+func make_person(): end
+
+func main():
+  var parent = Person("Catherine", 52);
+  var child = Person("Ryan", 23);
+
+  parent.child = child;
+  child.parent = parent;
+end

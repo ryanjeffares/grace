@@ -44,6 +44,7 @@ namespace Grace
         InvalidOperand,
         InvalidType,
         KeyNotFound,
+        MemberNotFound,
         NamespaceNotFound,
         ThrownException,
       };
@@ -65,6 +66,8 @@ namespace Grace
       {
 
       }
+
+      ~GraceException() override = default;
 
       GRACE_NODISCARD const char* what() const noexcept override
       {
@@ -90,6 +93,11 @@ namespace Grace
       GRACE_NODISCARD GRACE_INLINE constexpr bool IsIterable() const override
       {
         return false;
+      }
+
+      GRACE_NODISCARD GRACE_INLINE constexpr GraceObjectType ObjectType() const override
+      {
+        return GraceObjectType::Exception;
       }
 
     private:
@@ -121,6 +129,7 @@ struct fmt::formatter<Grace::GraceException::Type> : fmt::formatter<std::string_
       case GraceException::Type::InvalidOperand: name = "InvalidOperand"; break;
       case GraceException::Type::InvalidType: name = "InvalidType"; break;
       case GraceException::Type::KeyNotFound: name = "KeyNotFound"; break;
+      case GraceException::Type::MemberNotFound: name = "MemberNotFound"; break;
       case GraceException::Type::NamespaceNotFound: name = "NamespaceNotFound"; break;
       case GraceException::Type::ThrownException: name = "ThrownException"; break;
     }

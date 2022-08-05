@@ -47,19 +47,23 @@ This will build the `grace` executable, which you can add to your path or move s
 * Prevent integer overflow by automatically promoting to a `BigInt` class
 * Experiment with string interning
 * Investigate wide chars over regular chars
-* Classes
-  * Reference counting
-  * Cyclic references handled through a "cyclic reference tracker" - if a cyclic reference is detected, start tracking the two objects, and when those objects' only remaining references are each other they can be safely destroyed 
-  * Maybe we could use structs that only hold variables, and just use extension methods...
+* Make KeyValuePairs and Exceptions constructible
+* Mark classes available in Grace or not
+* TEST THE CYCLE CLEANER
+  * Experiment with what is the optimal frequency to run it
+  * Add option to run async
+  * Expose options in Grace
+* Fix object's `ToString()` methods recursing and crashing if they have a cycle
 * Lambdas 
 * Global const fields 
-* Extension methods
-* Standard library
+* Expand standard library
 * Default function parameter values
 * Install process 
 * Tests 
 * Documentation + comments 
 * Improve compiler errors and line numbering
+* Can probably abstract more parts of the compiler, e.g. function parameters, to reduce code duplication
+* Make sure everything is always getting popped from the value stack when it needs to be
 
 ## Long Term Goals 
 * Optional type annotations for use by a static analyzer

@@ -42,7 +42,7 @@ namespace Grace
       GraceIterator() = delete;
       GraceIterator(GraceIterable* iterable, IterableType type);
 
-      ~GraceIterator();
+      ~GraceIterator() override;
 
       void Increment();
 
@@ -76,6 +76,11 @@ namespace Grace
       GRACE_NODISCARD GRACE_INLINE constexpr bool IsIterable() const override
       {
         return false;
+      }
+
+      GRACE_NODISCARD GRACE_INLINE constexpr GraceObjectType ObjectType() const override
+      {
+        return GraceObjectType::Iterator;
       }
 
       GRACE_NODISCARD const VM::Value& Value() const

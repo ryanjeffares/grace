@@ -1,0 +1,48 @@
+import std::list;
+import std::dict;
+
+class Object:
+  var child;
+end
+
+func f():
+  var d ={};
+  var o = Object();
+  d.insert(d, o);
+  o.child = d;
+end
+
+func g():
+  var first = Object();
+  var second = Object();
+  var third = Object();
+  first.child = second;
+  second.child = third;
+  third.child = first; 
+
+  var l = [first, third];
+  var d = {l: second};
+  d.insert(d, l);
+
+end
+
+func main():
+  var o1 = Object();
+  var o2 = Object();
+  o1.child = o2;
+  o2.child = o1;
+
+  var o = Object();
+  var l = [o];
+  o.child = l;
+  l.append(l);
+
+  var first = Object();
+  var second = Object();
+  var third = Object();
+  first.child = second;
+  second.child = third;
+  third.child = first;
+
+  f();
+end

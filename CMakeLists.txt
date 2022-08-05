@@ -12,6 +12,7 @@ add_executable(grace
   src/vm_register_natives.cpp
   src/objects/grace_dictionary.cpp
   src/objects/grace_exception.cpp
+  src/objects/grace_instance.cpp
   src/objects/grace_iterator.cpp
   src/objects/grace_keyvaluepair.cpp
   src/objects/grace_list.cpp
@@ -34,6 +35,7 @@ if(MSVC)
   target_compile_options(grace PRIVATE /W4 /WX)
 else()
   target_compile_options(grace PRIVATE -Wall -Wextra -Wpedantic -Werror)
+  target_link_libraries(grace pthread)
 endif()
 
 install(TARGETS grace DESTINATION bin)

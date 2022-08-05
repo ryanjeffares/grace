@@ -27,6 +27,7 @@ namespace Grace
 
       GraceKeyValuePair(VM::Value&& key, VM::Value&& value);
       GraceKeyValuePair(std::pair<VM::Value, VM::Value>&& pair);
+      ~GraceKeyValuePair() override = default;
 
       void DebugPrint() const override;
       void Print(bool err) const override;
@@ -34,25 +35,34 @@ namespace Grace
       GRACE_NODISCARD std::string ToString() const override;
       GRACE_NODISCARD bool AsBool() const override;
       
-      GRACE_NODISCARD constexpr const char* ObjectName() const override
+      GRACE_NODISCARD GRACE_INLINE constexpr const char* ObjectName() const override
       {
         return "KeyValuePair";
       }
       
-      GRACE_NODISCARD constexpr bool IsIterable() const override
+      GRACE_NODISCARD GRACE_INLINE constexpr bool IsIterable() const override
       {
         return false;
       }
 
-      GRACE_NODISCARD GRACE_INLINE const VM::Value& Key() const
+      GRACE_NODISCARD GRACE_INLINE constexpr GraceObjectType ObjectType() const override
+      {
+        return GraceObjectType::KeyValuePair;
+      }
+
+      GRACE_NODISCARD GRACE_INLINE VM::Value& Key()
       {
         return m_Key;
       }
 
-      GRACE_NODISCARD GRACE_INLINE const VM::Value& Value() const
+      GRACE_NODISCARD GRACE_INLINE VM::Value& Value()
       {
         return m_Value;
       }
+
+      GRACE_NODISCARD bool AnyMemberMatches(const GraceObject* match) override;
+      GRACE_NODISCARD std::vector<GraceObject*> GetObjectMembers() override;
+      void RemoveMember(GraceObject* object) override;
 
     private:
       VM::Value m_Key, m_Value;
