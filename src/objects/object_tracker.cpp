@@ -12,6 +12,8 @@
 #include "object_tracker.hpp"
 
 #ifdef GRACE_CLEAN_CYCLES_ASYNC
+# include <atomic>
+# include <condition_variable>
 # include <thread>
 #endif
 
@@ -26,6 +28,9 @@ using namespace Grace;
 
 static bool s_Verbose = false;
 static std::vector<GraceObject*> s_TrackedObjects;
+static std::atomic<bool> s_CycleCleanerRunning;
+static std::condition_variable s_NotifyCleanerDone;
+static std::mutex s_Mutex;
 
 static void CleanCyclesInternal();
 
@@ -53,15 +58,19 @@ void ObjectTracker::StopTrackingObject(GraceObject* object)
 {
   GRACE_ASSERT(object != nullptr, "Trying to stop tracking an object that is a nullptr");
   auto it = std::find(s_TrackedObjects.begin(), s_TrackedObjects.end(), object);
+
   if (it != s_TrackedObjects.end()) {
     // this function could get called from the Value destructor after the object has already been removed by CleanCycles()
     s_TrackedObjects.erase(it);
+
 #ifdef GRACE_DEBUG
     if (s_Verbose) {
       fmt::print("Stopped tracking on object at {}: ", fmt::ptr(object));
       object->DebugPrint();
     }
 #endif
+
+    CleanCycles();
   }
 }
 
@@ -69,6 +78,7 @@ void ObjectTracker::Finalise()
 {
   CleanCyclesInternal();
 
+#ifdef GRACE_DEBUG
   if (!s_TrackedObjects.empty()) {
     fmt::print(stderr, "Some objects are still being tracked:\n");
     for (const auto obj : s_TrackedObjects) {
@@ -76,6 +86,7 @@ void ObjectTracker::Finalise()
       obj->DebugPrint();
     }
   }
+#endif
 }
 
 // utility function to check if the root can be reached by traversing the "graph" of objects
@@ -99,6 +110,15 @@ static bool FindObject(GraceObject* toFind, GraceObject* root, std::vector<Grace
 static void CleanCyclesInternal()
 {
   if (s_TrackedObjects.empty()) return;
+
+#ifdef GRACE_CLEAN_CYCLES_ASYNC
+  if (s_CycleCleanerRunning.load()) {    
+    std::unique_lock<std::mutex> lock(s_Mutex);
+    s_NotifyCleanerDone.wait(lock);
+  }
+
+  s_CycleCleanerRunning = true;
+#endif
 
   // First deal with objects caught in a weird complicated cycle, for example
   // 
@@ -212,13 +232,18 @@ static void CleanCyclesInternal()
         break;
       }
     }
-  }  
+  }
+
+#ifdef GRACE_CLEAN_CYCLES_ASYNC
+  s_CycleCleanerRunning = false;
+  s_NotifyCleanerDone.notify_one(); // notifying one will create a kind of queue if a bunch of threads try to start
+#endif
 }
 
 void ObjectTracker::CleanCycles()
 {
 #ifdef GRACE_CLEAN_CYCLES_ASYNC
-  std::thread(CleanCyclesInternal).detach();
+  std::thread(CleanCyclesInternal).detach();  
 #else
   CleanCyclesInternal();
 #endif
