@@ -201,7 +201,13 @@ namespace Grace
     GRACE_LOCK_OBJECT_MUTEX();
 
     // don't call the other Remove function or CleanCycles since this should ONLY be called while we are cleaning cycles
-    auto it = std::find_if(m_Data.begin(), m_Data.end(), [object](const Value& value) { return object == value.GetObject(); });
-    m_Data.erase(it);
+    auto it = std::find_if(m_Data.begin(), m_Data.end(),
+      [object](const Value& value) {
+        return object == value.GetObject();
+      });
+
+    if (it != m_Data.end()) {
+      m_Data.erase(it);
+    }
   }
 }

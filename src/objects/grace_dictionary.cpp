@@ -295,11 +295,8 @@ namespace Grace
     std::vector<GraceObject*> res;
     for (const auto& el : m_Data) {
       auto kvp = dynamic_cast<GraceKeyValuePair*>(el.GetObject());
-      if (auto key = kvp->Key().GetObject()) {
-        res.push_back(key);
-      }
-      if (auto value = kvp->Value().GetObject()) {
-        res.push_back(value);
+      if (kvp != nullptr) {
+        res.push_back(kvp);
       }
     }
 
@@ -311,9 +308,7 @@ namespace Grace
     GRACE_LOCK_OBJECT_MUTEX();
 
     for (const auto& el : m_Data) {
-      if (el.GetType() == VM::Value::Type::Null) continue;
-      auto kvp = dynamic_cast<GraceKeyValuePair*>(el.GetObject());
-      if (kvp->Key().GetObject() == match || kvp->Value().GetObject() == match) {
+      if (el.GetObject()  == match) {
         return true;
       }
     }
@@ -325,14 +320,12 @@ namespace Grace
   {
     GRACE_LOCK_OBJECT_MUTEX();
 
-    for (auto it = m_Data.begin(); it != m_Data.end(); it++) {
-      if (it->GetType() == VM::Value::Type::Null) continue;
-      auto kvp = dynamic_cast<GraceKeyValuePair*>(it->GetObject());
-      if (kvp->Key().GetObject() == object) {
-        kvp->Key() = VM::Value::NullValue();
-      }
-      if (kvp->Value().GetObject() == object) {
-        kvp->Value() = VM::Value::NullValue();
+    for (std::size_t i = 0; i < m_Data.size(); i++) {
+      auto& el = m_Data[i];
+      if (el.GetType() == VM::Value::Type::Null) continue;
+
+      if (el.GetObject() == object) {
+        el = VM::Value::NullValue();
       }
     }
   }

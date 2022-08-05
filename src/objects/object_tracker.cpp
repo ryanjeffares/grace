@@ -78,10 +78,90 @@ void ObjectTracker::Finalise()
   }
 }
 
+static bool FindObject(GraceObject* toFind, GraceObject* root, std::vector<GraceObject*>& visitedObjects)
+{
+  for (auto object : root->GetObjectMembers()) {
+    if (object == toFind) {
+      return true;
+    } else {
+      if (std::find(visitedObjects.begin(), visitedObjects.end(), object) == visitedObjects.end()) {
+        visitedObjects.push_back(object);
+        return FindObject(toFind, object, visitedObjects);
+      }
+    }
+  }
+
+  return false;
+}
+
 static void CleanCyclesInternal()
 {
   if (s_TrackedObjects.empty()) return;
 
+  // First deal with objects caught in a weird complicated cycle, for example
+  // 
+  // ```
+  // var first = Object();
+  // var second = Object();
+  // var third = Object();
+  // 
+  // first.child = second;
+  // second.child = third;
+  // third.child = first;
+  // ```
+  // 
+  // in a cycle like this, if all of their reference counts are only 1 AND they all come from eachother
+  // they can be safely deleted, since if they were still also being referenced by a local variable in the VM etc
+  // they would have more than 1 ref
+  // 
+  // an even more complicated situation could come from something like this:
+  // 
+  // ```
+  // var object = Object();
+  // var dict = {};
+  // dict.insert(dict, object);
+  // ```
+  // 
+  // in this nightmare situation (which is code you should never write, but is technically allowed)
+  // the dict's reference is coming from a KeyValuePair, which the dict itself is giving a ref to
+  // 
+  // any object in the vector can be treated as a "root" in our "graph" of objects
+  // if that root has a single ref, and traversing the graph can lead back itself, it can be deleted
+
+  std::vector<GraceObject*> objectsToBeDeleted;
+
+  for (std::size_t i = 0; i < s_TrackedObjects.size(); i++) {
+    auto root = s_TrackedObjects[i];
+
+    if (root->RefCount() > 1) continue;
+
+    std::vector<GraceObject*> visitedObjects;
+    if (FindObject(root, root, visitedObjects)) {
+      objectsToBeDeleted.push_back(root);
+    }
+  }
+
+  for (std::size_t i = 0; i < objectsToBeDeleted.size(); i++) {
+    auto object = objectsToBeDeleted[i];
+
+    auto members = object->GetObjectMembers();
+    for (std::size_t j = 0; j < members.size(); j++) {
+      auto member = members[j];
+
+      VM::Value tempObj(object), tempMember(member);
+        
+      objectsToBeDeleted.erase(objectsToBeDeleted.begin() + i);
+      members.erase(members.begin() + j);
+
+      object->RemoveMember(member);
+
+      if (object != member) {
+        member->RemoveMember(object);
+      }
+    }
+  }
+
+  // now we can deal with simple "one way" cycles
   // if any two objects have 1 reference left each and they are eachother, that is a cycle that can be deleted
   for (std::size_t i = 0; i < s_TrackedObjects.size(); i++) {
     auto obj = s_TrackedObjects[i];
@@ -116,57 +196,7 @@ static void CleanCyclesInternal()
         break;
       }
     }
-  }
-
-  // but NOW we need to allow for objects caught in a >=3 way cycle, for example...
-  // 
-  // var first = Object();
-  // var second = Object();
-  // var third = Object();
-  // 
-  // first.child = second;
-  // second.child = third;
-  // third.child = first;
-  //
-  // in a cycle like this, if all of their reference counts are only 1 AND they all come from eachother
-  // they can be safely deleted, since if they were still being referenced by a local variable in the VM or something on the stack
-  // they would simply have more than 1 ref
-
-  // all of this works for the above example, but not a complicated situations with collections and
-  std::vector<GraceObject*> objectsWithOneRef, objectsToBeDeleted;
-
-  for (auto object : s_TrackedObjects) {
-    if (object->RefCount() == 1) {
-      objectsWithOneRef.push_back(object);
-    }
-  }
-
-  for (auto object : objectsWithOneRef) {
-    auto members = object->GetObjectMembers();
-    for (auto member : members) {
-      if (member->RefCount() != 1) continue;
-
-      if (std::find(objectsWithOneRef.begin(), objectsWithOneRef.end(), member) != objectsWithOneRef.end()) {
-        objectsToBeDeleted.push_back(member);
-      }
-    }
-  }
-
-  std::vector<VM::Value> temps;
-  for (auto object : objectsToBeDeleted) {
-    temps.emplace_back(object);
-  }
-
-  for (auto parent : objectsToBeDeleted) {
-    for (auto member : objectsToBeDeleted) {
-      if (parent->AnyMemberMatches(member)) {
-        parent->RemoveMember(member);
-      }
-      if (member->AnyMemberMatches(parent)) {
-        member->RemoveMember(parent);
-      }
-    }
-  }
+  }  
 }
 
 void ObjectTracker::CleanCycles()

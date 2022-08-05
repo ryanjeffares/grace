@@ -131,6 +131,8 @@ namespace Grace
 	  [object](const std::pair<std::string, VM::Value>& pair) {
 		return pair.second.GetObject() == object;
 	  });
-	m_Members.erase(it);
+	if (it != m_Members.end()) {
+	  m_Members.erase(it);
+	}
   }
 } // namespace Grace
