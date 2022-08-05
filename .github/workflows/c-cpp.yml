@@ -16,9 +16,8 @@ jobs:
       with:
         submodules: true
     - name: build
-      env:
-        CXX: g++-11
-      run: |        
+      run: |
+        sudo update-alternatives --install /usr/bin/c++ c++ /usr/bin/g++11
         mkdir build
         cmake -DCMAKE_BUILD_TYPE=Release -S . -B build
         cmake --build build --config Release -- -j
