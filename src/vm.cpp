@@ -79,6 +79,18 @@ namespace Grace::VM
   }
 #endif
 
+  void VM::PrintOps()
+  {
+    for (const auto& [fileName, funcList] : m_FunctionLookup) {
+      for (const auto& [name, func] : funcList) {
+        fmt::print("<function `{}`> in file {}\n", func->name, m_FileNameLookup.at(fileName));
+        for (const auto [op, line] : func->opList) {
+          fmt::print("{:>5} | {}\n", line, op);
+        }
+      }
+    }
+  }
+
   bool VM::AddFunction(std::string&& name, std::size_t arity, const std::string& fileName, bool exported, bool extension, std::size_t objectNameHash)
   {
     auto funcNameHash = static_cast<std::int64_t>(m_Hasher(name));
@@ -739,7 +751,7 @@ namespace Grace::VM
             auto heldIterator = dynamic_cast<GraceIterator*>(valueStack[heldIteratorIndex].GetObject());
 
             GRACE_MAYBE_UNUSED auto iterableType = heldIterator->GetType();
-            GRACE_ASSERT(iterableType == GraceIterator::IterableType::List || iterableType == GraceIterator::IterableType::Dictionary, "Iterator did not have a valid type set");
+            GRACE_ASSERT((iterableType == GraceIterator::IterableType::List || iterableType == GraceIterator::IterableType::Dictionary), "Iterator did not have a valid type set");
 
             valueStack.emplace_back(heldIterator->AsBool());
             break;
@@ -1100,7 +1112,7 @@ namespace Grace::VM
       getenv_s(&size, NULL, 0, "GRACE_SHOW_FULL_CALLSTACK");
       if (size != 0) {
   #else
-      if (auto showFull = std::getenv("GRACE_SHOW_FULL_CALLSTACK")) {
+      if (std::getenv("GRACE_SHOW_FULL_CALLSTACK") != NULL) {
   #endif
         for (std::size_t i = 1; i < callStack.size(); i++) {
           const auto& [caller, callee, ln, fileName, calleeFileName, fileNameHash, calleeFileNameHash] = callStack[i];

@@ -26,13 +26,15 @@ set_target_properties(grace PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BUILD_TYPE}
 )
 
+set_target_properties(grace PROPERTIES CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++2a")
+
 if (CMAKE_BUILD_TYPE MATCHES Debug)
   target_compile_definitions(grace PRIVATE GRACE_DEBUG)
 endif()
 
 if(MSVC)
   target_compile_definitions(grace PRIVATE GRACE_MSC)
-  target_compile_options(grace PRIVATE /W4 /WX)
+  target_compile_options(grace PRIVATE /W4 /WX /external:W0)
 else()
   target_compile_options(grace PRIVATE -Wall -Wextra -Wpedantic -Werror)
   target_link_libraries(grace pthread)

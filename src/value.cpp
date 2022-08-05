@@ -833,7 +833,15 @@ namespace Grace::VM
         return { false, "Cannot convert object to char" };
     }
   }
-}
+
+  GRACE_NODISCARD std::string Value::GetTypeName() const
+  {
+    if (m_Type == Type::Object) {
+      return m_Data.m_Object->ObjectName();
+    }
+    return fmt::format("{}", m_Type);
+  }
+} // namespace Grace::VM
 
 namespace std
 {
