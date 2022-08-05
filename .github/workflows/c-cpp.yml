@@ -1,0 +1,59 @@
+name: C/C++ CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-linux:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: true
+
+    - name: configure
+      run: ./configure
+    - name: build
+      run: |        
+        mkdir build
+        cmake -DCMAKE_BUILD_TYPE=Release -S . -B build
+        cmake --build build --config Release -- -j
+        
+  build-windows:
+    
+    runs-on: windows-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: true
+
+    - name: configure
+      run: ./configure
+    - name: build
+      run: |        
+        mkdir build
+        cmake -DCMAKE_BUILD_TYPE=Release -S . -B build
+        cmake --build build --config Release
+    
+  build-macos:
+    
+    runs-on: windows-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: true
+
+    - name: configure
+      run: ./configure
+    - name: build
+      run: |        
+        mkdir build
+        cmake -DCMAKE_BUILD_TYPE=Release -S . -B build
+        cmake --build build --config Release -- -j
