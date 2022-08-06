@@ -1,4 +1,4 @@
-name: C/C++ CI
+name: Linux Build 
 
 on:
   push:
@@ -40,18 +40,3 @@ jobs:
         mkdir build
         cmake -DCMAKE_BUILD_TYPE=Release -S . -B build
         cmake --build build --config Release
-    
-  build-macos:
-    
-    runs-on: macos-latest
-    
-    steps:
-    - uses: actions/checkout@v3
-      with:
-        submodules: true
-
-    - name: build
-      run: |        
-        mkdir build
-        cmake -DCMAKE_BUILD_TYPE=Release -S . -B build
-        cmake --build build --config Release -- -j
