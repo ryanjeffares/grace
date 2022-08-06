@@ -816,7 +816,7 @@ namespace Grace::VM
             auto value = Pop(valueStack);
             auto type = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
             switch (type) {
-              case 0: {
+              case 0: { // int
                 std::int64_t result;
                 auto [success, message] = value.AsInt(result);
                 if (success) {
@@ -829,7 +829,7 @@ namespace Grace::VM
                 }
                 break;
               }
-              case 1: {
+              case 1: { // float
                 double result;
                 auto [success, message] = value.AsDouble(result);
                 if (success) {
@@ -842,13 +842,13 @@ namespace Grace::VM
                 }
                 break;
               }
-              case 2:
+              case 2: // bool
                 valueStack.emplace_back(value.AsBool());
                 break;
-              case 3:
+              case 3: // string
                 valueStack.emplace_back(value.AsString());
                 break;
-              case 4: {
+              case 4: { // char
                 char result;
                 auto [success, message] = value.AsChar(result);
                 if (success) {
@@ -861,9 +861,14 @@ namespace Grace::VM
                 }
                 break;
               }
-              case 5:
-                valueStack.emplace_back(Value::CreateObject<GraceList>(value));
+              case 5: // exception
+                valueStack.emplace_back(Value::CreateObject<GraceException>(value.AsString()));
                 break;
+              case 6: { // kvp
+                auto key = Pop(valueStack);
+                valueStack.emplace_back(Value::CreateObject<GraceKeyValuePair>(std::move(key), std::move(value)));
+                break;
+              }
               default:
                 GRACE_UNREACHABLE();
                 break;

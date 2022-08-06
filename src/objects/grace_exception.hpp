@@ -33,6 +33,7 @@ namespace Grace
       enum class Type
       {
         AssertionFailed,
+        Exception,
         FileWriteFailed,
         FunctionNotExported,
         FunctionNotFound,
@@ -51,6 +52,12 @@ namespace Grace
 
       GraceException(Type type, std::string&& message)
         : m_Type(type), m_Message(std::move(message))
+      {
+
+      }
+
+      GraceException(std::string&& message)
+        : m_Type(Type::Exception), m_Message(std::move(message))
       {
 
       }
@@ -118,6 +125,7 @@ struct fmt::formatter<Grace::GraceException::Type> : fmt::formatter<std::string_
     std::string_view name = "unknown";
     switch (type) {
       case GraceException::Type::AssertionFailed: name = "AssertionFailed"; break;
+      case GraceException::Type::Exception: name = "Exception"; break;
       case GraceException::Type::FileWriteFailed: name = "FileWriteFailed"; break;
       case GraceException::Type::FunctionNotExported: name = "FunctionNotExported"; break;
       case GraceException::Type::FunctionNotFound: name = "FunctionNotFound"; break;

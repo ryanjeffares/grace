@@ -46,7 +46,7 @@ namespace Grace
 
   std::string GraceKeyValuePair::ToString() const
   {
-    std::string res = "{";
+    std::string res = "(";
     if (m_Key.GetType() == VM::Value::Type::String) {
       res.push_back('"');
       res.append(m_Key.AsString());
@@ -128,7 +128,7 @@ namespace Grace
       res.append(m_Value.AsString());
     }
 
-    res.push_back('}');
+    res.push_back(')');
     return res;
   }
 

@@ -468,7 +468,9 @@ static bool IsTypeIdent(Scanner::TokenType type)
     Scanner::TokenType::StringIdent,
     Scanner::TokenType::CharIdent,
     Scanner::TokenType::ListIdent,
-    Scanner::TokenType::DictIdent
+    Scanner::TokenType::DictIdent,
+    Scanner::TokenType::KeyValuePairIdent,
+    Scanner::TokenType::ExceptionIdent,
   };
   return std::any_of(typeIdents.begin(), typeIdents.end(), [type](Scanner::TokenType t) {
     return t == type;
@@ -487,6 +489,8 @@ static bool IsValidTypeAnnotation(const Scanner::TokenType& token)
     Scanner::TokenType::StringIdent,
     Scanner::TokenType::ListIdent,
     Scanner::TokenType::DictIdent,
+    Scanner::TokenType::ExceptionIdent,
+    Scanner::TokenType::KeyValuePairIdent,
   };
   return std::any_of(valid.begin(), valid.end(), [token] (Scanner::TokenType t) {
     return t == token;
@@ -1416,7 +1420,8 @@ static std::unordered_map<Scanner::TokenType, std::int64_t> s_CastOps = {
   std::make_pair(Scanner::TokenType::BoolIdent, 2),
   std::make_pair(Scanner::TokenType::StringIdent, 3),
   std::make_pair(Scanner::TokenType::CharIdent, 4),
-  std::make_pair(Scanner::TokenType::ListIdent, 5),
+  std::make_pair(Scanner::TokenType::ExceptionIdent, 5),
+  std::make_pair(Scanner::TokenType::KeyValuePairIdent, 6),
 };
 
 static void ForStatement(CompilerContext& compiler)
@@ -2679,16 +2684,89 @@ static void IsObject(CompilerContext& compiler)
 
 static void Cast(CompilerContext& compiler)
 {
-  auto type = compiler.current.value().GetType();
+  auto typeToken = compiler.current.value();
   Advance(compiler);
   Consume(Scanner::TokenType::LeftParen, "Expected '(' after type ident", compiler);
-  auto prevUsing = compiler.usingExpressionResult;
-  compiler.usingExpressionResult = true;
-  Expression(false, compiler);
-  compiler.usingExpressionResult = prevUsing;
-  EmitConstant(s_CastOps[type]);
-  EmitOp(VM::Ops::Cast, compiler.current.value().GetLine());
+
+  auto isList = false;
+  std::int64_t numListItems = 0;
+
+  switch (typeToken.GetType()) {
+    // these "Casts" construct the type with a single expression
+    case Scanner::TokenType::IntIdent:
+    case Scanner::TokenType::FloatIdent:
+    case Scanner::TokenType::BoolIdent:
+    case Scanner::TokenType::StringIdent:
+    case Scanner::TokenType::CharIdent:
+    // NB: Exception will convert the expression to a string
+    case Scanner::TokenType::ExceptionIdent: {
+      auto prevUsing = compiler.usingExpressionResult;
+      compiler.usingExpressionResult = true;
+      Expression(false, compiler);
+      compiler.usingExpressionResult = prevUsing;
+  
+      EmitConstant(s_CastOps[typeToken.GetType()]);
+      EmitOp(VM::Ops::Cast, compiler.current.value().GetLine());
+      break;
+    }
+    case Scanner::TokenType::ListIdent: {
+      isList = true;
+
+      auto prevUsing = compiler.usingExpressionResult;
+      compiler.usingExpressionResult = true;
+      while (true) {
+        if (Check(Scanner::TokenType::RightParen, compiler)) {
+          break;
+        }
+        
+        if (Match(Scanner::TokenType::EndOfFile, compiler)) {
+          MessageAtPrevious("Unterminated `List` constructor", LogLevel::Error, compiler);
+          return;
+        }
+
+        Expression(false, compiler);
+        numListItems++;
+
+        if (Check(Scanner::TokenType::RightParen, compiler)) {
+          break;
+        }
+
+        if (!Match(Scanner::TokenType::Comma, compiler)) {
+          MessageAtPrevious("Expected ',' between `List` items", LogLevel::Error, compiler);
+          return;
+        }
+      }
+      compiler.usingExpressionResult = prevUsing;
+      break;
+    }
+    case Scanner::TokenType::DictIdent: {
+      // TODO: maybe there's some special functionality we want to include in the future with the syntax `Dict(...)`
+      Message(typeToken, "Cannot use `Dict` like a constructor, use literal expression `{ key: value, ... }`", LogLevel::Error, compiler);
+      return;
+    }
+    case Scanner::TokenType::KeyValuePairIdent: {
+      auto prevUsing = compiler.usingExpressionResult;
+      compiler.usingExpressionResult = true;
+      Expression(false, compiler);
+
+      Consume(Scanner::TokenType::Comma, "Expected ',' between key and value in `KeyValuePair` constructor", compiler);
+
+      Expression(false, compiler);
+      compiler.usingExpressionResult = prevUsing;
+
+      EmitConstant(s_CastOps[typeToken.GetType()]);
+      EmitOp(VM::Ops::Cast, compiler.current.value().GetLine());
+      break;
+    }
+  }
+  
   Consume(Scanner::TokenType::RightParen, "Expected ')' after expression", compiler);
+
+  if (isList) {
+    EmitConstant(numListItems);
+    EmitOp(VM::Ops::CreateList, compiler.previous.value().GetLine());
+  }
+
   if (!compiler.usingExpressionResult) {
     // pop unused return value
     EmitOp(VM::Ops::Pop, compiler.previous.value().GetLine());
@@ -2852,6 +2930,11 @@ static void Message(const std::optional<Scanner::Token>& token, const std::strin
   auto column = token.value().GetColumn() - token.value().GetLength();  // need the START of the token
   fmt::print(stderr, "       --> {}:{}:{}\n", compiler.currentFileName, lineNo, column + 1); 
   fmt::print(stderr, "        |\n");
+
+  if (lineNo > 0) {
+    fmt::print(stderr, "{:>7} | {}\n", lineNo - 1, Scanner::GetCodeAtLine(compiler.currentFileName, lineNo - 1));
+  }
+
   fmt::print(stderr, "{:>7} | {}\n", lineNo, Scanner::GetCodeAtLine(compiler.currentFileName, lineNo));
   fmt::print(stderr, "        | ");
   for (std::size_t i = 0; i < column; i++) {
@@ -2860,7 +2943,10 @@ static void Message(const std::optional<Scanner::Token>& token, const std::strin
   for (std::size_t i = 0; i < token.value().GetLength(); i++) {
     fmt::print(stderr, colour, "^");
   }
-  fmt::print(stderr, "\n\n");
+
+  fmt::print(stderr, "\n");
+  fmt::print(stderr, "{:>7} | {}\n", lineNo + 1, Scanner::GetCodeAtLine(compiler.currentFileName, lineNo + 1));
+  fmt::print(stderr, "        |\n\n");
 
   if (level == LogLevel::Error) {
     compiler.hadError = true;

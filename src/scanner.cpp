@@ -81,6 +81,8 @@ namespace Grace::Scanner
     {"Char", TokenType::CharIdent},
     {"List", TokenType::ListIdent},
     {"Dict", TokenType::DictIdent},
+    {"Exception", TokenType::ExceptionIdent},
+    {"KeyValuePair", TokenType::KeyValuePairIdent},
   };
 
   static bool IsIdentifierChar(char c)
@@ -226,6 +228,9 @@ namespace Grace::Scanner
     std::size_t curr = 1;
     std::size_t strIndex = 0;
     while (curr < line) {
+      if (strIndex >= code.length()) {
+        return "";
+      }
       if (code[strIndex++] == '\n') {
         curr++;
       }
