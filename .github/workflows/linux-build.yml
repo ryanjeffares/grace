@@ -25,18 +25,3 @@ jobs:
         mkdir build
         cmake -DCMAKE_BUILD_TYPE=Release -S . -B build
         cmake --build build --config Release -- -j
-        
-  build-windows:
-    
-    runs-on: windows-latest
-    
-    steps:
-    - uses: actions/checkout@v3
-      with:
-        submodules: true
-
-    - name: build
-      run: |        
-        mkdir build
-        cmake -DCMAKE_BUILD_TYPE=Release -S . -B build
-        cmake --build build --config Release
