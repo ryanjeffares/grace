@@ -1,6 +1,6 @@
 # Grace
 
-[![Total alerts](https://img.shields.io/lgtm/alerts/g/ryanjeffares/grace.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/ryanjeffares/grace/alerts/) [![Language grade: C/C++](https://img.shields.io/lgtm/grade/cpp/g/ryanjeffares/grace.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/ryanjeffares/grace/context:cpp)
+[![Total alerts](https://img.shields.io/lgtm/alerts/g/ryanjeffares/grace.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/ryanjeffares/grace/alerts/) [![Language grade: C/C++](https://img.shields.io/lgtm/grade/cpp/g/ryanjeffares/grace.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/ryanjeffares/grace/context:cpp) [![Linux](https://github.com/ryanjeffares/grace/actions/workflows/linux-build.yml/badge.svg)](https://github.com/ryanjeffares/grace/actions/workflows/linux-build.yml) [![MacOS](https://github.com/ryanjeffares/grace/actions/workflows/macos-build.yml/badge.svg)](https://github.com/ryanjeffares/grace/actions/workflows/macos-build.yml) [![Windows](https://github.com/ryanjeffares/grace/actions/workflows/windows-build.yml/badge.svg)](https://github.com/ryanjeffares/grace/actions/workflows/windows-build.yml)
 
 Grace is a dynamically typed, bytecode interpreted programming language, written with C++20. Still a work in progress, Grace will support object-oriented and procedural programming, use reference counting as opposed to a garbage collector, and features a concise syntax inspired by Python and Ruby.
 
