@@ -1,0 +1,24 @@
+name: MacOS Build 
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+   
+  build-macos:
+    
+    runs-on: macos-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: true
+
+    - name: build
+      run: |        
+        mkdir build
+        cmake -DCMAKE_BUILD_TYPE=Release -S . -B build
+        cmake --build build --config Release -- -j
