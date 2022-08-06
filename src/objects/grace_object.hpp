@@ -82,7 +82,24 @@ namespace Grace
         GRACE_ASSERT(false, "RemoveMember() should only be called on Lists, Dictionaries, and Instances");
       }
 
+      GRACE_NODISCARD static bool AnyMemberMatchesRecursive(const GraceObject* toFind, GraceObject* root, std::vector<GraceObject*> visitedObjects)
+      {
+        for (auto object : root->GetObjectMembers()) {
+          if (object == toFind) {
+            return true;
+          } else {
+            if (std::find(visitedObjects.begin(), visitedObjects.end(), object) == visitedObjects.end()) {
+              visitedObjects.push_back(object);
+              return AnyMemberMatchesRecursive(toFind, object, visitedObjects);
+            }
+          }
+        }
+
+        return false;
+      }
+
     protected:
+
       std::mutex m_Mutex;
 
     private:

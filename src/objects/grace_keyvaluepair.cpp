@@ -62,7 +62,8 @@ namespace Grace
         res.append(object->ToString());
       }
       else {
-        if (object->AnyMemberMatches(this)) {
+        std::vector<GraceObject*> visited;
+        if (AnyMemberMatchesRecursive(this, object, visited)) {
           switch (type) {
             case GraceObjectType::Dictionary:
               res.append("{...}");
@@ -104,7 +105,8 @@ namespace Grace
         res.append(object->ToString());
       }
       else {
-        if (object->AnyMemberMatches(this)) {
+        std::vector<GraceObject*> visited;
+        if (AnyMemberMatchesRecursive(this, object, visited)) {
           switch (type) {
             case GraceObjectType::Dictionary:
               res.append("{...}");

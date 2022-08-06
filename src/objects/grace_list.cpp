@@ -131,7 +131,8 @@ namespace Grace
           if (type == GraceObjectType::Exception || type == GraceObjectType::Iterator || type == GraceObjectType::Instance) {
             res.append(object->ToString());
           } else {
-            if (object->AnyMemberMatches(this)) {
+            std::vector<GraceObject*> visisted;
+            if (AnyMemberMatchesRecursive(this, object, visisted)) {
               switch (type) {
                 case GraceObjectType::Dictionary:
                   res.append("{...}");

@@ -102,24 +102,6 @@ void ObjectTracker::Finalise()
 #endif
 }
 
-// utility function to check if the root can be reached by traversing the "graph" of objects
-// i.e. it is caught in a cycle
-static bool FindObject(GraceObject* toFind, GraceObject* root, std::vector<GraceObject*>& visitedObjects)
-{
-  for (auto object : root->GetObjectMembers()) {
-    if (object == toFind) {
-      return true;
-    } else {
-      if (std::find(visitedObjects.begin(), visitedObjects.end(), object) == visitedObjects.end()) {
-        visitedObjects.push_back(object);
-        return FindObject(toFind, object, visitedObjects);
-      }
-    }
-  }
-
-  return false;
-}
-
 static void CleanCyclesInternal()
 {
   // fmt::print("")
@@ -180,7 +162,7 @@ static void CleanCyclesInternal()
     }
 
     std::vector<GraceObject*> visitedObjects;
-    if (FindObject(root, root, visitedObjects)) {
+    if (GraceObject::AnyMemberMatchesRecursive(root, root, visitedObjects)) {
       objectsToBeDeleted.push_back(root);
     }
   }

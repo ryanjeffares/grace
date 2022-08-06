@@ -50,7 +50,6 @@ This will build the `grace` executable, which you can add to your path or move s
   * Add option to run async
     * Can be enabled via preprocessor, but runs so slowly on M1. Can provide as a command line option, maybe try doing it in a way that doesn't require locking mutexes in the GraceObject instances
   * Expose options in Grace
-* Fix object's `ToString()` methods recursing and crashing if they have a cycle
 * Lambdas 
 * Global const fields 
 * Expand standard library
@@ -59,7 +58,7 @@ This will build the `grace` executable, which you can add to your path or move s
 * Tests 
 * Documentation + comments 
 * Improve compiler errors and line numbering
-* Can probably abstract more parts of the compiler, e.g. function parameters, to reduce code duplication
+* Can probably abstract more parts of the compiler into functions, e.g. function parameters, to reduce code duplication
 * Make sure everything is always getting popped from the value stack when it needs to be
 
 ## Long Term Goals 
