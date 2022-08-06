@@ -28,12 +28,12 @@ namespace Grace
 
   enum class GraceObjectType
   {
+    List,
     Dictionary,
     Exception,
+    KeyValuePair,
     Instance,
     Iterator,
-    KeyValuePair,
-    List,
   };
 
   class GraceObject

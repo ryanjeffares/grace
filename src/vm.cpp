@@ -565,7 +565,7 @@ namespace Grace::VM
             break;
           }
           case Ops::MemberCall: {
-            auto calleeFuncName = m_FullConstantList[constantCurrent++].Get<std::string>();
+            auto& calleeFuncName = m_FullConstantList[constantCurrent++].Get<std::string>();
             auto calleeNameHash = m_FullConstantList[constantCurrent++].Get<std::int64_t>();          
             auto numArgs = static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>());
 
@@ -632,7 +632,7 @@ namespace Grace::VM
               );
             }
 
-            auto memberName = m_FullConstantList[constantCurrent++].Get<std::string>();
+            auto& memberName = m_FullConstantList[constantCurrent++].Get<std::string>();
             instance->AssignMember(memberName, std::move(value));
             break;
           }
@@ -647,7 +647,7 @@ namespace Grace::VM
               );
             }
 
-            auto memberName = m_FullConstantList[constantCurrent++].Get<std::string>();
+            auto& memberName = m_FullConstantList[constantCurrent++].Get<std::string>();
             valueStack.push_back(instance->LoadMember(memberName));
             break;
           }
@@ -876,25 +876,17 @@ namespace Grace::VM
             break;
           }
           case Ops::CheckType: {
+            auto value = Pop(valueStack);
             auto typeIdx = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
             if (typeIdx < 6) {
-              valueStack.emplace_back(typeIdx == static_cast<std::int64_t>(Pop(valueStack).GetType()));
+              valueStack.emplace_back(typeIdx == static_cast<std::int64_t>(value.GetType()));
+            } else if (typeIdx < 10) {
+              auto object = value.GetObject();
+              valueStack.emplace_back(typeIdx - 6 == static_cast<std::int64_t>(object->ObjectType()));
             } else {
-              switch (typeIdx) {
-                case 6: {
-                  auto l = dynamic_cast<GraceList*>(Pop(valueStack).GetObject());
-                  valueStack.emplace_back(l != nullptr);
-                  break;
-                }
-                case 7: {
-                  auto d = dynamic_cast<GraceDictionary*>(Pop(valueStack).GetObject());
-                  valueStack.emplace_back(d != nullptr);
-                  break;
-                }
-                default:
-                  GRACE_UNREACHABLE();
-                  break;
-              }
+              auto object = value.GetObject();
+              auto& typeName = m_FullConstantList[constantCurrent++].Get<std::string>();
+              valueStack.emplace_back(typeName == object->ObjectName());
             }
             break;
           }
@@ -1000,7 +992,7 @@ namespace Grace::VM
           }
           case Ops::AssertWithMessage: {
             auto condition = Pop(valueStack);
-            auto message = m_FullConstantList[constantCurrent++].Get<std::string>();
+            auto& message = m_FullConstantList[constantCurrent++].Get<std::string>();
             if (!condition.AsBool()) {
               RuntimeError(GraceException(
                 GraceException::Type::AssertionFailed, fmt::format("assertion failed: {}", message)),

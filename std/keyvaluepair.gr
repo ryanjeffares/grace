@@ -1,0 +1,13 @@
+func export key(this KeyValuePair pair):
+  if !instanceof(pair, KeyValuePair):
+    throw("Expected `KeyValuePair` for `std::keyvaluepair::key(pair)` but got `" + typename(pair) + '`');
+  end
+  return __NATIVE_KEYVALUEPAIR_KEY(pair);
+end
+
+func export value(this KeyValuePair pair):
+  if !instanceof(pair, KeyValuePair):
+    throw("Expected `KeyValuePair` for `std::keyvaluepair::value(pair)` but got `" + typename(pair) + '`');
+  end
+  return __NATIVE_KEYVALUEPAIR_VALUE(pair);
+end

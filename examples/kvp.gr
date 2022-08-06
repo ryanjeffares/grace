@@ -1,0 +1,22 @@
+import std::keyvaluepair;
+
+func main():
+  final kvp = KeyValuePair("Ryan", 23);
+  println(kvp.key());
+  println(kvp.value());
+
+  var dict = {"Hello": "World", "Ryan": 23, "Foo": "Bar"};
+
+  for pair in dict:
+    println("The key is " + pair.key() + " and the value is " + pair.value());
+  end
+
+  // but it's cleaner to iterate like this...
+  for key, value in dict:
+    print(key);
+    print(": ");
+    println(value);
+  end
+
+  println(dict);
+end

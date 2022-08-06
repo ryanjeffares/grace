@@ -45,13 +45,10 @@ This will build the `grace` executable, which you can add to your path or move s
 ## Alpha Release Roadmap
 * Why does examples/euler/problem03.gr use so much memory?
 * Prevent integer overflow by automatically promoting to a `BigInt` class
-* Experiment with string interning
-* Investigate wide chars over regular chars
-* Make KeyValuePairs and Exceptions constructible
-* Mark classes available in Grace or not
 * TEST THE CYCLE CLEANER
   * Experiment with what is the optimal frequency to run it
   * Add option to run async
+    * Can be enabled via preprocessor, but runs so slowly on M1. Can provide as a command line option, maybe try doing it in a way that doesn't require locking mutexes in the GraceObject instances
   * Expose options in Grace
 * Fix object's `ToString()` methods recursing and crashing if they have a cycle
 * Lambdas 

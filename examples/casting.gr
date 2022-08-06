@@ -1,3 +1,13 @@
+class Person:
+  var name;
+  var age;
+
+  constructor(n, a):
+    name = n;
+    age = a;
+  end
+end
+
 func main():
   assert(Char(97) == 'a');
 
@@ -21,5 +31,6 @@ func main():
   var pair_list = List(kvp, kvp, kvp);
   println(pair_list);
 
-  var d = Dict();
+  var p = Person("Ryan", 23);
+  assert(instanceof(p, Person));
 end

@@ -180,7 +180,7 @@ enum class LogLevel
 
 static void MessageAtCurrent(const std::string& message, LogLevel level, CompilerContext& compiler);
 static void MessageAtPrevious(const std::string& message, LogLevel level, CompilerContext& compiler);
-static void Message(const std::optional<Scanner::Token>& token, const std::string& message, LogLevel level, CompilerContext& compiler);
+static void Message(const Scanner::Token& token, const std::string& message, LogLevel level, CompilerContext& compiler);
 
 GRACE_NODISCARD static VM::InterpretResult Finalise(const std::string& mainFileName, bool verbose, const std::vector<std::string>& args);
 
@@ -569,7 +569,7 @@ static void ImportDeclaration(CompilerContext& compiler)
   }
 
   if (!fs::exists(inPath)) {
-    Message(lastPathToken, fmt::format("Could not find file `{}` to import", importPath), LogLevel::Error, compiler);
+    Message(lastPathToken.value(), fmt::format("Could not find file `{}` to import", importPath), LogLevel::Error, compiler);
     return;
   }
 
@@ -637,7 +637,7 @@ static void ClassDeclaration(CompilerContext& compiler)
 
       Consume(Scanner::TokenType::Identifier, "Expected identifier after `var`", compiler);
       
-      classMembers.push_back(std::string(compiler.previous.value().GetText()));
+      classMembers.push_back(compiler.previous.value().GetString());
 
       auto nameToken = compiler.previous.value();
 
@@ -649,7 +649,7 @@ static void ClassDeclaration(CompilerContext& compiler)
         Advance(compiler);
       }
 
-      std::string localName(nameToken.GetText());
+      auto localName = nameToken.GetString();
 
       if (localName.starts_with("__")) {
         MessageAtPrevious("Names beginning with double underscore `__` are reserved for internal use", LogLevel::Error, compiler);
@@ -678,7 +678,7 @@ static void ClassDeclaration(CompilerContext& compiler)
           if (isFinal) {
             Consume(Scanner::TokenType::Identifier, "Expected identifier after `final`", compiler);
           }
-          auto p = std::string(compiler.previous.value().GetText());
+          auto p = compiler.previous.value().GetString();
 
           if (p.starts_with("__")) {
             MessageAtPrevious("Names beginning with double underscore `__` are reserved for internal use", LogLevel::Error, compiler);
@@ -717,7 +717,7 @@ static void ClassDeclaration(CompilerContext& compiler)
 
       Consume(Scanner::TokenType::Colon, "Expected ':' after constructor declaration", compiler);
 
-      if (!VM::VM::AddFunction(std::string(classNameToken.GetText()), parameters.size(), compiler.currentFileName, exported, false)) {
+      if (!VM::VM::AddFunction(classNameToken.GetString(), parameters.size(), compiler.currentFileName, exported, false)) {
         Message(classNameToken, "A function or class in the same namespace already exists with the same name as this class", LogLevel::Error, compiler);
         return;
       }
@@ -760,7 +760,7 @@ static void ClassDeclaration(CompilerContext& compiler)
 
   // make an empty constructor if the user doesn't define one
   if (!hasDefinedConstructor) {
-    if (!VM::VM::AddFunction(std::string(classNameToken.GetText()), 0, compiler.currentFileName, exported, false)) {
+    if (!VM::VM::AddFunction(classNameToken.GetString(), 0, compiler.currentFileName, exported, false)) {
       Message(classNameToken, "A function or class in the same namespace already exists with the same name as this class", LogLevel::Error, compiler);
       return;
     }
@@ -774,7 +774,7 @@ static void ClassDeclaration(CompilerContext& compiler)
     }
   }
 
-  if (!VM::VM::AddClass(std::string(classNameToken.GetText()), classMembers, compiler.currentFileName, exported)) {
+  if (!VM::VM::AddClass(classNameToken.GetString(), classMembers, compiler.currentFileName, exported)) {
     // technically unreachable, since it would have been caught by trying to add the constructor as a function
     Message(classNameToken, "A class in the same namespace already exists with the same name", LogLevel::Error, compiler);
     return;
@@ -793,7 +793,7 @@ static void ClassDeclaration(CompilerContext& compiler)
   }
 
   static std::hash<std::string> hasher;
-  EmitConstant(static_cast<std::int64_t>(hasher(std::string(classNameToken.GetText()))));
+  EmitConstant(static_cast<std::int64_t>(hasher(classNameToken.GetString())));
   EmitConstant(static_cast<std::int64_t>(hasher(compiler.currentFileName)));  
 
   EmitOp(VM::Ops::CreateInstance, compiler.previous.value().GetLine());
@@ -822,8 +822,8 @@ static void FuncDeclaration(CompilerContext& compiler)
   }
 
   Consume(Scanner::TokenType::Identifier, "Expected function name", compiler);
-  auto funcNameToken = compiler.previous;
-  auto name = std::string(compiler.previous.value().GetText());
+  auto funcNameToken = compiler.previous.value();
+  auto name = compiler.previous.value().GetString();
   if (name.starts_with("__")) {
     MessageAtPrevious("Names beginning with double underscore `__` are reserved for internal use", LogLevel::Error, compiler);
     return;
@@ -847,7 +847,7 @@ static void FuncDeclaration(CompilerContext& compiler)
       if (isFinal) {
         Consume(Scanner::TokenType::Identifier, "Expected identifier after `final`", compiler);
       }
-      auto p = std::string(compiler.previous.value().GetText());
+      auto p = compiler.previous.value().GetString();
 
       if (p.starts_with("__")) {
         MessageAtPrevious("Names beginning with double underscore `__` are reserved for internal use", LogLevel::Error, compiler);
@@ -897,7 +897,7 @@ static void FuncDeclaration(CompilerContext& compiler)
 
       Consume(Scanner::TokenType::Identifier, "Expected identifier after type identifier", compiler);
 
-      auto p = std::string(compiler.previous.value().GetText());
+      auto p = compiler.previous.value().GetString();
       
       if (p.starts_with("__")) {
         MessageAtPrevious("Names beginning with double underscore `__` are reserved for internal use", LogLevel::Error, compiler);
@@ -1003,7 +1003,7 @@ static void VarDeclaration(CompilerContext& compiler)
     Advance(compiler);
   }
 
-  std::string localName(nameToken.GetText());
+  auto localName = nameToken.GetString();
 
   if (localName.starts_with("__")) {
     MessageAtPrevious("Names beginning with double underscore `__` are reserved for internal use", LogLevel::Error, compiler);
@@ -1057,7 +1057,7 @@ static void FinalDeclaration(CompilerContext& compiler)
     Advance(compiler);
   }
 
-  std::string localName(nameToken.GetText());
+  auto localName = nameToken.GetString();
   
   if (localName.starts_with("__")) {
     MessageAtPrevious("Names beginning with double underscore `__` are reserved for internal use", LogLevel::Error, compiler);
@@ -1172,7 +1172,7 @@ static void Expression(bool canAssign, CompilerContext& compiler)
         return;
       }
 
-      auto localName = std::string(compiler.previous.value().GetText());
+      auto localName = compiler.previous.value().GetString();
       auto it = std::find_if(compiler.locals.begin(), compiler.locals.end(), [&localName](const Local& l) { return l.name == localName; });
       if (it == compiler.locals.end()) {
         auto mostSimilarVar = FindMostSimilarVarName(localName, compiler.locals);
@@ -1303,7 +1303,7 @@ static std::optional<std::string> TryParseInt(const Scanner::Token& token, std::
 static std::optional<std::exception> TryParseDouble(const Scanner::Token& token, double& result)
 {
   try {
-    std::string str(token.GetText());
+    auto str = token.GetString();
     result = std::stod(str);
     return std::nullopt;
   } catch (const std::invalid_argument& e) {
@@ -1351,7 +1351,7 @@ static void AssertStatement(CompilerContext& compiler)
 
   if (Match(Scanner::TokenType::Comma, compiler)) {
     Consume(Scanner::TokenType::String, "Expected message", compiler);
-    EmitConstant(std::string(compiler.previous.value().GetText()));
+    EmitConstant(compiler.previous.value().GetString());
     EmitOp(VM::Ops::AssertWithMessage, line);
     Consume(Scanner::TokenType::RightParen, "Expected ')'", compiler);
   } else {
@@ -1438,7 +1438,7 @@ static void ForStatement(CompilerContext& compiler)
   }
   Consume(Scanner::TokenType::Identifier, "Expected identifier after `for`", compiler);
   auto iteratorNeedsPop = false, secondIteratorNeedsPop = false, twoIterators = false;
-  auto iteratorName = std::string(compiler.previous.value().GetText());
+  auto iteratorName = compiler.previous.value().GetString();
   std::int64_t iteratorId;
 
   if (Match(Scanner::TokenType::Colon, compiler)) {
@@ -1495,7 +1495,7 @@ static void ForStatement(CompilerContext& compiler)
       MessageAtCurrent("Expected identifier", LogLevel::Error, compiler);
       return;
     }
-    auto secondIteratorName = std::string(compiler.previous.value().GetText());
+    auto secondIteratorName = compiler.previous.value().GetString();
     auto secondIt = std::find_if(
       compiler.locals.begin(),
       compiler.locals.end(),
@@ -1914,7 +1914,7 @@ static void TryStatement(CompilerContext& compiler)
   }
   numLocalsStart = compiler.locals.size();
 
-  auto exceptionVarName = std::string(compiler.previous.value().GetText());
+  auto exceptionVarName = compiler.previous.value().GetString();
   std::int64_t exceptionVarId;
   auto it = std::find_if(compiler.locals.begin(), compiler.locals.end(), [&exceptionVarName](const Local& l) { return l.name == exceptionVarName; });
   if (it == compiler.locals.end()) {
@@ -2397,7 +2397,7 @@ static void DotFunctionCall(const Scanner::Token& funcNameToken, CompilerContext
   }
 
   static std::hash<std::string> hasher;
-  auto funcName = std::string(funcNameToken.GetText());
+  auto funcName = funcNameToken.GetString();
   EmitConstant(funcName);
   EmitConstant(static_cast<std::int64_t>(hasher(funcName)));
   EmitConstant(numArgs);
@@ -2412,7 +2412,7 @@ static void DotFunctionCall(const Scanner::Token& funcNameToken, CompilerContext
 static void Identifier(bool canAssign, CompilerContext& compiler)
 {
   auto prev = compiler.previous.value();
-  auto prevText = std::string(compiler.previous.value().GetText());
+  auto prevText = compiler.previous.value().GetString();
 
   if (prev.GetType() != Scanner::TokenType::Identifier && Check(Scanner::TokenType::LeftParen, compiler)) {
     MessageAtCurrent("'(' only allowed after functions and classes", LogLevel::Error, compiler);
@@ -2468,7 +2468,7 @@ static void FreeFunctionCall(const Scanner::Token& funcNameToken, CompilerContex
   compiler.namespaceQualifierUsed = true;
 
   static std::hash<std::string> hasher;
-  auto funcNameText = std::string(funcNameToken.GetText());
+  auto funcNameText = funcNameToken.GetString();
   auto hash = static_cast<std::int64_t>(hasher(funcNameText));
   auto nativeCall = funcNameText.starts_with("__");
   std::size_t nativeIndex{};
@@ -2650,6 +2650,16 @@ static void InstanceOf(CompilerContext& compiler)
       break;
     case Scanner::TokenType::DictIdent:
       EmitConstant(std::int64_t(7));
+      break;
+    case Scanner::TokenType::ExceptionIdent:
+      EmitConstant(std::int64_t(8));
+      break;
+    case Scanner::TokenType::KeyValuePairIdent:
+      EmitConstant(std::int64_t(9));
+      break;
+    case Scanner::TokenType::Identifier:
+      EmitConstant(std::int64_t(10));
+      EmitConstant(compiler.current.value().GetString());
       break;
     default:
       MessageAtCurrent("Expected type as second argument for `instanceof`", LogLevel::Error, compiler);
@@ -2893,15 +2903,15 @@ static void Typename(CompilerContext& compiler)
 
 static void MessageAtCurrent(const std::string& message, LogLevel level, CompilerContext& compiler)
 {
-  Message(compiler.current, message, level, compiler);
+  Message(compiler.current.value(), message, level, compiler);
 }
 
 static void MessageAtPrevious(const std::string& message, LogLevel level, CompilerContext& compiler)
 {
-  Message(compiler.previous, message, level, compiler);
+  Message(compiler.previous.value(), message, level, compiler);
 }
 
-static void Message(const std::optional<Scanner::Token>& token, const std::string& message, LogLevel level, CompilerContext& compiler)
+static void Message(const Scanner::Token& token, const std::string& message, LogLevel level, CompilerContext& compiler)
 {
   if (level == LogLevel::Error || s_WarningsError) {
     if (compiler.panicMode) return;
@@ -2911,27 +2921,27 @@ static void Message(const std::optional<Scanner::Token>& token, const std::strin
   auto colour = fmt::fg(level == LogLevel::Error ? fmt::color::red : fmt::color::orange);
   fmt::print(stderr, colour | fmt::emphasis::bold, level == LogLevel::Error ? "ERROR: " : "WARNING: ");
   
-  auto type = token.value().GetType();
+  auto type = token.GetType();
   switch (type) {
     case Scanner::TokenType::EndOfFile:
       fmt::print(stderr, "at end: ");
       fmt::print(stderr, "{}\n", message);
       break;
     case Scanner::TokenType::Error:
-      fmt::print(stderr, "{}\n", token.value().GetErrorMessage());
+      fmt::print(stderr, "{}\n", token.GetErrorMessage());
       break;
     default:
-      fmt::print(stderr, "at '{}': ", token.value().GetText());
+      fmt::print(stderr, "at '{}': ", token.GetText());
       fmt::print(stderr, "{}\n", message);
       break;
   }
 
-  auto lineNo = static_cast<int>(token.value().GetLine());
-  auto column = token.value().GetColumn() - token.value().GetLength();  // need the START of the token
+  auto lineNo = static_cast<int>(token.GetLine());
+  auto column = token.GetColumn() - token.GetLength();  // need the START of the token
   fmt::print(stderr, "       --> {}:{}:{}\n", compiler.currentFileName, lineNo, column + 1); 
   fmt::print(stderr, "        |\n");
 
-  if (lineNo > 0) {
+  if (lineNo > 1) {
     fmt::print(stderr, "{:>7} | {}\n", lineNo - 1, Scanner::GetCodeAtLine(compiler.currentFileName, lineNo - 1));
   }
 
@@ -2940,7 +2950,7 @@ static void Message(const std::optional<Scanner::Token>& token, const std::strin
   for (std::size_t i = 0; i < column; i++) {
     fmt::print(stderr, " ");
   }
-  for (std::size_t i = 0; i < token.value().GetLength(); i++) {
+  for (std::size_t i = 0; i < token.GetLength(); i++) {
     fmt::print(stderr, colour, "^");
   }
 

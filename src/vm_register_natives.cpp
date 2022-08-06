@@ -45,6 +45,9 @@ static Value DictionaryGet(std::vector<Value>& args);
 static Value DictionaryContainsKey(std::vector<Value>& args);
 static Value DictionaryRemove(std::vector<Value>& args);
 
+static Value KeyValuePairKey(std::vector<Value>& args);
+static Value KeyValuePairValue(std::vector<Value>& args);
+
 static Value FileWrite(std::vector<Value>& args);
 
 static Value FlushStdout(GRACE_MAYBE_UNUSED std::vector<Value>& args);
@@ -83,6 +86,9 @@ void VM::RegisterNatives()
   m_NativeFunctions.emplace_back("__NATIVE_DICTIONARY_GET", 2, &DictionaryGet);
   m_NativeFunctions.emplace_back("__NATIVE_DICTIONARY_CONTAINS_KEY", 2, &DictionaryContainsKey);
   m_NativeFunctions.emplace_back("__NATIVE_DICTIONARY_REMOVE", 2, &DictionaryRemove);
+
+  m_NativeFunctions.emplace_back("__NATIVE_KEYVALUEPAIR_KEY", 1, &KeyValuePairKey);
+  m_NativeFunctions.emplace_back("__NATIVE_KEYVALUEPAIR_VALUE", 1, &KeyValuePairValue);
 
   // File functions
   m_NativeFunctions.emplace_back("__NATIVE_FILE_WRITE", 2, &FileWrite);
@@ -193,6 +199,18 @@ static Value DictionaryRemove(std::vector<Value>& args)
 {
   auto dict = dynamic_cast<Grace::GraceDictionary*>(args[0].GetObject());
   return Value(dict->Remove(args[1]));
+}
+
+static Value KeyValuePairKey(std::vector<Value>& args)
+{
+  auto kvp = dynamic_cast<Grace::GraceKeyValuePair*>(args[0].GetObject());
+  return kvp->Key();
+}
+
+static Value KeyValuePairValue(std::vector<Value>& args)
+{
+  auto kvp = dynamic_cast<Grace::GraceKeyValuePair*>(args[0].GetObject());
+  return kvp->Value();
 }
 
 static Value FileWrite(std::vector<Value>& args)
