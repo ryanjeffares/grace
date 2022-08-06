@@ -213,6 +213,8 @@ namespace Grace::VM
       }                                                                                                 \
     } while (false)                                                                                     \
 
+    auto interpretResult = InterpretResult::RuntimeOk;
+
     auto funcNameHash = static_cast<std::int64_t>(m_Hasher("main"));
     std::vector<Value> valueStack, localsList;
     valueStack.reserve(16);
@@ -671,12 +673,15 @@ namespace Grace::VM
 
             auto twoIterators = m_FullConstantList[constantCurrent++].Get<bool>();
             auto iteratorId = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+
             if (auto list = dynamic_cast<GraceList*>(object)) {
               auto listIterator = Value::CreateObject<GraceIterator>(list, GraceIterator::IterableType::List);
               heldIteratorIndexes.push(valueStack.size());
               valueStack.push_back(listIterator);
+              
               auto listIteratorObject = dynamic_cast<GraceIterator*>(listIterator.GetObject());
               localsList[iteratorId + localsOffsets.top()] = listIteratorObject->IsAtEnd() ? Value() : listIteratorObject->Value();
+            
               if (twoIterators) {
                 auto secondIteratorId = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
                 localsList[secondIteratorId + localsOffsets.top()] = std::int64_t(0);
@@ -687,7 +692,9 @@ namespace Grace::VM
               auto dictIterator = Value::CreateObject<GraceIterator>(dict, GraceIterator::IterableType::Dictionary);
               heldIteratorIndexes.push(valueStack.size());
               valueStack.push_back(dictIterator);
+              
               auto dictIteratorObject = dynamic_cast<GraceIterator*>(dictIterator.GetObject());
+              
               if (twoIterators) {
                 auto secondIteratorId = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
                 if (dictIteratorObject->IsAtEnd()) {
@@ -703,6 +710,7 @@ namespace Grace::VM
                 constantCurrent++;
               }
             } else {
+              // unreachable (?) due to IsIterable() check
               GRACE_ASSERT(false, "Object did not dynamic_cast to a valid iterable type");
             }
             break;
@@ -1074,12 +1082,8 @@ namespace Grace::VM
         } else {
           // exception unhandled, report the error and quit
           RuntimeError(ge, line, callStack);
-#ifdef GRACE_DEBUG
-          PRINT_LOCAL_MEMORY();
-#endif
-          valueStack.clear();
-          localsList.clear();
-          return InterpretResult::RuntimeError;
+          interpretResult = InterpretResult::RuntimeError;
+          break;
         }
       }
     }
@@ -1095,7 +1099,7 @@ namespace Grace::VM
 
     ObjectTracker::Finalise();
 
-    return InterpretResult::RuntimeOk;
+    return interpretResult;
 
 #undef PRINT_LOCAL_MEMORY
   }

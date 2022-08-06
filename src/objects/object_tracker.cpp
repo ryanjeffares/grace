@@ -156,10 +156,12 @@ static void CleanCyclesInternal()
   // var object = Object();
   // var dict = {};
   // dict.insert(dict, object);
+  // object.member = dict;
   // ```
   // 
   // in this nightmare situation (which is code you should never write, but is technically allowed)
   // the dict's reference is coming from a KeyValuePair, which the dict itself is giving a ref to
+  // but the KeyValuePair is giving a ref to the Object instance which is giving a ref to the dict
   // 
   // any object in the vector can be treated as a "root" in our "graph" of objects
   // if that root has a single ref, and traversing the graph can lead back itself, it can be deleted
@@ -190,6 +192,7 @@ static void CleanCyclesInternal()
     for (std::size_t j = 0; j < members.size(); j++) {
       auto member = members[j];
 
+      // create another temporary ref to these objects so they don't start invoking destructors
       VM::Value tempObj(object), tempMember(member);
         
       objectsToBeDeleted.erase(objectsToBeDeleted.begin() + i);
@@ -201,11 +204,14 @@ static void CleanCyclesInternal()
 
       members.erase(members.begin() + j);
 
+      // remove the objects as eachother's members to get rid of those refs
       object->RemoveMember(member);
 
       if (object != member) {
         member->RemoveMember(object);
       }
+
+      // now when the Values above go out of scope, the objects are safely deleted
     }
   }
 

@@ -93,10 +93,17 @@ struct CompilerContext
   IndexStack breakIdxPairs, continueIdxPairs;
 };
 
+// If the compiler's current token matches the given type, consume it and advance
+// Otherwise return false and do nothing
 GRACE_NODISCARD static bool Match(Scanner::TokenType expected, CompilerContext& compiler);
+
+// Checks if the compiler#s current token matches the given type without consuming it
 GRACE_NODISCARD static bool Check(Scanner::TokenType expected, CompilerContext& compiler);
 
+// Consumes the compiler's current token if it matches the given type, otherwise reports an error with the given message
 static void Consume(Scanner::TokenType expected, const std::string& message, CompilerContext& compiler);
+
+// Advances the compiler until it meets the start of a new declaration to avoid error spam after one is detected
 static void Synchronize(CompilerContext& compiler);
 
 GRACE_INLINE static void EmitOp(VM::Ops op, std::size_t line)
@@ -110,8 +117,10 @@ GRACE_INLINE static void EmitConstant(const T& value)
   VM::VM::PushConstant(value);
 }
 
+// Advance to the next token
 static void Advance(CompilerContext& compiler);
 
+// All of the following functions parse the grammar of the language in a recursive descent pattern
 static void Declaration(CompilerContext& compiler);
 static void ImportDeclaration(CompilerContext& compiler);
 static void ClassDeclaration(CompilerContext& compiler);
@@ -294,7 +303,7 @@ static void Synchronize(CompilerContext& compiler)
       return;
     }
 
-    // go until we find a keyword that should start a line
+    // go until we find the start of a new declaration
     switch (compiler.current.value().GetType()) {
       case Scanner::TokenType::Class:
       case Scanner::TokenType::Constructor:
@@ -525,6 +534,7 @@ static void ImportDeclaration(CompilerContext& compiler)
     std::string stdPath;
 
 #ifdef GRACE_MSC
+    // windows warns about std::getenv() with /W4 so do all this nonsense
     std::size_t size;
     getenv_s(&size, NULL, 0, "GRACE_STD_PATH");
     if (size == 0) {
@@ -613,8 +623,9 @@ static void ClassDeclaration(CompilerContext& compiler)
       return;
     }
 
-
     if (Match(Scanner::TokenType::Var, compiler)) {
+      // member variable
+
       if (hasDefinedConstructor) {
         MessageAtPrevious("Member variable declarations can only come before the constructor", LogLevel::Error, compiler);
         return;
@@ -647,12 +658,14 @@ static void ClassDeclaration(CompilerContext& compiler)
         return;
       }
       
-
       Consume(Scanner::TokenType::Semicolon, "Expected ';'", compiler);
     } else if (Match(Scanner::TokenType::Constructor, compiler)) {
+      // class constructor
+
       compiler.codeContextStack.push_back(CodeContext::Constructor);
       hasDefinedConstructor = true;
       Consume(Scanner::TokenType::LeftParen, "Expected '(' after `constructor`", compiler);
+
       // we will treat the constructor as a function in the VM with the name of the class name that returns the instance
       std::vector<std::string> parameters;
       while (!Match(Scanner::TokenType::RightParen, compiler)) {
@@ -749,6 +762,7 @@ static void ClassDeclaration(CompilerContext& compiler)
     }
 
     for (std::size_t i = 0; i < classMembers.size(); i++) {
+      // and declare the class' members as locals in this function that will be used by the VM to assign to the instance
       EmitOp(VM::Ops::DeclareLocal, compiler.previous.value().GetLine());
       auto localId = static_cast<std::int64_t>(compiler.locals.size());
       auto memberName = classMembers[i];
@@ -917,7 +931,9 @@ static void FuncDeclaration(CompilerContext& compiler)
 
   // cl args are still assigned in the VM if the user doesn't state it
   // so the compiler needs to be aware of that
-  // but don't use up the name "args" which would be used as standard...
+  // but don't use up the name "args"
+  // by giving it a __ prefix here we can stop the user from double declaring
+  // since identifiers starting with __ aren't allowed
   if (isMainFunction && parameters.size() == 0) {
     compiler.locals.emplace_back("__ARGS", true, false, 0);
   }
@@ -1011,6 +1027,7 @@ static void VarDeclaration(CompilerContext& compiler)
     EmitConstant(localId);
     EmitOp(VM::Ops::AssignLocal, line);
   }
+
   Consume(Scanner::TokenType::Semicolon, "Expected ';' after `var` declaration", compiler);
 }
 
@@ -1103,6 +1120,10 @@ static std::size_t GetEditDistance(const std::string& first, const std::string& 
   return matrix[l1][l2];
 }
 
+// used to give helpful diagnostics if the user tries to use a variable that doesn't exist
+// TODO: figure out what kind of range this thing produces and emit suggestions below a certain value
+// since right now if you only have 1 variable called "zebra" and you try and call on the value of "pancakes"
+// the compiler will eagerly ask you if you meant "zebra"
 static std::optional<std::string> FindMostSimilarVarName(const std::string& varName, const std::vector<Local>& localList)
 {
   std::optional<std::string> res = std::nullopt;
@@ -1122,12 +1143,14 @@ static std::optional<std::string> FindMostSimilarVarName(const std::string& varN
 
 static void Expression(bool canAssign, CompilerContext& compiler)
 {
+  // can't start an expression with an operator...
   if (IsOperator(compiler.current.value().GetType())) {
     MessageAtCurrent("Expected identifier or literal at start of expression", LogLevel::Error, compiler);
     Advance(compiler);
     return;
   }
 
+  // ... or a keyword
   std::string kw;
   if (IsKeyword(compiler.current.value().GetType(), kw)) {
     MessageAtCurrent(fmt::format("'{}' is a keyword and not valid in this context", kw), LogLevel::Error, compiler);
@@ -1135,8 +1158,10 @@ static void Expression(bool canAssign, CompilerContext& compiler)
     return;
   }
 
+  // only identifiers or literals
   if (Check(Scanner::TokenType::Identifier, compiler)) {
     Call(canAssign, compiler);
+
     if (Check(Scanner::TokenType::Equal, compiler)) {  
       if (compiler.previous.value().GetType() != Scanner::TokenType::Identifier) {
         MessageAtCurrent("Only identifiers can be assigned to", LogLevel::Error, compiler);
@@ -1168,12 +1193,12 @@ static void Expression(bool canAssign, CompilerContext& compiler)
         }
       }
 
-      Advance(compiler);  // consume the equals
-
       if (!canAssign) {
         MessageAtCurrent("Assignment is not valid in the current context", LogLevel::Error, compiler);
         return;
       }
+
+      Advance(compiler);  // consume the equals
 
       auto prevUsing = compiler.usingExpressionResult;
       compiler.usingExpressionResult = true;
@@ -1183,6 +1208,7 @@ static void Expression(bool canAssign, CompilerContext& compiler)
       EmitConstant(it->index);
       EmitOp(VM::Ops::AssignLocal, compiler.previous.value().GetLine());
     } else {
+      // not an assignment, so just keep parsing this expression
       bool shouldBreak = false;
       while (!shouldBreak) {
         switch (compiler.current.value().GetType()) {
@@ -1237,11 +1263,10 @@ static void Expression(bool canAssign, CompilerContext& compiler)
           case Scanner::TokenType::By:
             shouldBreak = true;
             break;
-          case Scanner::TokenType::Dot: {
+          case Scanner::TokenType::Dot:
             Advance(compiler);  // consume the .
             Dot(canAssign, compiler);
             break;
-          }
           default:
             MessageAtCurrent("Invalid token found in expression", LogLevel::Error, compiler);
             Advance(compiler);
@@ -1250,6 +1275,7 @@ static void Expression(bool canAssign, CompilerContext& compiler)
       }
     }
   } else {
+    // this expression started with a value literal, so start the recursive descent
     Or(canAssign, false, compiler);
   }
 }
@@ -1352,6 +1378,8 @@ static void BreakStatement(CompilerContext& compiler)
   auto opIdx = VM::VM::GetNumConstants();
   EmitConstant(std::int64_t{});
   EmitOp(VM::Ops::Jump, compiler.previous.value().GetLine());
+
+  // we will patch in these indexes when the containing loop finishes
   compiler.breakIdxPairs.top().push_back(std::make_pair(constIdx, opIdx));
   Consume(Scanner::TokenType::Semicolon, "Expected ';' after `break`", compiler);
 }
@@ -1376,6 +1404,8 @@ static void ContinueStatement(CompilerContext& compiler)
   auto opIdx = VM::VM::GetNumConstants();
   EmitConstant(std::int64_t{});
   EmitOp(VM::Ops::Jump, compiler.previous.value().GetLine());
+
+  // we will patch in these indexes when the containing loop finishes
   compiler.continueIdxPairs.top().push_back(std::make_pair(constIdx, opIdx));
   Consume(Scanner::TokenType::Semicolon, "Expected ';' after `break`", compiler);
 }
@@ -1591,13 +1621,13 @@ static void ForStatement(CompilerContext& compiler)
     }
   }
   
+  VM::VM::SetConstantAtIndex(endJumpConstantIndex, static_cast<std::int64_t>(VM::VM::GetNumConstants()));
+  VM::VM::SetConstantAtIndex(endJumpOpIndex, static_cast<std::int64_t>(VM::VM::GetNumOps()));
+  
+  // get rid of any variables made within the loop scope
   while (compiler.locals.size() != static_cast<std::size_t>(numLocalsStart)) {
     compiler.locals.pop_back();
   }
-
-  VM::VM::SetConstantAtIndex(endJumpConstantIndex, static_cast<std::int64_t>(VM::VM::GetNumConstants()));
-  VM::VM::SetConstantAtIndex(endJumpOpIndex, static_cast<std::int64_t>(VM::VM::GetNumOps()));
-
 
   if (twoIterators) {
     if (secondIteratorNeedsPop) {
