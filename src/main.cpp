@@ -11,12 +11,8 @@
 
 #include <filesystem>
 #include <fstream>
-#include <iostream>
 #include <sstream>
 #include <vector>
-
-#include <dynload.h>
-#include <dyncall.h>
 
 #include <fmt/core.h>
 #include <fmt/color.h>
@@ -42,45 +38,8 @@ static void Usage()
   fmt::print("  -we, --warnings-error         Show compiler warnings, warnings result in errors\n");
 }
 
-void TestLibrary()
-{
-  DLLib* lib = dlLoadLibrary("../../libs/grace_test/libGraceTest.so");
-  if (lib == NULL) {
-    std::cout << "Failed to load library" << std::endl;
-    return;
-  }
-
-  void* sayHello = dlFindSymbol(lib, "SayHello");
-  if (sayHello == nullptr) {
-    std::cout << "Failed to load symbol" << std::endl;
-    dlFreeLibrary(lib);
-    return;
-  }
-
-  DCCallVM* vm = dcNewCallVM(4096);
-  dcMode(vm, DC_CALL_C_DEFAULT);
-
-  dcReset(vm);
-  dcCallVoid(vm, sayHello);
-
-  void* printString = dlFindSymbol(lib, "PrintString");
-  dcReset(vm);
-  dcArgPointer(vm, (DCpointer)"this is a string");
-  dcCallVoid(vm, printString);
-
-  void* sqrtFunc = dlFindSymbol(lib, "Sqrt");
-  dcReset(vm);
-  dcArgDouble(vm, 10.0);
-  auto res = dcCallDouble(vm, sqrtFunc);
-  std::cout << res << std::endl;
-
-  dlFreeLibrary(lib);
-}
-
 int main(int argc, const char* argv[])
 {
-  TestLibrary();
-
   if (argc < 2) {
     Usage();
     return 1;
