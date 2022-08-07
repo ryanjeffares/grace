@@ -19,8 +19,15 @@ add_executable(grace
   src/objects/object_tracker.cpp
 )
 
-target_include_directories(grace PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/deps/fmt/include)
+target_include_directories(grace 
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/deps/fmt/include
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/deps/dyncall/dyncall
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/deps/dyncall/dyncallback
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/deps/dyncall/dynload
+)
+
 target_compile_definitions(grace PRIVATE FMT_HEADER_ONLY)
+
 set_target_properties(grace PROPERTIES
   CXX_STANDARD 20
   RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BUILD_TYPE}
@@ -35,10 +42,12 @@ endif()
 if(MSVC)
   target_compile_definitions(grace PRIVATE GRACE_MSC)
   target_compile_options(grace PRIVATE /W4 /WX /external:W0 /external:templates-)
+  target_link_libraries(grace
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/libs/win_x64/dyncall_s.lib    
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/libs/win_x64/dynload_s.lib
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/libs/win_x64/dyncallback_s.lib
+  )
 else()
   target_compile_options(grace PRIVATE -Wall -Wextra -Wpedantic -Werror)
   target_link_libraries(grace pthread)
 endif()
-
-install(TARGETS grace DESTINATION bin)
-install(DIRECTORY std DESTINATION std)
