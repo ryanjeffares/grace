@@ -49,5 +49,14 @@ if(MSVC)
   )
 else()
   target_compile_options(grace PRIVATE -Wall -Wextra -Wpedantic -Werror)
-  target_link_libraries(grace pthread)
+  
+  if(NOT APPLE)
+    target_link_libraries(grace 
+      PRIVATE pthread
+      PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/libs/linux_x64/libdyncall_s.a
+      PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/libs/linux_x64/libdyncallback_s.a
+      PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/libs/linux_x64/libdynload_s.a
+      PRIVATE ${CMAKE_DL_LIBS} 
+    )
+  endif()
 endif()

@@ -44,17 +44,17 @@ static void Usage()
 
 void TestLibrary()
 {
-  DLLib* lib = dlLoadLibrary("../../libs/grace_test/libGraceTest.so");
+  DLLib* lib = dlLoadLibrary("C:/Users/ryand/Dev/CPP/GraceDLLTest/x64/Release/GraceDLLTest.dll");
   if (lib == NULL) {
-    std::cout << "Failed to load library" << std::endl;
-    return;
+	std::cout << "Failed to load library" << std::endl;
+	return 1;
   }
 
   void* sayHello = dlFindSymbol(lib, "SayHello");
   if (sayHello == nullptr) {
-    std::cout << "Failed to load symbol" << std::endl;
-    dlFreeLibrary(lib);
-    return;
+	std::cout << "Failed to load symbol" << std::endl;
+	dlFreeLibrary(lib);
+	return 1;
   }
 
   DCCallVM* vm = dcNewCallVM(4096);
@@ -79,8 +79,6 @@ void TestLibrary()
 
 int main(int argc, const char* argv[])
 {
-  TestLibrary();
-
   if (argc < 2) {
     Usage();
     return 1;

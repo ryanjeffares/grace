@@ -2768,6 +2768,9 @@ static void Cast(CompilerContext& compiler)
       EmitOp(VM::Ops::Cast, compiler.current.value().GetLine());
       break;
     }
+    default:
+      GRACE_UNREACHABLE();
+      break;
   }
   
   Consume(Scanner::TokenType::RightParen, "Expected ')' after expression", compiler);
