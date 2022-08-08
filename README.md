@@ -42,7 +42,7 @@ python3 build.py <Release/Debug/All>
 
 This will build the `grace` executable, which you can add to your path or move somewhere that is on your path. Full installation process as well as documentation is WIP.
 
-**NOTE**: On Mac, sometimes the first build attempt will fail on `No rule to make target 'dyncall_build/dyncall/libdyncall_s.a'`. Running the build script a second time will fix this.
+**NOTE**: On Mac and Linux, sometimes the first build attempt will fail on `No rule to make target 'dyncall_build/dyncall/libdyncall_s.a'`. Running the build script a second time will fix this.
 
 ## Alpha Release Roadmap
 * Why does examples/euler/problem03.gr use so much memory?
