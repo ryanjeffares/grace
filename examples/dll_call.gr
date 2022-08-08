@@ -1,8 +1,17 @@
+import std::system;
 import std::interop;
 
 func main():
 
-  final lib_path = "../../CPP/GraceDLLTest/x64/Release/GraceDLLTest.dll";
+  var lib_path: String;
+  if std::system::platform() == "Linux":
+    lib_path = "../../libs/grace_test/libGraceTest.so";
+  else if std::system::platform() == "macOS":
+    lib_path = "../../Libs/grace_test/libGraceTest.dylib";
+  else:
+    lib_path = "../../CPP/GraceDLLTest/x64/Release/GraceDLLTest.dll";
+  end
+
   final handle = std::interop::LibraryHandle(lib_path, 4096);
 
   var args = [];

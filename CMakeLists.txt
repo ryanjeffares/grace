@@ -52,9 +52,9 @@ else()
   target_compile_options(grace PRIVATE -Wall -Wextra -Wpedantic -Werror)
   target_link_libraries(grace 
     PRIVATE pthread
-    PRIVATE dyncall_build/dyncall/${CMAKE_BUILD_TYPE}/dyncall_s
-    PRIVATE dyncall_build/dynload/${CMAKE_BUILD_TYPE}/dynload_s
-    PRIVATE dyncall_build/dyncallback/${CMAKE_BUILD_TYPE}/dyncallback_s
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/build/dyncall_build/dyncall/libdyncall_s.a
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/build/dyncall_build/dynload/libdynload_s.a
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/build/dyncall_build/dyncallback/libdyncallback_s.a
     PRIVATE ${CMAKE_DL_LIBS} 
   )  
 endif()
