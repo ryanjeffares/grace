@@ -51,8 +51,14 @@ This will build the `grace` executable, which you can add to your path or move s
     * Can be enabled via preprocessor, but runs so slowly on M1. Can provide as a command line option, maybe try doing it in a way that doesn't require locking mutexes in the GraceObject instances
   * Expose options in Grace
 * Lambdas 
-* Global const fields 
+* Global const fields
+  * Improve error reporting
+* Allow importing files that require going higher up the folder tree
+* Recursive imports are broken
 * Expand standard library
+* Dynamic library loading
+  * This is in, but need to handle pointer types for things that aren't strings
+* Ability to get relative path from a Grace file
 * Default function parameter values
 * Install process 
 * Tests 

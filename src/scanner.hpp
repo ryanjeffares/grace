@@ -85,6 +85,7 @@ namespace Grace::Scanner
     By,
     Catch,
     Class,
+    Const,
     Constructor,
     Continue,
     Else,
@@ -208,6 +209,7 @@ struct fmt::formatter<Grace::Scanner::TokenType> : fmt::formatter<std::string_vi
       case TokenType::By: name = "TokenType::By"; break;
       case TokenType::Catch: name = "TokenType::Catch"; break;
       case TokenType::Class: name = "TokenType::Class"; break;
+      case TokenType::Const: name = "TokenType::Const"; break;
       case TokenType::Constructor: name = "TokenType::Constructor"; break;
       case TokenType::Continue: name = "TokenType::Continue"; break;
       case TokenType::End: name = "TokenType::End"; break;

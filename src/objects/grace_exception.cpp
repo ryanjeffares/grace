@@ -30,6 +30,7 @@ namespace Grace
 	{GraceException::Type::InvalidOperand, "Invalid operand"},
 	{GraceException::Type::InvalidType, "Invalid type"},
 	{GraceException::Type::KeyNotFound, "Key not found"},
+	{GraceException::Type::LibraryLoadFailure, "Library load failure"},
 	{GraceException::Type::MemberNotFound, "Member not found"},
 	{GraceException::Type::NamespaceNotFound, "Namespace not found"},
 	{GraceException::Type::ThrownException, "Thrown exception"},

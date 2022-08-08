@@ -140,6 +140,11 @@ namespace Grace::VM
         m_FunctionLookup.at(m_LastFileNameHash).at(m_LastFunctionHash)->constantList.emplace_back(value);
       }
 
+      GRACE_INLINE static void PushConstant(const Value& value)
+      {
+        m_FunctionLookup.at(m_LastFileNameHash).at(m_LastFunctionHash)->constantList.push_back(value);
+      }
+
       GRACE_NODISCARD GRACE_INLINE static std::size_t GetNumConstants()
       {
         return m_FunctionLookup.at(m_LastFileNameHash).at(m_LastFunctionHash)->constantList.size();

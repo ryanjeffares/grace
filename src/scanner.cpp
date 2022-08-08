@@ -15,6 +15,7 @@
 #include <utility>
 
 #include "scanner.hpp"
+#include "value.hpp"
 
 namespace Grace::Scanner
 {
@@ -47,6 +48,7 @@ namespace Grace::Scanner
     {"by", TokenType::By},
     {"class", TokenType::Class},
     {"catch", TokenType::Catch},
+    {"const", TokenType::Const},
     {"constructor", TokenType::Constructor},
     {"continue", TokenType::Continue},
     {"end", TokenType::End},
