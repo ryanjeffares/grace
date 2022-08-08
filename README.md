@@ -52,12 +52,15 @@ This will build the `grace` executable, which you can add to your path or move s
   * Expose options in Grace
 * Lambdas 
 * Global const fields
+  * Allow expressions containing literals and other constants
   * Improve error reporting
 * Allow importing files that require going higher up the folder tree
 * Recursive imports are broken
 * Expand standard library
 * Dynamic library loading
   * This is in, but need to handle pointer types for things that aren't strings
+  * And also pointer return types for strings and others...
+  * Build and link to dyncall properly
 * Ability to get relative path from a Grace file
 * Default function parameter values
 * Install process 
