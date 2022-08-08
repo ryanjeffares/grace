@@ -2,7 +2,7 @@ import std::interop;
 
 func main():
 
-  final lib_path = "../../libs/grace_test/libGraceTest.so";
+  final lib_path = "../../CPP/GraceDLLTest/x64/Release/GraceDLLTest.dll";
   final handle = std::interop::LibraryHandle(lib_path, 4096);
 
   var args = [];

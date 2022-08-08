@@ -3,6 +3,7 @@ project(grace)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+add_subdirectory(deps/dyncall dyncall_build)
 add_executable(grace 
   src/main.cpp
   src/compiler.cpp
@@ -43,23 +44,17 @@ if(MSVC)
   target_compile_definitions(grace PRIVATE GRACE_MSC)
   target_compile_options(grace PRIVATE /W4 /WX /external:W0 /external:templates-)
   target_link_libraries(grace
-    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/libs/Win-x64/dyncall_s.lib    
-    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/libs/Win-x64/dynload_s.lib
-    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/libs/Win-x64/dyncallback_s.lib
+    PRIVATE dyncall_build/dyncall/${CMAKE_BUILD_TYPE}/dyncall_s
+    PRIVATE dyncall_build/dynload/${CMAKE_BUILD_TYPE}/dynload_s
+    PRIVATE dyncall_build/dyncallback/${CMAKE_BUILD_TYPE}/dyncallback_s
   )
 else()  
-
   target_compile_options(grace PRIVATE -Wall -Wextra -Wpedantic -Werror)
-  
-  # horrible hack
-  EXECUTE_PROCESS(COMMAND uname COMMAND tr -d '\n' OUTPUT_VARIABLE OS_NAME)
-  EXECUTE_PROCESS(COMMAND uname -m COMMAND tr -d '\n' OUTPUT_VARIABLE ARCHITECTURE)
-
   target_link_libraries(grace 
     PRIVATE pthread
-    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/libs/${OS_NAME}-${ARCHITECTURE}/libdyncall_s.a
-    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/libs/${OS_NAME}-${ARCHITECTURE}/libdyncallback_s.a
-    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/libs/${OS_NAME}-${ARCHITECTURE}/libdynload_s.a
+    PRIVATE dyncall_build/dyncall/${CMAKE_BUILD_TYPE}/dyncall_s
+    PRIVATE dyncall_build/dynload/${CMAKE_BUILD_TYPE}/dynload_s
+    PRIVATE dyncall_build/dyncallback/${CMAKE_BUILD_TYPE}/dyncallback_s
     PRIVATE ${CMAKE_DL_LIBS} 
   )  
 endif()
