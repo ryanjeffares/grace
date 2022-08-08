@@ -352,7 +352,7 @@ static Value InteropDoCall(std::vector<Value>& args)
   dcMode(vm, DC_CALL_C_DEFAULT);
   dcReset(vm);
 
-  std::vector<void*> argsToDelete;
+  std::vector<char*> argsToDelete;
 
   for (auto it = argList->Begin(); it != argList->End(); it++) {
     auto pair = dynamic_cast<Grace::GraceKeyValuePair*>(it->GetObject());
@@ -391,7 +391,7 @@ static Value InteropDoCall(std::vector<Value>& args)
         auto charArray = new char[str.size() + 1];  // + 1 for null terminated char
         std::memcpy(charArray, str.data(), str.size());
         charArray[str.size()] = '\0';
-        argsToDelete.push_back((void*)charArray);
+        argsToDelete.push_back(charArray);
         dcArgPointer(vm, charArray);
         break;
       }
