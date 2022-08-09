@@ -440,7 +440,7 @@ static Value DirectoryCreate(std::vector<Value>& args)
 
 static Value InteropLoadLibrary(std::vector<Value>& args)
 {
-  if (args[0].GetType() == Value::Type::String) {
+  if (args[0].GetType() != Value::Type::String) {
     throw Grace::GraceException(
       Grace::GraceException::Type::InvalidType,
       fmt::format("Expected `String` for `std::interop::load_library(library_path)` but got `{}`", args[0].GetTypeName())
