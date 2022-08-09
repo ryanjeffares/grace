@@ -19,42 +19,26 @@ const export CDECL_CALL_DOUBLE      = 7;
 const export CDECL_CALL_POINTER     = 8;
 const export CDECL_CALL_VOID        = 9;
 
+func load_library(library_path: String) :: Int:
+  return __NATIVE_INTEROP_LOAD_LIBRARY(library_path);
+end
+
 class export LibraryHandle:
   var library_name: String;
   var lib_address: Int;
   var stack_size: Int;
 
   constructor(lib_name: String, stack_sz: Int):
-    if !instanceof(lib_name, String):
-      throw("Expected `String` for `lib_name` in `std::interop::LibraryHandle(lib_name, stack_sz)` but got `" + typename(lib_name) + '`');
-    end
-
     if !instanceof(stack_sz, Int):
       throw("Expected `String` for `stack_sz` in `std::interop::LibraryHandle(lib_name, stack_sz)` but got `" + typename(stack_sz) + '`');
     end
 
     library_name = lib_name;
-    lib_address = __NATIVE_INTEROP_LOAD_LIBRARY(lib_name);
+    lib_address = load_library(lib_name);
   end
 end
 
 func export do_call(this LibraryHandle handle, func_name: String, args: List, call_type: Int):
-  if !instanceof(handle, LibraryHandle):
-    throw("Expected `LibraryHandle` for `handle` in `std::interop::do_call(handle, func_name, args, call_type)` but got `" + typename(handle) + '`');
-  end
-
-  if !instanceof(func_name, String):
-    throw("Expected `String` for `func_name` in `std::interop::do_call(handle, func_name, args, call_type)` but got `" + typename(func_name) + '`');
-  end
-
-  if !instanceof(args, List):
-    throw("Expected `List` for `args` in `std::interop::do_call(handle, func_name, args, call_type)` but got `" + typename(args) + '`');
-  end
-
-  if !instanceof(call_type, Int):
-    throw("Expected `List` for `call_type` in `std::interop::do_call(handle, func_name, args, call_type)` but got `" + typename(call_type) + '`');
-  end
-
   return __NATIVE_INTEROP_DO_CALL(handle, func_name, args, call_type);
 end
 

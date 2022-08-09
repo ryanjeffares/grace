@@ -63,7 +63,6 @@ This will build the `grace` executable, which you can add to your path or move s
   * This is in, but need to handle pointer types for things that aren't strings
   * And also pointer return types for strings and others...
   * Build and link to dyncall properly
-* Consider doing type checking in C++ for native functions to make them faster
 * Ability to get relative path from a Grace file
 * Default function parameter values
 * Install process 

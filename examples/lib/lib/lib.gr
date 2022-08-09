@@ -1,6 +1,3 @@
-import std::math;
-
 func export say_hello_two():
   println("hello 2");
-
 end
