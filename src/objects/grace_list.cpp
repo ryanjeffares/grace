@@ -32,7 +32,7 @@ namespace Grace
       for (const auto c : value.Get<std::string>()) {
         m_Data.emplace_back(c);
       }
-    } else if (auto dict = dynamic_cast<GraceDictionary*>(value.GetObject())) {
+    } else if (auto dict = value.GetObject()->GetAsDictionary()) {
       m_Data = dict->ToVector();
     } else {
       m_Data.push_back(value);

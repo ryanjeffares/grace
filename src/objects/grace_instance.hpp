@@ -63,6 +63,11 @@ namespace Grace
 	  return GraceObjectType::Instance;
 	}
 
+	GRACE_NODISCARD GRACE_INLINE GraceInstance* GetAsInstance() override
+	{
+	  return this;
+	}
+
 	void AssignMember(const std::string& memberName, VM::Value&& value);
 	GRACE_NODISCARD const VM::Value& LoadMember(const std::string& memberName);
 

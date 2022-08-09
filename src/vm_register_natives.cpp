@@ -165,61 +165,62 @@ static Value Sleep(std::vector<Value>& args)
 
 static Value ListAppend(std::vector<Value>& args)
 {
-  dynamic_cast<Grace::GraceList*>(args[0].GetObject())->Append(std::move(args[1]));
+  args[0].GetObject()->GetAsList()->Append(std::move(args[1]));
   return Value();
 }
 
 static Value ListSetAtIndex(std::vector<Value>& args)
 {
-  auto l = dynamic_cast<Grace::GraceList*>(args[0].GetObject());
+  auto l = args[0].GetObject()->GetAsList();
   (*l)[args[1].Get<std::int64_t>()] = std::move(args[2]);
   return Value();
 }
 
 static Value ListGetAtIndex(std::vector<Value>& args)
 {
-  return (*dynamic_cast<Grace::GraceList*>(args[0].GetObject()))[args[1].Get<std::int64_t>()];
+  auto l = args[0].GetObject()->GetAsList();
+  return (*l)[args[1].Get<std::int64_t>()];
 }
 
 static Value ListLength(std::vector<Value>& args)
 {
-  return Value(static_cast<std::int64_t>(dynamic_cast<Grace::GraceList*>(args[0].GetObject())->Length()));
+  return Value(static_cast<std::int64_t>(args[0].GetObject()->GetAsList()->Length()));
 }
 
 static Value DictionaryInsert(std::vector<Value>& args)
 {
-  auto dict = dynamic_cast<Grace::GraceDictionary*>(args[0].GetObject());
+  auto dict = args[0].GetObject()->GetAsDictionary();
   dict->Insert(std::move(args[1]), std::move(args[2]));
   return Value();
 }
 
 static Value DictionaryGet(std::vector<Value>& args)
 {
-  auto dict = dynamic_cast<Grace::GraceDictionary*>(args[0].GetObject());
+  auto dict = args[0].GetObject()->GetAsDictionary();
   return dict->Get(args[1]);
 }
 
 static Value DictionaryContainsKey(std::vector<Value>& args)
 {
-  auto dict = dynamic_cast<Grace::GraceDictionary*>(args[0].GetObject());
+  auto dict = args[0].GetObject()->GetAsDictionary();
   return Value(dict->ContainsKey(args[1]));
 }
 
 static Value DictionaryRemove(std::vector<Value>& args)
 {
-  auto dict = dynamic_cast<Grace::GraceDictionary*>(args[0].GetObject());
+  auto dict = args[0].GetObject()->GetAsDictionary();
   return Value(dict->Remove(args[1]));
 }
 
 static Value KeyValuePairKey(std::vector<Value>& args)
 {
-  auto kvp = dynamic_cast<Grace::GraceKeyValuePair*>(args[0].GetObject());
+  auto kvp = args[0].GetObject()->GetAsKeyValuePair();
   return kvp->Key();
 }
 
 static Value KeyValuePairValue(std::vector<Value>& args)
 {
-  auto kvp = dynamic_cast<Grace::GraceKeyValuePair*>(args[0].GetObject());
+  auto kvp = args[0].GetObject()->GetAsKeyValuePair();
   return kvp->Value();
 }
 
@@ -333,9 +334,9 @@ static Value InteropDoCall(std::vector<Value>& args)
 #define CDECL_CALL_POINTER 8
 #define CDECL_CALL_VOID 9
 
-  auto handleInstance = dynamic_cast<Grace::GraceInstance*>(args[0].GetObject());
+  auto handleInstance = args[0].GetObject()->GetAsInstance();
   const auto& libName = args[1].Get<std::string>();
-  auto argList = dynamic_cast<Grace::GraceList*>(args[2].GetObject());
+  auto argList = args[2].GetObject()->GetAsList();
   auto callType = args[3].Get<std::int64_t>();
 
   auto addressAsInt = (DLLib*)(handleInstance->LoadMember("lib_address").Get<std::int64_t>());
@@ -355,7 +356,7 @@ static Value InteropDoCall(std::vector<Value>& args)
   std::vector<char*> argsToDelete;
 
   for (auto it = argList->Begin(); it != argList->End(); it++) {
-    auto pair = dynamic_cast<Grace::GraceKeyValuePair*>(it->GetObject());
+    auto pair = it->GetObject()->GetAsKeyValuePair();
     if (pair == nullptr) {
       throw Grace::GraceException(Grace::GraceException::Type::InvalidType, fmt::format("Expected all args in arg list to be `KeyValuePair`s but got `{}`", it->GetTypeName()));
     }

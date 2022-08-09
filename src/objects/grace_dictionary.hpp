@@ -53,6 +53,11 @@ namespace Grace
         return GraceObjectType::Dictionary;
       }
 
+      GRACE_NODISCARD GRACE_INLINE GraceDictionary* GetAsDictionary() override
+      {
+        return this;
+      }
+
       GRACE_NODISCARD IteratorType Begin() override;
       GRACE_NODISCARD IteratorType End() override;
       void IncrementIterator(IteratorType& toIncrement) const override;

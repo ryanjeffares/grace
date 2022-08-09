@@ -36,6 +36,13 @@ namespace Grace
     Iterator,
   };
 
+  class GraceList;
+  class GraceDictionary;
+  class GraceException;
+  class GraceKeyValuePair;
+  class GraceInstance;
+  class GraceIterator;
+
   class GraceObject
   {
     public:
@@ -81,6 +88,15 @@ namespace Grace
       {
         GRACE_ASSERT(false, "RemoveMember() should only be called on Lists, Dictionaries, and Instances");
       }
+
+      // the derived classes can overload the respective function to avoid dynamic_casts 
+      GRACE_NODISCARD GRACE_INLINE virtual GraceList* GetAsList() { return nullptr; }
+      GRACE_NODISCARD GRACE_INLINE virtual GraceDictionary* GetAsDictionary() { return nullptr; }
+      GRACE_NODISCARD GRACE_INLINE virtual GraceException* GetAsException() { return nullptr; }
+      GRACE_NODISCARD GRACE_INLINE virtual GraceKeyValuePair* GetAsKeyValuePair() { return nullptr; }
+      GRACE_NODISCARD GRACE_INLINE virtual GraceInstance* GetAsInstance() { return nullptr; }
+      GRACE_NODISCARD GRACE_INLINE virtual GraceIterator* GetAsIterator() { return nullptr; }
+
 
       GRACE_NODISCARD static bool AnyMemberMatchesRecursive(const GraceObject* toFind, GraceObject* root, std::vector<GraceObject*> visitedObjects)
       {

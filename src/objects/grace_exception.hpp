@@ -108,6 +108,11 @@ namespace Grace
         return GraceObjectType::Exception;
       }
 
+      GRACE_NODISCARD GRACE_INLINE GraceException* GetAsException() override
+      {
+        return this;
+      }
+
     private:
       Type m_Type;
       std::string m_Message;

@@ -624,7 +624,7 @@ namespace Grace::VM
             auto value = Pop(valueStack);
             auto parentValue = Pop(valueStack);
             auto parentObject = parentValue.GetObject();
-            auto instance = dynamic_cast<GraceInstance*>(parentObject);
+            auto instance = parentObject->GetAsInstance();
             if (instance == nullptr) {
               throw GraceException(
                 GraceException::Type::InvalidType,
@@ -639,7 +639,7 @@ namespace Grace::VM
           case Ops::LoadMember: {
             auto parentValue = Pop(valueStack);
             auto parentObject = parentValue.GetObject();
-            auto instance = dynamic_cast<GraceInstance*>(parentObject);
+            auto instance = parentObject->GetAsInstance();
             if (instance == nullptr) {
               throw GraceException(
                 GraceException::Type::InvalidType,
@@ -674,12 +674,12 @@ namespace Grace::VM
             auto twoIterators = m_FullConstantList[constantCurrent++].Get<bool>();
             auto iteratorId = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
 
-            if (auto list = dynamic_cast<GraceList*>(object)) {
+            if (auto list = object->GetAsList()) {
               auto listIterator = Value::CreateObject<GraceIterator>(list, GraceIterator::IterableType::List);
               heldIteratorIndexes.push(valueStack.size());
               valueStack.push_back(listIterator);
               
-              auto listIteratorObject = dynamic_cast<GraceIterator*>(listIterator.GetObject());
+              auto listIteratorObject = listIterator.GetObject()->GetAsIterator();
               localsList[iteratorId + localsOffsets.top()] = listIteratorObject->IsAtEnd() ? Value() : listIteratorObject->Value();
             
               if (twoIterators) {
@@ -688,12 +688,12 @@ namespace Grace::VM
               } else {
                 constantCurrent++;
               }
-            } else if (auto dict = dynamic_cast<GraceDictionary*>(object)) {
+            } else if (auto dict = object->GetAsDictionary()) {
               auto dictIterator = Value::CreateObject<GraceIterator>(dict, GraceIterator::IterableType::Dictionary);
               heldIteratorIndexes.push(valueStack.size());
               valueStack.push_back(dictIterator);
               
-              auto dictIteratorObject = dynamic_cast<GraceIterator*>(dictIterator.GetObject());
+              auto dictIteratorObject = dictIterator.GetObject()->GetAsIterator();
               
               if (twoIterators) {
                 auto secondIteratorId = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
@@ -701,7 +701,7 @@ namespace Grace::VM
                   localsList[iteratorId + localsOffsets.top()] = nullptr;
                   localsList[secondIteratorId + localsOffsets.top()] = nullptr;
                 } else {
-                  auto kvpObject = dynamic_cast<GraceKeyValuePair*>(dictIteratorObject->Value().GetObject());
+                  auto kvpObject = dictIteratorObject->Value().GetObject()->GetAsKeyValuePair();
                   localsList[iteratorId + localsOffsets.top()] = kvpObject->Key();
                   localsList[secondIteratorId + localsOffsets.top()] = kvpObject->Value();
                 }
@@ -719,7 +719,7 @@ namespace Grace::VM
             auto twoIterators = m_FullConstantList[constantCurrent++].Get<bool>();
             auto iteratorVarId = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
             auto iteratorIndex = heldIteratorIndexes.top();
-            auto heldIterator = dynamic_cast<GraceIterator*>(valueStack[iteratorIndex].GetObject());
+            auto heldIterator = valueStack[iteratorIndex].GetObject()->GetAsIterator();
             auto iterableType = heldIterator->GetType();
 
             if (iterableType == GraceIterator::IterableType::List) {
@@ -738,7 +738,7 @@ namespace Grace::VM
               if (twoIterators) {
                 auto secondIteratorId = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
                 if (!heldIterator->IsAtEnd()) {
-                  auto kvpObject = dynamic_cast<GraceKeyValuePair*>(heldIterator->Value().GetObject());
+                  auto kvpObject = heldIterator->Value().GetObject()->GetAsKeyValuePair();
                   localsList[iteratorVarId + localsOffsets.top()] = kvpObject->Key();
                   localsList[secondIteratorId + localsOffsets.top()] = kvpObject->Value();
                 } else {
@@ -756,7 +756,7 @@ namespace Grace::VM
           }
           case Ops::CheckIteratorEnd: {
             auto heldIteratorIndex = heldIteratorIndexes.top();
-            auto heldIterator = dynamic_cast<GraceIterator*>(valueStack[heldIteratorIndex].GetObject());
+            auto heldIterator = valueStack[heldIteratorIndex].GetObject()->GetAsIterator();
 
             GRACE_MAYBE_UNUSED auto iterableType = heldIterator->GetType();
             GRACE_ASSERT((iterableType == GraceIterator::IterableType::List || iterableType == GraceIterator::IterableType::Dictionary), "Iterator did not have a valid type set");

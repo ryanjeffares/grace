@@ -83,6 +83,11 @@ namespace Grace
         return GraceObjectType::Iterator;
       }
 
+      GRACE_NODISCARD GRACE_INLINE GraceIterator* GetAsIterator() override
+      {
+        return this;
+      }
+
       GRACE_NODISCARD const VM::Value& Value() const
       {
         if (!m_IsValid) {

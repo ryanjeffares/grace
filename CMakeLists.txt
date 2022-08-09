@@ -47,6 +47,7 @@ if(MSVC)
     PRIVATE dyncall_build/dyncallback/${CMAKE_BUILD_TYPE}/dyncallback_s
   )
 else()  
+  target_compile_definitions(grace PRIVATE GRACE_GCC_CLANG)
   target_compile_options(grace PRIVATE -Wall -Wextra -Wpedantic -Werror)
   target_link_libraries(grace 
     PRIVATE pthread

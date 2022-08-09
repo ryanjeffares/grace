@@ -78,7 +78,7 @@ namespace Grace
     std::size_t count = 0;
     for (std::size_t i = 0; i < m_Capacity; ++i) {
       if (m_CellStates[i] != CellState::Occupied) continue;
-      auto kvp = dynamic_cast<GraceKeyValuePair*>(m_Data[i].GetObject());
+      auto kvp = m_Data[i].GetObject()->GetAsKeyValuePair();
       res.append(kvp->ToString());
       if (count++ < m_Size - 1) {
         res.append(", ");
@@ -143,7 +143,7 @@ namespace Grace
         m_Size++;
         return;
       case CellState::Occupied: {
-        if (dynamic_cast<GraceKeyValuePair*>(m_Data[index].GetObject())->Key() == key) {
+        if (m_Data[index].GetObject()->GetAsKeyValuePair()->Key() == key) {
           m_Data[index] = VM::Value::CreateObject<GraceKeyValuePair>(std::move(key), std::move(value));
           m_CellStates[index] = CellState::Occupied;
           return;
@@ -153,7 +153,7 @@ namespace Grace
             i = 0;
           }
           if (m_CellStates[i] == CellState::Occupied) {
-            if (dynamic_cast<GraceKeyValuePair*>(m_Data[i].GetObject())->Key() == key) {
+            if (m_Data[i].GetObject()->GetAsKeyValuePair()->Key() == key) {
               m_Data[index] = VM::Value::CreateObject<GraceKeyValuePair>(std::move(key), std::move(value));
               m_CellStates[index] = CellState::Occupied;
               return;
@@ -189,7 +189,7 @@ namespace Grace
             fmt::format("Dict did not contain key {}", key)
           );
         case CellState::Occupied: {
-          auto kvp = dynamic_cast<GraceKeyValuePair*>(m_Data[index].GetObject());
+          auto kvp = m_Data[index].GetObject()->GetAsKeyValuePair();
           if (key == kvp->Key()) {
             return kvp->Value();
           }
@@ -223,7 +223,7 @@ namespace Grace
         case CellState::NeverUsed:
           return false;
         case CellState::Occupied:
-          if (key != dynamic_cast<GraceKeyValuePair*>(m_Data[index].GetObject())->Key()) {
+          if (key != m_Data[index].GetObject()->GetAsKeyValuePair()->Key()) {
             index++;
             break;
           }
@@ -255,7 +255,7 @@ namespace Grace
         case CellState::NeverUsed:
           return false;
         case CellState::Occupied:
-          if (key != dynamic_cast<GraceKeyValuePair*>(m_Data[index].GetObject())->Key()) {
+          if (key != m_Data[index].GetObject()->GetAsKeyValuePair()->Key()) {
             index++;
             break;
           }
@@ -294,10 +294,8 @@ namespace Grace
 
     std::vector<GraceObject*> res;
     for (const auto& el : m_Data) {
-      auto kvp = dynamic_cast<GraceKeyValuePair*>(el.GetObject());
-      if (kvp != nullptr) {
-        res.push_back(kvp);
-      }
+      if (el.GetType() == VM::Value::Type::Null) continue;
+      res.push_back(el.GetObject());
     }
 
     return res;
@@ -340,7 +338,7 @@ namespace Grace
     std::fill(m_CellStates.begin(), m_CellStates.end(), CellState::NeverUsed);
 
     for (auto& pair : pairs) {
-      auto kvp = dynamic_cast<GraceKeyValuePair*>(pair.GetObject());
+      auto kvp = pair.GetObject()->GetAsKeyValuePair();
       const auto& key = kvp->Key();
       auto hash = m_Hasher(key);
       auto index = hash % m_Capacity;
