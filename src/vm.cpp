@@ -43,7 +43,7 @@ namespace Grace::VM
   std::int64_t VM::m_LastFunctionHash{};
   std::hash<std::string> VM::m_Hasher;
 
-  static GRACE_INLINE std::pair<Value, Value> PopLastTwo(std::vector<Value>& stack)
+  static std::pair<Value, Value> PopLastTwo(std::vector<Value>& stack)
   {
     auto c1 = std::move(stack[stack.size() - 2]);
     auto c2 = std::move(stack[stack.size() - 1]);
@@ -52,7 +52,7 @@ namespace Grace::VM
     return {std::move(c1), std::move(c2)};
   }
 
-  static GRACE_INLINE Value Pop(std::vector<Value>& stack)
+  static Value Pop(std::vector<Value>& stack)
   {
     auto c = std::move(stack.back());
     stack.pop_back();

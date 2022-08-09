@@ -107,18 +107,18 @@ static void Consume(Scanner::TokenType expected, const std::string& message, Com
 // Advances the compiler until it meets the start of a new declaration to avoid error spam after one is detected
 static void Synchronize(CompilerContext& compiler);
 
-GRACE_INLINE static void EmitOp(VM::Ops op, std::size_t line)
+static void EmitOp(VM::Ops op, std::size_t line)
 {
   VM::VM::PushOp(op, line);
 }
 
 template<VM::BuiltinGraceType T>
-GRACE_INLINE static void EmitConstant(const T& value)
+static void EmitConstant(const T& value)
 {
   VM::VM::PushConstant(value);
 }
 
-GRACE_INLINE static void EmitConstant(const VM::Value& value)
+static void EmitConstant(const VM::Value& value)
 {
   VM::VM::PushConstant(value);
 }
