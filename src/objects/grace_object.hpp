@@ -106,7 +106,9 @@ namespace Grace
           } else {
             if (std::find(visitedObjects.begin(), visitedObjects.end(), object) == visitedObjects.end()) {
               visitedObjects.push_back(object);
-              return AnyMemberMatchesRecursive(toFind, object, visitedObjects);
+              if (AnyMemberMatchesRecursive(toFind, object, visitedObjects)) {
+                return true;
+              }
             }
           }
         }
@@ -116,7 +118,9 @@ namespace Grace
 
     protected:
 
+#ifdef GRACE_CLEAN_CYCLES_ASYNC
       std::mutex m_Mutex;
+#endif
 
     private:
       std::uint32_t m_RefCount = 0;      

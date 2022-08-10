@@ -1,0 +1,16 @@
+func main():
+  var x = 1;
+
+  match x:
+    0:
+      println("0");
+    end
+    1:
+      println("1");
+    end
+    _:
+      println ("something else");
+    end
+  end
+
+end
