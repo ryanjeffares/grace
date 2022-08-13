@@ -3,6 +3,7 @@ project(grace)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+add_subdirectory(deps/dyncall dyncall_build)
 add_executable(grace 
   src/main.cpp
   src/compiler.cpp
@@ -19,14 +20,19 @@ add_executable(grace
   src/objects/object_tracker.cpp
 )
 
-target_include_directories(grace PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/deps/fmt/include)
+target_include_directories(grace 
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/deps/fmt/include
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/deps/dyncall/dyncall
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/deps/dyncall/dyncallback
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/deps/dyncall/dynload
+)
+
 target_compile_definitions(grace PRIVATE FMT_HEADER_ONLY)
+
 set_target_properties(grace PROPERTIES
   CXX_STANDARD 20
   RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BUILD_TYPE}
 )
-
-set_target_properties(grace PROPERTIES CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++2a")
 
 if (CMAKE_BUILD_TYPE MATCHES Debug)
   target_compile_definitions(grace PRIVATE GRACE_DEBUG)
@@ -35,10 +41,19 @@ endif()
 if(MSVC)
   target_compile_definitions(grace PRIVATE GRACE_MSC)
   target_compile_options(grace PRIVATE /W4 /WX /external:W0 /external:templates-)
-else()
+  target_link_libraries(grace
+    PRIVATE dyncall_build/dyncall/${CMAKE_BUILD_TYPE}/dyncall_s
+    PRIVATE dyncall_build/dynload/${CMAKE_BUILD_TYPE}/dynload_s
+    PRIVATE dyncall_build/dyncallback/${CMAKE_BUILD_TYPE}/dyncallback_s
+  )
+else()  
+  target_compile_definitions(grace PRIVATE GRACE_GCC_CLANG)
   target_compile_options(grace PRIVATE -Wall -Wextra -Wpedantic -Werror)
-  target_link_libraries(grace pthread)
+  target_link_libraries(grace 
+    PRIVATE pthread
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/build/dyncall_build/dyncall/libdyncall_s.a
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/build/dyncall_build/dynload/libdynload_s.a
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/build/dyncall_build/dyncallback/libdyncallback_s.a
+    PRIVATE ${CMAKE_DL_LIBS} 
+  )  
 endif()
-
-install(TARGETS grace DESTINATION bin)
-install(DIRECTORY std DESTINATION std)

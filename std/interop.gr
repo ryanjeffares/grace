@@ -1,0 +1,54 @@
+const export CDECL_ARG_BOOL         = 0;
+const export CDECL_ARG_CHAR         = 1;
+const export CDECL_ARG_SHORT        = 2;
+const export CDECL_ARG_INT          = 3;
+const export CDECL_ARG_LONG         = 4;
+const export CDECL_ARG_LONG_LONG    = 5;
+const export CDECL_ARG_FLOAT        = 6;
+const export CDECL_ARG_DOUBLE       = 7;
+const export CDECL_ARG_POINTER      = 8;
+
+const export CDECL_CALL_BOOL        = 0;
+const export CDECL_CALL_CHAR        = 1;
+const export CDECL_CALL_SHORT       = 2;
+const export CDECL_CALL_INT         = 3;
+const export CDECL_CALL_LONG        = 4;
+const export CDECL_CALL_LONG_LONG   = 5;
+const export CDECL_CALL_FLOAT       = 6;
+const export CDECL_CALL_DOUBLE      = 7;
+const export CDECL_CALL_POINTER     = 8;
+const export CDECL_CALL_VOID        = 9;
+
+func load_library(library_path: String) :: Int:
+  return __NATIVE_INTEROP_LOAD_LIBRARY(library_path);
+end
+
+class export LibraryHandle:
+  var library_name: String;
+  var lib_address: Int;
+  var stack_size: Int;
+
+  constructor(lib_name: String, stack_sz: Int):
+    if !instanceof(stack_sz, Int):
+      throw("Expected `String` for `stack_sz` in `std::interop::LibraryHandle(lib_name, stack_sz)` but got `" + typename(stack_sz) + '`');
+    end
+
+    library_name = lib_name;
+    lib_address = load_library(lib_name);
+  end
+end
+
+func export do_call(this LibraryHandle handle, func_name: String, args: List, call_type: Int):
+  return __NATIVE_INTEROP_DO_CALL(handle, func_name, args, call_type);
+end
+
+/*
+func example():
+  final args = [
+    KeyValuePair(CDECL_ARG_DOUBLE, 10.0);
+  ];
+
+  final handle = LibraryHandle("libGraceTest.dylib");
+  println(do_call(handle, "Sqrt", args, CDECL_CALL_DOUBLE));
+end
+*/

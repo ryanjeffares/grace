@@ -28,9 +28,9 @@ def main(config: str, install: bool):
                 os.system(f'cmake --build build --config {config}')
         else:
             if install:
-                os.system(f'cmake --build build --config {config} --target install -- -j8')
+                os.system(f'cmake --build build --config {config} --target install -- -j')
             else:
-                os.system(f'cmake --build build --config {config} -- -j8')
+                os.system(f'cmake --build build --config {config} -- -j')
     elif config == 'All':
         print('INFO: Generating CMake project for configuration: Debug\n')
         os.system('cmake -DCMAKE_BUILD_TYPE=Debug -S . -B build')
@@ -44,9 +44,9 @@ def main(config: str, install: bool):
                 os.system(f'cmake --build build --config Debug')
         else:
             if install:
-                os.system(f'cmake --build build --config Debug --target install -- -j8')
+                os.system(f'cmake --build build --config Debug --target install -- -j')
             else:
-                os.system(f'cmake --build build --config Debug -- -j8')
+                os.system(f'cmake --build build --config Debug -- -j')
 
         print()
 
@@ -62,9 +62,9 @@ def main(config: str, install: bool):
                 os.system(f'cmake --build build --config Release')
         else:
             if install:
-                os.system(f'cmake --build build --config Release --target install -- -j8')
+                os.system(f'cmake --build build --config Release --target install -- -j')
             else:
-                os.system(f'cmake --build build --config Release -- -j8')
+                os.system(f'cmake --build build --config Release -- -j')
     else:
         raise ValueError('config must match "Debug" or "Release" or "All"')
 

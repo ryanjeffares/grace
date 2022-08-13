@@ -9,10 +9,10 @@
  *  For licensing information, see grace.hpp
  */
 
-#include <vector>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
+#include <vector>
 
 #include <fmt/core.h>
 #include <fmt/color.h>

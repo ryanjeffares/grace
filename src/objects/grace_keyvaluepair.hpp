@@ -50,6 +50,11 @@ namespace Grace
         return GraceObjectType::KeyValuePair;
       }
 
+      GRACE_NODISCARD GRACE_INLINE GraceKeyValuePair* GetAsKeyValuePair() override
+      {
+        return this;
+      }
+
       GRACE_NODISCARD GRACE_INLINE VM::Value& Key()
       {
         return m_Key;

@@ -193,7 +193,14 @@ static void CleanCyclesInternal()
         member->RemoveMember(object);
       }
 
-      // now when the Values above go out of scope, the objects are safely deleted
+      // now when the Values above go out of scope, the objects are safely deleted if they need to be
+      // check if we need to remove the member from objectsToBeDeleted now too
+      if (member->RefCount() == 1) {  // exactly 1 ref comes from the Value we made in this scope
+        auto delIt = std::find(objectsToBeDeleted.begin(), objectsToBeDeleted.end(), member);
+        if (delIt != objectsToBeDeleted.end()) {
+          objectsToBeDeleted.erase(delIt);
+        }
+      }
     }
   }
 

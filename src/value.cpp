@@ -244,7 +244,7 @@ namespace Grace::VM
         break;
       }
       case Type::Object: {
-        if (auto list = dynamic_cast<GraceList*>(GetObject())) {
+        if (auto list = GetObject()->GetAsList()) {
           if (other.m_Type == Type::Int) {
             return Value(CreateObject<GraceList>(*list, other.m_Data.m_Int));
           }

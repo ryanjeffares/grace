@@ -26,13 +26,13 @@ Grace is licensed under the MIT License.
 
 ## Getting Started 
 
-Grace's only dependency is [fmtlib](https://github.com/fmtlib/fmt) which is used in header only mode and included as a submodule in this repository, so building is simple
+Grace's only dependencies are [fmtlib](https://github.com/fmtlib/fmt) which is used in header only mode and included as a submodule in this repository, and [dyncall](https://github.com/LWJGL-CI/dyncall) which is also included as a submodule and built/statically linked to by CMake. It is recommended to run the provided Python script with Python >= 3.2 to invoke CMake with the desired settings.
 
 ### Prerequisites:
 * Python >= 3.2
 * CMake >= 3.8
-* C++ compiler
-* C++20
+* C++20 compiler
+* C99 compiler
 
 ```bash
 git clone --recursive https://github.com/ryanjeffares/grace.git 
@@ -41,6 +41,8 @@ python3 build.py <Release/Debug/All>
 ```
 
 This will build the `grace` executable, which you can add to your path or move somewhere that is on your path. Full installation process as well as documentation is WIP.
+
+**NOTE**: On Mac and Linux, sometimes the first build attempt will fail on `No rule to make target 'dyncall_build/dyncall/libdyncall_s.a'`. Running the build script a second time will fix this.
 
 ## Alpha Release Roadmap
 * Why does examples/euler/problem03.gr use so much memory?
@@ -51,8 +53,17 @@ This will build the `grace` executable, which you can add to your path or move s
     * Can be enabled via preprocessor, but runs so slowly on M1. Can provide as a command line option, maybe try doing it in a way that doesn't require locking mutexes in the GraceObject instances
   * Expose options in Grace
 * Lambdas 
-* Global const fields 
+* Global const fields
+  * Allow expressions containing literals and other constants
+  * Improve error reporting
+* Allow importing files that require going higher up the folder tree
+* Recursive imports are broken
 * Expand standard library
+* Dynamic library loading
+  * This is in, but need to handle pointer types for things that aren't strings
+  * And also pointer return types for strings and others...
+  * Build and link to dyncall properly
+* Ability to get relative path from a Grace file
 * Default function parameter values
 * Install process 
 * Tests 

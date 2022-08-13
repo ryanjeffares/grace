@@ -1,0 +1,15 @@
+import lib;
+
+const FIVE = 5;
+const NAME = "Ryan";
+
+func export name():
+  return "Walter";
+end
+
+func main():
+  println(FIVE);
+  println(NAME * FIVE);
+
+  println(lib::STATE);
+end

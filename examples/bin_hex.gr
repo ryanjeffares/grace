@@ -1,4 +1,5 @@
 func main():
+  println(0b0101 | 0b1010);
   final hex = 0xFFFF;
   println(hex);
   assert(instanceof(hex, Int));

@@ -45,6 +45,7 @@ namespace Grace
         InvalidOperand,
         InvalidType,
         KeyNotFound,
+        LibraryLoadFailure,
         MemberNotFound,
         NamespaceNotFound,
         ThrownException,
@@ -107,6 +108,11 @@ namespace Grace
         return GraceObjectType::Exception;
       }
 
+      GRACE_NODISCARD GRACE_INLINE GraceException* GetAsException() override
+      {
+        return this;
+      }
+
     private:
       Type m_Type;
       std::string m_Message;
@@ -137,6 +143,7 @@ struct fmt::formatter<Grace::GraceException::Type> : fmt::formatter<std::string_
       case GraceException::Type::InvalidOperand: name = "InvalidOperand"; break;
       case GraceException::Type::InvalidType: name = "InvalidType"; break;
       case GraceException::Type::KeyNotFound: name = "KeyNotFound"; break;
+      case GraceException::Type::LibraryLoadFailure: name = "LibraryLoadFailure"; break;
       case GraceException::Type::MemberNotFound: name = "MemberNotFound"; break;
       case GraceException::Type::NamespaceNotFound: name = "NamespaceNotFound"; break;
       case GraceException::Type::ThrownException: name = "ThrownException"; break;

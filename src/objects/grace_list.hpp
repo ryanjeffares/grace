@@ -91,6 +91,11 @@ namespace Grace
       {
         return GraceObjectType::List;
       }
+
+      GRACE_NODISCARD GRACE_INLINE GraceList* GetAsList() override
+      {
+        return this;
+      }
       
       GRACE_INLINE VM::Value& operator[](std::size_t index)
       {
