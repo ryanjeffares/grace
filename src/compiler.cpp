@@ -632,6 +632,22 @@ static std::optional<std::exception> TryParseDouble(const Scanner::Token& token,
   }
 }
 
+
+// returns true if the name is a duplicate
+static bool CheckForDuplicateLocalName(const std::string& varName, const CompilerContext& compiler)
+{
+  auto localsIt = std::find_if(compiler.locals.begin(), compiler.locals.end(), [&varName](const Local& local) { return local.name == varName; });
+  return localsIt != compiler.locals.end();
+}
+
+// returns true if the name is a duplicate
+static bool CheckForDuplicateConstantName(const std::string& constName, const CompilerContext& compiler)
+{
+  auto& constantsList = s_FileConstantsLookup[compiler.fullPath.string()];
+  auto it = constantsList.find(constName);
+  return it != constantsList.end();
+}
+
 static void ImportDeclaration(CompilerContext& compiler)
 {
   if (compiler.passedImports) {
@@ -774,9 +790,7 @@ static void ClassDeclaration(CompilerContext& compiler)
 
       Consume(Scanner::TokenType::Identifier, "Expected identifier after `var`", compiler);
       
-      classMembers.push_back(compiler.previous.value().GetString());
-
-      auto nameToken = compiler.previous.value();
+      auto memberName = compiler.previous.value().GetString();
 
       if (Match(Scanner::TokenType::Colon, compiler)) {
         if (!IsValidTypeAnnotation(compiler.current.value().GetType())) {
@@ -786,18 +800,23 @@ static void ClassDeclaration(CompilerContext& compiler)
         Advance(compiler);
       }
 
-      auto localName = nameToken.GetString();
-
-      if (localName.starts_with("__")) {
+      if (memberName.starts_with("__")) {
         MessageAtPrevious("Names beginning with double underscore `__` are reserved for internal use", LogLevel::Error, compiler);
         return;
       }
 
-      auto it = std::find_if(compiler.locals.begin(), compiler.locals.end(), [&localName](const Local& l) { return l.name == localName; });
-      if (it != compiler.locals.end()) {
+      auto it = std::find_if(classMembers.begin(), classMembers.end(), [&memberName](const std::string& l) { return l == memberName; });
+      if (it != classMembers.end()) {
         MessageAtPrevious("A class member with the same name already exists", LogLevel::Error, compiler);
         return;
       }
+
+      if (CheckForDuplicateConstantName(memberName, compiler)) {
+        MessageAtPrevious("A constant with the same name already exists", LogLevel::Error, compiler);
+        return;
+      }
+
+      classMembers.push_back(memberName);
       
       Consume(Scanner::TokenType::Semicolon, "Expected ';'", compiler);
     } else if (Match(Scanner::TokenType::Constructor, compiler)) {
@@ -829,6 +848,11 @@ static void ClassDeclaration(CompilerContext& compiler)
 
           if (std::find(classMembers.begin(), classMembers.end(), p) != classMembers.end()) {
             MessageAtPrevious("Function parameter shadows class member variable", LogLevel::Error, compiler);
+            return;
+          }
+
+          if (CheckForDuplicateConstantName(p, compiler)) {
+            MessageAtPrevious("A constant with the same name already exists", LogLevel::Error, compiler);
             return;
           }
 
@@ -995,6 +1019,12 @@ static void FuncDeclaration(CompilerContext& compiler)
         MessageAtPrevious("Function parameters with the same name already defined", LogLevel::Error, compiler);
         return;
       }
+      
+      if (CheckForDuplicateConstantName(p, compiler)) {
+        MessageAtPrevious("A constant with the same name already exists", LogLevel::Error, compiler);
+        return;
+      }
+
       parameters.push_back(p);
       compiler.locals.emplace_back(std::move(p), isFinal, false, compiler.locals.size());
 
@@ -1043,6 +1073,11 @@ static void FuncDeclaration(CompilerContext& compiler)
 
       if (std::find(parameters.begin(), parameters.end(), p) != parameters.end()) {
         MessageAtPrevious("Function parameters with the same name already defined", LogLevel::Error, compiler);
+        return;
+      }
+
+      if (CheckForDuplicateConstantName(p, compiler)) {
+        MessageAtPrevious("A constant with the same name already exists", LogLevel::Error, compiler);
         return;
       }
 
@@ -1149,9 +1184,13 @@ static void VarDeclaration(CompilerContext& compiler, bool isFinal)
     return;
   }
 
-  auto it = std::find_if(compiler.locals.begin(), compiler.locals.end(), [&localName] (const Local& l) { return l.name == localName; });
-  if (it != compiler.locals.end()) {
-    MessageAtPrevious("A local variable with the same name already exists", LogLevel::Error, compiler);
+  if (CheckForDuplicateLocalName(localName, compiler)) {
+    MessageAtPrevious("A constant with the same name already exists", LogLevel::Error, compiler);
+    return;
+  }
+
+  if (CheckForDuplicateConstantName(localName, compiler)) {
+    MessageAtPrevious("A constant with the same name already exists", LogLevel::Error, compiler);
     return;
   }
 
@@ -1196,7 +1235,12 @@ static void ConstDeclaration(CompilerContext& compiler)
     return;
   }
 
-  auto nameToken = compiler.previous.value();
+  auto constantName = compiler.previous.value().GetString();
+
+  if (CheckForDuplicateConstantName(constantName, compiler)) {
+    MessageAtPrevious("A constant with the same name already exists", LogLevel::Error, compiler);
+    return;
+  }
 
   if (!Match(Scanner::TokenType::Equal, compiler)) {
     MessageAtCurrent("Must assign to `const` upon declaration", LogLevel::Error, compiler);
@@ -1215,10 +1259,10 @@ static void ConstDeclaration(CompilerContext& compiler)
 
   switch (valueToken.GetType()) {
     case Scanner::TokenType::True:
-      s_FileConstantsLookup[fullFilePath][nameToken.GetString()] = {VM::Value(true), isExport};
+      s_FileConstantsLookup[fullFilePath][constantName] = {VM::Value(true), isExport};
       break;
     case Scanner::TokenType::False:
-      s_FileConstantsLookup[fullFilePath][nameToken.GetString()] = {VM::Value(false), isExport};
+      s_FileConstantsLookup[fullFilePath][constantName] = {VM::Value(false), isExport};
       break;
     case Scanner::TokenType::Integer: {
       std::int64_t value;
@@ -1227,7 +1271,7 @@ static void ConstDeclaration(CompilerContext& compiler)
         Message(valueToken, fmt::format("Token could not be parsed as an int: {}", result.value()), LogLevel::Error, compiler);
         return;
       }
-      s_FileConstantsLookup[fullFilePath][nameToken.GetString()] = {VM::Value(value), isExport};
+      s_FileConstantsLookup[fullFilePath][constantName] = {VM::Value(value), isExport};
       break;
     }
     case Scanner::TokenType::Double: {
@@ -1237,7 +1281,7 @@ static void ConstDeclaration(CompilerContext& compiler)
         Message(valueToken, fmt::format("Token could not be parsed as an float: {}", result.value().what()), LogLevel::Error, compiler);
         return;
       }
-      s_FileConstantsLookup[fullFilePath][nameToken.GetString()] = {VM::Value(value), isExport};
+      s_FileConstantsLookup[fullFilePath][constantName] = {VM::Value(value), isExport};
       break;
     }
     case Scanner::TokenType::String: {
@@ -1247,7 +1291,7 @@ static void ConstDeclaration(CompilerContext& compiler)
         Message(valueToken, fmt::format("Token could not be parsed as string: {}", err.value()), LogLevel::Error, compiler);
         return;
       }
-      s_FileConstantsLookup[fullFilePath][nameToken.GetString()] = {VM::Value(res), isExport};
+      s_FileConstantsLookup[fullFilePath][constantName] = {VM::Value(res), isExport};
       break;
     }
     case Scanner::TokenType::Char: {
@@ -1257,7 +1301,7 @@ static void ConstDeclaration(CompilerContext& compiler)
         Message(valueToken, fmt::format("Token could not be parsed as char: {}", err.value()), LogLevel::Error, compiler);
         return;
       }
-      s_FileConstantsLookup[fullFilePath][nameToken.GetString()] = {VM::Value(res), isExport};
+      s_FileConstantsLookup[fullFilePath][constantName] = {VM::Value(res), isExport};
       break;
     }
     default:
@@ -1594,7 +1638,12 @@ static void ForStatement(CompilerContext& compiler)
     [&iteratorName](const Local& l) {
       return l.name == iteratorName;
     });
-  if (it == compiler.locals.end()) {
+  if (it == compiler.locals.end()) {    
+    if (CheckForDuplicateConstantName(iteratorName, compiler)) {
+      MessageAtPrevious("A constant with the same name already exists", LogLevel::Error, compiler);
+      return;
+    }
+
     iteratorId = static_cast<std::int64_t>(compiler.locals.size());
     compiler.locals.emplace_back(std::move(iteratorName), firstItIsFinal, true, iteratorId);
     EmitOp(VM::Ops::DeclareLocal, compiler.previous.value().GetLine());
@@ -1651,6 +1700,11 @@ static void ForStatement(CompilerContext& compiler)
     }
 
     if (secondIt == compiler.locals.end()) {
+      if (CheckForDuplicateConstantName(secondIteratorName, compiler)) {
+        MessageAtPrevious("A constant with the same name already exists", LogLevel::Error, compiler);
+        return;
+      }
+
       secondIteratorId = static_cast<std::int64_t>(compiler.locals.size());
       compiler.locals.emplace_back(std::move(secondIteratorName), secondItIsFinal, true, secondIteratorId);
       auto line = compiler.previous.value().GetLine();
@@ -2057,6 +2111,11 @@ static void TryStatement(CompilerContext& compiler)
   std::int64_t exceptionVarId;
   auto it = std::find_if(compiler.locals.begin(), compiler.locals.end(), [&exceptionVarName](const Local& l) { return l.name == exceptionVarName; });
   if (it == compiler.locals.end()) {
+    if (CheckForDuplicateConstantName(exceptionVarName, compiler)) {
+      MessageAtPrevious("A constant with the same name already exists", LogLevel::Error, compiler);
+      return;
+    }
+
     exceptionVarId = static_cast<std::int64_t>(compiler.locals.size());
     compiler.locals.emplace_back(std::move(exceptionVarName), false, false, exceptionVarId);
     EmitOp(VM::Ops::DeclareLocal, compiler.previous.value().GetLine());

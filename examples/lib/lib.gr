@@ -1,5 +1,14 @@
-import ../constants;
+const NAME = "Ryan";
+
+class Person:
+  var name;
+
+  constructor(final n):
+    name = n;
+  end
+end
 
 func main():
-  println(constants::NAME);
+  println(NAME);
+  println(Person("asdhfaksdl").name);
 end

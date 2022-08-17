@@ -39,10 +39,7 @@ static void Usage()
 }
 
 int main(int argc, const char* argv[])
-{
-  std::filesystem::path p("C:/Users/ryand/../ryand");
-  fmt::print("{}\n", std::filesystem::absolute(p).string());
-
+{  
   if (argc < 2) {
     Usage();
     return 1;
