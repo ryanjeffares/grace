@@ -40,6 +40,9 @@ static void Usage()
 
 int main(int argc, const char* argv[])
 {
+  std::filesystem::path p("C:/Users/ryand/../ryand");
+  fmt::print("{}\n", std::filesystem::absolute(p).string());
+
   if (argc < 2) {
     Usage();
     return 1;
@@ -116,13 +119,14 @@ int main(int argc, const char* argv[])
   }
 
   std::stringstream inStream;
-  try {
-    std::ifstream inFile(filePath);
-    inStream << inFile.rdbuf();
-  } catch (const std::exception& e) {
-    Error(e.what());
+  std::ifstream inFile;
+  inFile.open(filePath);
+  if (inFile.fail()) {
+    Error(fmt::format("Could not open file {}", filePath.string()));
     return 1;
   }
+  
+  inStream << inFile.rdbuf();
 
   return static_cast<int>(
     Grace::Compiler::Compile(

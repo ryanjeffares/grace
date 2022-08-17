@@ -1,1 +1,7 @@
 const export STATE = true;
+
+import constants;
+
+func export say_hello():
+  println("Hello " + constants::NAME);
+end

@@ -59,10 +59,12 @@ struct Local
 
 struct CompilerContext
 {
-  CompilerContext(const std::string& fileName, std::string&& code)
-    : currentFileName(fileName)
+  CompilerContext(const std::string& fileName_, const std::filesystem::path& parentPath_, std::string&& code)
+    : fileName(fileName_)
   {
-    Scanner::InitScanner(fileName, std::move(code));
+    parentPath = std::filesystem::absolute(parentPath_);
+    fullPath = std::filesystem::absolute(parentPath / std::filesystem::path(fileName).filename());
+    Scanner::InitScanner(fullPath.string(), std::move(code));
     codeContextStack.push_back(CodeContext::TopLevel);
   }
 
@@ -72,7 +74,8 @@ struct CompilerContext
   }
 
   std::vector<CodeContext> codeContextStack;
-  std::string currentFileName;
+  std::string fileName;
+  std::filesystem::path fullPath, parentPath;
 
   std::optional<Scanner::Token> current, previous;
   std::vector<Local> locals;
@@ -212,7 +215,7 @@ VM::InterpretResult Grace::Compiler::Compile(const std::string& fileName, std::s
  
   VM::VM::RegisterNatives();
 
-  s_CompilerContextStack.emplace(fileName, std::move(code));
+  s_CompilerContextStack.emplace(fileName, std::filesystem::absolute(std::filesystem::path(fileName)).parent_path(), std::move(code));
   
   Advance(s_CompilerContextStack.top());
   
@@ -419,7 +422,6 @@ static void Declaration(CompilerContext& compiler)
     compiler.passedImports = true;
     VarDeclaration(compiler, compiler.previous.value().GetType() == Scanner::TokenType::Final);
   } else if (Match(Scanner::TokenType::Const, compiler)) {
-    compiler.passedImports = true;
     ConstDeclaration(compiler);
   } else {
     Statement(compiler);
@@ -645,6 +647,7 @@ static void ImportDeclaration(CompilerContext& compiler)
       MessageAtCurrent("Expected path", LogLevel::Error, compiler);
       return;
     }
+
     auto txt = compiler.previous.value().GetText();
     if (!isStdImport.has_value() && txt == "std") {
       isStdImport = true;
@@ -697,8 +700,7 @@ static void ImportDeclaration(CompilerContext& compiler)
 
     inPath = fs::path(stdPath) / fs::path(importPath.substr(4));  // trim off 'std/' because that's contained within the path environment variable
   } else {
-    auto basePath = fs::path(compiler.currentFileName).parent_path();
-    inPath = basePath / fs::path(importPath);
+    inPath = std::filesystem::absolute(compiler.parentPath / importPath);
   }
 
   if (!fs::exists(inPath)) {
@@ -706,22 +708,24 @@ static void ImportDeclaration(CompilerContext& compiler)
     return;
   }
 
-  if (Scanner::HasFile(importPath)) {
+  if (Scanner::HasFile(inPath.string())) {
     // don't produce a warning, but silently ignore the duplicate import
     // TODO: maybe ignore this in the std, but warn the user if they have duplicate imports in one file?
     return;
   }
 
   std::stringstream inFileStream;
-  try {
-    std::ifstream inFile(inPath);
-    inFileStream << inFile.rdbuf();
-  } catch (const std::exception& e) {
-    fmt::print(stderr, "Error reading imported file `{}`: {}. This import will be ignored.\n", inPath.string(), e.what());
+  std::ifstream inFile;
+  inFile.open(inPath);
+
+  if (inFile.fail()) {
+    Message(lastPathToken.value(), fmt::format("Error reading imported file `{}`\n", inPath.string()), LogLevel::Error, compiler);
     return;
   }
+  
+  inFileStream << inFile.rdbuf();
 
-  s_CompilerContextStack.emplace(std::move(importPath), inFileStream.str());
+  s_CompilerContextStack.emplace(std::move(importPath), inPath.parent_path(), inFileStream.str());
   Advance(s_CompilerContextStack.top());
 }
 
@@ -850,7 +854,7 @@ static void ClassDeclaration(CompilerContext& compiler)
 
       Consume(Scanner::TokenType::Colon, "Expected ':' after constructor declaration", compiler);
 
-      if (!VM::VM::AddFunction(classNameToken.GetString(), parameters.size(), compiler.currentFileName, exported, false)) {
+      if (!VM::VM::AddFunction(classNameToken.GetString(), parameters.size(), compiler.fileName, exported, false)) {
         Message(classNameToken, "A function or class in the same namespace already exists with the same name as this class", LogLevel::Error, compiler);
         return;
       }
@@ -893,7 +897,7 @@ static void ClassDeclaration(CompilerContext& compiler)
 
   // make an empty constructor if the user doesn't define one
   if (!hasDefinedConstructor) {
-    if (!VM::VM::AddFunction(classNameToken.GetString(), 0, compiler.currentFileName, exported, false)) {
+    if (!VM::VM::AddFunction(classNameToken.GetString(), 0, compiler.fileName, exported, false)) {
       Message(classNameToken, "A function or class in the same namespace already exists with the same name as this class", LogLevel::Error, compiler);
       return;
     }
@@ -907,7 +911,7 @@ static void ClassDeclaration(CompilerContext& compiler)
     }
   }
 
-  if (!VM::VM::AddClass(classNameToken.GetString(), classMembers, compiler.currentFileName, exported)) {
+  if (!VM::VM::AddClass(classNameToken.GetString(), classMembers, compiler.fileName, exported)) {
     // technically unreachable, since it would have been caught by trying to add the constructor as a function
     Message(classNameToken, "A class in the same namespace already exists with the same name", LogLevel::Error, compiler);
     return;
@@ -927,7 +931,7 @@ static void ClassDeclaration(CompilerContext& compiler)
 
   static std::hash<std::string> hasher;
   EmitConstant(static_cast<std::int64_t>(hasher(classNameToken.GetString())));
-  EmitConstant(static_cast<std::int64_t>(hasher(compiler.currentFileName)));  
+  EmitConstant(static_cast<std::int64_t>(hasher(compiler.fileName)));  
 
   EmitOp(VM::Ops::CreateInstance, compiler.previous.value().GetLine());
 
@@ -1077,7 +1081,7 @@ static void FuncDeclaration(CompilerContext& compiler)
 
   Consume(Scanner::TokenType::Colon, "Expected ':' after function signature", compiler);
 
-  if (!VM::VM::AddFunction(std::move(name), parameters.size(), compiler.currentFileName, exportFunction, isExtensionMethod, extensionObjectNameHash)) {
+  if (!VM::VM::AddFunction(std::move(name), parameters.size(), compiler.fileName, exportFunction, isExtensionMethod, extensionObjectNameHash)) {
     Message(funcNameToken, "A function or class in the same namespace already exists with the same name as this function", LogLevel::Error, compiler);
     return;
   }
@@ -1207,12 +1211,14 @@ static void ConstDeclaration(CompilerContext& compiler)
   auto valueToken = compiler.current.value();
   Advance(compiler);
 
+  auto fullFilePath = compiler.fullPath.string();
+
   switch (valueToken.GetType()) {
     case Scanner::TokenType::True:
-      s_FileConstantsLookup[compiler.currentFileName][nameToken.GetString()] = { VM::Value(true), isExport };
+      s_FileConstantsLookup[fullFilePath][nameToken.GetString()] = {VM::Value(true), isExport};
       break;
     case Scanner::TokenType::False:
-      s_FileConstantsLookup[compiler.currentFileName][nameToken.GetString()] = { VM::Value(false), isExport };
+      s_FileConstantsLookup[fullFilePath][nameToken.GetString()] = {VM::Value(false), isExport};
       break;
     case Scanner::TokenType::Integer: {
       std::int64_t value;
@@ -1221,7 +1227,7 @@ static void ConstDeclaration(CompilerContext& compiler)
         Message(valueToken, fmt::format("Token could not be parsed as an int: {}", result.value()), LogLevel::Error, compiler);
         return;
       }
-      s_FileConstantsLookup[compiler.currentFileName][nameToken.GetString()] = { VM::Value(value), isExport };
+      s_FileConstantsLookup[fullFilePath][nameToken.GetString()] = {VM::Value(value), isExport};
       break;
     }
     case Scanner::TokenType::Double: {
@@ -1231,7 +1237,7 @@ static void ConstDeclaration(CompilerContext& compiler)
         Message(valueToken, fmt::format("Token could not be parsed as an float: {}", result.value().what()), LogLevel::Error, compiler);
         return;
       }
-      s_FileConstantsLookup[compiler.currentFileName][nameToken.GetString()] = { VM::Value(value), isExport };
+      s_FileConstantsLookup[fullFilePath][nameToken.GetString()] = {VM::Value(value), isExport};
       break;
     }
     case Scanner::TokenType::String: {
@@ -1241,7 +1247,7 @@ static void ConstDeclaration(CompilerContext& compiler)
         Message(valueToken, fmt::format("Token could not be parsed as string: {}", err.value()), LogLevel::Error, compiler);
         return;
       }
-      s_FileConstantsLookup[compiler.currentFileName][nameToken.GetString()] = { VM::Value(res), isExport };
+      s_FileConstantsLookup[fullFilePath][nameToken.GetString()] = {VM::Value(res), isExport};
       break;
     }
     case Scanner::TokenType::Char: {
@@ -1251,7 +1257,7 @@ static void ConstDeclaration(CompilerContext& compiler)
         Message(valueToken, fmt::format("Token could not be parsed as char: {}", err.value()), LogLevel::Error, compiler);
         return;
       }
-      s_FileConstantsLookup[compiler.currentFileName][nameToken.GetString()] = { VM::Value(res), isExport };
+      s_FileConstantsLookup[fullFilePath][nameToken.GetString()] = {VM::Value(res), isExport};
       break;
     }
     default:
@@ -2587,11 +2593,14 @@ static void Identifier(bool canAssign, CompilerContext& compiler)
       auto localIt = std::find_if(compiler.locals.begin(), compiler.locals.end(), [&prevText](const Local& l){ return l.name == prevText; });
       if (localIt == compiler.locals.end()) {
         // now check for constants...
-        auto constantIt = s_FileConstantsLookup[compiler.currentFileName].find(prevText);
-        if (constantIt == s_FileConstantsLookup[compiler.currentFileName].end()) {
+        auto constantIt = s_FileConstantsLookup[compiler.fullPath.string()].find(prevText);
+
+        if (constantIt == s_FileConstantsLookup[compiler.fullPath.string()].end()) {
           // might be in a namespace...
-          auto importedConstantIt = s_FileConstantsLookup[compiler.currentNamespaceLookup + ".gr"].find(prevText);
-          if (importedConstantIt == s_FileConstantsLookup[compiler.currentNamespaceLookup + ".gr"].end()) {
+          auto importPath = (compiler.parentPath / (compiler.currentNamespaceLookup + ".gr")).string();
+          auto importedConstantIt = s_FileConstantsLookup[importPath].find(prevText);
+
+          if (importedConstantIt == s_FileConstantsLookup[importPath].end()) {
             auto mostSimilarVar = FindMostSimilarVarName(prevText, compiler.locals);
             if (mostSimilarVar.has_value()) {
               MessageAtPrevious(fmt::format("Cannot find variable '{}' in this scope, did you mean '{}'?", prevText, *mostSimilarVar), LogLevel::Error, compiler);
@@ -2603,6 +2612,7 @@ static void Identifier(bool canAssign, CompilerContext& compiler)
               MessageAtPrevious(fmt::format("Constant '{}' has not been exported", prevText), LogLevel::Error, compiler);
               return;
             }
+
             compiler.namespaceQualifierUsed = true;
             EmitConstant(importedConstantIt->second.value);
             EmitOp(VM::Ops::LoadConstant, prev.GetLine());
@@ -3041,14 +3051,15 @@ static void Message(const Scanner::Token& token, const std::string& message, Log
 
   auto lineNo = static_cast<int>(token.GetLine());
   auto column = token.GetColumn() - token.GetLength();  // need the START of the token
-  fmt::print(stderr, "       --> {}:{}:{}\n", compiler.currentFileName, lineNo, column + 1); 
+  auto filePath = compiler.fullPath.string();
+  fmt::print(stderr, "       --> {}:{}:{}\n", filePath, lineNo, column + 1); 
   fmt::print(stderr, "        |\n");
 
   if (lineNo > 1) {
-    fmt::print(stderr, "{:>7} | {}\n", lineNo - 1, Scanner::GetCodeAtLine(compiler.currentFileName, lineNo - 1));
+    fmt::print(stderr, "{:>7} | {}\n", lineNo - 1, Scanner::GetCodeAtLine(filePath, lineNo - 1));
   }
 
-  fmt::print(stderr, "{:>7} | {}\n", lineNo, Scanner::GetCodeAtLine(compiler.currentFileName, lineNo));
+  fmt::print(stderr, "{:>7} | {}\n", lineNo, Scanner::GetCodeAtLine(filePath, lineNo));
   fmt::print(stderr, "        | ");
   for (std::size_t i = 0; i < column; i++) {
     fmt::print(stderr, " ");
@@ -3058,7 +3069,7 @@ static void Message(const Scanner::Token& token, const std::string& message, Log
   }
 
   fmt::print(stderr, "\n");
-  fmt::print(stderr, "{:>7} | {}\n", lineNo + 1, Scanner::GetCodeAtLine(compiler.currentFileName, lineNo + 1));
+  fmt::print(stderr, "{:>7} | {}\n", lineNo + 1, Scanner::GetCodeAtLine(filePath, lineNo + 1));
   fmt::print(stderr, "        |\n\n");
 
   if (level == LogLevel::Error) {

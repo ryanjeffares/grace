@@ -147,14 +147,14 @@ namespace Grace::Scanner
   static std::stack<ScannerContext> s_ScannerContextStack;
   static std::unordered_map<std::string, std::string> s_CodeStringsLookup;
 
-  bool HasFile(const std::string& fileName)
+  bool HasFile(const std::string& fullPath)
   {
-    return s_CodeStringsLookup.find(fileName) != s_CodeStringsLookup.end();
+    return s_CodeStringsLookup.find(fullPath) != s_CodeStringsLookup.end();
   }
 
-  void InitScanner(const std::string& fileName, std::string&& code)
+  void InitScanner(const std::string& fullPath, std::string&& code)
   {
-    s_CodeStringsLookup.try_emplace(fileName, code);
+    s_CodeStringsLookup.try_emplace(fullPath, code);
     s_ScannerContextStack.emplace(std::move(code));
   }
 
