@@ -28,6 +28,12 @@ using namespace Grace;
 static bool s_Verbose = false;
 static std::vector<GraceObject*> s_TrackedObjects;
 
+#ifdef GRACE_DEBUG
+// track every single object that gets allocated but never remove any so we can
+// set a breakpoint and make sure they're all garbage at the end of the program
+static std::vector<GraceObject*> s_AllObjects;
+#endif
+
 #ifdef GRACE_CLEAN_CYCLES_ASYNC
 static std::atomic<bool> s_CycleCleanerRunning;
 static std::condition_variable s_NotifyCleanerDone;
@@ -51,6 +57,8 @@ void ObjectTracker::TrackObject(GraceObject* object)
   s_TrackedObjects.push_back(object);
 
 #ifdef GRACE_DEBUG
+  s_AllObjects.push_back(object);
+
   if (s_Verbose) {
     fmt::print("Starting tracking on object at {}: ", fmt::ptr(object));
     object->DebugPrint();
@@ -190,15 +198,6 @@ static void CleanCyclesInternal()
 
       if (object != member) {
         member->RemoveMember(object);
-      }
-
-      // now when the Values above go out of scope, the objects are safely deleted if they need to be
-      // check if we need to remove the member from objectsToBeDeleted now too
-      if (member->RefCount() == 1) {  // exactly 1 ref comes from the Value we made in this scope
-        auto delIt = std::find(objectsToBeDeleted.begin(), objectsToBeDeleted.end(), member);
-        if (delIt != objectsToBeDeleted.end()) {
-          objectsToBeDeleted.erase(delIt);
-        }
       }
     }
   }
