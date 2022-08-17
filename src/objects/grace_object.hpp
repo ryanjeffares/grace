@@ -15,6 +15,7 @@
 #include <cstdint>
 #include <mutex>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "../grace.hpp"
@@ -54,7 +55,7 @@ namespace Grace
       virtual void PrintLn(bool err) const = 0;
       GRACE_NODISCARD virtual std::string ToString() const = 0;
       GRACE_NODISCARD virtual bool AsBool() const = 0;
-      GRACE_NODISCARD virtual constexpr const char* ObjectName() const = 0;
+      GRACE_NODISCARD virtual constexpr std::string_view ObjectName() const = 0;
       GRACE_NODISCARD virtual constexpr bool IsIterable() const = 0;
       GRACE_NODISCARD virtual constexpr GraceObjectType ObjectType() const = 0;
 

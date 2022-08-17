@@ -48,9 +48,9 @@ namespace Grace
 	  return true;
 	}
 
-	GRACE_NODISCARD const char* ObjectName() const override
+	GRACE_NODISCARD std::string_view ObjectName() const override
 	{
-	  return m_ClassName.c_str();
+	  return m_ClassName;
 	}
 
 	GRACE_NODISCARD constexpr bool IsIterable() const override

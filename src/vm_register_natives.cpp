@@ -483,7 +483,7 @@ static Value InteropDoCall(std::vector<Value>& args)
 
   auto handleInstance = args[0].GetObject()->GetAsInstance();
 
-  if (handleInstance == nullptr || std::strcmp(handleInstance->ObjectName(), "LibraryHandle") != 0) {
+  if (handleInstance == nullptr || handleInstance->ObjectName() != "LibraryHandle") {
     throw Grace::GraceException(
       Grace::GraceException::Type::InvalidType,
       fmt::format("Expected `std::interop::LibraryHandle` for `handle` in `std::interop::do_call(handle, func_name, args, call_type)` but got `{}`", args[0].GetTypeName())

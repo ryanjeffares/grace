@@ -68,7 +68,7 @@ namespace Grace
         return !IsAtEnd();
       }
 
-      GRACE_NODISCARD GRACE_INLINE constexpr const char* ObjectName() const override
+      GRACE_NODISCARD GRACE_INLINE constexpr std::string_view ObjectName() const override
       {
         return "Iterator";
       }

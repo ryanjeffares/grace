@@ -9,8 +9,6 @@
  *  For licensing information, see grace.hpp
  */
 
-#include "object_tracker.hpp"
-
 #ifdef GRACE_CLEAN_CYCLES_ASYNC
 # include <atomic>
 # include <condition_variable>
@@ -19,6 +17,7 @@
 
 #include <fmt/core.h>
 
+#include "object_tracker.hpp"
 #include "grace_object.hpp"
 #include "grace_list.hpp"
 #include "grace_dictionary.hpp"
@@ -243,6 +242,12 @@ static void CleanCyclesInternal()
           member->RemoveMember(object);
         }
 
+        if (member->RefCount() == 1) {
+          auto delIt = std::find(s_TrackedObjects.begin(), s_TrackedObjects.end(), member);
+          if (delIt != s_TrackedObjects.end()) {
+            s_TrackedObjects.erase(delIt);
+          }
+        }
         // now when the Value instances go out of scope, the objects will be deleted safely
         break;
       }

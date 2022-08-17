@@ -837,7 +837,7 @@ namespace Grace::VM
   GRACE_NODISCARD std::string Value::GetTypeName() const
   {
     if (m_Type == Type::Object) {
-      return m_Data.m_Object->ObjectName();
+      return std::string(m_Data.m_Object->ObjectName());
     }
     return fmt::format("{}", m_Type);
   }

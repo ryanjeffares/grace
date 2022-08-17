@@ -44,5 +44,5 @@ func main():
   second.child = third;
   third.child = first;
 
-  f();
+  // f();
 end

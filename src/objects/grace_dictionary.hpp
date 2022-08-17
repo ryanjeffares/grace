@@ -38,7 +38,7 @@ namespace Grace
       GRACE_NODISCARD std::string ToString() const override;
       GRACE_NODISCARD bool AsBool() const override;      
 
-      GRACE_NODISCARD GRACE_INLINE constexpr const char* ObjectName() const override
+      GRACE_NODISCARD GRACE_INLINE constexpr std::string_view ObjectName() const override
       {
         return "Dict";
       }
