@@ -217,6 +217,9 @@ VM::InterpretResult Grace::Compiler::Compile(const std::string& fileName, std::s
 
   s_CompilerContextStack.emplace(fileName, std::filesystem::absolute(std::filesystem::path(fileName)).parent_path(), std::move(code));
   
+  auto fullPath = s_CompilerContextStack.top().fullPath.string();
+  s_FileConstantsLookup[fullPath]["__FILE"] = { VM::Value(fullPath), false };
+
   Advance(s_CompilerContextStack.top());
   
   auto hadError = false, hadWarning = false;
@@ -742,6 +745,9 @@ static void ImportDeclaration(CompilerContext& compiler)
   inFileStream << inFile.rdbuf();
 
   s_CompilerContextStack.emplace(std::move(importPath), inPath.parent_path(), inFileStream.str());
+
+  auto fullPath = s_CompilerContextStack.top().fullPath.string();
+  s_FileConstantsLookup[fullPath]["__FILE"] = { VM::Value(fullPath), false };
   Advance(s_CompilerContextStack.top());
 }
 
