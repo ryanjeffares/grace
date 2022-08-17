@@ -697,6 +697,22 @@ namespace Grace::VM
     }
   }
 
+  static bool CompareStringsIgnoreCase(const std::string& first, const std::string& second)
+  {
+    auto size = first.size();
+    if (size != second.length()) {
+      return false;
+    }
+
+    for (std::size_t i = 0; i < size; i++) {
+      if (std::tolower(first[i]) != std::tolower(second[i])) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
   bool Value::AsBool() const
   {
     switch (m_Type) {
@@ -710,8 +726,15 @@ namespace Grace::VM
         return m_Data.m_Int > 0;
       case Type::Null:
         return false;
-      case Type::String:
+      case Type::String: {
+        if (CompareStringsIgnoreCase(*m_Data.m_Str, "true")) {
+          return true;
+        }
+        if (CompareStringsIgnoreCase(*m_Data.m_Str, "false")) {
+          return false;
+        }
         return m_Data.m_Str->length() > 0;
+      }
       case Type::Object:
         return m_Data.m_Object->AsBool();
       default:

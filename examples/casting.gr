@@ -33,4 +33,9 @@ func main():
 
   var p = Person("Ryan", 23);
   assert(instanceof(p, Person));
+
+  println(Bool("true"));
+  println(Bool("FaLsE"));
+  println(Bool(""));
+  println(Bool("asdhfaksdhfa"));
 end
