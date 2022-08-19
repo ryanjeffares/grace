@@ -172,6 +172,7 @@ static void Primary(bool canAssign, CompilerContext& compiler);
 static void FreeFunctionCall(const Scanner::Token& funcNameToken, CompilerContext& compiler);
 static void DotFunctionCall(const Scanner::Token& funcNameToken, CompilerContext& compiler);
 static void Dot(bool canAssign, CompilerContext& compiler);
+static void Subscript(CompilerContext& compiler);
 static void Identifier(bool canAssign, CompilerContext& compiler);
 static void Char(CompilerContext& compiler);
 static void String(CompilerContext& compiler);
@@ -1499,7 +1500,6 @@ static void Expression(bool canAssign, CompilerContext& compiler)
           case Scanner::TokenType::RightParen:
           case Scanner::TokenType::Comma:
           case Scanner::TokenType::Colon:
-          case Scanner::TokenType::LeftSquareParen:
           case Scanner::TokenType::RightSquareParen:
           case Scanner::TokenType::LeftCurlyParen:
           case Scanner::TokenType::RightCurlyParen:
@@ -1510,6 +1510,10 @@ static void Expression(bool canAssign, CompilerContext& compiler)
           case Scanner::TokenType::Dot:
             Advance(compiler);  // consume the .
             Dot(canAssign, compiler);
+            break;
+          case Scanner::TokenType::LeftSquareParen:
+            Advance(compiler);  // consume the [
+            Subscript(compiler);
             break;
           default:
             MessageAtCurrent("Invalid token found in expression", LogLevel::Error, compiler);
@@ -2533,9 +2537,22 @@ static void Primary(bool canAssign, CompilerContext& compiler)
   }
 
   if (Match(Scanner::TokenType::Dot, compiler)) {
-    // TODO: account for class member access, not just function calls...
     Dot(canAssign, compiler);
+  } else if (Match(Scanner::TokenType::LeftSquareParen, compiler)) {
+    Subscript(compiler);
   }
+}
+
+static void Subscript(CompilerContext& compiler)
+{
+  Expression(false, compiler);
+
+  if (!Match(Scanner::TokenType::RightSquareParen, compiler)) {
+    MessageAtCurrent("Expected ']' after subscript expression", LogLevel::Error, compiler);
+    return;
+  }
+
+  EmitOp(VM::Ops::Subscript, compiler.previous.value().GetLine());
 }
 
 static void Dot(bool canAssign, CompilerContext& compiler)

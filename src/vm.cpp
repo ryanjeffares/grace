@@ -11,6 +11,7 @@
 
 #include <chrono>
 #include <cstdlib>
+#include <filesystem>
 #include <iterator>
 #include <stack>
 #include <utility>
@@ -950,7 +951,12 @@ namespace Grace::VM
             for (auto i = 0; i < numItems; i++) {
               result[numItems - i - 1] = Pop(valueStack);
             }
-            valueStack.push_back(Value::CreateObject<GraceList>(std::move(result)));
+
+            if (result.size() == 1) {
+              valueStack.push_back(Value::CreateObject<GraceList>(std::move(result[0])));
+            } else {
+              valueStack.push_back(Value::CreateObject<GraceList>(std::move(result)));
+            }
             break;
           }
           case Ops::CreateRangeList: {
@@ -980,6 +986,44 @@ namespace Grace::VM
             }
 
             valueStack.push_back(Value::CreateObject<GraceList>(min, max, increment));
+            break;
+          }
+          case Ops::Subscript: {
+            auto [value, index] = PopLastTwo(valueStack);
+            
+            auto valueType = value.GetType();
+            if (valueType == Value::Type::String) {
+              const auto& s = value.Get<std::string>();
+              if (index.GetType() != Value::Type::Int) {
+                throw GraceException(GraceException::Type::InvalidType, fmt::format("Expected `Int` for subscript index but got `{}`", index.GetTypeName()));
+              }
+              auto i = static_cast<std::size_t>(index.Get<std::int64_t>());
+              if (i >= s.length()) {
+                throw GraceException(GraceException::Type::IndexOutOfRange, fmt::format("Given index is {} but the length of the `String` is {}", i, s.length()));
+              }
+              valueStack.emplace_back(s[i]);
+            } else if (valueType == Value::Type::Object) {
+              auto object = value.GetObject();
+              
+              switch (object->ObjectType()) {
+                case GraceObjectType::List: {
+                  if (index.GetType() != Value::Type::Int) {
+                    throw GraceException(GraceException::Type::InvalidType, fmt::format("Expected `Int` for subscript index but got `{}`", index.GetTypeName()));
+                  }
+                  auto i = static_cast<std::size_t>(index.Get<std::int64_t>());
+                  valueStack.push_back((*object->GetAsList())[i]);
+                  break;
+                }
+                case GraceObjectType::Dictionary:
+                  valueStack.push_back(object->GetAsDictionary()->Get(index));                
+                  break;
+                default:
+                  GRACE_UNREACHABLE();
+                  break;
+              }
+            } else {
+              throw GraceException(GraceException::Type::InvalidType, fmt::format("`{}` cannot be indexed", value.GetTypeName()));
+            }
             break;
           }
           case Ops::Assert: {
@@ -1123,29 +1167,33 @@ namespace Grace::VM
           const auto& [caller, callee, ln, fileName, calleeFileName, fileNameHash, calleeFileNameHash] = callStack[i];
           const auto& callerFunc = m_FunctionLookup.at(fileNameHash).at(caller);
           fmt::print(stderr, "in {}:{}:{}\n", fileName, callerFunc->name, ln);
-          fmt::print(stderr, "{:>4}\n", Scanner::GetCodeAtLine(fileName, ln));
+          auto absolute = std::filesystem::absolute(fileName);
+          fmt::print(stderr, "{:>4}\n", Scanner::GetCodeAtLine(absolute, ln));
         }
       } else {
         fmt::print(stderr, "{} more calls before - set environment variable `GRACE_SHOW_FULL_CALLSTACK` to see full callstack\n", callStackSize - 15);
         for (auto i = callStackSize - 15; i < callStackSize; i++) {
           const auto& [caller, callee, ln, fileName, calleeFileName, fileNameHash, calleeFileNameHash] = callStack[i];
           const auto& callerFunc = m_FunctionLookup.at(fileNameHash).at(caller);
+          auto absolute = std::filesystem::absolute(fileName);
           fmt::print(stderr, "in {}:{}:{}\n", fileName, callerFunc->name, ln);
-          fmt::print(stderr, "{:>4}\n", Scanner::GetCodeAtLine(fileName, ln));
+          fmt::print(stderr, "{:>4}\n", Scanner::GetCodeAtLine(absolute, ln));
         }
       }
     } else {
       for (std::size_t i = 1; i < callStack.size(); i++) {
         const auto& [caller, callee, ln, fileName, calleeFileName, fileNameHash, calleeFileNameHash] = callStack[i];
         const auto& callerFunc = m_FunctionLookup.at(fileNameHash).at(caller);
+        auto absolute = std::filesystem::absolute(fileName);
         fmt::print(stderr, "in {}:{}:{}\n", fileName, callerFunc->name, ln);
-        fmt::print(stderr, "{:>4}\n", Scanner::GetCodeAtLine(fileName, ln));
+        fmt::print(stderr, "{:>4}\n", Scanner::GetCodeAtLine(absolute, ln));
       }
     }
 
     const auto& calleeFunc = m_FunctionLookup.at(callStack.back().calleeFileNameHash).at(callStack.back().calleeHash);
     fmt::print(stderr, "in {}:{}:{}\n", calleeFunc->fileName, calleeFunc->name, line);
-    fmt::print(stderr, "{:>4}\n", Scanner::GetCodeAtLine(calleeFunc->fileName, line));
+    auto absolute = std::filesystem::absolute(calleeFunc->fileName);
+    fmt::print(stderr, "{:>4}\n", Scanner::GetCodeAtLine(absolute, line));
 
     fmt::print(stderr, "\n");
     fmt::print(stderr, fmt::fg(fmt::color::red) | fmt::emphasis::bold, "ERROR: ");

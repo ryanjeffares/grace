@@ -33,7 +33,7 @@ func export zip(this List list, final other: List) :: List:
   var res = [];
 
   for i in [0..min]:
-    res.append(KeyValuePair(list.at(i), other.at(i)));
+    res.append(KeyValuePair(list[i], other[i]));
   end
 
   return res;

@@ -67,6 +67,9 @@ static Value DirectoryCreate(std::vector<Value>& args);
 static Value InteropLoadLibrary(std::vector<Value>& args);
 static Value InteropDoCall(std::vector<Value>& args);
 
+static Value StringLength(std::vector<Value>& args);
+static Value StringSplit(std::vector<Value>& args);
+
 void VM::RegisterNatives()
 {
   // Math functions
@@ -113,8 +116,13 @@ void VM::RegisterNatives()
   m_NativeFunctions.emplace_back("__NATIVE_DIRECTORY_EXISTS", 1, &DirectoryExists);
   m_NativeFunctions.emplace_back("__NATIVE_DIRECTORY_CREATE", 1, &DirectoryCreate);
 
+  // Interop functions
   m_NativeFunctions.emplace_back("__NATIVE_INTEROP_LOAD_LIBRARY", 1, &InteropLoadLibrary);
   m_NativeFunctions.emplace_back("__NATIVE_INTEROP_DO_CALL", 4, &InteropDoCall);
+
+  // String functions
+  m_NativeFunctions.emplace_back("__NATIVE_STRING_LENGTH", 1, &StringLength);
+  m_NativeFunctions.emplace_back("__NATIVE_STRING_SPLIT", 2, &StringSplit);
 }
 
 static Value SqrtFloat(std::vector<Value>& args)
@@ -641,4 +649,60 @@ static Value InteropDoCall(std::vector<Value>& args)
 #undef CDECL_CALL_DOUBLE
 #undef CDECL_CALL_POINTER
 #undef CDECL_CALL_VOID
+}
+
+static Value StringLength(std::vector<Value>& args)
+{
+  auto& s = args[0];
+  if (s.GetType() != Value::Type::String) {
+    throw Grace::GraceException(
+      Grace::GraceException::Type::InvalidType,
+      fmt::format("Expected `String` for `std::string::length(s)` but got `{}`", args[0].GetTypeName())
+    );
+  }
+
+  return Value(static_cast<std::int64_t>(s.Get<std::string>().length()));
+}
+
+static Value StringSplit(std::vector<Value>& args)
+{
+  if (args[0].GetType() != Value::Type::String) {
+    throw Grace::GraceException(
+      Grace::GraceException::Type::InvalidType,
+      fmt::format("Expected `String` for `std::string::split(s, separator)` but got `{}`", args[0].GetTypeName())
+    );
+  }
+
+  if (args[1].GetType() != Value::Type::String) {
+    throw Grace::GraceException(
+      Grace::GraceException::Type::InvalidType,
+      fmt::format("Expected `String` for `std::string::split(s, separator)` but got `{}`", args[1].GetTypeName())
+    );
+  }
+
+  const auto& s = args[0].Get<std::string>();
+  const auto& separator = args[1].Get<std::string>();
+
+  if (separator.length() == 0) {
+    throw Grace::GraceException(Grace::GraceException::Type::InvalidArgument, "Separator has 0 length");
+  }
+
+  auto res = Value::CreateObject<Grace::GraceList>();
+  auto list = res.GetObject()->GetAsList();
+  if (s.find(separator) == std::string::npos) {
+    list->Append(s);
+    return res;
+  }
+  
+  std::size_t lastSplit = 0;
+  for (std::size_t i = 0; i < s.length(); i++) {
+    if (s.substr(i, separator.length()) == separator) {
+      list->Append(s.substr(lastSplit, i));
+      lastSplit = i + separator.length();
+    }
+  }
+
+  list->Append(s.substr(lastSplit));
+
+  return res;
 }

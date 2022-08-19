@@ -1,8 +1,41 @@
 import std::dict;
 import std::list;
+import std::keyvaluepair;
+import std::string;
+
+func get_dict() :: Dict:
+  return {"Ryan": 23, "Syl": 24, "Pog": "Champ"};
+end
+
+func get_list():
+  return get_dict().to_list();
+end
 
 func main():
-  var d = {"Ryan": 23, "Syl": 24, "Pog": "Champ"};
+  var name = "Ryan";
+  println(name.length());
+  println(name[3]);
+  println("Hello World!".length());
+  println("Hello World!".chars());
+  println(List(get_dict()));
+
+  var test = {"list": [1, 2, 3]};
+  for i in [0..test["list"].length()]:
+    println(test["list"][i]);
+  end
+
+  println(get_dict()[get_list()[0].key()]);
+  println(get_dict()["Pog"]);
+
+  var d = get_dict();
+  
+  println(d["Ryan"]);
+  
+  try:
+    println(d[10]);
+  catch e:
+    println(e);
+  end
 
   var as_list = d.to_list();
   println(as_list);
@@ -13,6 +46,8 @@ func main():
 
   var l1 = [0..10];
   var l2 = [10..30];
+
+  println(l2[0]);
 
   var zipped = l1.zip(l2);
   println(zipped);
