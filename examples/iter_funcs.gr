@@ -1,0 +1,19 @@
+import std::dict;
+import std::list;
+
+func main():
+  var d = {"Ryan": 23, "Syl": 24, "Pog": "Champ"};
+
+  var as_list = d.to_list();
+  println(as_list);
+  for el in as_list:
+    println(typename(el));
+    println(el);
+  end
+
+  var l1 = [0..10];
+  var l2 = [10..30];
+
+  var zipped = l1.zip(l2);
+  println(zipped);
+end

@@ -1,3 +1,5 @@
+import std::math;
+
 func export at(this List list, index: Int):
   return __NATIVE_GET_LIST_AT_INDEX(list, index);
 end
@@ -12,4 +14,27 @@ end
 
 func export length(this List list) :: Int:
   return __NATIVE_LIST_LENGTH(list);
+end
+
+func export zip(this List list, final other: List) :: List:
+  if !instanceof(list, List):
+    throw("Expected `List` for `list` in `std::math::max(list, other)` but got `" + typename(list) + '`');
+  end
+
+  if !instanceof(other, List):
+    throw("Expected `List` for `other` in `std::math::max(first, other)` but got `" + typename(other) + '`');
+  end
+
+  var l1 = list.length();
+  var l2 = list.length();
+
+  var min = std::math::min(l1, l2);
+
+  var res = [];
+
+  for i in [0..min]:
+    res.append(KeyValuePair(list.at(i), other.at(i)));
+  end
+
+  return res;
 end

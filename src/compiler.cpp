@@ -251,7 +251,7 @@ VM::InterpretResult Grace::Compiler::Compile(const std::string& fileName, std::s
       if (duration > 1000) {
         fmt::print("Compilation succeeded in {} ms.\n", duration_cast<milliseconds>(end - start).count());
       } else {
-        fmt::print("Compilation succeeded in {} μs.\n", duration);
+        fmt::print("Compilation succeeded in {} \xE6s.\n", duration);
       }
     }
     return Finalise(fileName, verbose, args);
@@ -1120,7 +1120,10 @@ static void FuncDeclaration(CompilerContext& compiler)
     compiler.locals.emplace_back("__ARGS", true, false, 0);
   }
 
-  Consume(Scanner::TokenType::Colon, "Expected ':' after function signature", compiler);
+  if (!Match(Scanner::TokenType::Colon, compiler)) {
+    MessageAtCurrent("Expected ':' after function signature", LogLevel::Error, compiler);
+    return;
+  }
 
   if (!VM::VM::AddFunction(std::move(name), parameters.size(), compiler.fileName, exportFunction, isExtensionMethod, extensionObjectNameHash)) {
     Message(funcNameToken, "A function or class in the same namespace already exists with the same name as this function", LogLevel::Error, compiler);
@@ -2596,7 +2599,10 @@ static void DotFunctionCall(const Scanner::Token& funcNameToken, CompilerContext
       if (Match(Scanner::TokenType::RightParen, compiler)) {
         break;
       }
-      Consume(Scanner::TokenType::Comma, "Expected ',' after function call argument", compiler);
+      if (!Match(Scanner::TokenType::Comma, compiler)) {
+        MessageAtCurrent("Expected ',' after function call argument", LogLevel::Error, compiler);
+        return;
+      }
     }
   }
 
