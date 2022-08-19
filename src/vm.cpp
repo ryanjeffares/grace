@@ -196,7 +196,11 @@ namespace Grace::VM
         if (dur > 1000) {
           fmt::print("Program finished successfully in {} ms.\n", duration_cast<milliseconds>(end - start).count());
         } else {
+#ifdef GRACE_MSC
           fmt::print("Program finished successfully in {} \xE6s.\n", dur);
+#else
+          fmt::print("Program finished successfully in {} µs.\n", dur);
+#endif
         }
       }
     }

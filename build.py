@@ -62,9 +62,9 @@ def main(config: str, install: bool):
                 os.system(f'cmake --build build --config Release')
         else:
             if install:
-                os.system(f'cmake --build build --config Release --target install -- -j')
+                os.system(f'cmake --build build --config Release --target install')
             else:
-                os.system(f'cmake --build build --config Release -- -j')
+                os.system(f'cmake --build build --config Release')
     else:
         raise ValueError('config must match "Debug" or "Release" or "All"')
 

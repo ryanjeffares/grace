@@ -251,7 +251,11 @@ VM::InterpretResult Grace::Compiler::Compile(const std::string& fileName, std::s
       if (duration > 1000) {
         fmt::print("Compilation succeeded in {} ms.\n", duration_cast<milliseconds>(end - start).count());
       } else {
+#ifdef GRACE_MSC
         fmt::print("Compilation succeeded in {} \xE6s.\n", duration);
+#else
+        fmt::print("Compilation succeeded in {} µs.\n", duration);
+#endif
       }
     }
     return Finalise(fileName, verbose, args);
