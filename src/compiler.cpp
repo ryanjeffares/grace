@@ -172,7 +172,7 @@ static void Primary(bool canAssign, CompilerContext& compiler);
 static void FreeFunctionCall(const Scanner::Token& funcNameToken, CompilerContext& compiler);
 static void DotFunctionCall(const Scanner::Token& funcNameToken, CompilerContext& compiler);
 static void Dot(bool canAssign, CompilerContext& compiler);
-static void Subscript(CompilerContext& compiler);
+static void Subscript(bool canAssign, CompilerContext& compiler);
 static void Identifier(bool canAssign, CompilerContext& compiler);
 static void Char(CompilerContext& compiler);
 static void String(CompilerContext& compiler);
@@ -1513,7 +1513,7 @@ static void Expression(bool canAssign, CompilerContext& compiler)
             break;
           case Scanner::TokenType::LeftSquareParen:
             Advance(compiler);  // consume the [
-            Subscript(compiler);
+            Subscript(canAssign, compiler);
             break;
           default:
             MessageAtCurrent("Invalid token found in expression", LogLevel::Error, compiler);
@@ -2539,11 +2539,11 @@ static void Primary(bool canAssign, CompilerContext& compiler)
   if (Match(Scanner::TokenType::Dot, compiler)) {
     Dot(canAssign, compiler);
   } else if (Match(Scanner::TokenType::LeftSquareParen, compiler)) {
-    Subscript(compiler);
+    Subscript(canAssign, compiler);
   }
 }
 
-static void Subscript(CompilerContext& compiler)
+static void Subscript(bool canAssign, CompilerContext& compiler)
 {
   Expression(false, compiler);
 
@@ -2552,7 +2552,16 @@ static void Subscript(CompilerContext& compiler)
     return;
   }
 
-  EmitOp(VM::Ops::Subscript, compiler.previous.value().GetLine());
+  if (Match(Scanner::TokenType::Equal, compiler)) {
+    if (!canAssign) {
+      MessageAtPrevious("Assignment is not valid in the current context", LogLevel::Error, compiler);
+      return;
+    }
+    Expression(false, compiler);
+    EmitOp(VM::Ops::AssignSubscript, compiler.previous.value().GetLine());
+  } else {
+    EmitOp(VM::Ops::GetSubscript, compiler.previous.value().GetLine());
+  }
 }
 
 static void Dot(bool canAssign, CompilerContext& compiler)

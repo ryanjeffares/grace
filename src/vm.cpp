@@ -988,41 +988,70 @@ namespace Grace::VM
             valueStack.push_back(Value::CreateObject<GraceList>(min, max, increment));
             break;
           }
-          case Ops::Subscript: {
-            auto [value, index] = PopLastTwo(valueStack);
-            
-            auto valueType = value.GetType();
-            if (valueType == Value::Type::String) {
-              const auto& s = value.Get<std::string>();
-              if (index.GetType() != Value::Type::Int) {
-                throw GraceException(GraceException::Type::InvalidType, fmt::format("Expected `Int` for subscript index but got `{}`", index.GetTypeName()));
-              }
-              auto i = static_cast<std::size_t>(index.Get<std::int64_t>());
-              if (i >= s.length()) {
-                throw GraceException(GraceException::Type::IndexOutOfRange, fmt::format("Given index is {} but the length of the `String` is {}", i, s.length()));
-              }
-              valueStack.emplace_back(s[i]);
-            } else if (valueType == Value::Type::Object) {
-              auto object = value.GetObject();
+          case Ops::AssignSubscript: {
+            auto newValue = Pop(valueStack);
+            auto subscript = Pop(valueStack);
+            auto container = Pop(valueStack);
+
+            if (container.GetType() == Value::Type::Object) {
+              auto object = container.GetObject();
               
               switch (object->ObjectType()) {
                 case GraceObjectType::List: {
-                  if (index.GetType() != Value::Type::Int) {
-                    throw GraceException(GraceException::Type::InvalidType, fmt::format("Expected `Int` for subscript index but got `{}`", index.GetTypeName()));
+                  if (subscript.GetType() != Value::Type::Int) {
+                    throw GraceException(GraceException::Type::InvalidType, fmt::format("Expected `Int` for subscript index but got `{}`", subscript.GetTypeName()));
                   }
-                  auto i = static_cast<std::size_t>(index.Get<std::int64_t>());
-                  valueStack.push_back((*object->GetAsList())[i]);
+                  auto index = static_cast<std::size_t>(subscript.Get<std::int64_t>());
+                  (*object->GetAsList())[index] = newValue;
                   break;
                 }
                 case GraceObjectType::Dictionary:
-                  valueStack.push_back(object->GetAsDictionary()->Get(index));                
+                  object->GetAsDictionary()->Insert(std::move(subscript), std::move(newValue));
                   break;
                 default:
                   GRACE_UNREACHABLE();
                   break;
               }
             } else {
-              throw GraceException(GraceException::Type::InvalidType, fmt::format("`{}` cannot be indexed", value.GetTypeName()));
+              throw GraceException(GraceException::Type::InvalidType, fmt::format("`{}` cannot be indexed", container.GetTypeName()));
+            }
+            break;
+          }
+          case Ops::GetSubscript: {
+            auto [container, subscript] = PopLastTwo(valueStack);
+            
+            auto valueType = container.GetType();
+            if (valueType == Value::Type::String) {
+              const auto& s = container.Get<std::string>();
+              if (subscript.GetType() != Value::Type::Int) {
+                throw GraceException(GraceException::Type::InvalidType, fmt::format("Expected `Int` for subscript index but got `{}`", subscript.GetTypeName()));
+              }
+              auto index = static_cast<std::size_t>(subscript.Get<std::int64_t>());
+              if (index >= s.length()) {
+                throw GraceException(GraceException::Type::IndexOutOfRange, fmt::format("Given index is {} but the length of the `String` is {}", index, s.length()));
+              }
+              valueStack.emplace_back(s[index]);
+            } else if (valueType == Value::Type::Object) {
+              auto object = container.GetObject();
+              
+              switch (object->ObjectType()) {
+                case GraceObjectType::List: {
+                  if (subscript.GetType() != Value::Type::Int) {
+                    throw GraceException(GraceException::Type::InvalidType, fmt::format("Expected `Int` for subscript index but got `{}`", subscript.GetTypeName()));
+                  }
+                  auto i = static_cast<std::size_t>(subscript.Get<std::int64_t>());
+                  valueStack.push_back((*object->GetAsList())[i]);
+                  break;
+                }
+                case GraceObjectType::Dictionary:
+                  valueStack.push_back(object->GetAsDictionary()->Get(subscript));                
+                  break;
+                default:
+                  GRACE_UNREACHABLE();
+                  break;
+              }
+            } else {
+              throw GraceException(GraceException::Type::InvalidType, fmt::format("`{}` cannot be indexed", container.GetTypeName()));
             }
             break;
           }

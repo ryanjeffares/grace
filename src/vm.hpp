@@ -42,6 +42,7 @@ namespace Grace::VM
     AssignIteratorBegin,
     AssignLocal,
     AssignMember,
+    AssignSubscript,
     BitwiseAnd,
     BitwiseNot,
     BitwiseOr,
@@ -62,6 +63,7 @@ namespace Grace::VM
     Equal,
     Exit,
     ExitTry,
+    GetSubscript,
     Greater,
     GreaterEqual,
     IncrementIterator,
@@ -98,7 +100,6 @@ namespace Grace::VM
     ShiftLeft,
     ShiftRight,
     StartNewNamespace,
-    Subscript,
     Subtract,
     Throw,
     Typename
@@ -350,7 +351,8 @@ struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
       case Ops::EPrintLn: name = "Ops::EPrintLn"; break;
       case Ops::EPrintTab: name = "Ops::EPrintTab"; break;
       case Ops::Return: name = "Ops::Return"; break;
-      case Ops::Subscript: name = "Ops::Subscript"; break;
+      case Ops::AssignSubscript: name = "Ops::AssignSubscript"; break;
+      case Ops::GetSubscript: name = "Ops::GetSubscript"; break;
       case Ops::Subtract: name = "Ops::Subtract"; break;
       case Ops::Throw: name = "Ops::Throw"; break;
       case Ops::Typename: name = "Ops::Typename"; break;

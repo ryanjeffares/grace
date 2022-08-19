@@ -24,6 +24,9 @@ func main():
     println(test["list"][i]);
   end
 
+  test["name"] = "Ryan";
+  println(test);
+
   println(get_dict()[get_list()[0].key()]);
   println(get_dict()["Pog"]);
 
@@ -51,4 +54,10 @@ func main():
 
   var zipped = l1.zip(l2);
   println(zipped);
+  zipped[1] = zipped;
+  println(zipped);
+
+  l1[0] = 2**32;
+
+  println(l1);
 end
