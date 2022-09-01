@@ -1,27 +1,25 @@
+import std::list;
+
 func export insert(this Dict dict, key, value):
-  if !instanceof(dict, Dict):
-    throw("Expected `Dict` for dict::insert(dict, key, value) but got `" + typename(dict) + "`");
-  end
   __NATIVE_DICTIONARY_INSERT(dict, key, value);
 end
 
 func export get(this Dict dict, key):
-  if !instanceof(dict, Dict):
-    throw("expected `Dict` for dict::get(dict, key) but got `" + typename(dict) + "`");
-  end
   return __NATIVE_DICTIONARY_GET(dict, key);
 end
 
-func export remove(this Dict dict, key):
-  if !instanceof(dict, Dict):
-    throw("expected `Dict` for dict::remove(dict, key) but got `" + typename(dict) + "`");
-  end
+func export remove(this Dict dict, key) :: Bool:
   return __NATIVE_DICTIONARY_REMOVE(dict, key); 
 end
 
 func export contains_key(this Dict dict, key) :: Bool:
-  if !instanceof(dict, Dict):
-    throw("expected `Dict` for dict::contains_key(dict, key) but got `" + typename(dict) + "`");
-  end
   return __NATIVE_DICTIONARY_CONTAINS_KEY(dict, key);
+end
+
+func export to_list(this Dict dict) :: List:
+  final res = [];
+  for pair in dict:
+    res.append(pair);
+  end
+  return res;
 end

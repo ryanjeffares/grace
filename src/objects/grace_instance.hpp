@@ -48,9 +48,9 @@ namespace Grace
 	  return true;
 	}
 
-	GRACE_NODISCARD const char* ObjectName() const override
+	GRACE_NODISCARD std::string_view ObjectName() const override
 	{
-	  return m_ClassName.c_str();
+	  return m_ClassName;
 	}
 
 	GRACE_NODISCARD constexpr bool IsIterable() const override
@@ -63,13 +63,18 @@ namespace Grace
 	  return GraceObjectType::Instance;
 	}
 
+	GRACE_NODISCARD GRACE_INLINE GraceInstance* GetAsInstance() override
+	{
+	  return this;
+	}
+
 	void AssignMember(const std::string& memberName, VM::Value&& value);
 	GRACE_NODISCARD const VM::Value& LoadMember(const std::string& memberName);
 
 	// needs to be thread safe
-	GRACE_NODISCARD std::vector<GraceObject*> GetObjectMembers() override;
+	GRACE_NODISCARD std::vector<GraceObject*> GetObjectMembers() const override;
 	// needs to be thread safe
-	GRACE_NODISCARD bool AnyMemberMatches(const GraceObject* match) override;
+	GRACE_NODISCARD bool AnyMemberMatches(const GraceObject* match) const override;
 	void RemoveMember(GraceObject* object) override;
 
   private:

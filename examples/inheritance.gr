@@ -1,0 +1,16 @@
+class Animal:
+  var name;
+
+  constructor(n: String):
+    name = n;
+  end
+end
+
+class Dog extends Animal:
+  var breed: String;
+
+  constructor(b: String, n: String):
+    super(n);
+    breed = b;
+  end
+end

@@ -1,3 +1,7 @@
+import std::string;
+
 func main():
   println("Hello world!");
+
+  println("Hello, World".split(", "));
 end

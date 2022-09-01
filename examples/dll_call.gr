@@ -1,0 +1,29 @@
+import std::system;
+import std::interop;
+
+func main():
+
+  var lib_path: String;
+  if std::system::platform() == "Linux":
+    lib_path = "../../libs/grace_test/libGraceTest.so";
+  else if std::system::platform() == "macOS":
+    lib_path = "../../Libs/grace_test/libGraceTest.dylib";
+  else:
+    lib_path = "../../CPP/GraceDLLTest/x64/Release/GraceDLLTest.dll";
+  end
+
+  final handle = std::interop::LibraryHandle(lib_path, 4096);
+
+  var args = [];
+  handle.do_call("SayHello", args, std::interop::CDECL_CALL_VOID);
+
+  args = [
+    KeyValuePair(std::interop::CDECL_ARG_POINTER, "this is a string")
+  ];
+  handle.do_call("PrintString", args, std::interop::CDECL_CALL_VOID);
+
+  args = [
+    KeyValuePair(std::interop::CDECL_ARG_DOUBLE, 10.0)
+  ];
+  println(handle.do_call("Sqrt", args, std::interop::CDECL_CALL_DOUBLE));
+end

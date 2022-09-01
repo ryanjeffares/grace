@@ -1,0 +1,15 @@
+func export length(this String s) :: Int:
+  return __NATIVE_STRING_LENGTH(s);
+end
+
+func export chars(this String s) :: List:
+  if !instanceof(s, String):
+    throw("Expected `String` for `std::string::chars(s)` but got `" + typename(s) + '`');
+  end
+  
+  return List(s);
+end
+
+func export split(this String s, final separator: String) :: List:
+  return __NATIVE_STRING_SPLIT(s, separator);
+end

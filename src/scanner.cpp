@@ -15,6 +15,7 @@
 #include <utility>
 
 #include "scanner.hpp"
+#include "value.hpp"
 
 namespace Grace::Scanner
 {
@@ -47,6 +48,7 @@ namespace Grace::Scanner
     {"by", TokenType::By},
     {"class", TokenType::Class},
     {"catch", TokenType::Catch},
+    {"const", TokenType::Const},
     {"constructor", TokenType::Constructor},
     {"continue", TokenType::Continue},
     {"end", TokenType::End},
@@ -81,6 +83,8 @@ namespace Grace::Scanner
     {"Char", TokenType::CharIdent},
     {"List", TokenType::ListIdent},
     {"Dict", TokenType::DictIdent},
+    {"Exception", TokenType::ExceptionIdent},
+    {"KeyValuePair", TokenType::KeyValuePairIdent},
   };
 
   static bool IsIdentifierChar(char c)
@@ -143,14 +147,14 @@ namespace Grace::Scanner
   static std::stack<ScannerContext> s_ScannerContextStack;
   static std::unordered_map<std::string, std::string> s_CodeStringsLookup;
 
-  bool HasFile(const std::string& fileName)
+  bool HasFile(const std::string& fullPath)
   {
-    return s_CodeStringsLookup.find(fileName) != s_CodeStringsLookup.end();
+    return s_CodeStringsLookup.find(fullPath) != s_CodeStringsLookup.end();
   }
 
-  void InitScanner(const std::string& fileName, std::string&& code)
+  void InitScanner(const std::string& fullPath, std::string&& code)
   {
-    s_CodeStringsLookup.try_emplace(fileName, code);
+    s_CodeStringsLookup.try_emplace(fullPath, code);
     s_ScannerContextStack.emplace(std::move(code));
   }
 
@@ -226,6 +230,9 @@ namespace Grace::Scanner
     std::size_t curr = 1;
     std::size_t strIndex = 0;
     while (curr < line) {
+      if (strIndex >= code.length()) {
+        return "";
+      }
       if (code[strIndex++] == '\n') {
         curr++;
       }

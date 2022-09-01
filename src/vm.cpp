@@ -11,6 +11,7 @@
 
 #include <chrono>
 #include <cstdlib>
+#include <filesystem>
 #include <iterator>
 #include <stack>
 #include <utility>
@@ -43,7 +44,7 @@ namespace Grace::VM
   std::int64_t VM::m_LastFunctionHash{};
   std::hash<std::string> VM::m_Hasher;
 
-  static GRACE_INLINE std::pair<Value, Value> PopLastTwo(std::vector<Value>& stack)
+  static std::pair<Value, Value> PopLastTwo(std::vector<Value>& stack)
   {
     auto c1 = std::move(stack[stack.size() - 2]);
     auto c2 = std::move(stack[stack.size() - 1]);
@@ -52,7 +53,7 @@ namespace Grace::VM
     return {std::move(c1), std::move(c2)};
   }
 
-  static GRACE_INLINE Value Pop(std::vector<Value>& stack)
+  static Value Pop(std::vector<Value>& stack)
   {
     auto c = std::move(stack.back());
     stack.pop_back();
@@ -196,7 +197,11 @@ namespace Grace::VM
         if (dur > 1000) {
           fmt::print("Program finished successfully in {} ms.\n", duration_cast<milliseconds>(end - start).count());
         } else {
-          fmt::print("Program finished successfully in {} μs.\n", dur);
+#ifdef GRACE_MSC
+          fmt::print("Program finished successfully in {} \xE6s.\n", dur);
+#else
+          fmt::print("Program finished successfully in {} µs.\n", dur);
+#endif
         }
       }
     }
@@ -212,6 +217,8 @@ namespace Grace::VM
         PrintLocals(localsList, m_FunctionLookup.at(fileNameStack.top().first).at(funcNameHash)->name); \
       }                                                                                                 \
     } while (false)                                                                                     \
+
+    auto interpretResult = InterpretResult::RuntimeOk;
 
     auto funcNameHash = static_cast<std::int64_t>(m_Hasher("main"));
     std::vector<Value> valueStack, localsList;
@@ -257,11 +264,7 @@ namespace Grace::VM
 
     bool inTryBlock = false;
 
-  #ifdef GRACE_DEBUG
-    if (verbose) {
-      ObjectTracker::EnableVerbose();
-    }
-  #endif
+    ObjectTracker::SetVerbose(verbose);
 
     while (true) {
       auto [op, line] = m_FullOpList[opCurrent++];
@@ -563,7 +566,7 @@ namespace Grace::VM
             break;
           }
           case Ops::MemberCall: {
-            auto calleeFuncName = m_FullConstantList[constantCurrent++].Get<std::string>();
+            auto& calleeFuncName = m_FullConstantList[constantCurrent++].Get<std::string>();
             auto calleeNameHash = m_FullConstantList[constantCurrent++].Get<std::int64_t>();          
             auto numArgs = static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>());
 
@@ -622,7 +625,7 @@ namespace Grace::VM
             auto value = Pop(valueStack);
             auto parentValue = Pop(valueStack);
             auto parentObject = parentValue.GetObject();
-            auto instance = dynamic_cast<GraceInstance*>(parentObject);
+            auto instance = parentObject->GetAsInstance();
             if (instance == nullptr) {
               throw GraceException(
                 GraceException::Type::InvalidType,
@@ -630,14 +633,14 @@ namespace Grace::VM
               );
             }
 
-            auto memberName = m_FullConstantList[constantCurrent++].Get<std::string>();
+            auto& memberName = m_FullConstantList[constantCurrent++].Get<std::string>();
             instance->AssignMember(memberName, std::move(value));
             break;
           }
           case Ops::LoadMember: {
             auto parentValue = Pop(valueStack);
             auto parentObject = parentValue.GetObject();
-            auto instance = dynamic_cast<GraceInstance*>(parentObject);
+            auto instance = parentObject->GetAsInstance();
             if (instance == nullptr) {
               throw GraceException(
                 GraceException::Type::InvalidType,
@@ -645,7 +648,7 @@ namespace Grace::VM
               );
             }
 
-            auto memberName = m_FullConstantList[constantCurrent++].Get<std::string>();
+            auto& memberName = m_FullConstantList[constantCurrent++].Get<std::string>();
             valueStack.push_back(instance->LoadMember(memberName));
             break;
           }
@@ -671,30 +674,35 @@ namespace Grace::VM
 
             auto twoIterators = m_FullConstantList[constantCurrent++].Get<bool>();
             auto iteratorId = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
-            if (auto list = dynamic_cast<GraceList*>(object)) {
+
+            if (auto list = object->GetAsList()) {
               auto listIterator = Value::CreateObject<GraceIterator>(list, GraceIterator::IterableType::List);
               heldIteratorIndexes.push(valueStack.size());
               valueStack.push_back(listIterator);
-              auto listIteratorObject = dynamic_cast<GraceIterator*>(listIterator.GetObject());
+              
+              auto listIteratorObject = listIterator.GetObject()->GetAsIterator();
               localsList[iteratorId + localsOffsets.top()] = listIteratorObject->IsAtEnd() ? Value() : listIteratorObject->Value();
+            
               if (twoIterators) {
                 auto secondIteratorId = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
                 localsList[secondIteratorId + localsOffsets.top()] = std::int64_t(0);
               } else {
                 constantCurrent++;
               }
-            } else if (auto dict = dynamic_cast<GraceDictionary*>(object)) {
+            } else if (auto dict = object->GetAsDictionary()) {
               auto dictIterator = Value::CreateObject<GraceIterator>(dict, GraceIterator::IterableType::Dictionary);
               heldIteratorIndexes.push(valueStack.size());
               valueStack.push_back(dictIterator);
-              auto dictIteratorObject = dynamic_cast<GraceIterator*>(dictIterator.GetObject());
+              
+              auto dictIteratorObject = dictIterator.GetObject()->GetAsIterator();
+              
               if (twoIterators) {
                 auto secondIteratorId = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
                 if (dictIteratorObject->IsAtEnd()) {
                   localsList[iteratorId + localsOffsets.top()] = nullptr;
                   localsList[secondIteratorId + localsOffsets.top()] = nullptr;
                 } else {
-                  auto kvpObject = dynamic_cast<GraceKeyValuePair*>(dictIteratorObject->Value().GetObject());
+                  auto kvpObject = dictIteratorObject->Value().GetObject()->GetAsKeyValuePair();
                   localsList[iteratorId + localsOffsets.top()] = kvpObject->Key();
                   localsList[secondIteratorId + localsOffsets.top()] = kvpObject->Value();
                 }
@@ -703,6 +711,7 @@ namespace Grace::VM
                 constantCurrent++;
               }
             } else {
+              // unreachable (?) due to IsIterable() check
               GRACE_ASSERT(false, "Object did not dynamic_cast to a valid iterable type");
             }
             break;
@@ -711,7 +720,7 @@ namespace Grace::VM
             auto twoIterators = m_FullConstantList[constantCurrent++].Get<bool>();
             auto iteratorVarId = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
             auto iteratorIndex = heldIteratorIndexes.top();
-            auto heldIterator = dynamic_cast<GraceIterator*>(valueStack[iteratorIndex].GetObject());
+            auto heldIterator = valueStack[iteratorIndex].GetObject()->GetAsIterator();
             auto iterableType = heldIterator->GetType();
 
             if (iterableType == GraceIterator::IterableType::List) {
@@ -730,7 +739,7 @@ namespace Grace::VM
               if (twoIterators) {
                 auto secondIteratorId = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
                 if (!heldIterator->IsAtEnd()) {
-                  auto kvpObject = dynamic_cast<GraceKeyValuePair*>(heldIterator->Value().GetObject());
+                  auto kvpObject = heldIterator->Value().GetObject()->GetAsKeyValuePair();
                   localsList[iteratorVarId + localsOffsets.top()] = kvpObject->Key();
                   localsList[secondIteratorId + localsOffsets.top()] = kvpObject->Value();
                 } else {
@@ -748,7 +757,7 @@ namespace Grace::VM
           }
           case Ops::CheckIteratorEnd: {
             auto heldIteratorIndex = heldIteratorIndexes.top();
-            auto heldIterator = dynamic_cast<GraceIterator*>(valueStack[heldIteratorIndex].GetObject());
+            auto heldIterator = valueStack[heldIteratorIndex].GetObject()->GetAsIterator();
 
             GRACE_MAYBE_UNUSED auto iterableType = heldIterator->GetType();
             GRACE_ASSERT((iterableType == GraceIterator::IterableType::List || iterableType == GraceIterator::IterableType::Dictionary), "Iterator did not have a valid type set");
@@ -808,7 +817,7 @@ namespace Grace::VM
             auto value = Pop(valueStack);
             auto type = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
             switch (type) {
-              case 0: {
+              case 0: { // int
                 std::int64_t result;
                 auto [success, message] = value.AsInt(result);
                 if (success) {
@@ -821,7 +830,7 @@ namespace Grace::VM
                 }
                 break;
               }
-              case 1: {
+              case 1: { // float
                 double result;
                 auto [success, message] = value.AsDouble(result);
                 if (success) {
@@ -834,13 +843,13 @@ namespace Grace::VM
                 }
                 break;
               }
-              case 2:
+              case 2: // bool
                 valueStack.emplace_back(value.AsBool());
                 break;
-              case 3:
+              case 3: // string
                 valueStack.emplace_back(value.AsString());
                 break;
-              case 4: {
+              case 4: { // char
                 char result;
                 auto [success, message] = value.AsChar(result);
                 if (success) {
@@ -853,9 +862,14 @@ namespace Grace::VM
                 }
                 break;
               }
-              case 5:
-                valueStack.emplace_back(Value::CreateObject<GraceList>(value));
+              case 5: // exception
+                valueStack.emplace_back(Value::CreateObject<GraceException>(value.AsString()));
                 break;
+              case 6: { // kvp
+                auto key = Pop(valueStack);
+                valueStack.emplace_back(Value::CreateObject<GraceKeyValuePair>(std::move(key), std::move(value)));
+                break;
+              }
               default:
                 GRACE_UNREACHABLE();
                 break;
@@ -863,25 +877,17 @@ namespace Grace::VM
             break;
           }
           case Ops::CheckType: {
+            auto value = Pop(valueStack);
             auto typeIdx = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
             if (typeIdx < 6) {
-              valueStack.emplace_back(typeIdx == static_cast<std::int64_t>(Pop(valueStack).GetType()));
+              valueStack.emplace_back(typeIdx == static_cast<std::int64_t>(value.GetType()));
+            } else if (typeIdx < 10) {
+              auto object = value.GetObject();
+              valueStack.emplace_back(typeIdx - 6 == static_cast<std::int64_t>(object->ObjectType()));
             } else {
-              switch (typeIdx) {
-                case 6: {
-                  auto l = dynamic_cast<GraceList*>(Pop(valueStack).GetObject());
-                  valueStack.emplace_back(l != nullptr);
-                  break;
-                }
-                case 7: {
-                  auto d = dynamic_cast<GraceDictionary*>(Pop(valueStack).GetObject());
-                  valueStack.emplace_back(d != nullptr);
-                  break;
-                }
-                default:
-                  GRACE_UNREACHABLE();
-                  break;
-              }
+              auto object = value.GetObject();
+              auto& typeName = m_FullConstantList[constantCurrent++].Get<std::string>();
+              valueStack.emplace_back(typeName == object->ObjectName());
             }
             break;
           }
@@ -941,7 +947,12 @@ namespace Grace::VM
             for (auto i = 0; i < numItems; i++) {
               result[numItems - i - 1] = Pop(valueStack);
             }
-            valueStack.push_back(Value::CreateObject<GraceList>(std::move(result)));
+
+            if (result.size() == 1) {
+              valueStack.push_back(Value::CreateObject<GraceList>(std::move(result[0])));
+            } else {
+              valueStack.push_back(Value::CreateObject<GraceList>(std::move(result)));
+            }
             break;
           }
           case Ops::CreateRangeList: {
@@ -973,6 +984,73 @@ namespace Grace::VM
             valueStack.push_back(Value::CreateObject<GraceList>(min, max, increment));
             break;
           }
+          case Ops::AssignSubscript: {
+            auto newValue = Pop(valueStack);
+            auto subscript = Pop(valueStack);
+            auto container = Pop(valueStack);
+
+            if (container.GetType() == Value::Type::Object) {
+              auto object = container.GetObject();
+              
+              switch (object->ObjectType()) {
+                case GraceObjectType::List: {
+                  if (subscript.GetType() != Value::Type::Int) {
+                    throw GraceException(GraceException::Type::InvalidType, fmt::format("Expected `Int` for subscript index but got `{}`", subscript.GetTypeName()));
+                  }
+                  auto index = static_cast<std::size_t>(subscript.Get<std::int64_t>());
+                  (*object->GetAsList())[index] = newValue;
+                  break;
+                }
+                case GraceObjectType::Dictionary:
+                  object->GetAsDictionary()->Insert(std::move(subscript), std::move(newValue));
+                  break;
+                default:
+                  GRACE_UNREACHABLE();
+                  break;
+              }
+            } else {
+              throw GraceException(GraceException::Type::InvalidType, fmt::format("`{}` cannot be indexed", container.GetTypeName()));
+            }
+            break;
+          }
+          case Ops::GetSubscript: {
+            auto [container, subscript] = PopLastTwo(valueStack);
+            
+            auto valueType = container.GetType();
+            if (valueType == Value::Type::String) {
+              const auto& s = container.Get<std::string>();
+              if (subscript.GetType() != Value::Type::Int) {
+                throw GraceException(GraceException::Type::InvalidType, fmt::format("Expected `Int` for subscript index but got `{}`", subscript.GetTypeName()));
+              }
+              auto index = static_cast<std::size_t>(subscript.Get<std::int64_t>());
+              if (index >= s.length()) {
+                throw GraceException(GraceException::Type::IndexOutOfRange, fmt::format("Given index is {} but the length of the `String` is {}", index, s.length()));
+              }
+              valueStack.emplace_back(s[index]);
+            } else if (valueType == Value::Type::Object) {
+              auto object = container.GetObject();
+              
+              switch (object->ObjectType()) {
+                case GraceObjectType::List: {
+                  if (subscript.GetType() != Value::Type::Int) {
+                    throw GraceException(GraceException::Type::InvalidType, fmt::format("Expected `Int` for subscript index but got `{}`", subscript.GetTypeName()));
+                  }
+                  auto i = static_cast<std::size_t>(subscript.Get<std::int64_t>());
+                  valueStack.push_back((*object->GetAsList())[i]);
+                  break;
+                }
+                case GraceObjectType::Dictionary:
+                  valueStack.push_back(object->GetAsDictionary()->Get(subscript));                
+                  break;
+                default:
+                  GRACE_UNREACHABLE();
+                  break;
+              }
+            } else {
+              throw GraceException(GraceException::Type::InvalidType, fmt::format("`{}` cannot be indexed", container.GetTypeName()));
+            }
+            break;
+          }
           case Ops::Assert: {
             auto condition = Pop(valueStack);
             if (!condition.AsBool()) {
@@ -987,7 +1065,7 @@ namespace Grace::VM
           }
           case Ops::AssertWithMessage: {
             auto condition = Pop(valueStack);
-            auto message = m_FullConstantList[constantCurrent++].Get<std::string>();
+            auto& message = m_FullConstantList[constantCurrent++].Get<std::string>();
             if (!condition.AsBool()) {
               RuntimeError(GraceException(
                 GraceException::Type::AssertionFailed, fmt::format("assertion failed: {}", message)),
@@ -1074,12 +1152,8 @@ namespace Grace::VM
         } else {
           // exception unhandled, report the error and quit
           RuntimeError(ge, line, callStack);
-#ifdef GRACE_DEBUG
-          PRINT_LOCAL_MEMORY();
-#endif
-          valueStack.clear();
-          localsList.clear();
-          return InterpretResult::RuntimeError;
+          interpretResult = InterpretResult::RuntimeError;
+          break;
         }
       }
     }
@@ -1095,7 +1169,7 @@ namespace Grace::VM
 
     ObjectTracker::Finalise();
 
-    return InterpretResult::RuntimeOk;
+    return interpretResult;
 
 #undef PRINT_LOCAL_MEMORY
   }
@@ -1118,29 +1192,33 @@ namespace Grace::VM
           const auto& [caller, callee, ln, fileName, calleeFileName, fileNameHash, calleeFileNameHash] = callStack[i];
           const auto& callerFunc = m_FunctionLookup.at(fileNameHash).at(caller);
           fmt::print(stderr, "in {}:{}:{}\n", fileName, callerFunc->name, ln);
-          fmt::print(stderr, "{:>4}\n", Scanner::GetCodeAtLine(fileName, ln));
+          auto absolute = std::filesystem::absolute(fileName).string();
+          fmt::print(stderr, "{:>4}\n", Scanner::GetCodeAtLine(absolute, ln));
         }
       } else {
         fmt::print(stderr, "{} more calls before - set environment variable `GRACE_SHOW_FULL_CALLSTACK` to see full callstack\n", callStackSize - 15);
         for (auto i = callStackSize - 15; i < callStackSize; i++) {
           const auto& [caller, callee, ln, fileName, calleeFileName, fileNameHash, calleeFileNameHash] = callStack[i];
           const auto& callerFunc = m_FunctionLookup.at(fileNameHash).at(caller);
+          auto absolute = std::filesystem::absolute(fileName).string();
           fmt::print(stderr, "in {}:{}:{}\n", fileName, callerFunc->name, ln);
-          fmt::print(stderr, "{:>4}\n", Scanner::GetCodeAtLine(fileName, ln));
+          fmt::print(stderr, "{:>4}\n", Scanner::GetCodeAtLine(absolute, ln));
         }
       }
     } else {
       for (std::size_t i = 1; i < callStack.size(); i++) {
         const auto& [caller, callee, ln, fileName, calleeFileName, fileNameHash, calleeFileNameHash] = callStack[i];
         const auto& callerFunc = m_FunctionLookup.at(fileNameHash).at(caller);
+        auto absolute = std::filesystem::absolute(fileName).string();
         fmt::print(stderr, "in {}:{}:{}\n", fileName, callerFunc->name, ln);
-        fmt::print(stderr, "{:>4}\n", Scanner::GetCodeAtLine(fileName, ln));
+        fmt::print(stderr, "{:>4}\n", Scanner::GetCodeAtLine(absolute, ln));
       }
     }
 
     const auto& calleeFunc = m_FunctionLookup.at(callStack.back().calleeFileNameHash).at(callStack.back().calleeHash);
     fmt::print(stderr, "in {}:{}:{}\n", calleeFunc->fileName, calleeFunc->name, line);
-    fmt::print(stderr, "{:>4}\n", Scanner::GetCodeAtLine(calleeFunc->fileName, line));
+    auto absolute = std::filesystem::absolute(calleeFunc->fileName).string();
+    fmt::print(stderr, "{:>4}\n", Scanner::GetCodeAtLine(absolute, line));
 
     fmt::print(stderr, "\n");
     fmt::print(stderr, fmt::fg(fmt::color::red) | fmt::emphasis::bold, "ERROR: ");

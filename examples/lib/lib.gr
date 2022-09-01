@@ -1,13 +1,15 @@
-class export Point:
-  var x;
-  var y;
+const NAME = "Ryan";
 
-  constructor(x_, y_):
-    x = x_;
-    y = y_;
+class Person:
+  var name;
+
+  constructor(final n):
+    name = n;
   end
 end
 
-func export say_hello():
-  println("hello");
+func main():
+  println(__FILE);
+  println(NAME);
+  println(Person("asdhfaksdl").name);
 end

@@ -38,7 +38,7 @@ namespace Grace
       GRACE_NODISCARD std::string ToString() const override;
       GRACE_NODISCARD bool AsBool() const override;      
 
-      GRACE_NODISCARD GRACE_INLINE constexpr const char* ObjectName() const override
+      GRACE_NODISCARD GRACE_INLINE constexpr std::string_view ObjectName() const override
       {
         return "Dict";
       }
@@ -51,6 +51,11 @@ namespace Grace
       GRACE_NODISCARD GRACE_INLINE constexpr GraceObjectType ObjectType() const override
       {
         return GraceObjectType::Dictionary;
+      }
+
+      GRACE_NODISCARD GRACE_INLINE GraceDictionary* GetAsDictionary() override
+      {
+        return this;
       }
 
       GRACE_NODISCARD IteratorType Begin() override;
@@ -75,9 +80,9 @@ namespace Grace
       GRACE_NODISCARD std::vector<VM::Value> ToVector();
 
       // needs to be thread safe
-      GRACE_NODISCARD std::vector<GraceObject*> GetObjectMembers() override;
+      GRACE_NODISCARD std::vector<GraceObject*> GetObjectMembers() const override;
       // needs to be thread safe
-      GRACE_NODISCARD bool AnyMemberMatches(const GraceObject* match) override;
+      GRACE_NODISCARD bool AnyMemberMatches(const GraceObject* match) const override;
       void RemoveMember(GraceObject* object) override;
 
     private:

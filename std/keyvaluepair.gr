@@ -1,0 +1,7 @@
+func export key(this KeyValuePair pair):
+  return __NATIVE_KEYVALUEPAIR_KEY(pair);
+end
+
+func export value(this KeyValuePair pair):
+  return __NATIVE_KEYVALUEPAIR_VALUE(pair);
+end

@@ -1,10 +1,41 @@
+class Person:
+  var name;
+  var age;
+
+  constructor(n, a):
+    name = n;
+    age = a;
+  end
+end
+
 func main():
-  if Char(97) == 'a':
-    println("utf8 babee");
-  end 
+  assert(Char(97) == 'a');
 
   var num = 1234;
   var str = String(num);
   println(str * 3);
   println(Int(str) * 3);
+
+  var l = List(0, 1, 2, "Hello");
+  println(l);
+
+  var e = Exception("This is an exception");
+  var e2 = Exception(l);
+
+  println(e);
+  println(e2);
+
+  var kvp = KeyValuePair("Ryan", 23);
+  println(kvp);
+
+  var pair_list = List(kvp, kvp, kvp);
+  println(pair_list);
+
+  var p = Person("Ryan", 23);
+  assert(instanceof(p, Person));
+
+  println(Bool("true"));
+  println(Bool("FaLsE"));
+  println(Bool(""));
+  println(Bool("asdhfaksdhfa"));
 end

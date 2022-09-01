@@ -33,21 +33,15 @@ namespace Grace
 
       ~GraceList() override;
 
-      GRACE_INLINE void Append(const VM::Value& value)
-      {
-        GRACE_LOCK_OBJECT_MUTEX();
-        m_Data.push_back(value);
-        InvalidateIterators();
-      }
       
       template<VM::BuiltinGraceType T>
       GRACE_INLINE void Append(const T& value)
       {
-        GRACE_LOCK_OBJECT_MUTEX();
         m_Data.emplace_back(value);
         InvalidateIterators();
       }
 
+      void Append(const VM::Value& value);
       void Append(const std::vector<VM::Value>& items);
       void Remove(std::size_t index);
 
@@ -77,7 +71,7 @@ namespace Grace
       GRACE_NODISCARD std::string ToString() const override;
       GRACE_NODISCARD bool AsBool() const override;      
 
-      GRACE_NODISCARD GRACE_INLINE constexpr const char* ObjectName() const override
+      GRACE_NODISCARD GRACE_INLINE constexpr std::string_view ObjectName() const override
       {
         return "List";
       }
@@ -90,6 +84,11 @@ namespace Grace
       GRACE_NODISCARD GRACE_INLINE constexpr GraceObjectType ObjectType() const override
       {
         return GraceObjectType::List;
+      }
+
+      GRACE_NODISCARD GRACE_INLINE GraceList* GetAsList() override
+      {
+        return this;
       }
       
       GRACE_INLINE VM::Value& operator[](std::size_t index)
@@ -116,8 +115,8 @@ namespace Grace
         return m_Data[index];
       }
 
-      GRACE_NODISCARD bool AnyMemberMatches(const GraceObject* match) override;
-      GRACE_NODISCARD std::vector<GraceObject*> GetObjectMembers() override;
+      GRACE_NODISCARD bool AnyMemberMatches(const GraceObject* match) const override;
+      GRACE_NODISCARD std::vector<GraceObject*> GetObjectMembers() const override;
       void RemoveMember(GraceObject* object) override;
 
     private:

@@ -33,6 +33,7 @@ namespace Grace
       enum class Type
       {
         AssertionFailed,
+        Exception,
         FileWriteFailed,
         FunctionNotExported,
         FunctionNotFound,
@@ -44,6 +45,7 @@ namespace Grace
         InvalidOperand,
         InvalidType,
         KeyNotFound,
+        LibraryLoadFailure,
         MemberNotFound,
         NamespaceNotFound,
         ThrownException,
@@ -51,6 +53,12 @@ namespace Grace
 
       GraceException(Type type, std::string&& message)
         : m_Type(type), m_Message(std::move(message))
+      {
+
+      }
+
+      GraceException(std::string&& message)
+        : m_Type(Type::Exception), m_Message(std::move(message))
       {
 
       }
@@ -85,7 +93,7 @@ namespace Grace
       GRACE_NODISCARD std::string ToString() const override;
       GRACE_NODISCARD bool AsBool() const override;
       
-      GRACE_NODISCARD GRACE_INLINE constexpr const char* ObjectName() const override
+      GRACE_NODISCARD GRACE_INLINE constexpr std::string_view ObjectName() const override
       {
         return "Exception";
       }
@@ -98,6 +106,11 @@ namespace Grace
       GRACE_NODISCARD GRACE_INLINE constexpr GraceObjectType ObjectType() const override
       {
         return GraceObjectType::Exception;
+      }
+
+      GRACE_NODISCARD GRACE_INLINE GraceException* GetAsException() override
+      {
+        return this;
       }
 
     private:
@@ -118,6 +131,7 @@ struct fmt::formatter<Grace::GraceException::Type> : fmt::formatter<std::string_
     std::string_view name = "unknown";
     switch (type) {
       case GraceException::Type::AssertionFailed: name = "AssertionFailed"; break;
+      case GraceException::Type::Exception: name = "Exception"; break;
       case GraceException::Type::FileWriteFailed: name = "FileWriteFailed"; break;
       case GraceException::Type::FunctionNotExported: name = "FunctionNotExported"; break;
       case GraceException::Type::FunctionNotFound: name = "FunctionNotFound"; break;
@@ -129,6 +143,7 @@ struct fmt::formatter<Grace::GraceException::Type> : fmt::formatter<std::string_
       case GraceException::Type::InvalidOperand: name = "InvalidOperand"; break;
       case GraceException::Type::InvalidType: name = "InvalidType"; break;
       case GraceException::Type::KeyNotFound: name = "KeyNotFound"; break;
+      case GraceException::Type::LibraryLoadFailure: name = "LibraryLoadFailure"; break;
       case GraceException::Type::MemberNotFound: name = "MemberNotFound"; break;
       case GraceException::Type::NamespaceNotFound: name = "NamespaceNotFound"; break;
       case GraceException::Type::ThrownException: name = "ThrownException"; break;

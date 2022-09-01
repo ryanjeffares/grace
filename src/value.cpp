@@ -244,7 +244,7 @@ namespace Grace::VM
         break;
       }
       case Type::Object: {
-        if (auto list = dynamic_cast<GraceList*>(GetObject())) {
+        if (auto list = GetObject()->GetAsList()) {
           if (other.m_Type == Type::Int) {
             return Value(CreateObject<GraceList>(*list, other.m_Data.m_Int));
           }
@@ -697,6 +697,22 @@ namespace Grace::VM
     }
   }
 
+  static bool CompareStringsIgnoreCase(const std::string& first, const std::string& second)
+  {
+    auto size = first.size();
+    if (size != second.length()) {
+      return false;
+    }
+
+    for (std::size_t i = 0; i < size; i++) {
+      if (std::tolower(first[i]) != std::tolower(second[i])) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
   bool Value::AsBool() const
   {
     switch (m_Type) {
@@ -710,8 +726,15 @@ namespace Grace::VM
         return m_Data.m_Int > 0;
       case Type::Null:
         return false;
-      case Type::String:
+      case Type::String: {
+        if (CompareStringsIgnoreCase(*m_Data.m_Str, "true")) {
+          return true;
+        }
+        if (CompareStringsIgnoreCase(*m_Data.m_Str, "false")) {
+          return false;
+        }
         return m_Data.m_Str->length() > 0;
+      }
       case Type::Object:
         return m_Data.m_Object->AsBool();
       default:
@@ -837,7 +860,7 @@ namespace Grace::VM
   GRACE_NODISCARD std::string Value::GetTypeName() const
   {
     if (m_Type == Type::Object) {
-      return m_Data.m_Object->ObjectName();
+      return std::string(m_Data.m_Object->ObjectName());
     }
     return fmt::format("{}", m_Type);
   }

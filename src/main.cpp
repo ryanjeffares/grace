@@ -9,10 +9,10 @@
  *  For licensing information, see grace.hpp
  */
 
-#include <vector>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
+#include <vector>
 
 #include <fmt/core.h>
 #include <fmt/color.h>
@@ -39,7 +39,7 @@ static void Usage()
 }
 
 int main(int argc, const char* argv[])
-{
+{  
   if (argc < 2) {
     Usage();
     return 1;
@@ -116,13 +116,14 @@ int main(int argc, const char* argv[])
   }
 
   std::stringstream inStream;
-  try {
-    std::ifstream inFile(filePath);
-    inStream << inFile.rdbuf();
-  } catch (const std::exception& e) {
-    Error(e.what());
+  std::ifstream inFile;
+  inFile.open(filePath);
+  if (inFile.fail()) {
+    Error(fmt::format("Could not open file {}", filePath.string()));
     return 1;
   }
+  
+  inStream << inFile.rdbuf();
 
   return static_cast<int>(
     Grace::Compiler::Compile(

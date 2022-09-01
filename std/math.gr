@@ -1,13 +1,37 @@
-func export sqrti(n: Int) :: Float:
-  if !instanceof(n, Int):
-    throw("Expected argument for std::math::sqrti(n) to be `Int` but got `" + typename(n) + "`");
-  end
-  return __NATIVE_SQRT_INT(n);
+func export is_number(final value) :: Bool:
+  final is_int = instanceof(value, Int);
+  final is_float = instanceof(value, Float);
+  return is_int or is_float;
 end
 
-func export sqrtf(n: Float) :: Float:
-  if !instanceof(n, Float):
-    throw("Expected argument for std::math::sqrti(n) to be `Float` but got `" + typename(n) + "`");
+func export max(final first, final second):
+  if !is_number(first):
+    throw("Expected number for `first` in `std::math::max(first, second)` but got `" + typename(first) + '`');
   end
-  return __NATIVE_SQRT_FLOAT(n);
+
+  if !is_number(second):
+    throw("Expected number for `second` in `std::math::max(first, second)` but got `" + typename(second) + '`');
+  end
+
+  if first >= second:
+    return first;
+  end
+
+  return second;
+end
+
+func export min(final first, final second):
+  if !is_number(first):
+    throw("Expected number for `first` in `std::math::min(first, second)` but got `" + typename(first) + '`');
+  end
+
+  if !is_number(second):
+    throw("Expected number for `second` in `std::math::min(first, second)` but got `" + typename(second) + '`');
+  end
+
+  if first <= second:
+    return first;
+  end
+
+  return second;
 end

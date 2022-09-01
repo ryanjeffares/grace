@@ -6,6 +6,8 @@ class Object:
 end
 
 func f():
+  g();
+
   var d ={};
   var o = Object();
   d.insert(d, o);

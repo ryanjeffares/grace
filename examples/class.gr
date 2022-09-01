@@ -1,3 +1,5 @@
+import std::list;
+
 class Person:
   var name: String;
   var age: Int;
@@ -7,6 +9,7 @@ class Person:
   constructor(n, a):
     name = n;
     age = a;
+    test = 5;
   end
 end
 
@@ -22,4 +25,10 @@ func main():
 
   parent.child = child;
   child.parent = parent;
+
+  var l = [];
+  var d = {l: 100};
+  l.append(d);
+  println(d);
+
 end

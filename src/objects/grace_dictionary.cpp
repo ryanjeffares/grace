@@ -78,7 +78,7 @@ namespace Grace
     std::size_t count = 0;
     for (std::size_t i = 0; i < m_Capacity; ++i) {
       if (m_CellStates[i] != CellState::Occupied) continue;
-      auto kvp = dynamic_cast<GraceKeyValuePair*>(m_Data[i].GetObject());
+      auto kvp = m_Data[i].GetObject()->GetAsKeyValuePair();
       res.append(kvp->ToString());
       if (count++ < m_Size - 1) {
         res.append(", ");
@@ -95,8 +95,6 @@ namespace Grace
 
   GraceDictionary::IteratorType GraceDictionary::Begin()
   {
-    GRACE_LOCK_OBJECT_MUTEX();
-
     for (auto it = m_Data.begin(); it != m_Data.end(); ++it) {
       if (it->GetType() != VM::Value::Type::Null) {
         return it;
@@ -120,8 +118,6 @@ namespace Grace
 
   void GraceDictionary::Insert(VM::Value&& key, VM::Value&& value)
   {
-    GRACE_LOCK_OBJECT_MUTEX();
-
     auto fullness = static_cast<float>(m_Size) / static_cast<float>(m_Capacity);
     if (fullness > s_GrowFactor) {
       m_Capacity *= 2;
@@ -143,7 +139,7 @@ namespace Grace
         m_Size++;
         return;
       case CellState::Occupied: {
-        if (dynamic_cast<GraceKeyValuePair*>(m_Data[index].GetObject())->Key() == key) {
+        if (m_Data[index].GetObject()->GetAsKeyValuePair()->Key() == key) {
           m_Data[index] = VM::Value::CreateObject<GraceKeyValuePair>(std::move(key), std::move(value));
           m_CellStates[index] = CellState::Occupied;
           return;
@@ -153,7 +149,7 @@ namespace Grace
             i = 0;
           }
           if (m_CellStates[i] == CellState::Occupied) {
-            if (dynamic_cast<GraceKeyValuePair*>(m_Data[i].GetObject())->Key() == key) {
+            if (m_Data[i].GetObject()->GetAsKeyValuePair()->Key() == key) {
               m_Data[index] = VM::Value::CreateObject<GraceKeyValuePair>(std::move(key), std::move(value));
               m_CellStates[index] = CellState::Occupied;
               return;
@@ -174,8 +170,6 @@ namespace Grace
 
   VM::Value GraceDictionary::Get(const VM::Value& key)
   {
-    GRACE_LOCK_OBJECT_MUTEX();
-
     auto hash = m_Hasher(key);
     auto index = hash % m_Capacity;
     while (true) {
@@ -189,7 +183,7 @@ namespace Grace
             fmt::format("Dict did not contain key {}", key)
           );
         case CellState::Occupied: {
-          auto kvp = dynamic_cast<GraceKeyValuePair*>(m_Data[index].GetObject());
+          auto kvp = m_Data[index].GetObject()->GetAsKeyValuePair();
           if (key == kvp->Key()) {
             return kvp->Value();
           }
@@ -211,8 +205,6 @@ namespace Grace
 
   bool GraceDictionary::ContainsKey(const VM::Value& key)
   {
-    GRACE_LOCK_OBJECT_MUTEX();
-
     auto hash = m_Hasher(key);
     auto index = hash % m_Capacity;
     while (true) {
@@ -223,7 +215,7 @@ namespace Grace
         case CellState::NeverUsed:
           return false;
         case CellState::Occupied:
-          if (key != dynamic_cast<GraceKeyValuePair*>(m_Data[index].GetObject())->Key()) {
+          if (key != m_Data[index].GetObject()->GetAsKeyValuePair()->Key()) {
             index++;
             break;
           }
@@ -243,8 +235,6 @@ namespace Grace
 
   bool GraceDictionary::Remove(const VM::Value& key)
   {
-    GRACE_LOCK_OBJECT_MUTEX();
-
     auto hash = m_Hasher(key);
     auto index = hash % m_Capacity;
     while (true) {
@@ -255,7 +245,7 @@ namespace Grace
         case CellState::NeverUsed:
           return false;
         case CellState::Occupied:
-          if (key != dynamic_cast<GraceKeyValuePair*>(m_Data[index].GetObject())->Key()) {
+          if (key != m_Data[index].GetObject()->GetAsKeyValuePair()->Key()) {
             index++;
             break;
           }
@@ -277,8 +267,6 @@ namespace Grace
 
   std::vector<VM::Value> GraceDictionary::ToVector()
   {
-    GRACE_LOCK_OBJECT_MUTEX();
-
     std::vector<VM::Value> res;
     res.reserve(m_Size);
     for (const auto& value : m_Data) {
@@ -288,25 +276,19 @@ namespace Grace
     return res;
   }
 
-  GRACE_NODISCARD std::vector<GraceObject*> GraceDictionary::GetObjectMembers()
+  GRACE_NODISCARD std::vector<GraceObject*> GraceDictionary::GetObjectMembers() const
   {
-    GRACE_LOCK_OBJECT_MUTEX();
-
     std::vector<GraceObject*> res;
     for (const auto& el : m_Data) {
-      auto kvp = dynamic_cast<GraceKeyValuePair*>(el.GetObject());
-      if (kvp != nullptr) {
-        res.push_back(kvp);
-      }
+      if (el.GetType() == VM::Value::Type::Null) continue;
+      res.push_back(el.GetObject());
     }
 
     return res;
   }
 
-  GRACE_NODISCARD bool GraceDictionary::AnyMemberMatches(const GraceObject* match)
+  GRACE_NODISCARD bool GraceDictionary::AnyMemberMatches(const GraceObject* match) const
   {
-    GRACE_LOCK_OBJECT_MUTEX();
-
     for (const auto& el : m_Data) {
       if (el.GetObject()  == match) {
         return true;
@@ -318,14 +300,13 @@ namespace Grace
 
   void GraceDictionary::RemoveMember(GraceObject* object)
   {
-    GRACE_LOCK_OBJECT_MUTEX();
-
     for (std::size_t i = 0; i < m_Data.size(); i++) {
       auto& el = m_Data[i];
       if (el.GetType() == VM::Value::Type::Null) continue;
 
       if (el.GetObject() == object) {
         el = VM::Value::NullValue();
+        m_CellStates[i] = CellState::Tombstone;
       }
     }
   }
@@ -334,13 +315,11 @@ namespace Grace
   {
     auto pairs = ToVector();
 
-    GRACE_LOCK_OBJECT_MUTEX();
-
     std::fill(m_Data.begin(), m_Data.end(), VM::Value());
     std::fill(m_CellStates.begin(), m_CellStates.end(), CellState::NeverUsed);
 
     for (auto& pair : pairs) {
-      auto kvp = dynamic_cast<GraceKeyValuePair*>(pair.GetObject());
+      auto kvp = pair.GetObject()->GetAsKeyValuePair();
       const auto& key = kvp->Key();
       auto hash = m_Hasher(key);
       auto index = hash % m_Capacity;

@@ -35,7 +35,7 @@ namespace Grace
       GRACE_NODISCARD std::string ToString() const override;
       GRACE_NODISCARD bool AsBool() const override;
       
-      GRACE_NODISCARD GRACE_INLINE constexpr const char* ObjectName() const override
+      GRACE_NODISCARD GRACE_INLINE constexpr std::string_view ObjectName() const override
       {
         return "KeyValuePair";
       }
@@ -50,6 +50,11 @@ namespace Grace
         return GraceObjectType::KeyValuePair;
       }
 
+      GRACE_NODISCARD GRACE_INLINE GraceKeyValuePair* GetAsKeyValuePair() override
+      {
+        return this;
+      }
+
       GRACE_NODISCARD GRACE_INLINE VM::Value& Key()
       {
         return m_Key;
@@ -60,8 +65,8 @@ namespace Grace
         return m_Value;
       }
 
-      GRACE_NODISCARD bool AnyMemberMatches(const GraceObject* match) override;
-      GRACE_NODISCARD std::vector<GraceObject*> GetObjectMembers() override;
+      GRACE_NODISCARD bool AnyMemberMatches(const GraceObject* match) const override;
+      GRACE_NODISCARD std::vector<GraceObject*> GetObjectMembers() const override;
       void RemoveMember(GraceObject* object) override;
 
     private:

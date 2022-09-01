@@ -21,4 +21,4 @@ jobs:
       run: |        
         mkdir build
         cmake -DCMAKE_BUILD_TYPE=Release -S . -B build
-        cmake --build build --config Release -- -j
+        cmake --build build --config Release
