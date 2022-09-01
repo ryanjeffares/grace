@@ -1,0 +1,20 @@
+import std::gc;
+
+class Object:
+  var child;
+end
+
+func main():
+  std::gc::set_enabled(false);
+
+  for i in [0..10000]:
+    var o1 = Object();
+    var o2 = Object();
+    o1.child = o2;
+    o2.child = o1;
+
+    if i > 5000:
+      std::gc::set_enabled(true);
+    end
+  end
+end

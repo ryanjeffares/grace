@@ -1,0 +1,66 @@
+/// Objects in Grace are managed mainly through reference counting.
+/// An object is given a reference by being assigned to a variable, being a member of a class, or being an element in a collection.
+/// These references are removed when a variable is reassigned, the element is removed from the collection, when a variable goes out of scope, etc.
+/// When an object's reference count falls to 0, it will automatically (and instantly) be deleted.
+
+/// However, this system does not account for cyclic references (or "cycles"), for example:
+///
+/// ```
+/// class Object:
+///   var child;
+/// end
+/// 
+/// func main():
+///   var o1 = Object();
+///   var o2 = Object();
+///   o1.child = o2;
+///   o2.child = o1
+/// end
+/// ```
+///
+/// When the variables go out of scope after `main()` returns, the objects still have a reference from eachother and won't be deleted automatically.
+/// For these situations, the GC will sweep to deallocate objects caught in cycles.
+/// The Grace GC is triggered by allocations - by default, when more than 8 objects are allocated, a sweep will be triggered and the new threshold will be increased to 16.
+/// The threshold grows by a factor of 2 after each sweep up to 32, then 64, etc.
+/// 
+/// The functions in this file provide an interface to control the GC. For scripts where no cycles are created, performance can be boosted by increasing the threshold/grow factor
+/// or by disabling the GC all together.
+/// Likewise, in memory sensitive environments, the threshold or grow factor can be reduced so that cycles are deallocated more frequently.
+
+func export set_enabled(state: Bool):
+  __NATIVE_GC_SET_ENABLED(state);
+end
+
+func export get_enabled() :: Bool:
+  return __NATIVE_GC_GET_ENABLED();
+end
+
+func export set_debug(state: Bool):
+  __NATIVE_GC_SET_VERBOSE(state);
+end
+
+func export get_debug_enabled() :: Bool:
+  return __NATIVE_GC_GET_VERBOSE();
+end
+
+func export collect():
+  __NATIVE_GC_COLLECT();
+end
+
+func export set_grow_factor(grow_factor: Int):
+  __NATIVE_GC_SET_GROW_FACTOR(grow_factor);
+end
+
+// NB: this function does not take into account the history of the threshold throughout the program or do any rescaling
+// So if 1000 objects are allocated with a threshold of 1024, and you call `std::gc::set_threshold(8)`, the threshold will be 8 and a sweep will trigger.
+func export set_threshold(threshold: Int):
+  __NATIVE_GC_SET_THRESHOLD(threshold);
+end
+
+func export get_grow_factor():
+  return __NATIVE_GC_GET_GROW_FACTOR();
+end
+
+func export get_threshold():
+  return __NATIVE_GC_GET_THRESHOLD();
+end

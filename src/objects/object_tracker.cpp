@@ -25,8 +25,12 @@
 
 using namespace Grace;
 
+static bool s_Enabled = true;
 static bool s_Verbose = false;
 static std::vector<GraceObject*> s_TrackedObjects;
+
+static std::size_t s_NextSweepThreshold = 8;
+static std::size_t s_GrowFactor = 2;
 
 #ifdef GRACE_DEBUG
 // track every single object that gets allocated but never remove any so we can
@@ -42,11 +46,53 @@ static std::mutex s_Mutex;
 static bool s_CycleCleanerRunning;
 #endif
 
+static void CleanCycles();
 static void CleanCyclesInternal();
 
-void ObjectTracker::EnableVerbose()
+void ObjectTracker::SetVerbose(bool state)
 {
-  s_Verbose = true;
+  s_Verbose = state;
+}
+
+bool ObjectTracker::GetVerbose()
+{
+  return s_Verbose;
+}
+
+void ObjectTracker::Collect()
+{
+  CleanCycles();
+}
+
+void ObjectTracker::SetEnabled(bool state)
+{
+  s_Enabled = state;
+}
+
+bool ObjectTracker::GetEnabled()
+{
+  return s_Enabled;
+}
+
+void ObjectTracker::SetGrowFactor(std::size_t state)
+{
+  s_GrowFactor = state;
+}
+
+std::size_t ObjectTracker::GetGrowFactor()
+{
+  return s_GrowFactor;
+}
+
+void ObjectTracker::SetThreshold(std::size_t threshold)
+{
+  s_NextSweepThreshold = threshold;
+  CleanCycles();
+}
+
+std::size_t ObjectTracker::GetThreshold()
+{
+  return s_NextSweepThreshold;
 }
 
 void ObjectTracker::TrackObject(GraceObject* object)
@@ -58,12 +104,16 @@ void ObjectTracker::TrackObject(GraceObject* object)
 
 #ifdef GRACE_DEBUG
   s_AllObjects.push_back(object);
+#endif
 
   if (s_Verbose) {
-    fmt::print("Starting tracking on object at {}: ", fmt::ptr(object));
+    fmt::print(stderr, "Starting tracking on object at {}: ", fmt::ptr(object));
     object->DebugPrint();
   }
-#endif
+
+  if (s_Enabled) {
+    CleanCycles();
+  }
 }
 
 void ObjectTracker::StopTrackingObject(GraceObject* object)
@@ -75,15 +125,9 @@ void ObjectTracker::StopTrackingObject(GraceObject* object)
     // this function could get called from the Value destructor after the object has already been removed by CleanCycles()
     s_TrackedObjects.erase(it);
 
-#ifdef GRACE_DEBUG
     if (s_Verbose) {
-      fmt::print("Stopped tracking on object at {}: ", fmt::ptr(object));
+      fmt::print(stderr, "Stopped tracking on object at {}: ", fmt::ptr(object));
       object->DebugPrint();
-    }
-#endif
-
-    if (!s_CycleCleanerRunning) {
-      CleanCycles();
     }
   }
 }
@@ -92,15 +136,13 @@ void ObjectTracker::Finalise()
 {
   CleanCyclesInternal();
 
-#ifdef GRACE_DEBUG
-  if (!s_TrackedObjects.empty()) {
+  if (s_Verbose && !s_TrackedObjects.empty()) {
     fmt::print(stderr, "Some objects are still being tracked:\n");
     for (const auto obj : s_TrackedObjects) {
       fmt::print(stderr, "\t{}: ", fmt::ptr(obj));
       obj->DebugPrint();
     }
   }
-#endif
 }
 
 static void CleanObjects(const std::vector<VM::Value>& objectsToBeDeleted)
@@ -238,11 +280,21 @@ static void CleanCyclesInternal()
 #endif
 }
 
-void ObjectTracker::CleanCycles()
+static void CleanCycles()
 {
+  if (s_TrackedObjects.size() > s_NextSweepThreshold) {
+    if (s_Verbose) {
+      fmt::print("PERFORMING GC SWEEP\n");
+      fmt::print("\t{} Tracked Objects\n", s_TrackedObjects.size());
+      fmt::print("\t{} Threshold\n", s_NextSweepThreshold);
+    }
+
 #ifdef GRACE_CLEAN_CYCLES_ASYNC
-  std::thread(CleanCyclesInternal).detach();  
+    std::thread(CleanCyclesInternal).detach();
 #else
-  CleanCyclesInternal();
+    CleanCyclesInternal();
 #endif
+
+    s_NextSweepThreshold *= s_GrowFactor;
+  }
 }

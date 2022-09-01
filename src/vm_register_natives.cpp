@@ -25,6 +25,7 @@
 #include "objects/grace_exception.hpp"
 #include "objects/grace_instance.hpp"
 #include "objects/grace_list.hpp"
+#include "objects/object_tracker.hpp"
 
 using namespace Grace::VM;
 
@@ -69,6 +70,16 @@ static Value InteropDoCall(std::vector<Value>& args);
 
 static Value StringLength(std::vector<Value>& args);
 static Value StringSplit(std::vector<Value>& args);
+
+static Value GcSetEnabled(std::vector<Value>& args);
+static Value GcGetEnabled(GRACE_MAYBE_UNUSED std::vector<Value>& args);
+static Value GcSetVerbose(std::vector<Value>& args);
+static Value GcGetVerbose(GRACE_MAYBE_UNUSED std::vector<Value>& args);
+static Value GcCollect(GRACE_MAYBE_UNUSED std::vector<Value>& args);
+static Value GcSetThreshold(std::vector<Value>& args);
+static Value GcGetThreshold(GRACE_MAYBE_UNUSED std::vector<Value>& args);
+static Value GcSetGrowFactor(std::vector<Value>& args);
+static Value GcGetGrowFactor(GRACE_MAYBE_UNUSED std::vector<Value>& args);
 
 void VM::RegisterNatives()
 {
@@ -123,6 +134,17 @@ void VM::RegisterNatives()
   // String functions
   m_NativeFunctions.emplace_back("__NATIVE_STRING_LENGTH", 1, &StringLength);
   m_NativeFunctions.emplace_back("__NATIVE_STRING_SPLIT", 2, &StringSplit);
+
+  // GC functions
+  m_NativeFunctions.emplace_back("__NATIVE_GC_SET_ENABLED", 1, &GcSetEnabled);
+  m_NativeFunctions.emplace_back("__NATIVE_GC_GET_ENABLED", 0, &GcGetEnabled);
+  m_NativeFunctions.emplace_back("__NATIVE_GC_SET_VERBOSE", 1, &GcSetVerbose);
+  m_NativeFunctions.emplace_back("__NATIVE_GC_GET_VERBOSE", 0, &GcGetVerbose);
+  m_NativeFunctions.emplace_back("__NATIVE_GC_COLLECT", 0, &GcCollect);
+  m_NativeFunctions.emplace_back("__NATIVE_GC_SET_THRESHOLD", 1, &GcSetThreshold);
+  m_NativeFunctions.emplace_back("__NATIVE_GC_GET_THRESHOLD", 0, &GcGetThreshold);
+  m_NativeFunctions.emplace_back("__NATIVE_GC_SET_GROW_FACTOR", 1, &GcSetGrowFactor);
+  m_NativeFunctions.emplace_back("__NATIVE_GC_GET_GROW_FACTOR", 0, &GcGetGrowFactor);
 }
 
 static Value SqrtFloat(std::vector<Value>& args)
@@ -705,4 +727,98 @@ static Value StringSplit(std::vector<Value>& args)
   list->Append(s.substr(lastSplit));
 
   return res;
+}
+
+static Value GcSetEnabled(std::vector<Value>& args)
+{
+  if (args[0].GetType() != Value::Type::Bool) {
+    throw Grace::GraceException(
+      Grace::GraceException::Type::InvalidType,
+      fmt::format("Expected `Bool` for `std::gc::set_enabled(state)` but got `{}`", args[0].GetTypeName())
+    );
+  }
+
+  Grace::ObjectTracker::SetEnabled(args[0].Get<bool>());
+  return Value();
+}
+
+static Value GcGetEnabled(GRACE_MAYBE_UNUSED std::vector<Value>& args)
+{
+  return Value(Grace::ObjectTracker::GetEnabled());
+}
+
+static Value GcSetVerbose(std::vector<Value>& args)
+{
+  if (args[0].GetType() != Value::Type::Bool) {
+    throw Grace::GraceException(
+      Grace::GraceException::Type::InvalidType,
+      fmt::format("Expected `Bool` for `std::gc::set_debug(state)` but got `{}`", args[0].GetTypeName())
+    );
+  }
+
+  Grace::ObjectTracker::SetVerbose(args[0].Get<bool>());
+  return Value();
+}
+
+static Value GcGetVerbose(GRACE_MAYBE_UNUSED std::vector<Value>& args)
+{
+  return Value(Grace::ObjectTracker::GetVerbose());
+}
+
+static Value GcCollect(GRACE_MAYBE_UNUSED std::vector<Value>& args)
+{
+  Grace::ObjectTracker::Collect();
+  return Value();
+}
+
+static Value GcSetThreshold(std::vector<Value>& args)
+{
+  if (args[0].GetType() != Value::Type::Int) {
+    throw Grace::GraceException(
+      Grace::GraceException::Type::InvalidType,
+      fmt::format("Expected `Int` for `std::gc::set_threshold(threshold)` but got `{}`", args[0].GetTypeName())
+    );
+  }
+
+  auto value = args[0].Get<std::int64_t>();
+  if (value <= 0) {
+    throw Grace::GraceException(
+      Grace::GraceException::Type::InvalidArgument,
+      fmt::format("Expected positive number for `std::gc::set_threshold(threshold)` but got `{}`", value)
+    );
+  }
+
+  Grace::ObjectTracker::SetThreshold(static_cast<std::size_t>(value));
+  return Value();
+}
+
+static Value GcGetThreshold(GRACE_MAYBE_UNUSED std::vector<Value>& args)
+{
+  return Value(static_cast<std::int64_t>(Grace::ObjectTracker::GetThreshold()));
+}
+
+static Value GcSetGrowFactor(std::vector<Value>& args)
+{
+  if (args[0].GetType() != Value::Type::Int) {
+    throw Grace::GraceException(
+      Grace::GraceException::Type::InvalidType,
+      fmt::format("Expected `Int` for `std::gc::set_grow_factor(grow_factor)` but got `{}`", args[0].GetTypeName())
+    );
+  }
+
+  auto value = args[0].Get<std::int64_t>();
+  if (value <= 0) {
+    throw Grace::GraceException(
+      Grace::GraceException::Type::InvalidArgument,
+      fmt::format("Expected positive number for `std::gc::set_grow_factor(grow_factor)` but got `{}`", value)
+    );
+  }
+
+  Grace::ObjectTracker::SetGrowFactor(static_cast<std::size_t>(value));
+  return Value();
+}
+
+static Value GcGetGrowFactor(GRACE_MAYBE_UNUSED std::vector<Value>& args)
+{
+  return Value(static_cast<std::int64_t>(Grace::ObjectTracker::GetGrowFactor()));
 }

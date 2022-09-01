@@ -90,6 +90,8 @@ namespace Grace
 
       ~Value();
 
+      // Template function that allocates any GraceObject with any of its constructors
+      // Use this and only this function to allocate GraceObjects
       template<DerivedGraceObject T, typename... Args>
       GRACE_NODISCARD static Value CreateObject(Args&&... args)
       {
@@ -97,7 +99,7 @@ namespace Grace
         res.m_Type = Type::Object;
         res.m_Data.m_Object = new T(std::forward<Args>(args)...);
         res.m_Data.m_Object->IncreaseRef();
-        ObjectTracker::TrackObject(res.m_Data.m_Object);
+        ObjectTracker::TrackObject(res.m_Data.m_Object);        
         return res;
       }
 

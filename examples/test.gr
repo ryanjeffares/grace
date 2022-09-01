@@ -27,6 +27,19 @@ func duplicate(this List list):
   return list * 2;
 end
 
+class Object:
+  var child;
+end
+
+func f():
+  for i in [0..10000]:
+    var o = Object();
+    var p = Object();
+    o.child = p;
+    p.child = o;
+  end
+end
+
 func main():
   final l = [];
   for i in [0..10]:

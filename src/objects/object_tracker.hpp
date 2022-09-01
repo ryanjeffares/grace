@@ -22,11 +22,23 @@ namespace Grace
 
   namespace ObjectTracker
   {
-    void EnableVerbose();
     void TrackObject(GraceObject* object);
     void StopTrackingObject(GraceObject* object);
     void Finalise();
-    void CleanCycles();
+
+    void Collect();
+    
+    void SetEnabled(bool state);
+    bool GetEnabled();
+
+    void SetVerbose(bool state);
+    bool GetVerbose();
+
+    void SetGrowFactor(std::size_t state);
+    std::size_t GetGrowFactor();
+
+    void SetThreshold(std::size_t state);
+    std::size_t GetThreshold();
   } // namespace ObjectTracker
 } // namespace Grace
 

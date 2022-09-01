@@ -781,7 +781,6 @@ namespace Grace::VM
             auto [opOffset, constOffset] = opConstOffsets.back();
             opCurrent = opIdx + opOffset;
             constantCurrent = constIdx + constOffset;
-            ObjectTracker::CleanCycles();
             break;
           }
           case Ops::JumpIfFalse: {
@@ -793,7 +792,6 @@ namespace Grace::VM
               opCurrent = opIdx + opOffset;
               constantCurrent = constIdx + constOffset;
             }
-            ObjectTracker::CleanCycles();
             break;
           }
           case Ops::Return: {
@@ -813,8 +811,6 @@ namespace Grace::VM
             valueStack.emplace_back(std::move(returnValue));
             localsOffsets.pop();
             opConstOffsets.pop_back();
-
-            ObjectTracker::CleanCycles();
 
   #ifdef GRACE_DEBUG
             PRINT_LOCAL_MEMORY();
