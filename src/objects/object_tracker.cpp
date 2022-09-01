@@ -9,12 +9,6 @@
  *  For licensing information, see grace.hpp
  */
 
-#ifdef GRACE_CLEAN_CYCLES_ASYNC
-# include <atomic>
-# include <condition_variable>
-# include <thread>
-#endif
-
 #include <fmt/core.h>
 
 #include "object_tracker.hpp"
@@ -38,13 +32,7 @@ static std::size_t s_GrowFactor = 2;
 static std::vector<GraceObject*> s_AllObjects;
 #endif
 
-#ifdef GRACE_CLEAN_CYCLES_ASYNC
-static std::atomic<bool> s_CycleCleanerRunning;
-static std::condition_variable s_NotifyCleanerDone;
-static std::mutex s_Mutex;
-#else
 static bool s_CycleCleanerRunning;
-#endif
 
 static void CleanCycles();
 static void CleanCyclesInternal();
@@ -166,13 +154,6 @@ static void CleanCyclesInternal()
 {
   if (s_TrackedObjects.empty()) return;
 
-#ifdef GRACE_CLEAN_CYCLES_ASYNC
-  if (s_CycleCleanerRunning.load()) {
-    std::unique_lock<std::mutex> lock(s_Mutex);
-    s_NotifyCleanerDone.wait(lock);
-  }
-#endif
-
   s_CycleCleanerRunning = true;
 
   // First deal with objects caught in a weird complicated cycle, for example
@@ -274,10 +255,6 @@ static void CleanCyclesInternal()
   objectsToBeDeleted.clear();
 
   s_CycleCleanerRunning = false;
-
-#ifdef GRACE_CLEAN_CYCLES_ASYNC
-  s_NotifyCleanerDone.notify_one(); // notifying one will create a kind of queue if a bunch of threads try to start
-#endif
 }
 
 static void CleanCycles()
@@ -289,11 +266,7 @@ static void CleanCycles()
       fmt::print("\t{} Threshold\n", s_NextSweepThreshold);
     }
 
-#ifdef GRACE_CLEAN_CYCLES_ASYNC
-    std::thread(CleanCyclesInternal).detach();
-#else
     CleanCyclesInternal();
-#endif
 
     s_NextSweepThreshold *= s_GrowFactor;
   }

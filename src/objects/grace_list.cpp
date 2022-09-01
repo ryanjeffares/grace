@@ -81,10 +81,15 @@ namespace Grace
       it->Invalidate();
     }
   }
+  
+  void GraceList::Append(const VM::Value& value)
+  {
+    m_Data.push_back(value);
+    InvalidateIterators();
+  }
 
   void GraceList::Append(const std::vector<Value>& items)
   {
-    GRACE_LOCK_OBJECT_MUTEX();
     m_Data.reserve(items.size());
     m_Data.insert(m_Data.end(), items.begin(), items.end());
     InvalidateIterators();
@@ -92,7 +97,6 @@ namespace Grace
 
   void GraceList::Remove(std::size_t index)
   {
-    GRACE_LOCK_OBJECT_MUTEX();
     m_Data.erase(m_Data.begin() + index);
   }
 
@@ -174,10 +178,8 @@ namespace Grace
     return !m_Data.empty();
   }
 
-  GRACE_NODISCARD bool Grace::GraceList::AnyMemberMatches(const GraceObject* match)
+  GRACE_NODISCARD bool Grace::GraceList::AnyMemberMatches(const GraceObject* match) const
   {
-    GRACE_LOCK_OBJECT_MUTEX();
-
     for (const auto& el : m_Data) {
       if (el.GetObject() == match) {
         return true;
@@ -187,10 +189,8 @@ namespace Grace
     return false;
   }
 
-  GRACE_NODISCARD std::vector<GraceObject*> GraceList::GetObjectMembers()
+  GRACE_NODISCARD std::vector<GraceObject*> GraceList::GetObjectMembers() const
   {
-    GRACE_LOCK_OBJECT_MUTEX();
-
     std::vector<GraceObject*> res;
     for (const auto& el : m_Data) {
       if (auto obj = el.GetObject()) {
@@ -203,8 +203,6 @@ namespace Grace
 
   void GraceList::RemoveMember(GraceObject* object)
   {
-    GRACE_LOCK_OBJECT_MUTEX();
-
     // don't call the other Remove function or CleanCycles since this should ONLY be called while we are cleaning cycles
     auto it = std::find_if(m_Data.begin(), m_Data.end(),
       [object](const Value& value) {

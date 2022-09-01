@@ -95,8 +95,6 @@ namespace Grace
 
   GraceDictionary::IteratorType GraceDictionary::Begin()
   {
-    GRACE_LOCK_OBJECT_MUTEX();
-
     for (auto it = m_Data.begin(); it != m_Data.end(); ++it) {
       if (it->GetType() != VM::Value::Type::Null) {
         return it;
@@ -120,8 +118,6 @@ namespace Grace
 
   void GraceDictionary::Insert(VM::Value&& key, VM::Value&& value)
   {
-    GRACE_LOCK_OBJECT_MUTEX();
-
     auto fullness = static_cast<float>(m_Size) / static_cast<float>(m_Capacity);
     if (fullness > s_GrowFactor) {
       m_Capacity *= 2;
@@ -174,8 +170,6 @@ namespace Grace
 
   VM::Value GraceDictionary::Get(const VM::Value& key)
   {
-    GRACE_LOCK_OBJECT_MUTEX();
-
     auto hash = m_Hasher(key);
     auto index = hash % m_Capacity;
     while (true) {
@@ -211,8 +205,6 @@ namespace Grace
 
   bool GraceDictionary::ContainsKey(const VM::Value& key)
   {
-    GRACE_LOCK_OBJECT_MUTEX();
-
     auto hash = m_Hasher(key);
     auto index = hash % m_Capacity;
     while (true) {
@@ -243,8 +235,6 @@ namespace Grace
 
   bool GraceDictionary::Remove(const VM::Value& key)
   {
-    GRACE_LOCK_OBJECT_MUTEX();
-
     auto hash = m_Hasher(key);
     auto index = hash % m_Capacity;
     while (true) {
@@ -277,8 +267,6 @@ namespace Grace
 
   std::vector<VM::Value> GraceDictionary::ToVector()
   {
-    GRACE_LOCK_OBJECT_MUTEX();
-
     std::vector<VM::Value> res;
     res.reserve(m_Size);
     for (const auto& value : m_Data) {
@@ -288,10 +276,8 @@ namespace Grace
     return res;
   }
 
-  GRACE_NODISCARD std::vector<GraceObject*> GraceDictionary::GetObjectMembers()
+  GRACE_NODISCARD std::vector<GraceObject*> GraceDictionary::GetObjectMembers() const
   {
-    GRACE_LOCK_OBJECT_MUTEX();
-
     std::vector<GraceObject*> res;
     for (const auto& el : m_Data) {
       if (el.GetType() == VM::Value::Type::Null) continue;
@@ -301,10 +287,8 @@ namespace Grace
     return res;
   }
 
-  GRACE_NODISCARD bool GraceDictionary::AnyMemberMatches(const GraceObject* match)
+  GRACE_NODISCARD bool GraceDictionary::AnyMemberMatches(const GraceObject* match) const
   {
-    GRACE_LOCK_OBJECT_MUTEX();
-
     for (const auto& el : m_Data) {
       if (el.GetObject()  == match) {
         return true;
@@ -316,8 +300,6 @@ namespace Grace
 
   void GraceDictionary::RemoveMember(GraceObject* object)
   {
-    GRACE_LOCK_OBJECT_MUTEX();
-
     for (std::size_t i = 0; i < m_Data.size(); i++) {
       auto& el = m_Data[i];
       if (el.GetType() == VM::Value::Type::Null) continue;
@@ -332,8 +314,6 @@ namespace Grace
   void GraceDictionary::Rehash()
   {
     auto pairs = ToVector();
-
-    GRACE_LOCK_OBJECT_MUTEX();
 
     std::fill(m_Data.begin(), m_Data.end(), VM::Value());
     std::fill(m_CellStates.begin(), m_CellStates.end(), CellState::NeverUsed);
