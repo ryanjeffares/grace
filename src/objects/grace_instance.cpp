@@ -65,8 +65,6 @@ namespace Grace
 
   void GraceInstance::AssignMember(const std::string& memberName, VM::Value&& value)
   {
-	GRACE_LOCK_OBJECT_MUTEX();
-
 	for (auto& [name, val] : m_Members) {
 	  if (name == memberName) {
 		val = value;
@@ -82,8 +80,6 @@ namespace Grace
 
   GRACE_NODISCARD const VM::Value& GraceInstance::LoadMember(const std::string& memberName)
   {
-	GRACE_LOCK_OBJECT_MUTEX();
-
 	for (const auto& [name, val] : m_Members) {
 	  if (name == memberName) {
 		return val;
@@ -96,10 +92,8 @@ namespace Grace
 	);
   }
 
-  GRACE_NODISCARD std::vector<GraceObject*> GraceInstance::GetObjectMembers()
+  GRACE_NODISCARD std::vector<GraceObject*> GraceInstance::GetObjectMembers() const
   {
-	GRACE_LOCK_OBJECT_MUTEX();
-
 	std::vector<GraceObject*> res;
 	for (const auto& [name, value] : m_Members) {
 	  if (auto obj = value.GetObject()) {
@@ -110,10 +104,8 @@ namespace Grace
 	return res;
   }
 
-  GRACE_NODISCARD bool GraceInstance::AnyMemberMatches(const GraceObject* match)
+  GRACE_NODISCARD bool GraceInstance::AnyMemberMatches(const GraceObject* match) const
   {
-	GRACE_LOCK_OBJECT_MUTEX();
-
 	for (const auto& [name, val] : m_Members) {
 	  if (val.GetObject() == match) {
 		return true;
@@ -125,8 +117,6 @@ namespace Grace
 
   void GraceInstance::RemoveMember(GraceObject* object)
   {
-	GRACE_LOCK_OBJECT_MUTEX();
-
 	auto it = std::find_if(m_Members.begin(), m_Members.end(),
 	  [object](const std::pair<std::string, VM::Value>& pair) {
 		return pair.second.GetObject() == object;

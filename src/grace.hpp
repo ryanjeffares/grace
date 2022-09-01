@@ -97,12 +97,4 @@
 # define GRACE_ASSERT_FALSE()				assert(false)
 #endif
 
-// #define GRACE_CLEAN_CYCLES_ASYNC
-
-#ifdef GRACE_CLEAN_CYCLES_ASYNC
-# define GRACE_LOCK_OBJECT_MUTEX()			std::scoped_lock sl(m_Mutex)
-#else
-# define GRACE_LOCK_OBJECT_MUTEX()
-#endif
-
 #endif  // ifndef GRACE_GRACE_HPP

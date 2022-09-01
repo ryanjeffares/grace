@@ -139,12 +139,12 @@ namespace Grace
     return m_Key.AsBool() && m_Value.AsBool();
   }
 
-  GRACE_NODISCARD bool GraceKeyValuePair::AnyMemberMatches(const GraceObject* match)
+  GRACE_NODISCARD bool GraceKeyValuePair::AnyMemberMatches(const GraceObject* match) const
   {
     return m_Key.GetObject() == match || m_Value.GetObject() == match;
   }
 
-  GRACE_NODISCARD std::vector<GraceObject*> GraceKeyValuePair::GetObjectMembers()
+  GRACE_NODISCARD std::vector<GraceObject*> GraceKeyValuePair::GetObjectMembers() const
   {
     std::vector<GraceObject*> res;
     if (auto k = m_Key.GetObject()) {

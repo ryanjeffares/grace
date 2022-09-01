@@ -73,13 +73,13 @@ namespace Grace
 
       // it would be nice to give more detailed messages here, but ObjectName() can't be called here
       // and I couldn't be bothered making them pure virtual and implementing them in every class
-      GRACE_NODISCARD virtual bool AnyMemberMatches(GRACE_MAYBE_UNUSED const GraceObject* match)
+      GRACE_NODISCARD virtual bool AnyMemberMatches(GRACE_MAYBE_UNUSED const GraceObject* match) const
       {
         GRACE_ASSERT(false, "AnyMemberMatches() should only be called on Lists, Dictionaries, and Instances");
         return false;
       }
 
-      GRACE_NODISCARD virtual std::vector<GraceObject*> GetObjectMembers()
+      GRACE_NODISCARD virtual std::vector<GraceObject*> GetObjectMembers() const
       {
         GRACE_ASSERT(false, "GetObjectMembers() should only be called on Lists, Dictionaries, and Instances");
         return {};
@@ -116,12 +116,6 @@ namespace Grace
 
         return false;
       }
-
-    protected:
-
-#ifdef GRACE_CLEAN_CYCLES_ASYNC
-      std::mutex m_Mutex;
-#endif
 
     private:
       std::uint32_t m_RefCount = 0;      

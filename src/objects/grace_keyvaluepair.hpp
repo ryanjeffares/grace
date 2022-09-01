@@ -65,8 +65,8 @@ namespace Grace
         return m_Value;
       }
 
-      GRACE_NODISCARD bool AnyMemberMatches(const GraceObject* match) override;
-      GRACE_NODISCARD std::vector<GraceObject*> GetObjectMembers() override;
+      GRACE_NODISCARD bool AnyMemberMatches(const GraceObject* match) const override;
+      GRACE_NODISCARD std::vector<GraceObject*> GetObjectMembers() const override;
       void RemoveMember(GraceObject* object) override;
 
     private:
