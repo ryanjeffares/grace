@@ -32,15 +32,13 @@ if (CMAKE_BUILD_TYPE MATCHES Debug)
   target_compile_definitions(grace PRIVATE GRACE_DEBUG)
 endif()
 
-message(STATUS "source dir: ${CMAKE_CURRENT_SOURCE_DIR}")
-
 if(MSVC)
   target_compile_definitions(grace PRIVATE GRACE_MSC)
-  target_compile_options(grace PRIVATE /W4 /WX /external:I ${CMAKE_CURRENT_SOURCE_DIR}/deps/fmt/include /external:W0 /external:templates-)
+  target_compile_options(grace PRIVATE /W4 /WX /external:I ${CMAKE_CURRENT_SOURCE_DIR}/../deps/fmt/include /external:W0 /external:templates-)
   target_link_libraries(grace
-    PRIVATE dyncall_build/dyncall/${CMAKE_BUILD_TYPE}/dyncall_s
-    PRIVATE dyncall_build/dynload/${CMAKE_BUILD_TYPE}/dynload_s
-    PRIVATE dyncall_build/dyncallback/${CMAKE_BUILD_TYPE}/dyncallback_s
+    PRIVATE ../dyncall_build/dyncall/${CMAKE_BUILD_TYPE}/dyncall_s
+    PRIVATE ../dyncall_build/dynload/${CMAKE_BUILD_TYPE}/dynload_s
+    PRIVATE ../dyncall_build/dyncallback/${CMAKE_BUILD_TYPE}/dyncallback_s
   )
 else()  
   target_compile_definitions(grace PRIVATE GRACE_GCC_CLANG)
