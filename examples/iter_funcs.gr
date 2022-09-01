@@ -4,7 +4,7 @@ import std::keyvaluepair;
 import std::string;
 
 func get_dict() :: Dict:
-  return {"Ryan": 23, "Syl": 24, "Pog": "Champ"};
+  return {"Ryan": 23, "Pog": "Champ"};
 end
 
 func get_list():

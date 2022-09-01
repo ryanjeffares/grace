@@ -8,17 +8,17 @@ func factorial(num):
 end
 
 func main():
-  final operatives = ["Hays", "Syl", "Ryan"];
+  final people = ["Ryan", "Walt", "Jesse"];
 
-  for operative, index in operatives:
-    println("Operative #" + index + " is " + operative);
+  for person, index in people:
+    println("Person #" + index + " is " + person);
   end
 
   println();
 
   final dict = {
-    "Jamie": "Snake",
-    "Operative List": operatives,
+    "Walter": "White",
+    "Person List": people,
     factorial(10): factorial(20),
   };
 
@@ -37,17 +37,17 @@ func main():
 
   final testing_rehash = {};
 
-  testing_rehash.insert("Ryan", "Jeffares");
-  testing_rehash.insert("Ryan1", "Jeffares");
-  testing_rehash.insert("Ryan2", "Jeffares");
-  testing_rehash.insert("Ryan3", "Jeffares");
-  testing_rehash.insert("Ryan4", "Jeffares");
-  testing_rehash.insert("Ryan5", "Jeffares");
-  testing_rehash.insert("Ryan6", "Jeffares");
-  testing_rehash.insert("Ryan7", "Jeffares");
-  testing_rehash.insert("Ryan8", "Jeffares");
-  testing_rehash.insert("Ryan9", "Jeffares");
-  testing_rehash.insert("Ryan10", "Jeffares");
+  testing_rehash.insert("Ryan", 0);
+  testing_rehash.insert("Ryan1", 1);
+  testing_rehash.insert("Ryan2", 2);
+  testing_rehash.insert("Ryan3", 3);
+  testing_rehash.insert("Ryan4", 4);
+  testing_rehash.insert("Ryan5", 5);
+  testing_rehash.insert("Ryan6", 6);
+  testing_rehash.insert("Ryan7", 7);
+  testing_rehash.insert("Ryan8", 8);
+  testing_rehash.insert("Ryan9", 9);
+  testing_rehash.insert("Ryan10", 10);
 
   println(testing_rehash);
 end

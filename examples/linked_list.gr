@@ -12,14 +12,21 @@ end
 
 func main():
 
-//  head.next = Node("Node 2");
-//  head.next.next = Node("Node 3");
-//
-//  var last = head.next.next;
-//  last.next = head;
+  var head = Node("Node 1");
+  head.next = Node("Node 2");
+  head.next.next = Node("Node 3");
 
-  var visited = [1];
-  if visited.contains(1):
-     
+  var last = head.next.next;
+  last.next = head;
+
+  var curr = head;
+  var visited = [];
+  while curr != null:
+    if visited.contains(curr):
+      break;
+    end
+    println(curr.id);
+    visited.append(curr);
+    curr = curr.next;
   end
 end

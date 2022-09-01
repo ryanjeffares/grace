@@ -6,6 +6,7 @@ class Animal:
   end
 end
 
+// not implemented
 class Dog extends Animal:
   var breed: String;
 

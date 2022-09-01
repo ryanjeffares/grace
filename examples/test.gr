@@ -58,11 +58,11 @@ func main():
   println(d.remove(1));
   println(d);
 
-  d.insert("Syl", "Morrison");
+  d.insert("Foo", "Bar");
   println(d);
-  d.insert("Syl", "[redacted]");
+  d.insert("Foo", "[redacted]");
   println(d);
-  println(d.contains_key("Syl"));
+  println(d.contains_key("Foo"));
 
   println(make_list(5).duplicate());
 
@@ -70,6 +70,6 @@ func main():
   println(typename(p));
   p.say_hello();
 
-  var k = {"Ryan": "Jeffares"}.contains_key("Syl");
+  var k = {"Ryan": "Jeffares"}.contains_key("Foo");
   println(k);
 end

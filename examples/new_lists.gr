@@ -1,10 +1,4 @@
-func append_list(l, value):
-  __NATIVE_APPEND_LIST(l, value);
-end
-
-func get_list(l, index):
-  return __NATIVE_GET_LIST_AT_INDEX(l, index);
-end
+import std::list;
 
 func main():
   try:
@@ -18,7 +12,7 @@ func main():
   var index;
   var item;
   for item, index in items:
-    println("The item at index " + index + " is " + get_list(items, index));
+    println("The item at index " + index + " is " + items[index]);
   end
 
   println(index);
