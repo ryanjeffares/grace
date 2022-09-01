@@ -1256,6 +1256,14 @@ static void ConstDeclaration(CompilerContext& compiler)
     return;
   }
 
+  if (Match(Scanner::TokenType::Colon, compiler)) {
+    if (!IsValidTypeAnnotation(compiler.current.value().GetType())) {
+      MessageAtCurrent("Expected type name after type annotation", LogLevel::Error, compiler);
+      return;
+    }
+    Advance(compiler);
+  }
+
   if (!Match(Scanner::TokenType::Equal, compiler)) {
     MessageAtCurrent("Must assign to `const` upon declaration", LogLevel::Error, compiler);
     return;

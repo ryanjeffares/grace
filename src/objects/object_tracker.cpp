@@ -81,6 +81,10 @@ void ObjectTracker::StopTrackingObject(GraceObject* object)
       object->DebugPrint();
     }
 #endif
+
+    if (!s_CycleCleanerRunning) {
+      CleanCycles();
+    }
   }
 }
 

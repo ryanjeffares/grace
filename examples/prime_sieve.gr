@@ -2,29 +2,25 @@ import std::list;
 import std::int;
 import std::time;
 
+const SIEVE_SIZE: Int = 1000000;
+const BIT_COUNT: Int = 500000;
+const CORRECT_COUNT: Int = 78498;
+
 func reset(bits: List):
   final len: Int = bits.length();
   for i: Int in [0..len]:
-    bits.set(i, true);
+    bits[i] = true;
   end
 end
 
-func get_bit(bits: List, i: Int) :: Bool:
-  return i % 2 > 0 and bits.at(i / 2);
-end
-
-func clear_bit(bits: List, i: Int):
-  bits.set(i / 2, false);
-end
-
 func run_sieve(bits: List):
-  final max: Int = Int(1000000.sqrt());
+  final max: Int = Int(SIEVE_SIZE.sqrt());
   var factor: Int = 3;
 
   while factor < max:
     var f: Int = factor;
     while f < 1000:
-      if get_bit(bits, f):
+      if f % 2 > 0 and bits[f / 2]:
         factor = f;
         break;
       end
@@ -33,8 +29,8 @@ func run_sieve(bits: List):
 
     final min: Int = factor * 3;
     final jump: Int = factor * 2;
-    for i: Int in [min..1000000 by jump]:
-      clear_bit(bits, i);
+    for i: Int in [min..SIEVE_SIZE by jump]:
+      bits[i / 2] = false;
     end
 
     factor = factor + 2;
@@ -42,17 +38,13 @@ func run_sieve(bits: List):
 end
 
 func main():
-  final sieve_count: Int = 1000000;
-  final bit_count: Int = (sieve_count + 1) / 2;
-  final correct_count: Int = 78498;
-
   var passes: Int = 0;
 
   final start: Int = std::time::time_ms();
 
-  var bits;
+  var bits: List;
   while (std::time::time_ms() - start) < 5000:
-    bits = [true] * bit_count;
+    bits = [true] * BIT_COUNT;
     run_sieve(bits);
     passes = passes + 1;
   end
@@ -64,7 +56,7 @@ func main():
     end
   end
 
-  if count == correct_count:
+  if count == CORRECT_COUNT:
     println("Found " + count + " primes under 1,000,000 in " + passes + " passes!");
   else:
     println("Found incorrect number of primes " + count);
