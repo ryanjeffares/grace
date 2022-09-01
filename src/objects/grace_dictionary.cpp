@@ -324,6 +324,7 @@ namespace Grace
 
       if (el.GetObject() == object) {
         el = VM::Value::NullValue();
+        m_CellStates[i] = CellState::Tombstone;
       }
     }
   }

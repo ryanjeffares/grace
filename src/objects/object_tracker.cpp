@@ -81,16 +81,6 @@ void ObjectTracker::StopTrackingObject(GraceObject* object)
       object->DebugPrint();
     }
 #endif
-
-    // if we're doing this async, the thread will wait
-    // but we're not then just don't bother
-#ifdef GRACE_CLEAN_CYCLES_ASYNC
-    CleanCycles();
-#else
-    if (!s_CycleCleanerRunning) {
-      CleanCycles();
-    }
-#endif
   }
 }
 
@@ -109,13 +99,29 @@ void ObjectTracker::Finalise()
 #endif
 }
 
+static void CleanObjects(const std::vector<VM::Value>& objectsToBeDeleted)
+{
+  for (auto& value : objectsToBeDeleted) {
+    auto object = value.GetObject();
+    auto it = std::find(s_TrackedObjects.begin(), s_TrackedObjects.end(), object);
+    if (it != s_TrackedObjects.end()) {
+      s_TrackedObjects.erase(it);
+    }
+
+    for (auto member : object->GetObjectMembers()) {
+      VM::Value memberValue(member);
+      object->RemoveMember(member);
+      member->RemoveMember(object);
+    }
+  }
+}
+
 static void CleanCyclesInternal()
 {
-  // fmt::print("")
   if (s_TrackedObjects.empty()) return;
 
 #ifdef GRACE_CLEAN_CYCLES_ASYNC
-  if (s_CycleCleanerRunning.load()) {    
+  if (s_CycleCleanerRunning.load()) {
     std::unique_lock<std::mutex> lock(s_Mutex);
     s_NotifyCleanerDone.wait(lock);
   }
@@ -155,7 +161,7 @@ static void CleanCyclesInternal()
   // any object in the vector can be treated as a "root" in our "graph" of objects
   // if that root has a single ref, and traversing the graph can lead back itself, it can be deleted
 
-  std::vector<GraceObject*> objectsToBeDeleted;
+  std::vector<VM::Value> objectsToBeDeleted;  
 
   for (std::size_t i = 0; i < s_TrackedObjects.size(); i++) {
     auto root = s_TrackedObjects[i];
@@ -170,37 +176,16 @@ static void CleanCyclesInternal()
 
     std::vector<GraceObject*> visitedObjects;
     if (GraceObject::AnyMemberMatchesRecursive(root, root, visitedObjects)) {
-      objectsToBeDeleted.push_back(root);
+      objectsToBeDeleted.emplace_back(root);
     }
   }
 
-  for (std::size_t i = 0; i < objectsToBeDeleted.size(); i++) {
-    auto object = objectsToBeDeleted[i];
+  // now we have a list of objects that we know need to be deleted
+  // safely remove their members to stop weird recursive destructor calls
+  // then clearing the vector will delete them
 
-    auto members = object->GetObjectMembers();
-    for (std::size_t j = 0; j < members.size(); j++) {
-      auto member = members[j];
-
-      // create another temporary ref to these objects so they don't start invoking destructors
-      VM::Value tempObj(object), tempMember(member);
-        
-      objectsToBeDeleted.erase(objectsToBeDeleted.begin() + i);
-      
-      auto it = std::find(s_TrackedObjects.begin(), s_TrackedObjects.end(), object);
-      if (it != s_TrackedObjects.end()) {
-        s_TrackedObjects.erase(it);
-      }
-
-      members.erase(members.begin() + j);
-
-      // remove the objects as eachother's members to get rid of those refs
-      object->RemoveMember(member);
-
-      if (object != member) {
-        member->RemoveMember(object);
-      }
-    }
-  }
+  CleanObjects(objectsToBeDeleted);
+  objectsToBeDeleted.clear();
 
   // now we can deal with simple "one way" cycles, like:
   // 
@@ -212,46 +197,35 @@ static void CleanCyclesInternal()
   // ```
   // 
   // if any two objects have 1 reference left each and they are eachother, that is a cycle that can be deleted
-  for (std::size_t i = 0; i < s_TrackedObjects.size(); i++) {
-    auto object = s_TrackedObjects[i];
-    if (object->RefCount() != 1) continue;
-
+  
+  for (auto object : s_TrackedObjects) {
+    if (object->RefCount() > 1) continue;
+      
     auto type = object->ObjectType();
     if (type == GraceObjectType::Exception || type == GraceObjectType::Iterator) {
       // these objects don't have members/elements
       continue;
     }
 
-    auto objectMembers = object->GetObjectMembers();
-    for (auto member : objectMembers) {
-      if (member->RefCount() == 1 && member->AnyMemberMatches(object)) {
-        // at this point, we know we have two objects that are only referencing eachother
-        s_TrackedObjects.erase(s_TrackedObjects.begin() + i);
+    auto members = object->GetObjectMembers();
+    for (auto member : members) {
+      if (member->RefCount() > 1) continue;
 
-        // to safely delete these objects, make another Value that holds the pointer to increase their ref counts
-        VM::Value memberValue(member), parentValue(object);
+      auto memberType = member->ObjectType();
+      if (memberType == GraceObjectType::Exception || memberType == GraceObjectType::Iterator) {
+        // these objects don't have members/elements
+        continue;
+      }
 
-        // remove the objects as members of one another - this will not decrease their refs to 0 and recursively invoke destructors
-        object->RemoveMember(member);
-
-        // but that object's member could be itself...
-        // var o = Object();
-        // o.member = o;
-        if (member != object) {
-          member->RemoveMember(object);
-        }
-
-        if (member->RefCount() == 1) {
-          auto delIt = std::find(s_TrackedObjects.begin(), s_TrackedObjects.end(), member);
-          if (delIt != s_TrackedObjects.end()) {
-            s_TrackedObjects.erase(delIt);
-          }
-        }
-        // now when the Value instances go out of scope, the objects will be deleted safely
-        break;
+      if (member->AnyMemberMatches(object)) {
+        objectsToBeDeleted.emplace_back(object);
+        objectsToBeDeleted.emplace_back(member);
       }
     }
   }
+
+  CleanObjects(objectsToBeDeleted);
+  objectsToBeDeleted.clear();
 
   s_CycleCleanerRunning = false;
 

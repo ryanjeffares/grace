@@ -781,6 +781,7 @@ namespace Grace::VM
             auto [opOffset, constOffset] = opConstOffsets.back();
             opCurrent = opIdx + opOffset;
             constantCurrent = constIdx + constOffset;
+            ObjectTracker::CleanCycles();
             break;
           }
           case Ops::JumpIfFalse: {
@@ -792,6 +793,7 @@ namespace Grace::VM
               opCurrent = opIdx + opOffset;
               constantCurrent = constIdx + constOffset;
             }
+            ObjectTracker::CleanCycles();
             break;
           }
           case Ops::Return: {
@@ -811,6 +813,8 @@ namespace Grace::VM
             valueStack.emplace_back(std::move(returnValue));
             localsOffsets.pop();
             opConstOffsets.pop_back();
+
+            ObjectTracker::CleanCycles();
 
   #ifdef GRACE_DEBUG
             PRINT_LOCAL_MEMORY();
@@ -1196,7 +1200,7 @@ namespace Grace::VM
           const auto& [caller, callee, ln, fileName, calleeFileName, fileNameHash, calleeFileNameHash] = callStack[i];
           const auto& callerFunc = m_FunctionLookup.at(fileNameHash).at(caller);
           fmt::print(stderr, "in {}:{}:{}\n", fileName, callerFunc->name, ln);
-          auto absolute = std::filesystem::absolute(fileName);
+          auto absolute = std::filesystem::absolute(fileName).string();
           fmt::print(stderr, "{:>4}\n", Scanner::GetCodeAtLine(absolute, ln));
         }
       } else {
@@ -1204,7 +1208,7 @@ namespace Grace::VM
         for (auto i = callStackSize - 15; i < callStackSize; i++) {
           const auto& [caller, callee, ln, fileName, calleeFileName, fileNameHash, calleeFileNameHash] = callStack[i];
           const auto& callerFunc = m_FunctionLookup.at(fileNameHash).at(caller);
-          auto absolute = std::filesystem::absolute(fileName);
+          auto absolute = std::filesystem::absolute(fileName).string();
           fmt::print(stderr, "in {}:{}:{}\n", fileName, callerFunc->name, ln);
           fmt::print(stderr, "{:>4}\n", Scanner::GetCodeAtLine(absolute, ln));
         }
@@ -1213,7 +1217,7 @@ namespace Grace::VM
       for (std::size_t i = 1; i < callStack.size(); i++) {
         const auto& [caller, callee, ln, fileName, calleeFileName, fileNameHash, calleeFileNameHash] = callStack[i];
         const auto& callerFunc = m_FunctionLookup.at(fileNameHash).at(caller);
-        auto absolute = std::filesystem::absolute(fileName);
+        auto absolute = std::filesystem::absolute(fileName).string();
         fmt::print(stderr, "in {}:{}:{}\n", fileName, callerFunc->name, ln);
         fmt::print(stderr, "{:>4}\n", Scanner::GetCodeAtLine(absolute, ln));
       }
@@ -1221,7 +1225,7 @@ namespace Grace::VM
 
     const auto& calleeFunc = m_FunctionLookup.at(callStack.back().calleeFileNameHash).at(callStack.back().calleeHash);
     fmt::print(stderr, "in {}:{}:{}\n", calleeFunc->fileName, calleeFunc->name, line);
-    auto absolute = std::filesystem::absolute(calleeFunc->fileName);
+    auto absolute = std::filesystem::absolute(calleeFunc->fileName).string();
     fmt::print(stderr, "{:>4}\n", Scanner::GetCodeAtLine(absolute, line));
 
     fmt::print(stderr, "\n");

@@ -99,7 +99,7 @@ namespace Grace
       GRACE_NODISCARD GRACE_INLINE virtual GraceIterator* GetAsIterator() { return nullptr; }
 
 
-      GRACE_NODISCARD static bool AnyMemberMatchesRecursive(const GraceObject* toFind, GraceObject* root, std::vector<GraceObject*> visitedObjects)
+      GRACE_NODISCARD static bool AnyMemberMatchesRecursive(const GraceObject* toFind, GraceObject* root, std::vector<GraceObject*>& visitedObjects)
       {
         for (auto object : root->GetObjectMembers()) {
           if (object == toFind) {

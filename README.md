@@ -58,7 +58,6 @@ This will build the `grace` executable, which you can add to your path or move s
   * Improve error reporting
 * Allow importing files that require going higher up the folder tree
 * Expand standard library
-* Allow assignment after index `[]` operator
 * Dynamic library loading
   * This is in, but need to handle pointer types for things that aren't strings
   * And also pointer return types for strings and others...
