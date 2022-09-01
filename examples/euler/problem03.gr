@@ -21,10 +21,12 @@ func main():
   final max = 600851475143 / 2;
 
   var largest = 0;
-  for i in [1..max]:
+  var i = 0;
+  while i < max:
     if is_prime(i) and i > largest:
       largest = i;
     end
+    i = i + 1;
   end
   println(largest);
 end

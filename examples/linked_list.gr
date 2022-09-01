@@ -1,0 +1,25 @@
+import std::list;
+
+class Node:
+  var id;
+  var prev;
+  var next;
+
+  constructor(id_):
+    id = id_;
+  end
+end
+
+func main():
+
+//  head.next = Node("Node 2");
+//  head.next.next = Node("Node 3");
+//
+//  var last = head.next.next;
+//  last.next = head;
+
+  var visited = [1];
+  if visited.contains(1):
+     
+  end
+end

@@ -12,7 +12,6 @@
 #ifndef GRACE_ITERATOR_HPP
 #define GRACE_ITERATOR_HPP
 
-#include <variant>
 #include <vector>
 
 #include <fmt/format.h>

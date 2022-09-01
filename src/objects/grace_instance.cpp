@@ -25,7 +25,7 @@ namespace Grace
 
   void GraceInstance::DebugPrint() const
   {
-	std::string res = ToString() + " [ ";
+	std::string res = ToString() + " { ";
 	for (std::size_t i = 0; i < m_Members.size(); i++) {
 	  const auto& [name, value] = m_Members[i];
 	  res.append(fmt::format("{}: ", name));
@@ -42,7 +42,7 @@ namespace Grace
 	  }
 	}
 
-	res.append(" ]\n");
+	res.append(" }\n");
 	fmt::print("{}", res);
   }
 
@@ -124,5 +124,16 @@ namespace Grace
 	if (it != m_Members.end()) {
 	  m_Members.erase(it);
 	}
+  }
+
+  GRACE_NODISCARD bool GraceInstance::OnlyReferenceIsSelf() const
+  {
+	std::uint32_t selfRefs = 0;
+	for (auto& [name, value] : m_Members) {
+	  if (value.GetObject() == this) {
+		selfRefs++;
+	  }
+	}
+	return selfRefs == m_RefCount;
   }
 } // namespace Grace

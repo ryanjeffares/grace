@@ -124,7 +124,11 @@ void ObjectTracker::Finalise()
 {
   CleanCyclesInternal();
 
-  if (s_Verbose && !s_TrackedObjects.empty()) {
+  if (!s_TrackedObjects.empty()) {
+#ifndef GRACE_DEBUG
+    if (!s_Verbose) return;
+#endif
+
     fmt::print(stderr, "Some objects are still being tracked:\n");
     for (const auto obj : s_TrackedObjects) {
       fmt::print(stderr, "\t{}: ", fmt::ptr(obj));
@@ -193,17 +197,29 @@ static void CleanCyclesInternal()
   for (std::size_t i = 0; i < s_TrackedObjects.size(); i++) {
     auto root = s_TrackedObjects[i];
 
-    if (root->RefCount() > 1) continue;
-
     auto type = root->ObjectType();
     if (type == GraceObjectType::Exception || type == GraceObjectType::Iterator) {
       // these objects don't have members/elements
       continue;
     }
 
-    std::vector<GraceObject*> visitedObjects;
-    if (GraceObject::AnyMemberMatchesRecursive(root, root, visitedObjects)) {
-      objectsToBeDeleted.emplace_back(root);
+    if (root->RefCount() > 1) {
+      if (type != GraceObjectType::Dictionary && root->OnlyReferenceIsSelf()) {
+        objectsToBeDeleted.emplace_back(root);
+        if (s_Verbose) {
+          fmt::print(stderr, "Preparing to delete object at {}: ", fmt::ptr(root));
+          root->DebugPrint();
+        }
+      }
+    } else {
+      std::vector<GraceObject*> visitedObjects;
+      if (GraceObject::AnyMemberMatchesRecursive(root, root, visitedObjects)) {
+        objectsToBeDeleted.emplace_back(root);
+        if (s_Verbose) {
+          fmt::print(stderr, "Preparing to delete object at {}: ", fmt::ptr(root));
+          root->DebugPrint();
+        }
+      }
     }
   }
 
@@ -247,6 +263,16 @@ static void CleanCyclesInternal()
       if (member->AnyMemberMatches(object)) {
         objectsToBeDeleted.emplace_back(object);
         objectsToBeDeleted.emplace_back(member);
+
+        if (s_Verbose) {
+          fmt::print(stderr, "Preparing to delete object at {}: ", fmt::ptr(object));
+          object->DebugPrint();
+        }
+
+        if (s_Verbose) {
+          fmt::print(stderr, "Preparing to delete object at {}: ", fmt::ptr(member));
+          member->DebugPrint();
+        }
       }
     }
   }

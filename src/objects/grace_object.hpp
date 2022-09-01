@@ -90,6 +90,12 @@ namespace Grace
         GRACE_ASSERT(false, "RemoveMember() should only be called on Lists, Dictionaries, and Instances");
       }
 
+      GRACE_NODISCARD virtual bool OnlyReferenceIsSelf() const
+      {
+        GRACE_ASSERT(false, "OnlyReferenceIsSelf() should only be called on Lists and Instances");
+        return false;
+      }
+
       // the derived classes can overload the respective function to avoid dynamic_casts 
       GRACE_NODISCARD GRACE_INLINE virtual GraceList* GetAsList() { return nullptr; }
       GRACE_NODISCARD GRACE_INLINE virtual GraceDictionary* GetAsDictionary() { return nullptr; }
@@ -117,7 +123,7 @@ namespace Grace
         return false;
       }
 
-    private:
+    protected:
       std::uint32_t m_RefCount = 0;      
   };
 } // namespace Grace
