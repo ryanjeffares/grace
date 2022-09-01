@@ -7,12 +7,9 @@ parser = argparse.ArgumentParser(
 parser.add_argument(
     'config', type=str, help='Configuration (Release/Debug/All)'
 )
-parser.add_argument(
-    '--install', action='store_true', required=False
-)
 
 
-def main(config: str, install: bool):
+def main(config: str):
     if not os.path.isdir('build'):
         os.mkdir('build')
 
@@ -22,15 +19,9 @@ def main(config: str, install: bool):
         print()
         print(f'INFO: Building configuration: {config}\n')
         if os.name == 'nt':
-            if install:
-                os.system(f'cmake --build build --config {config} --target install')
-            else:
-                os.system(f'cmake --build build --config {config}')
+            os.system(f'cmake --build build --config {config}')
         else:
-            if install:
-                os.system(f'cmake --build build --config {config} --target install -- -j')
-            else:
-                os.system(f'cmake --build build --config {config} -- -j')
+            os.system(f'cmake --build build --config {config} -- -j')
     elif config == 'All':
         print('INFO: Generating CMake project for configuration: Debug\n')
         os.system('cmake -DCMAKE_BUILD_TYPE=Debug -S . -B build')
@@ -38,15 +29,9 @@ def main(config: str, install: bool):
         print('INFO: Building configuration: Debug\n')
 
         if os.name == 'nt':
-            if install:
-                os.system(f'cmake --build build --config Debug --target install')
-            else:
-                os.system(f'cmake --build build --config Debug')
+            os.system('cmake --build build --config Debug')
         else:
-            if install:
-                os.system(f'cmake --build build --config Debug --target install -- -j')
-            else:
-                os.system(f'cmake --build build --config Debug -- -j')
+            os.system('cmake --build build --config Debug -- -j')
 
         print()
 
@@ -56,19 +41,13 @@ def main(config: str, install: bool):
         print('INFO: Building configuration: Release\n')
 
         if os.name == 'nt':
-            if install:
-                os.system(f'cmake --build build --config Release --target install')
-            else:
-                os.system(f'cmake --build build --config Release')
+            os.system('cmake --build build --config Release')
         else:
-            if install:
-                os.system(f'cmake --build build --config Release --target install')
-            else:
-                os.system(f'cmake --build build --config Release')
+            os.system('cmake --build build --config Release')
     else:
         raise ValueError('config must match "Debug" or "Release" or "All"')
 
 
 if __name__ == "__main__":
     args = parser.parse_args()
-    main(args.config, args.install)
+    main(args.config)

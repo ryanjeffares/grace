@@ -264,11 +264,7 @@ namespace Grace::VM
 
     bool inTryBlock = false;
 
-  #ifdef GRACE_DEBUG
-    if (verbose) {
-      ObjectTracker::EnableVerbose();
-    }
-  #endif
+    ObjectTracker::SetVerbose(verbose);
 
     while (true) {
       auto [op, line] = m_FullOpList[opCurrent++];
