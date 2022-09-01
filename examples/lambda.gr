@@ -1,6 +1,7 @@
 func main():
   var x = 10;
 
+  // not implemented
   var square = |x| (exp):
     return x ** exp;
   end

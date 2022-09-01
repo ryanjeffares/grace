@@ -14,22 +14,21 @@ func append_row(row: List, text: String) :: String:
 end
 
 func main(final args: List):
-
   var write_to_file: Bool = false;
   var size: Int = 0;
 
-  final num_args = std::list::length(args);
+  final num_args = args.length();
   if num_args == 1:
-    size = Int(std::list::at(args, 0));
+    size = Int(args[0]);
   else if num_args == 2:
-    size = Int(std::list::at(args, 0));
-    write_to_file = std::list::at(args, 1) == "--write";
+    size = Int(args[0]);
+    write_to_file = args[1] == "--write";
   else:
-    throw("Incorrect arg count, expected `grace rule110.gr -- <size> [--write]`");
+    throw("Incorrect arg count, expected `grace rule110.gr <size> [--write]`");
   end
 
   var previous: List = [0] * size;
-  std::list::set(previous, size - 1, 1);
+  previous[size - 1] = 1;
 
   final rules: Dict = {
     7: 0,
@@ -59,10 +58,10 @@ func main(final args: List):
         else if temp == size:
           temp = 0;
         end
-        res = res | (std::list::at(previous, temp) << (2 - to_shift));
+        res = res | (previous[temp] << (2 - to_shift));
       end
 
-      std::list::set(next, index, std::dict::get(rules, res));
+      next[index] = std::dict::get(rules, res);
     end
 
     previous = next;

@@ -14,8 +14,8 @@ class Person:
 end
 
 func main():
-  var parent = Person("Catherine", 52);
-  var child = Person("Ryan", 23);
+  var parent = Person("Parent", 100);
+  var child = Person("Child", 10);
 
   parent.child = child;
   child.parent = parent;

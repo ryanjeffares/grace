@@ -2,7 +2,7 @@ import std::dict;
 import std::time;
 
 func fib(n: Int, dict: Dict) :: Int:
-  if std::dict::contains_key(dict, n):
+  if dict.contains_key(n):
     return std::dict::get(dict, n);
   end
 
@@ -12,7 +12,7 @@ func fib(n: Int, dict: Dict) :: Int:
   else:
     res = fib(n - 1, dict) + fib(n - 2, dict);
   end
-  std::dict::insert(dict, n, res);
+  dict.insert(n, res);
   return res;
 end
 

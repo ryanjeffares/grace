@@ -204,7 +204,7 @@ static void CleanCyclesInternal()
     }
 
     if (root->RefCount() > 1) {
-      if (type != GraceObjectType::Dictionary && root->OnlyReferenceIsSelf()) {
+      if (type != GraceObjectType::Dictionary && type != GraceObjectType::KeyValuePair && root->OnlyReferenceIsSelf()) {
         objectsToBeDeleted.emplace_back(root);
         if (s_Verbose) {
           fmt::print(stderr, "Preparing to delete object at {}: ", fmt::ptr(root));

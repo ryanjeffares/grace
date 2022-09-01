@@ -171,6 +171,7 @@ static void Primary(bool canAssign, CompilerContext& compiler);
 
 static void FreeFunctionCall(const Scanner::Token& funcNameToken, CompilerContext& compiler);
 static void DotFunctionCall(const Scanner::Token& funcNameToken, CompilerContext& compiler);
+static bool ParseCallParameters(CompilerContext& compiler, int64_t& numArgs);
 static void Dot(bool canAssign, CompilerContext& compiler);
 static void Subscript(bool canAssign, CompilerContext& compiler);
 static void Identifier(bool canAssign, CompilerContext& compiler);
@@ -2553,7 +2554,10 @@ static void Primary(bool canAssign, CompilerContext& compiler)
 
 static void Subscript(bool canAssign, CompilerContext& compiler)
 {
+  auto prevUsing = compiler.usingExpressionResult;
+  compiler.usingExpressionResult = true;
   Expression(false, compiler);
+  compiler.usingExpressionResult = prevUsing;
 
   if (!Match(Scanner::TokenType::RightSquareParen, compiler)) {
     MessageAtCurrent("Expected ']' after subscript expression", LogLevel::Error, compiler);
@@ -2565,7 +2569,12 @@ static void Subscript(bool canAssign, CompilerContext& compiler)
       MessageAtPrevious("Assignment is not valid in the current context", LogLevel::Error, compiler);
       return;
     }
+
+    prevUsing = compiler.usingExpressionResult;
+    compiler.usingExpressionResult = true;
     Expression(false, compiler);
+    compiler.usingExpressionResult = prevUsing;
+
     EmitOp(VM::Ops::AssignSubscript, compiler.previous.value().GetLine());
   } else {
     EmitOp(VM::Ops::GetSubscript, compiler.previous.value().GetLine());
@@ -2623,10 +2632,8 @@ static void Dot(bool canAssign, CompilerContext& compiler)
   }    
 }
 
-static void DotFunctionCall(const Scanner::Token& funcNameToken, CompilerContext& compiler)
+static bool ParseCallParameters(CompilerContext& compiler, int64_t& numArgs)
 {
-  // the last object on the stack is the object we are calling
-  std::int64_t numArgs = 0;
   if (!Match(Scanner::TokenType::RightParen, compiler)) {
     while (true) {
       auto prevUsing = compiler.usingExpressionResult;
@@ -2639,11 +2646,22 @@ static void DotFunctionCall(const Scanner::Token& funcNameToken, CompilerContext
       }
       if (!Match(Scanner::TokenType::Comma, compiler)) {
         MessageAtCurrent("Expected ',' after function call argument", LogLevel::Error, compiler);
-        return;
+        return false;
       }
     }
   }
 
+  return true;
+}
+
+static void DotFunctionCall(const Scanner::Token& funcNameToken, CompilerContext& compiler)
+{
+  // the last object on the stack is the object we are calling
+  std::int64_t numArgs = 0;
+  if (!ParseCallParameters(compiler, numArgs)) {
+    return;
+  }
+  
   static std::hash<std::string> hasher;
   auto funcName = funcNameToken.GetString();
   EmitConstant(funcName);
@@ -2651,7 +2669,61 @@ static void DotFunctionCall(const Scanner::Token& funcNameToken, CompilerContext
   EmitConstant(numArgs);
   EmitOp(VM::Ops::MemberCall, funcNameToken.GetLine());
 
-  if (!compiler.usingExpressionResult) {
+  if (Check(Scanner::TokenType::Semicolon, compiler) && !compiler.usingExpressionResult) {
+    // pop unused return value
+    EmitOp(VM::Ops::Pop, compiler.previous.value().GetLine());
+  }
+}
+
+static void FreeFunctionCall(const Scanner::Token& funcNameToken, CompilerContext& compiler)
+{
+  compiler.namespaceQualifierUsed = true;
+
+  static std::hash<std::string> hasher;
+  auto funcNameText = funcNameToken.GetString();
+  auto hash = static_cast<std::int64_t>(hasher(funcNameText));
+  auto nativeCall = funcNameText.starts_with("__");
+  std::size_t nativeIndex{};
+  if (nativeCall) {
+    auto [exists, index] = VM::VM::HasNativeFunction(funcNameText);
+    if (!exists) {
+      Message(funcNameToken, fmt::format("No native function matching the given signature `{}` was found", funcNameText), LogLevel::Error, compiler);
+      return;
+    } else {
+      nativeIndex = index;
+    }
+  }
+
+  std::int64_t numArgs = 0;
+  if (!ParseCallParameters(compiler, numArgs)) {
+    return;
+  }
+
+  if (nativeCall) {
+    auto arity = VM::VM::GetNativeFunction(nativeIndex).GetArity();
+    if (numArgs != arity) {
+      MessageAtPrevious(fmt::format("Incorrect number of arguments given to native call - got {} but expected {}", numArgs, arity), LogLevel::Error, compiler);
+      return;
+    }
+  }
+
+  // TODO: in a script that is not being ran as the main script, 
+  // there may be a function called 'main' that you should be allowed to call
+  if (funcNameText == "main") {
+    Message(funcNameToken, "Cannot call the `main` function", LogLevel::Error, compiler);
+    return;
+  }
+
+  EmitConstant(nativeCall ? static_cast<std::int64_t>(nativeIndex) : hash);
+  EmitConstant(numArgs);
+  if (nativeCall) {
+    EmitOp(VM::Ops::NativeCall, compiler.previous.value().GetLine());
+  } else {
+    EmitConstant(funcNameText);
+    EmitOp(VM::Ops::Call, compiler.previous.value().GetLine());
+  }
+
+  if (Check(Scanner::TokenType::Semicolon, compiler) && !compiler.usingExpressionResult) {
     // pop unused return value
     EmitOp(VM::Ops::Pop, compiler.previous.value().GetLine());
   }
@@ -2735,72 +2807,6 @@ static void Identifier(bool canAssign, CompilerContext& compiler)
         EmitOp(VM::Ops::LoadLocal, prev.GetLine());
       }
     }
-  }
-}
-
-static void FreeFunctionCall(const Scanner::Token& funcNameToken, CompilerContext& compiler)
-{
-  compiler.namespaceQualifierUsed = true;
-
-  static std::hash<std::string> hasher;
-  auto funcNameText = funcNameToken.GetString();
-  auto hash = static_cast<std::int64_t>(hasher(funcNameText));
-  auto nativeCall = funcNameText.starts_with("__");
-  std::size_t nativeIndex{};
-  if (nativeCall) {
-    auto [exists, index] = VM::VM::HasNativeFunction(funcNameText);
-    if (!exists) {
-      Message(funcNameToken, fmt::format("No native function matching the given signature `{}` was found", funcNameText), LogLevel::Error, compiler);
-      return;
-    }
-    else {
-      nativeIndex = index;
-    }
-  }
-
-  std::int64_t numArgs = 0;
-  if (!Match(Scanner::TokenType::RightParen, compiler)) {
-    while (true) {
-      auto prevUsing = compiler.usingExpressionResult;
-      compiler.usingExpressionResult = true;
-      Expression(false, compiler);
-      compiler.usingExpressionResult = prevUsing;
-      numArgs++;
-      if (Match(Scanner::TokenType::RightParen, compiler)) {
-        break;
-      }
-      Consume(Scanner::TokenType::Comma, "Expected ',' after function call argument", compiler);
-    }
-  }
-
-  if (nativeCall) {
-    auto arity = VM::VM::GetNativeFunction(nativeIndex).GetArity();
-    if (numArgs != arity) {
-      MessageAtPrevious(fmt::format("Incorrect number of arguments given to native call - got {} but expected {}", numArgs, arity), LogLevel::Error, compiler);
-      return;
-    }
-  }
-
-  // TODO: in a script that is not being ran as the main script, 
-  // there may be a function called 'main' that you should be allowed to call
-  if (funcNameText == "main") {
-    Message(funcNameToken, "Cannot call the `main` function", LogLevel::Error, compiler);
-    return;
-  }
-
-  EmitConstant(nativeCall ? static_cast<std::int64_t>(nativeIndex) : hash);
-  EmitConstant(numArgs);
-  if (nativeCall) {
-    EmitOp(VM::Ops::NativeCall, compiler.previous.value().GetLine());
-  }
-  else {
-    EmitConstant(funcNameText);
-    EmitOp(VM::Ops::Call, compiler.previous.value().GetLine());
-  }
-
-  if (Check(Scanner::TokenType::Semicolon, compiler) && !compiler.usingExpressionResult) {
-    // pop unused return value
-    EmitOp(VM::Ops::Pop, compiler.previous.value().GetLine());
   }
 }
 
@@ -2890,7 +2896,7 @@ static void InstanceOf(CompilerContext& compiler)
   Advance(compiler);  // Consume the type ident
   Consume(Scanner::TokenType::RightParen, "Expected ')'", compiler);
 
-  if (!compiler.usingExpressionResult) {
+  if (Check(Scanner::TokenType::Semicolon, compiler) && !compiler.usingExpressionResult) {
     // pop unused return value
     EmitOp(VM::Ops::Pop, compiler.previous.value().GetLine());
   }
@@ -2899,14 +2905,16 @@ static void InstanceOf(CompilerContext& compiler)
 static void IsObject(CompilerContext& compiler)
 {
   Consume(Scanner::TokenType::LeftParen, "Expected '(' after `isobject`", compiler);
+  
   auto prevUsing = compiler.usingExpressionResult;
   compiler.usingExpressionResult = true;
   Expression(false, compiler);
-  EmitOp(VM::Ops::IsObject, compiler.previous.value().GetLine());
   compiler.usingExpressionResult = prevUsing;
+
+  EmitOp(VM::Ops::IsObject, compiler.previous.value().GetLine());
   Consume(Scanner::TokenType::RightParen, "Expected ')' after expression", compiler);
 
-  if (!compiler.usingExpressionResult) {
+  if (Check(Scanner::TokenType::Semicolon, compiler) && !compiler.usingExpressionResult) {
     EmitOp(VM::Ops::Pop, compiler.previous.value().GetLine());
   }
 }
@@ -2952,7 +2960,7 @@ static void Cast(CompilerContext& compiler)
           MessageAtPrevious("Unterminated `List` constructor", LogLevel::Error, compiler);
           return;
         }
-
+        
         Expression(false, compiler);
         numListItems++;
 
@@ -2999,7 +3007,7 @@ static void Cast(CompilerContext& compiler)
     EmitOp(VM::Ops::CreateList, compiler.previous.value().GetLine());
   }
 
-  if (!compiler.usingExpressionResult) {
+  if (Check(Scanner::TokenType::Semicolon, compiler) && !compiler.usingExpressionResult) {
     // pop unused return value
     EmitOp(VM::Ops::Pop, compiler.previous.value().GetLine());
   }
@@ -3082,13 +3090,14 @@ static void Dictionary(CompilerContext& compiler)
 {
   std::int64_t numItems = 0;
 
+  auto prevUsing = compiler.usingExpressionResult;
+  compiler.usingExpressionResult = true;
+
   while (true) {
     if (Match(Scanner::TokenType::RightCurlyParen, compiler)) {
       break;
     }
 
-    auto prevUsing = compiler.usingExpressionResult;
-    compiler.usingExpressionResult = true;
     Expression(false, compiler);
 
     if (!Match(Scanner::TokenType::Colon, compiler)) {
@@ -3097,7 +3106,6 @@ static void Dictionary(CompilerContext& compiler)
     }
 
     Expression(false, compiler);
-    compiler.usingExpressionResult = prevUsing;
 
     numItems++;
 
@@ -3107,6 +3115,8 @@ static void Dictionary(CompilerContext& compiler)
 
     Consume(Scanner::TokenType::Comma, "Expected `,` between dictionary pairs", compiler);
   }
+
+  compiler.usingExpressionResult = prevUsing;
 
   EmitConstant(numItems);
   EmitOp(VM::Ops::CreateDictionary, compiler.previous.value().GetLine());
