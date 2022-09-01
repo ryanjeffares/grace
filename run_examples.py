@@ -8,8 +8,8 @@ for root, dirs, files in os.walk('./examples', topdown=True):
         print('Running', example_path)
         print()
         if os.name == 'nt':
-            os.system(f'./build/Release/Release/grace.exe {example_path}')
+            os.system(f'./build/grace/Release/Release/grace.exe')
         else:
-            os.system(f'./build/Release/grace {example_path}')
+            os.system(f'./build/grace/Release/grace {example_path}')
         print()
         print(f'Finished in {time.time() - start}')
