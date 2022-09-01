@@ -1,4 +1,5 @@
 import std::list;
+import std::dict;
 
 class Person:
   var name: String;
@@ -9,15 +10,8 @@ class Person:
   constructor(n, a):
     name = n;
     age = a;
-    test = 5;
   end
 end
-
-func say_hello(this Person person):
-  println("Hello, my name is " + person.name + " and I am " + person.age + " years old.");
-end
-
-func make_person(): end
 
 func main():
   var parent = Person("Catherine", 52);
@@ -31,4 +25,16 @@ func main():
   l.append(d);
   println(d);
 
+  var p = Person("test", 100);
+  p.child = p;
+  p.parent = p;
+
+  var test_list = [];
+  test_list.append(test_list);
+  test_list.append(test_list);
+  test_list.append(test_list);
+  test_list.append({});
+
+  var test_dict = {};
+  test_dict.insert(test_dict, test_dict);
 end

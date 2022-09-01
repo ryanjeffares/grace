@@ -7,7 +7,10 @@ def main():
 
     for i in range(0, 50):
         single_start = time.time()
-        os.system("./build/Release/grace ./examples/for.gr")
+        if os.name == 'nt':
+            os.system("./build/grace/Release/Release/grace.exe ./examples/for.gr")
+        else:
+            os.system("./build/grace/Release/grace ./examples/for.gr")
         single_end = time.time()
         total += single_end - single_start
 

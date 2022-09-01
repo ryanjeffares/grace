@@ -253,12 +253,12 @@ namespace Grace::VM
     struct VMState
     {
       std::size_t stackSize{}, numLocals{}, callStackSize{}, opOffsetSize{}, localsOffsetsSize{}, 
-        heldIteratorIndexesSize{}, namespaceStackSize{}, fileNameStackSize{};
+        heldIteratorsSize{}, namespaceStackSize{}, fileNameStackSize{};
       std::int64_t opIndexToJump{}, constIndexToJump{};
     };
 
     std::stack<VMState> vmStateStack;
-    std::stack<std::size_t> heldIteratorIndexes;
+    std::stack<Value> heldIterators;
     std::stack<std::vector<std::pair<std::string, std::int64_t>>> namespaceLookupStack; // used to keep track of what namespace we look for a call in
     namespaceLookupStack.emplace();
 
@@ -532,8 +532,11 @@ namespace Grace::VM
             }
 
             callStack.push_back({ funcNameHash, calleeNameHash, line, fileNameStack.top().second, calleeFunc->fileName, fileNameStack.top().first, calleeFunc->fileNameHash });
+            
             valueStack.emplace_back(static_cast<std::int64_t>(opCurrent));
             valueStack.emplace_back(static_cast<std::int64_t>(constantCurrent));
+            valueStack.emplace_back(static_cast<std::int64_t>(heldIterators.size()));
+
             fileNameStack.push({ calleeFunc->fileNameHash, calleeFunc->fileName });
 
             opCurrent = calleeFunc->opIndexStart;
@@ -610,8 +613,11 @@ namespace Grace::VM
             localsList[localsOffsets.top()] = std::move(callerObject);
 
             callStack.push_back({ funcNameHash, calleeNameHash, line, fileNameStack.top().second, calleeFunc->fileName, fileNameStack.top().first, calleeFunc->fileNameHash });
+            
             valueStack.emplace_back(static_cast<std::int64_t>(opCurrent));
             valueStack.emplace_back(static_cast<std::int64_t>(constantCurrent));
+            valueStack.emplace_back(static_cast<std::int64_t>(heldIterators.size()));
+            
             fileNameStack.push({ calleeFunc->fileNameHash, calleeFunc->fileName });
 
             opCurrent = calleeFunc->opIndexStart;
@@ -677,10 +683,9 @@ namespace Grace::VM
 
             if (auto list = object->GetAsList()) {
               auto listIterator = Value::CreateObject<GraceIterator>(list, GraceIterator::IterableType::List);
-              heldIteratorIndexes.push(valueStack.size());
-              valueStack.push_back(listIterator);
-              
               auto listIteratorObject = listIterator.GetObject()->GetAsIterator();
+              heldIterators.push(listIterator);
+              
               localsList[iteratorId + localsOffsets.top()] = listIteratorObject->IsAtEnd() ? Value() : listIteratorObject->Value();
             
               if (twoIterators) {
@@ -691,10 +696,9 @@ namespace Grace::VM
               }
             } else if (auto dict = object->GetAsDictionary()) {
               auto dictIterator = Value::CreateObject<GraceIterator>(dict, GraceIterator::IterableType::Dictionary);
-              heldIteratorIndexes.push(valueStack.size());
-              valueStack.push_back(dictIterator);
-              
               auto dictIteratorObject = dictIterator.GetObject()->GetAsIterator();
+              heldIterators.push(dictIterator);
+              
               
               if (twoIterators) {
                 auto secondIteratorId = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
@@ -719,8 +723,7 @@ namespace Grace::VM
           case Ops::IncrementIterator: {
             auto twoIterators = m_FullConstantList[constantCurrent++].Get<bool>();
             auto iteratorVarId = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
-            auto iteratorIndex = heldIteratorIndexes.top();
-            auto heldIterator = valueStack[iteratorIndex].GetObject()->GetAsIterator();
+            auto heldIterator = heldIterators.top().GetObject()->GetAsIterator();
             auto iterableType = heldIterator->GetType();
 
             if (iterableType == GraceIterator::IterableType::List) {
@@ -756,19 +759,12 @@ namespace Grace::VM
             break;
           }
           case Ops::CheckIteratorEnd: {
-            auto heldIteratorIndex = heldIteratorIndexes.top();
-            auto heldIterator = valueStack[heldIteratorIndex].GetObject()->GetAsIterator();
-
-            GRACE_MAYBE_UNUSED auto iterableType = heldIterator->GetType();
-            GRACE_ASSERT((iterableType == GraceIterator::IterableType::List || iterableType == GraceIterator::IterableType::Dictionary), "Iterator did not have a valid type set");
-
+            auto heldIterator = heldIterators.top().GetObject()->GetAsIterator();
             valueStack.emplace_back(heldIterator->AsBool());
             break;
           }
           case Ops::DestroyHeldIterator: {
-            auto index = heldIteratorIndexes.top();
-            valueStack.erase(valueStack.begin() + index);
-            heldIteratorIndexes.pop();
+            heldIterators.pop();
             break;
           }
           case Ops::Jump: {
@@ -800,6 +796,11 @@ namespace Grace::VM
             funcNameHash = callStack.back().callerHash;
             callStack.pop_back();
             fileNameStack.pop();
+
+            auto heldIteratorsSize = static_cast<std::size_t>(Pop(valueStack).Get<std::int64_t>());
+            while (heldIterators.size() != heldIteratorsSize) {
+              heldIterators.pop();
+            }
 
             constantCurrent = static_cast<std::size_t>(Pop(valueStack).Get<std::int64_t>());
             opCurrent = static_cast<std::size_t>(Pop(valueStack).Get<std::int64_t>());
@@ -1086,7 +1087,7 @@ namespace Grace::VM
               callStack.size(),
               opConstOffsets.size(),
               localsOffsets.size(),
-              heldIteratorIndexes.size(),
+              heldIterators.size(),
               namespaceLookupStack.size(),
               fileNameStack.size(),
               opIdx,
@@ -1119,9 +1120,8 @@ namespace Grace::VM
           const auto& vmState = vmStateStack.top();
 
           // we need to "unwind" the call stack back to its state before we entered the try block...
-          while (heldIteratorIndexes.size() != vmState.heldIteratorIndexesSize) {
-            valueStack.erase(valueStack.begin() + heldIteratorIndexes.top());
-            heldIteratorIndexes.pop();
+          while (heldIterators.size() != vmState.heldIteratorsSize) {
+            heldIterators.pop();
           }
 
           while (localsOffsets.size() != vmState.localsOffsetsSize) {

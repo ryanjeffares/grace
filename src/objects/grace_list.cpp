@@ -213,4 +213,15 @@ namespace Grace
       m_Data.erase(it);
     }
   }
+
+  GRACE_NODISCARD bool GraceList::OnlyReferenceIsSelf() const
+  {
+    std::uint32_t selfRefs = 0;
+    for (auto& value : m_Data) {
+      if (value.GetObject() == this) {
+        selfRefs++;
+      }
+    }
+    return selfRefs == m_RefCount;
+  }
 }

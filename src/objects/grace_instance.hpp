@@ -71,11 +71,10 @@ namespace Grace
 	void AssignMember(const std::string& memberName, VM::Value&& value);
 	GRACE_NODISCARD const VM::Value& LoadMember(const std::string& memberName);
 
-	// needs to be thread safe
 	GRACE_NODISCARD std::vector<GraceObject*> GetObjectMembers() const override;
-	// needs to be thread safe
 	GRACE_NODISCARD bool AnyMemberMatches(const GraceObject* match) const override;
 	void RemoveMember(GraceObject* object) override;
+	GRACE_NODISCARD bool OnlyReferenceIsSelf() const override;
 
   private:
 	std::string m_ClassName;

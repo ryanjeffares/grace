@@ -16,6 +16,16 @@ func export length(this List list) :: Int:
   return __NATIVE_LIST_LENGTH(list);
 end
 
+func export contains(this List list, value) :: Bool:
+  for element in list:
+    if element == value:
+      return true;
+    end
+  end
+
+  return false;
+end
+
 func export zip(this List list, final other: List) :: List:
   if !instanceof(list, List):
     throw("Expected `List` for `list` in `std::math::max(list, other)` but got `" + typename(list) + '`');
