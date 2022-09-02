@@ -29,14 +29,7 @@ namespace Grace::Scanner
     {'{', TokenType::LeftCurlyParen},
     {'}', TokenType::RightCurlyParen},
     {',', TokenType::Comma},
-    {'-', TokenType::Minus},
-    {'%', TokenType::Mod},
-    {'+', TokenType::Plus},
-    {'/', TokenType::Slash},
-    {'|', TokenType::Bar},
     {'~', TokenType::Tilde},
-    {'^', TokenType::Caret},
-    {'&', TokenType::Ampersand},
   };
 
   static std::unordered_map<std::string, TokenType> s_KeywordLookup =
@@ -188,12 +181,9 @@ namespace Grace::Scanner
     if (std::isalpha(c) || c == '_') {
       return Identifier();
     }
+
     if (std::isdigit(c)) {
       return Number();
-    }
-
-    if (s_SymbolLookup.find(c) != s_SymbolLookup.end()) {
-      return MakeToken(s_SymbolLookup[c]);
     }
 
     switch (c) {
@@ -202,11 +192,40 @@ namespace Grace::Scanner
       case '=':
         return MatchChars({ {'=', TokenType::EqualEqual} }, TokenType::Equal);
       case '<':
+        if (Peek() == '<' && PeekNext() == '=') {
+          Advance();
+          Advance();
+          return MakeToken(TokenType::ShiftLeftEquals);
+        }
         return MatchChars({ {'=', TokenType::LessEqual}, {'<', TokenType::ShiftLeft} }, TokenType::LessThan);
       case '>':
+        if (Peek() == '>' && PeekNext() == '=') {
+          Advance();
+          Advance();
+          return MakeToken(TokenType::ShiftRightEquals);
+        }
         return MatchChars({ {'=', TokenType::GreaterEqual}, {'>', TokenType::ShiftRight} }, TokenType::GreaterThan);
+      case '+':
+        return MatchChars({ {'=', TokenType::PlusEquals} }, TokenType::Plus);
+      case '-':
+        return MatchChars({ {'=', TokenType::MinusEquals} }, TokenType::Minus);
       case '*':
-        return MatchChars({ {'*', TokenType::StarStar} }, TokenType::Star);
+        if (Peek() == '*' && PeekNext() == '=') {
+          Advance();
+          Advance();
+          return MakeToken(TokenType::StarStarEquals);
+        }
+        return MatchChars({ {'*', TokenType::StarStar}, {'=', TokenType::StarEquals} }, TokenType::Star);
+      case '/':
+        return MatchChars({ {'=', TokenType::SlashEquals} }, TokenType::Slash);
+      case '&':
+        return MatchChars({ {'=', TokenType::AmpersandEquals} }, TokenType::Ampersand);
+      case '|':
+        return MatchChars({ {'=', TokenType::BarEquals} }, TokenType::Bar);
+      case '^':
+        return MatchChars({ {'=', TokenType::CaretEquals} }, TokenType::Caret);
+      case '%':
+        return MatchChars({ {'=', TokenType::ModEquals} }, TokenType::Mod);
       case '.':
         return MatchChars({ {'.', TokenType::DotDot} }, TokenType::Dot);
       case ':':
@@ -216,6 +235,9 @@ namespace Grace::Scanner
       case '\'':
         return MakeChar();
       default:
+        if (s_SymbolLookup.find(c) != s_SymbolLookup.end()) {
+          return MakeToken(s_SymbolLookup[c]);
+        }
         return ErrorToken(fmt::format("Unexpected character: {}", c));
     }
   }

@@ -663,6 +663,62 @@ namespace Grace::VM
             localsList[m_FullConstantList[constantCurrent++].Get<std::int64_t>() + localsOffsets.top()] = std::move(value);
             break;
           }
+          case Ops::AddAssign: {
+            auto value = Pop(valueStack);
+            localsList[m_FullConstantList[constantCurrent++].Get<std::int64_t>() + localsOffsets.top()] += value;
+            break;
+          }
+          case Ops::DivideAssign: {
+            auto value = Pop(valueStack);
+            localsList[m_FullConstantList[constantCurrent++].Get<std::int64_t>() + localsOffsets.top()] /= value;
+            break;
+          }
+          case Ops::MultiplyAssign: {
+            auto value = Pop(valueStack);
+            localsList[m_FullConstantList[constantCurrent++].Get<std::int64_t>() + localsOffsets.top()] *= value;
+            break;
+          }
+          case Ops::SubtractAssign: {
+            auto value = Pop(valueStack);
+            localsList[m_FullConstantList[constantCurrent++].Get<std::int64_t>() + localsOffsets.top()] -= value;
+            break;
+          }
+          case Ops::BitwiseAndAssign: {
+            auto value = Pop(valueStack);
+            localsList[m_FullConstantList[constantCurrent++].Get<std::int64_t>() + localsOffsets.top()] &= value;
+            break;
+          }
+          case Ops::BitwiseOrAssign: {
+            auto value = Pop(valueStack);
+            localsList[m_FullConstantList[constantCurrent++].Get<std::int64_t>() + localsOffsets.top()] |= value;
+            break;
+          }
+          case Ops::BitwiseXOrAssign: {
+            auto value = Pop(valueStack);
+            localsList[m_FullConstantList[constantCurrent++].Get<std::int64_t>() + localsOffsets.top()] ^= value;
+            break;
+          }
+          case Ops::ModAssign: {
+            auto value = Pop(valueStack);
+            localsList[m_FullConstantList[constantCurrent++].Get<std::int64_t>() + localsOffsets.top()] %= value;
+            break;
+          }
+          case Ops::ShiftLeftAssign: {
+            auto value = Pop(valueStack);
+            localsList[m_FullConstantList[constantCurrent++].Get<std::int64_t>() + localsOffsets.top()] <<= value;
+            break;
+          }
+          case Ops::ShiftRightAssign: {
+            auto value = Pop(valueStack);
+            localsList[m_FullConstantList[constantCurrent++].Get<std::int64_t>() + localsOffsets.top()] >>= value;
+            break;
+          }
+          case Ops::PowAssign: {
+            auto value = Pop(valueStack);
+            auto& local = localsList[m_FullConstantList[constantCurrent++].Get<std::int64_t>() + localsOffsets.top()];
+            local = local.Pow(value);
+            break;
+          }
           case Ops::DeclareLocal: {
             localsList.emplace_back();
             break;

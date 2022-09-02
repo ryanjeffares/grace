@@ -61,6 +61,9 @@ This will build the `grace` executable, which you can add to your path or move s
 * Documentation + comments 
 * Improve compiler errors and line numbering
 * Reduce code duplication in compiler, general clean up
+* Ensure use of backticks and quotes is consistent in error messages
+* Think about how `char`s should behave in binary operations
+* Should `5 += 0.5` turn the LHS into a `Float` ?
 
 ## Long Term Goals 
 * Optional type annotations for use by a static analyzer

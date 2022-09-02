@@ -1,0 +1,38 @@
+func main():
+  var x: Int = 10;
+  x += 1;
+  println(x);
+
+  x += 1.5;
+  println(x); // does not mutate type to float!
+
+  var s: String = "Foo";
+  s += "Bar";
+  println(s);
+
+  s += 0b1 << 32; // can append anything on to a string and it will use the string representation 
+  println(s);
+
+  s += [];
+  s += {};
+  println(s);
+
+  var i = 0b1001;
+  var j = 0b0110;
+  i |= j;
+  println(i);
+
+  var k = 100;
+  k %= 15;
+  println(k);
+
+  var l = 1;
+  l <<= 16;
+  println(l);
+  l >>= 16;
+  println(l);
+
+  var m = 2;
+  m **= 4;
+  assert(m == 16);
+end
