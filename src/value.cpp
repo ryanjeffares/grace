@@ -739,6 +739,7 @@ namespace Grace::VM
             return *this;
           default: break;
         }
+        break;
       case Type::Double:
         switch (other.m_Type) {
           case Type::Int:
@@ -749,6 +750,7 @@ namespace Grace::VM
             return *this;
           default: break;
         }
+        break;
       default: break;
     }
 
