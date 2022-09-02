@@ -40,6 +40,8 @@ python3 build.py <Release/Debug/All>
 
 This will build the `grace` executable, which you can add to your path or move somewhere that is on your path. Full installation process as well as documentation is WIP.
 
+**NB: Grace will look for the standard library with the `GRACE_STD_PATH` environment variable. The CMake file doesn't currently do this, so you'll need to do it yourself to include any Grace standard library files in your Grace code. The standard library is in the std directory in this repo, so if your clone is located at "C:/Users/me/grace", set your `GRACE_STD_PATH` environment variable to be "C:/Users/me/grace/std"**
+
 ## Alpha Release Roadmap
 * Prevent integer overflow by automatically promoting to a `BigInt` class
 * TEST THE CYCLE CLEANER
