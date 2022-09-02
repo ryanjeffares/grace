@@ -909,7 +909,7 @@ namespace Grace::VM
           case Ops::CreateInstance: {
             auto numMembers = static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>());
 
-            GraceInstance::MemberList memberList(numMembers);
+            std::vector<GraceInstance::Member> memberList(numMembers);
             auto localsStartIndex = localsList.size() - numMembers;
             for (auto i = localsStartIndex; i < localsStartIndex + numMembers; i++) {
               memberList[i - localsStartIndex] = { m_FullConstantList[constantCurrent++].Get<std::string>(), localsList[i] };

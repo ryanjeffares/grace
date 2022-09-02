@@ -82,7 +82,7 @@ namespace Grace
         return s_ExceptionMessages.at(m_Type);
       }
 
-      GRACE_NODISCARD GRACE_INLINE std::string Message() const
+      GRACE_NODISCARD GRACE_INLINE const std::string& Message() const
       {
         return m_Message;
       }

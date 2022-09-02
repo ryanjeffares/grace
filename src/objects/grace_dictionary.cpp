@@ -90,7 +90,7 @@ namespace Grace
 
   bool GraceDictionary::AsBool() const
   {
-    return !m_Data.empty();
+    return m_Size > 0;
   } 
 
   GraceDictionary::IteratorType GraceDictionary::Begin()
@@ -289,13 +289,9 @@ namespace Grace
 
   GRACE_NODISCARD bool GraceDictionary::AnyMemberMatches(const GraceObject* match) const
   {
-    for (const auto& el : m_Data) {
-      if (el.GetObject()  == match) {
-        return true;
-      }
-    }
-
-    return false;
+    return std::any_of(m_Data.begin(), m_Data.end(), [match] (const VM::Value& value) {
+      return value.GetObject() == match;
+    });
   }
 
   void GraceDictionary::RemoveMember(GraceObject* object)

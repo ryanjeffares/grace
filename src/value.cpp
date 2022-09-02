@@ -29,12 +29,10 @@ namespace Grace::VM
   {
     if (other.m_Type == Type::String) {
       m_Data.m_Str = new std::string(*other.m_Data.m_Str);
-    }
-    else if (other.m_Type == Type::Object) {
+    } else if (other.m_Type == Type::Object) {
       m_Data.m_Object = other.m_Data.m_Object;
       m_Data.m_Object->IncreaseRef();
-    }
-    else {
+    } else {
       m_Data = other.m_Data;
     }
   }

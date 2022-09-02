@@ -269,14 +269,12 @@ namespace Grace::Scanner
             while (!IsAtEnd() && Peek() != '\n') {
               Advance();
             }
-          }
-          else if (PeekNext() == '*') {
+          } else if (PeekNext() == '*') {
             while (!IsAtEnd()) {
               if (Peek() == '\n') {
                 s_ScannerContextStack.top().scannerLine++;
                 s_ScannerContextStack.top().scannerColumn = 0;
-              }
-              else if (Peek() == '\t') {
+              } else if (Peek() == '\t') {
                 s_ScannerContextStack.top().scannerCurrent += 8;
               }
 
@@ -286,13 +284,11 @@ namespace Grace::Scanner
                   Advance();
                   break;
                 }
-              }
-              else {
+              } else {
                 Advance();
               }
             }
-          }
-          else {
+          } else {
             return;
           }
           break;
@@ -352,8 +348,7 @@ namespace Grace::Scanner
     std::string tokenStr = s_ScannerContextStack.top().codeString.substr(s_ScannerContextStack.top().scannerStart, s_ScannerContextStack.top().scannerCurrent - s_ScannerContextStack.top().scannerStart);
     if (s_KeywordLookup.find(tokenStr) != s_KeywordLookup.end()) {
       return MakeToken(s_KeywordLookup[tokenStr]);
-    }
-    else {
+    } else {
       return MakeToken(TokenType::Identifier);
     }
   }
@@ -403,8 +398,7 @@ namespace Grace::Scanner
       }
 
       return MakeToken(TokenType::Double);
-    }
-    else {
+    } else {
       return MakeToken(TokenType::Integer);
     }
   }

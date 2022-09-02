@@ -68,6 +68,7 @@ namespace Grace
       GRACE_NODISCARD bool AnyMemberMatches(const GraceObject* match) const override;
       GRACE_NODISCARD std::vector<GraceObject*> GetObjectMembers() const override;
       void RemoveMember(GraceObject* object) override;
+      GRACE_NODISCARD bool OnlyReferenceIsSelf() const override;
 
     private:
       VM::Value m_Key, m_Value;
