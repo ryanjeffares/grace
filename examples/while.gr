@@ -1,9 +1,10 @@
 func nested_loops():
   var n = 0;
-  if n: end
+
   while n < 101:
     println(n);
-    n = n + 1;
+    //n = n + 1;
+    n += 1;
 
     for i in [0..50]:
       if i > 25:

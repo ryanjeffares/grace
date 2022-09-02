@@ -164,4 +164,10 @@ namespace Grace
       m_Value = VM::Value::NullValue();
     }
   }
+
+  // Possibly will always return false, since KVPs are immutable/only the value can be changed if it's in a Dict...
+  GRACE_NODISCARD bool GraceKeyValuePair::OnlyReferenceIsSelf() const
+  {
+    return m_Key.GetObject() == this && m_Value.GetObject() == this;
+  }
 }

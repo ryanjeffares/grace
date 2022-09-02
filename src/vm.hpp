@@ -35,6 +35,7 @@ namespace Grace::VM
   enum class Ops : std::uint8_t
   {
     Add,
+    AddAssign,
     And,
     AppendNamespace,
     Assert,
@@ -44,9 +45,12 @@ namespace Grace::VM
     AssignMember,
     AssignSubscript,
     BitwiseAnd,
+    BitwiseAndAssign,
     BitwiseNot,
     BitwiseOr,
+    BitwiseOrAssign,
     BitwiseXOr,
+    BitwiseXOrAssign,
     Call,
     Cast,
     CheckIteratorEnd,
@@ -58,6 +62,7 @@ namespace Grace::VM
     DeclareLocal,
     DestroyHeldIterator,
     Divide,
+    DivideAssign,
     Dup,
     EnterTry,
     Equal,
@@ -77,7 +82,9 @@ namespace Grace::VM
     LoadMember,
     MemberCall,
     Mod,
+    ModAssign,
     Multiply,
+    MultiplyAssign,
     NativeCall,
     Negate,
     NoOp,
@@ -88,6 +95,7 @@ namespace Grace::VM
     PopLocal,
     PopLocals,
     Pow,
+    PowAssign,
     Print,
     PrintEmptyLine,
     PrintLn,
@@ -98,9 +106,12 @@ namespace Grace::VM
     EPrintTab,
     Return,
     ShiftLeft,
+    ShiftLeftAssign,
     ShiftRight,
+    ShiftRightAssign,
     StartNewNamespace,
     Subtract,
+    SubtractAssign,
     Throw,
     Typename
   };
@@ -356,12 +367,23 @@ struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
       case Ops::Subtract: name = "Ops::Subtract"; break;
       case Ops::Throw: name = "Ops::Throw"; break;
       case Ops::Typename: name = "Ops::Typename"; break;
-      case Ops::BitwiseAnd: name = "Ops:BitwiseAnd"; break;
-      case Ops::BitwiseNot: name = "Ops:BitwiseNot"; break;
-      case Ops::BitwiseOr: name = "Ops:BitwiseOr"; break;
-      case Ops::BitwiseXOr: name = "Ops:BitwiseXOr"; break;
-      case Ops::ShiftLeft: name = "Ops:ShiftLeft"; break;
-      case Ops::ShiftRight: name = "Ops:ShiftRight"; break;
+      case Ops::BitwiseAnd: name = "Ops::BitwiseAnd"; break;
+      case Ops::BitwiseNot: name = "Ops::BitwiseNot"; break;
+      case Ops::BitwiseOr: name = "Ops::BitwiseOr"; break;
+      case Ops::BitwiseXOr: name = "Ops::BitwiseXOr"; break;
+      case Ops::ShiftLeft: name = "Ops::ShiftLeft"; break;
+      case Ops::ShiftRight: name = "Ops::ShiftRight"; break;
+      case Ops::AddAssign: name = "Ops::AddAssign"; break;
+      case Ops::SubtractAssign: name = "Ops::SubtractAssign"; break;
+      case Ops::DivideAssign: name = "Ops::DivideAssign"; break;
+      case Ops::MultiplyAssign: name = "Ops::MultiplyAssign"; break;
+      case Ops::ModAssign: name = "Ops::ModAssign"; break;
+      case Ops::BitwiseAndAssign: name = "Ops::BitwiseAndAssign"; break;
+      case Ops::BitwiseOrAssign: name = "Ops::BitwiseOrAssign"; break;
+      case Ops::BitwiseXOrAssign: name = "Ops::BitwiseXOrAssign"; break;
+      case Ops::ShiftLeftAssign: name = "Ops::ShiftLeftAssign"; break;
+      case Ops::ShiftRightAssign: name = "Ops::ShiftRightAssign"; break;
+      case Ops::PowAssign: name = "Ops::PowAssign"; break;
     }
     return fmt::formatter<std::string_view>::format(name, context);
   }

@@ -77,6 +77,17 @@ namespace Grace::Scanner
     Tilde,
     Caret,
     Ampersand,
+    PlusEquals,
+    MinusEquals,
+    StarEquals,
+    SlashEquals,
+    ModEquals,
+    BarEquals,
+    CaretEquals,
+    AmpersandEquals,
+    ShiftLeftEquals,
+    ShiftRightEquals,
+    StarStarEquals,
 
     // Keywords
     And,
@@ -254,6 +265,17 @@ struct fmt::formatter<Grace::Scanner::TokenType> : fmt::formatter<std::string_vi
       case TokenType::Tilde: name = "TokenType::Tilde"; break;
       case TokenType::Caret: name = "TokenType::Caret"; break;
       case TokenType::Ampersand: name = "TokenType::Ampersand"; break;
+      case TokenType::PlusEquals: name = "TokenType::PlusEquals"; break;
+      case TokenType::MinusEquals: name = "TokenType::MinusEquals"; break;
+      case TokenType::StarEquals: name = "TokenType::StarEquals"; break;
+      case TokenType::SlashEquals: name = "TokenType::SlashEquals"; break;
+      case TokenType::ModEquals: name = "TokenType::ModEquals"; break;
+      case TokenType::BarEquals: name = "TokenType::BarEquals"; break;
+      case TokenType::CaretEquals: name = "TokenType::CaretEquals"; break;
+      case TokenType::AmpersandEquals: name = "TokenType::AmpersandEquals"; break;
+      case TokenType::ShiftLeftEquals: name = "TokenType::ShiftLeftEquals"; break;
+      case TokenType::ShiftRightEquals: name = "TokenType::ShiftRightEquals"; break;
+      case TokenType::StarStarEquals: name = "TokenType::StarStarEquals"; break;
     }
     return fmt::formatter<std::string_view>::format(name, context);
   }

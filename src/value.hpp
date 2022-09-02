@@ -211,6 +211,17 @@ namespace Grace
       GRACE_NODISCARD Value operator-() const;
       GRACE_NODISCARD Value operator~() const;
 
+      Value& operator+=(const Value&);
+      Value& operator-=(const Value&);
+      Value& operator*=(const Value&);
+      Value& operator/=(const Value&);
+      Value& operator&=(const Value&);
+      Value& operator|=(const Value&);
+      Value& operator^=(const Value&);
+      Value& operator%=(const Value&);
+      Value& operator<<=(const Value&);
+      Value& operator>>=(const Value&);
+
       GRACE_NODISCARD Value Pow(const Value&) const;
 
       void PrintLn(bool err) const;

@@ -53,8 +53,7 @@ namespace Grace
   {
     if (m_Iterator == m_Iterable->End()) {
       fmt::print(err ? stderr : stdout, "null");
-    }
-    else {
+    } else {
       Value().Print(err);
     }
   }
@@ -63,8 +62,7 @@ namespace Grace
   {
     if (m_Iterator == m_Iterable->End()) {
       fmt::print(err ? stderr : stdout, "null\n");
-    }
-    else {
+    } else {
       Value().PrintLn(err);
     }
   }

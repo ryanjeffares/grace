@@ -1395,148 +1395,6 @@ static std::optional<std::string> FindMostSimilarVarName(const std::string& varN
   return res;
 }
 
-static void Expression(bool canAssign, CompilerContext& compiler)
-{
-  // can't start an expression with an operator...
-  if (IsOperator(compiler.current.value().GetType())) {
-    MessageAtCurrent("Expected identifier or literal at start of expression", LogLevel::Error, compiler);
-    Advance(compiler);
-    return;
-  }
-
-  // ... or a keyword
-  std::string kw;
-  if (IsKeyword(compiler.current.value().GetType(), kw)) {
-    MessageAtCurrent(fmt::format("'{}' is a keyword and not valid in this context", kw), LogLevel::Error, compiler);
-    Advance(compiler);  //consume the illegal identifier
-    return;
-  }
-
-  // only identifiers or literals
-  if (Check(Scanner::TokenType::Identifier, compiler)) {
-    Call(canAssign, compiler);
-
-    if (Check(Scanner::TokenType::Equal, compiler)) {  
-      if (compiler.previous.value().GetType() != Scanner::TokenType::Identifier) {
-        MessageAtCurrent("Only identifiers can be assigned to", LogLevel::Error, compiler);
-        return;
-      }
-
-      auto localName = compiler.previous.value().GetString();
-      auto it = std::find_if(compiler.locals.begin(), compiler.locals.end(), [&localName](const Local& l) { return l.name == localName; });
-      if (it == compiler.locals.end()) {
-        auto mostSimilarVar = FindMostSimilarVarName(localName, compiler.locals);
-        if (mostSimilarVar.has_value()) {
-          MessageAtPrevious(fmt::format("Cannot find variable '{}' in this scope, did you mean '{}'?", localName, *mostSimilarVar), LogLevel::Error, compiler);
-        }
-        else {
-          MessageAtPrevious(fmt::format("Cannot find variable '{}' in this scope", localName), LogLevel::Error, compiler);
-        }
-        return;
-      }
-
-      if (it->isFinal) {
-        MessageAtPrevious(fmt::format("Cannot reassign to final '{}'", compiler.previous.value().GetText()), LogLevel::Error, compiler);
-        return;
-      }
-
-      if (it->isIterator && (s_Verbose || s_WarningsError)) {
-        MessageAtPrevious(fmt::format("'{}' is an iterator variable and will be reassigned on each loop iteration", compiler.previous.value().GetText()), LogLevel::Warning, compiler);
-        if (s_WarningsError) {
-          return;
-        }
-      }
-
-      if (!canAssign) {
-        MessageAtCurrent("Assignment is not valid in the current context", LogLevel::Error, compiler);
-        return;
-      }
-
-      Advance(compiler);  // consume the equals
-
-      auto prevUsing = compiler.usingExpressionResult;
-      compiler.usingExpressionResult = true;
-      Expression(false, compiler); // disallow x = y = z...
-      compiler.usingExpressionResult = prevUsing;
-
-      EmitConstant(it->index);
-      EmitOp(VM::Ops::AssignLocal, compiler.previous.value().GetLine());
-    } else {
-      // not an assignment, so just keep parsing this expression
-      bool shouldBreak = false;
-      while (!shouldBreak) {
-        switch (compiler.current.value().GetType()) {
-          case Scanner::TokenType::Bar:
-            BitwiseOr(false, true, compiler);
-            break;
-          case Scanner::TokenType::Ampersand:
-            BitwiseAnd(false, true, compiler);
-            break;
-          case Scanner::TokenType::Caret:
-            BitwiseXOr(false, true, compiler);
-            break;
-          case Scanner::TokenType::And:
-            And(false, true, compiler);
-            break;
-          case Scanner::TokenType::Or:
-            Or(false, true, compiler);
-            break;
-          case Scanner::TokenType::EqualEqual:
-          case Scanner::TokenType::BangEqual:
-            Equality(false, true, compiler);
-            break;
-          case Scanner::TokenType::GreaterThan:
-          case Scanner::TokenType::GreaterEqual:
-          case Scanner::TokenType::LessThan:
-          case Scanner::TokenType::LessEqual:
-            Comparison(false, true, compiler);
-            break;
-          case Scanner::TokenType::Plus:
-          case Scanner::TokenType::Minus:
-            Term(false, true, compiler);
-            break;
-          case Scanner::TokenType::Star:
-          case Scanner::TokenType::StarStar:
-          case Scanner::TokenType::Slash:
-          case Scanner::TokenType::Mod:
-            Factor(false, true, compiler);
-            break;
-          case Scanner::TokenType::ShiftLeft:
-          case Scanner::TokenType::ShiftRight:
-            Shift(false, true, compiler);
-            break;
-          case Scanner::TokenType::Semicolon:
-          case Scanner::TokenType::RightParen:
-          case Scanner::TokenType::Comma:
-          case Scanner::TokenType::Colon:
-          case Scanner::TokenType::RightSquareParen:
-          case Scanner::TokenType::LeftCurlyParen:
-          case Scanner::TokenType::RightCurlyParen:
-          case Scanner::TokenType::DotDot:
-          case Scanner::TokenType::By:
-            shouldBreak = true;
-            break;
-          case Scanner::TokenType::Dot:
-            Advance(compiler);  // consume the .
-            Dot(canAssign, compiler);
-            break;
-          case Scanner::TokenType::LeftSquareParen:
-            Advance(compiler);  // consume the [
-            Subscript(canAssign, compiler);
-            break;
-          default:
-            MessageAtCurrent("Invalid token found in expression", LogLevel::Error, compiler);
-            Advance(compiler);
-            return;
-        }
-      }
-    }
-  } else {
-    // this expression started with a value literal, so start the recursive descent
-    Or(canAssign, false, compiler);
-  }
-}
-
 static void ExpressionStatement(CompilerContext& compiler)
 {
   if (IsLiteral(compiler.current.value().GetType()) || IsOperator(compiler.current.value().GetType())) {
@@ -2301,6 +2159,211 @@ static void WhileStatement(CompilerContext& compiler)
   compiler.codeContextStack.pop_back();
 }
 
+static bool IsCompoundAssignment(Scanner::TokenType token)
+{
+  static const std::vector<Scanner::TokenType> compoundAssignOps = {
+    Scanner::TokenType::PlusEquals,
+    Scanner::TokenType::MinusEquals,
+    Scanner::TokenType::StarEquals,
+    Scanner::TokenType::SlashEquals,
+    Scanner::TokenType::AmpersandEquals,
+    Scanner::TokenType::CaretEquals,
+    Scanner::TokenType::BarEquals,
+    Scanner::TokenType::ModEquals,
+    Scanner::TokenType::ShiftLeftEquals,
+    Scanner::TokenType::ShiftRightEquals,
+    Scanner::TokenType::StarStarEquals,
+  };
+
+  return std::any_of(compoundAssignOps.begin(), compoundAssignOps.end(), [token] (Scanner::TokenType toCheck) {
+    return toCheck == token;
+  });
+}
+
+static void Expression(bool canAssign, CompilerContext& compiler)
+{
+  // can't start an expression with an operator...
+  if (IsOperator(compiler.current.value().GetType())) {
+    MessageAtCurrent("Expected identifier or literal at start of expression", LogLevel::Error, compiler);
+    Advance(compiler);
+    return;
+  }
+
+  // ... or a keyword
+  std::string kw;
+  if (IsKeyword(compiler.current.value().GetType(), kw)) {
+    MessageAtCurrent(fmt::format("'{}' is a keyword and not valid in this context", kw), LogLevel::Error, compiler);
+    Advance(compiler);  //consume the illegal identifier
+    return;
+  }
+
+  // only identifiers or literals
+  if (Check(Scanner::TokenType::Identifier, compiler)) {
+    Call(canAssign, compiler);
+
+    if (Check(Scanner::TokenType::Equal, compiler) || IsCompoundAssignment(compiler.current.value().GetType())) {  
+      if (compiler.previous.value().GetType() != Scanner::TokenType::Identifier) {
+        MessageAtCurrent("Only identifiers can be assigned to", LogLevel::Error, compiler);
+        return;
+      }
+
+      auto localName = compiler.previous.value().GetString();
+      auto it = std::find_if(compiler.locals.begin(), compiler.locals.end(), [&localName](const Local& l) { return l.name == localName; });
+      if (it == compiler.locals.end()) {
+        auto mostSimilarVar = FindMostSimilarVarName(localName, compiler.locals);
+        if (mostSimilarVar.has_value()) {
+          MessageAtPrevious(fmt::format("Cannot find variable '{}' in this scope, did you mean '{}'?", localName, *mostSimilarVar), LogLevel::Error, compiler);
+        }
+        else {
+          MessageAtPrevious(fmt::format("Cannot find variable '{}' in this scope", localName), LogLevel::Error, compiler);
+        }
+        return;
+      }
+
+      if (it->isFinal) {
+        MessageAtPrevious(fmt::format("Cannot reassign to final '{}'", compiler.previous.value().GetText()), LogLevel::Error, compiler);
+        return;
+      }
+
+      if (it->isIterator && (s_Verbose || s_WarningsError)) {
+        MessageAtPrevious(fmt::format("'{}' is an iterator variable and will be reassigned on each loop iteration", compiler.previous.value().GetText()), LogLevel::Warning, compiler);
+        if (s_WarningsError) {
+          return;
+        }
+      }
+
+      if (!canAssign) {
+        MessageAtCurrent("Assignment is not valid in the current context", LogLevel::Error, compiler);
+        return;
+      }
+
+      Advance(compiler);  // consume the operator 
+      auto opToken = compiler.previous.value().GetType();
+
+      auto prevUsing = compiler.usingExpressionResult;
+      compiler.usingExpressionResult = true;
+      Expression(false, compiler); // disallow x = y = z...
+      compiler.usingExpressionResult = prevUsing;
+
+      EmitConstant(it->index);
+
+      switch (opToken) {
+        case Scanner::TokenType::Equal:
+          EmitOp(VM::Ops::AssignLocal, compiler.previous.value().GetLine());
+          break;
+        case Scanner::TokenType::PlusEquals:
+          EmitOp(VM::Ops::AddAssign, compiler.previous.value().GetLine());
+          break;
+        case Scanner::TokenType::MinusEquals:
+          EmitOp(VM::Ops::SubtractAssign, compiler.previous.value().GetLine());
+          break;
+        case Scanner::TokenType::StarEquals:
+          EmitOp(VM::Ops::MultiplyAssign, compiler.previous.value().GetLine());
+          break;
+        case Scanner::TokenType::SlashEquals:
+          EmitOp(VM::Ops::DivideAssign, compiler.previous.value().GetLine());
+          break;
+        case Scanner::TokenType::AmpersandEquals:
+          EmitOp(VM::Ops::BitwiseAndAssign, compiler.previous.value().GetLine());
+          break;
+        case Scanner::TokenType::CaretEquals:
+          EmitOp(VM::Ops::BitwiseXOrAssign, compiler.previous.value().GetLine());
+          break;
+        case Scanner::TokenType::BarEquals:
+          EmitOp(VM::Ops::BitwiseOrAssign, compiler.previous.value().GetLine());
+          break;
+        case Scanner::TokenType::ModEquals:
+          EmitOp(VM::Ops::ModAssign, compiler.previous.value().GetLine());
+          break;
+        case Scanner::TokenType::ShiftLeftEquals:
+          EmitOp(VM::Ops::ShiftLeftAssign, compiler.previous.value().GetLine());
+          break;
+        case Scanner::TokenType::ShiftRightEquals:
+          EmitOp(VM::Ops::ShiftRightAssign, compiler.previous.value().GetLine());
+          break;
+        case Scanner::TokenType::StarStarEquals:
+          EmitOp(VM::Ops::PowAssign, compiler.previous.value().GetLine());
+          break;
+        default:
+          GRACE_UNREACHABLE();
+          break;
+      }
+    } else {
+      // not an assignment, so just keep parsing this expression
+      bool shouldBreak = false;
+      while (!shouldBreak) {
+        switch (compiler.current.value().GetType()) {
+          case Scanner::TokenType::Bar:
+            BitwiseOr(false, true, compiler);
+            break;
+          case Scanner::TokenType::Ampersand:
+            BitwiseAnd(false, true, compiler);
+            break;
+          case Scanner::TokenType::Caret:
+            BitwiseXOr(false, true, compiler);
+            break;
+          case Scanner::TokenType::And:
+            And(false, true, compiler);
+            break;
+          case Scanner::TokenType::Or:
+            Or(false, true, compiler);
+            break;
+          case Scanner::TokenType::EqualEqual:
+          case Scanner::TokenType::BangEqual:
+            Equality(false, true, compiler);
+            break;
+          case Scanner::TokenType::GreaterThan:
+          case Scanner::TokenType::GreaterEqual:
+          case Scanner::TokenType::LessThan:
+          case Scanner::TokenType::LessEqual:
+            Comparison(false, true, compiler);
+            break;
+          case Scanner::TokenType::Plus:
+          case Scanner::TokenType::Minus:
+            Term(false, true, compiler);
+            break;
+          case Scanner::TokenType::Star:
+          case Scanner::TokenType::StarStar:
+          case Scanner::TokenType::Slash:
+          case Scanner::TokenType::Mod:
+            Factor(false, true, compiler);
+            break;
+          case Scanner::TokenType::ShiftLeft:
+          case Scanner::TokenType::ShiftRight:
+            Shift(false, true, compiler);
+            break;
+          case Scanner::TokenType::Semicolon:
+          case Scanner::TokenType::RightParen:
+          case Scanner::TokenType::Comma:
+          case Scanner::TokenType::Colon:
+          case Scanner::TokenType::RightSquareParen:
+          case Scanner::TokenType::LeftCurlyParen:
+          case Scanner::TokenType::RightCurlyParen:
+          case Scanner::TokenType::DotDot:
+          case Scanner::TokenType::By:
+            shouldBreak = true;
+            break;
+          case Scanner::TokenType::Dot:
+            Advance(compiler);  // consume the .
+            Dot(canAssign, compiler);
+            break;
+          case Scanner::TokenType::LeftSquareParen:
+            Advance(compiler);  // consume the [
+            Subscript(canAssign, compiler);
+            break;
+          default:
+            MessageAtCurrent("Invalid token found in expression", LogLevel::Error, compiler);
+            Advance(compiler);
+            return;
+        }
+      }
+    }
+  } else {
+    // this expression started with a value literal, so start the recursive descent
+    Or(canAssign, false, compiler);
+  }
+}
+
 static void Or(bool canAssign, bool skipFirst, CompilerContext& compiler)
 {
   if (!skipFirst) {
@@ -2770,7 +2833,7 @@ static void Identifier(bool canAssign, CompilerContext& compiler)
     // or reassign it 
     // if it's not a reassignment, we are trying to load its value
     // Primary() has already but the variable's id on the stack
-    if (!Check(Scanner::TokenType::Equal, compiler)) {
+    if (!Check(Scanner::TokenType::Equal, compiler) && !IsCompoundAssignment(compiler.current.value().GetType())) {
       auto localIt = std::find_if(compiler.locals.begin(), compiler.locals.end(), [&prevText](const Local& l){ return l.name == prevText; });
       if (localIt == compiler.locals.end()) {
         // now check for constants...

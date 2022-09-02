@@ -29,12 +29,10 @@ namespace Grace::VM
   {
     if (other.m_Type == Type::String) {
       m_Data.m_Str = new std::string(*other.m_Data.m_Str);
-    }
-    else if (other.m_Type == Type::Object) {
+    } else if (other.m_Type == Type::Object) {
       m_Data.m_Object = other.m_Data.m_Object;
       m_Data.m_Object->IncreaseRef();
-    }
-    else {
+    } else {
       m_Data = other.m_Data;
     }
   }
@@ -548,6 +546,244 @@ namespace Grace::VM
       );
     }
     return Value(~(m_Data.m_Int));
+  }
+
+  Value& Value::operator+=(const Value& other)
+  {
+    switch (m_Type) {
+      case Type::Int:
+        switch (other.m_Type) {
+          case Type::Int:
+            m_Data.m_Int += other.m_Data.m_Int;
+            return *this;
+          case Type::Double:
+            m_Data.m_Int += static_cast<std::int64_t>(other.m_Data.m_Double);
+            return *this;
+          default: break;
+        }
+        break;
+      case Type::Double:
+        switch (other.m_Type) {
+          case Type::Int:
+            m_Data.m_Double += static_cast<double>(other.m_Data.m_Int);
+            return *this;
+          case Type::Double:
+            m_Data.m_Double += other.m_Data.m_Double;
+            return *this;
+          default: break;
+        }
+        break;
+      case Type::String:
+        m_Data.m_Str->append(other.AsString());
+        return *this;
+      default: break;
+    }
+
+    throw GraceException(
+      GraceException::Type::InvalidOperand,
+      fmt::format("Cannot add `{}` to `{}`", other.m_Type, m_Type)
+    );
+  }
+  
+  Value& Value::operator-=(const Value& other)
+  {
+    switch (m_Type) {
+      case Type::Int:
+        switch (other.m_Type) {
+          case Type::Int:
+            m_Data.m_Int -= other.m_Data.m_Int;
+            return *this;
+          case Type::Double:
+            m_Data.m_Int -= static_cast<std::int64_t>(other.m_Data.m_Double);
+            return *this;
+          default: break;
+        }
+        break;
+      case Type::Double:
+        switch (other.m_Type) {
+          case Type::Int:
+            m_Data.m_Double -= static_cast<double>(other.m_Data.m_Int);
+            return *this;
+          case Type::Double:
+            m_Data.m_Double -= other.m_Data.m_Double;
+            return *this;
+          default: break;
+        }
+        break;
+      default: break;
+    }
+
+    throw GraceException(
+      GraceException::Type::InvalidOperand,
+      fmt::format("Cannot subtract `{}` from `{}`", other.m_Type, m_Type)
+    );
+  }
+  
+  Value& Value::operator*=(const Value& other)
+  {
+    switch (m_Type) {
+      case Type::Int:
+        switch (other.m_Type) {
+          case Type::Int:
+            m_Data.m_Int *= other.m_Data.m_Int;
+            return *this;
+          case Type::Double:
+            m_Data.m_Int *= static_cast<std::int64_t>(other.m_Data.m_Double);
+            return *this;
+          default: break;
+        }
+        break;
+      case Type::Double:
+        switch (other.m_Type) {
+          case Type::Int:
+            m_Data.m_Double *= static_cast<double>(other.m_Data.m_Int);
+            return *this;
+          case Type::Double:
+            m_Data.m_Double *= other.m_Data.m_Double;
+            return *this;
+          default: break;
+        }
+        break;
+      default: break;
+    }
+
+    throw GraceException(
+      GraceException::Type::InvalidOperand,
+      fmt::format("Cannot multiply `{}` by `{}`", m_Type, other.m_Type)
+    );
+  }
+  
+  Value& Value::operator/=(const Value& other)
+  {
+    switch (m_Type) {
+      case Type::Int:
+        switch (other.m_Type) {
+          case Type::Int:
+            m_Data.m_Int /= other.m_Data.m_Int;
+            return *this;
+          case Type::Double:
+            m_Data.m_Int /= static_cast<std::int64_t>(other.m_Data.m_Double);
+            return *this;
+          default: break;
+        }
+        break;
+      case Type::Double:
+        switch (other.m_Type) {
+          case Type::Int:
+            m_Data.m_Double /= static_cast<double>(other.m_Data.m_Int);
+            return *this;
+          case Type::Double:
+            m_Data.m_Double /= other.m_Data.m_Double;
+            return *this;
+          default: break;
+        }
+        break;
+      default: break;
+    }
+
+    throw GraceException(
+      GraceException::Type::InvalidOperand,
+      fmt::format("Cannot divide `{}` by `{}`", m_Type, other.m_Type)
+    );   
+  }
+
+  Value& Value::operator&=(const Value& other)
+  {
+    if (m_Type == Type::Int && other.m_Type == Type::Int) {
+      m_Data.m_Int &= other.m_Data.m_Int;
+      return *this;
+    } else {
+      throw GraceException(
+        GraceException::Type::InvalidOperand,
+        fmt::format("Cannot bitwise and `{}` with `{}`", m_Type, other.m_Type)
+      );
+    }
+  }
+
+  Value& Value::operator|=(const Value& other)
+  {
+    if (m_Type == Type::Int && other.m_Type == Type::Int) {
+      m_Data.m_Int |= other.m_Data.m_Int;
+      return *this;
+    } else {
+      throw GraceException(
+        GraceException::Type::InvalidOperand,
+        fmt::format("Cannot bitwise or `{}` with `{}`", m_Type, other.m_Type)
+      );
+    }
+  }
+
+  Value& Value::operator^=(const Value& other)
+  {
+    if (m_Type == Type::Int && other.m_Type == Type::Int) {
+      m_Data.m_Int ^= other.m_Data.m_Int;
+      return *this;
+    } else {
+      throw GraceException(
+        GraceException::Type::InvalidOperand,
+        fmt::format("Cannot bitwise xor `{}` with `{}`", m_Type, other.m_Type)
+      );
+    }
+  }
+
+  Value& Value::operator%=(const Value& other)
+  {
+    switch (m_Type) {
+      case Type::Int:
+        switch (other.m_Type) {
+          case Type::Int:
+            m_Data.m_Int %= other.m_Data.m_Int;
+            return *this;
+          case Type::Double:
+            m_Data.m_Int %= static_cast<std::int64_t>(other.m_Data.m_Double);
+            return *this;
+          default: break;
+        }
+        break;
+      case Type::Double:
+        switch (other.m_Type) {
+          case Type::Int:
+            m_Data.m_Double = std::fmod(m_Data.m_Double, static_cast<double>(other.m_Data.m_Int));
+            return *this;
+          case Type::Double:
+            m_Data.m_Double = std::fmod(m_Data.m_Double, other.m_Data.m_Double);
+            return *this;
+          default: break;
+        }
+        break;
+      default: break;
+    }
+
+    throw GraceException(
+      GraceException::Type::InvalidOperand,
+      fmt::format("Cannot mod `{}` with `{}`", m_Type, other.m_Type)
+    );
+  }
+
+  Value& Value::operator<<=(const Value& other)
+  {
+    if (m_Type == Type::Int && other.m_Type == Type::Int) {
+      m_Data.m_Int <<= other.m_Data.m_Int;
+      return *this;
+    } else {
+      throw GraceException(
+        GraceException::Type::InvalidOperand,
+        fmt::format("Cannot shift `{}` with `{}`", m_Type, other.m_Type)
+      );
+    }
+  }
+
+  Value& Value::operator>>=(const Value& other)
+  {
+    if (m_Type == Type::Int && other.m_Type == Type::Int) {
+      m_Data.m_Int >>= other.m_Data.m_Int;
+      return *this;
+    } else {
+      throw GraceException(
+        GraceException::Type::InvalidOperand,
+        fmt::format("Cannot shift `{}` with `{}`", m_Type, other.m_Type)
+      );
+    }
   }
 
   Value Value::Pow(const Value& other) const

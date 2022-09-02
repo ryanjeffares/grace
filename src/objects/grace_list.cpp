@@ -53,11 +53,7 @@ namespace Grace
 
   GraceList::GraceList(const Value& min, const Value& max, const Value& increment)
   {
-    auto useDouble = false;
-    if (min.GetType() == Value::Type::Double || max.GetType() == Value::Type::Double
-      || increment.GetType() == Value::Type::Double) {
-      useDouble = true;
-    }
+    bool useDouble = min.GetType() == Value::Type::Double || max.GetType() == Value::Type::Double || increment.GetType() == Value::Type::Double;
 
     if (useDouble) {
       auto minVal = min.GetType() == Value::Type::Double ? min.Get<double>() : static_cast<double>(min.Get<std::int64_t>());
@@ -67,8 +63,7 @@ namespace Grace
       for (auto i = minVal; i < maxVal; i += incVal) {
         m_Data.emplace_back(i);
       }
-    }
-    else {
+    } else {
       for (auto i = min.Get<std::int64_t>(); i < max.Get<std::int64_t>(); i += increment.Get<std::int64_t>()) {
         m_Data.emplace_back(i);
       }
@@ -180,13 +175,9 @@ namespace Grace
 
   GRACE_NODISCARD bool Grace::GraceList::AnyMemberMatches(const GraceObject* match) const
   {
-    for (const auto& el : m_Data) {
-      if (el.GetObject() == match) {
-        return true;
-      }
-    }
-
-    return false;
+    return std::any_of(m_Data.begin(), m_Data.end(), [match] (const Value& value) {
+      return value.GetObject() == match;
+    });
   }
 
   GRACE_NODISCARD std::vector<GraceObject*> GraceList::GetObjectMembers() const
@@ -204,10 +195,9 @@ namespace Grace
   void GraceList::RemoveMember(GraceObject* object)
   {
     // don't call the other Remove function or CleanCycles since this should ONLY be called while we are cleaning cycles
-    auto it = std::find_if(m_Data.begin(), m_Data.end(),
-      [object](const Value& value) {
-        return object == value.GetObject();
-      });
+    auto it = std::find_if(m_Data.begin(), m_Data.end(), [object](const Value& value) {
+      return object == value.GetObject();
+    });
 
     if (it != m_Data.end()) {
       m_Data.erase(it);
@@ -216,12 +206,8 @@ namespace Grace
 
   GRACE_NODISCARD bool GraceList::OnlyReferenceIsSelf() const
   {
-    std::uint32_t selfRefs = 0;
-    for (auto& value : m_Data) {
-      if (value.GetObject() == this) {
-        selfRefs++;
-      }
-    }
-    return selfRefs == m_RefCount;
+    return static_cast<std::uint32_t>(std::count_if(m_Data.begin(), m_Data.end(), [this] (const Value& value) {
+      return value.GetObject() == this;
+    })) == m_RefCount;
   }
 }

@@ -90,7 +90,7 @@
 #endif
 
 #ifndef GRACE_ASSERT
-# define GRACE_ASSERT(expression, message)  assert(expression && message)
+# define GRACE_ASSERT(expression, message)  assert((expression) && (message))
 #endif
 
 #ifndef GRACE_ASSERT_FALSE
