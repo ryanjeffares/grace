@@ -6,34 +6,30 @@ const SIEVE_SIZE: Int = 1000000;
 const BIT_COUNT: Int = 500000;
 const CORRECT_COUNT: Int = 78498;
 
-func reset(bits: List):
-  final len: Int = bits.length();
-  for i: Int in [0..len]:
-    bits[i] = true;
-  end
-end
-
 func run_sieve(bits: List):
   final max: Int = Int(SIEVE_SIZE.sqrt());
   var factor: Int = 3;
 
   while factor < max:
-    var f: Int = factor;
-    while f < 1000:
-      if f % 2 > 0 and bits[f / 2]:
-        factor = f;
+    var i = factor;
+    // for i in [factor..SIEVE_SIZE]:
+    while i < SIEVE_SIZE:
+      if i % 2 > 0 and bits[i / 2]:
+        factor = i;
         break;
       end
-      f = f + 1;
+      i += 1;
     end
 
-    final min: Int = factor * 3;
+    var min: Int = factor * 3;
     final jump: Int = factor * 2;
-    for i: Int in [min..SIEVE_SIZE by jump]:
-      bits[i / 2] = false;
+    while min < SIEVE_SIZE:
+    // for i in [min..SIEVE_SIZE by jump]:
+      bits[min / 2] = false;
+      min += jump;
     end
 
-    factor = factor + 2;
+    factor += 2;
   end
 end
 
@@ -46,13 +42,13 @@ func main():
   while (std::time::time_ms() - start) < 5000:
     bits = [true] * BIT_COUNT;
     run_sieve(bits);
-    passes = passes + 1;
+    passes += 1;
   end
 
   var count: Int = 0;
   for b: Bool in bits:
     if b:
-      count = count + 1;
+      count += 1;
     end
   end
 
