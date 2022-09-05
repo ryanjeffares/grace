@@ -12,7 +12,6 @@ func run_sieve(bits: List):
 
   while factor < max:
     var i = factor;
-    // for i in [factor..SIEVE_SIZE]:
     while i < SIEVE_SIZE:
       if i % 2 > 0 and bits[i / 2]:
         factor = i;
@@ -24,7 +23,6 @@ func run_sieve(bits: List):
     var min: Int = factor * 3;
     final jump: Int = factor * 2;
     while min < SIEVE_SIZE:
-    // for i in [min..SIEVE_SIZE by jump]:
       bits[min / 2] = false;
       min += jump;
     end
@@ -35,10 +33,9 @@ end
 
 func main():
   var passes: Int = 0;
-
   final start: Int = std::time::time_ms();
-
   var bits: List;
+
   while (std::time::time_ms() - start) < 5000:
     bits = [true] * BIT_COUNT;
     run_sieve(bits);

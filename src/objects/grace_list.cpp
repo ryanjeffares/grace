@@ -59,8 +59,8 @@ namespace Grace
       auto minVal = min.GetType() == Value::Type::Double ? min.Get<double>() : static_cast<double>(min.Get<std::int64_t>());
       auto maxVal = max.GetType() == Value::Type::Double ? max.Get<double>() : static_cast<double>(max.Get<std::int64_t>());
       auto incVal = increment.GetType() == Value::Type::Double ? increment.Get<double>() : static_cast<double>(increment.Get<std::int64_t>());
-
       auto capacity = maxVal / incVal;
+
       m_Data.reserve(static_cast<std::size_t>(capacity) + 1); // add 1 in case of rounding
 
       for (auto i = minVal; i < maxVal; i += incVal) {
@@ -70,8 +70,8 @@ namespace Grace
       auto minVal = min.Get<std::int64_t>();
       auto maxVal = max.Get<std::int64_t>();
       auto incVal = increment.Get<std::int64_t>();
-
       auto capacity = maxVal / incVal;
+
       m_Data.reserve(capacity);
 
       for (auto i = minVal; i < maxVal; i += incVal) {
