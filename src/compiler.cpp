@@ -206,18 +206,29 @@ struct Constant
 
 static std::unordered_map<std::string, std::unordered_map<std::string, Constant>> s_FileConstantsLookup;
 
-VM::InterpretResult Grace::Compiler::Compile(const std::string& fileName, std::string&& code, bool verbose, bool warningsError, const std::vector<std::string>& args)
+VM::InterpretResult Grace::Compiler::Compile(const std::string& fileName, bool verbose, bool warningsError, const std::vector<std::string>& args)
 {
   using namespace std::chrono;
 
   auto start = steady_clock::now();
+
+  std::stringstream inFileStream;
+  std::ifstream inFile;
+  inFile.open(fileName);
+
+  if (inFile.fail()) {    
+    fmt::print(stderr, "Error reading file `{}`\n", fileName);
+    return VM::InterpretResult::RuntimeError;
+  }
+
+  inFileStream << inFile.rdbuf();
 
   s_Verbose = verbose;
   s_WarningsError = warningsError;
  
   VM::VM::RegisterNatives();
 
-  s_CompilerContextStack.emplace(fileName, std::filesystem::absolute(std::filesystem::path(fileName)).parent_path(), std::move(code));
+  s_CompilerContextStack.emplace(fileName, std::filesystem::absolute(std::filesystem::path(fileName)).parent_path(), inFileStream.str());
   
   auto fullPath = s_CompilerContextStack.top().fullPath.string();
   s_FileConstantsLookup[fullPath]["__FILE"] = { VM::Value(fullPath), false };

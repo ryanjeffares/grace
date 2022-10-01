@@ -28,7 +28,7 @@ namespace Grace::Compiler
    *  @param verbose          Verbose mode (display compilation time and compiler warnings).
    *  @param warningsError    Display compiler warnings, warnings result in errors
    */
-  GRACE_NODISCARD VM::InterpretResult Compile(const std::string& fileName, std::string&& code, bool verbose, bool warningsError, const std::vector<std::string>& args);
+  GRACE_NODISCARD VM::InterpretResult Compile(const std::string& fileName, bool verbose, bool warningsError, const std::vector<std::string>& args);
 } // namespace Grace::Compiler
 
 #endif  // ifndef GRACE_COMPILER_HPP
