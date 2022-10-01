@@ -115,19 +115,9 @@ int main(int argc, const char* argv[])
     return 1;
   }
 
-  std::stringstream inStream;
-  std::ifstream inFile;
-  inFile.open(filePath);
-  if (inFile.fail()) {
-    Error(fmt::format("Could not open file {}", filePath.string()));
-    return 1;
-  }
-  
-  inStream << inFile.rdbuf();
-
   return static_cast<int>(
     Grace::Compiler::Compile(
-      filePath.string(), inStream.str(), verbose, warningsError, graceMainArgs
+      filePath.string(), verbose, warningsError, graceMainArgs
     )
   );
 }

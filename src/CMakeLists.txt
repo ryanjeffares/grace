@@ -1,18 +1,38 @@
-add_executable(grace
-  main.cpp
-  compiler.cpp
-  scanner.cpp
-  value.cpp
-  vm.cpp
-  vm_register_natives.cpp
-  objects/grace_dictionary.cpp
-  objects/grace_exception.cpp
-  objects/grace_instance.cpp
-  objects/grace_iterator.cpp
-  objects/grace_keyvaluepair.cpp
-  objects/grace_list.cpp
-  objects/object_tracker.cpp
-)
+if(GRACE_BUILD_TARGET MATCHES "dll")
+  add_library(grace SHARED
+    dllmain.cpp
+    compiler.cpp
+    scanner.cpp
+    value.cpp
+    vm.cpp
+    vm_register_natives.cpp
+    objects/grace_dictionary.cpp
+    objects/grace_exception.cpp
+    objects/grace_instance.cpp
+    objects/grace_iterator.cpp
+    objects/grace_keyvaluepair.cpp
+    objects/grace_list.cpp
+    objects/object_tracker.cpp
+  )
+elseif(GRACE_BUILD_TARGET MATCHES "exe")
+  add_executable(grace
+    main.cpp
+    compiler.cpp
+    scanner.cpp
+    value.cpp
+    vm.cpp
+    vm_register_natives.cpp
+    objects/grace_dictionary.cpp
+    objects/grace_exception.cpp
+    objects/grace_instance.cpp
+    objects/grace_iterator.cpp
+    objects/grace_keyvaluepair.cpp
+    objects/grace_list.cpp
+    objects/object_tracker.cpp
+  )
+else()
+  message(FATAL_ERROR "GRACE_BUILD_TARGET must match 'exe' or 'dll'")
+endif()
 
 target_include_directories(grace 
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../deps/fmt/include
