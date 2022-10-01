@@ -78,6 +78,7 @@ namespace Grace::Scanner
     {"Dict", TokenType::DictIdent},
     {"Exception", TokenType::ExceptionIdent},
     {"KeyValuePair", TokenType::KeyValuePairIdent},
+    {"Range", TokenType::Range},
   };
 
   static bool IsIdentifierChar(char c)

@@ -117,6 +117,7 @@ namespace Grace::Scanner
     Or,
     Print,
     PrintLn,
+    Range,
     Return,
     This,
     Throw,
@@ -241,6 +242,7 @@ struct fmt::formatter<Grace::Scanner::TokenType> : fmt::formatter<std::string_vi
       case TokenType::Eprint: name = "TokenType::Eprint"; break;
       case TokenType::EprintLn: name = "TokenType::EprintLn"; break;
       case TokenType::Export: name = "TokenType::Export"; break;
+      case TokenType::Range: name = "TokenType::Range"; break;
       case TokenType::Return: name = "TokenType::Return"; break;
       case TokenType::This: name = "TokenType::This"; break;
       case TokenType::Throw: name = "TokenType::Throw"; break;
