@@ -1,6 +1,13 @@
-//
-// Created by Ryan Jeffares on 03/12/2022.
-//
+/*
+ *  The Grace Programming Language.
+ *
+ *  This file contains the GraceSet class, the underlying class for Sets in Grace.
+ *
+ *  Copyright (c) 2022 - Present, Ryan Jeffares.
+ *  All rights reserved.
+ *
+ *  For licensing information, see grace.hpp
+ */
 
 #ifndef GRACE_SET_HPP
 #define GRACE_SET_HPP

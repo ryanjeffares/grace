@@ -1,6 +1,13 @@
-//
-// Created by Ryan Jeffares on 03/12/2022.
-//
+/*
+ *  The Grace Programming Language.
+ *
+ *  This file contains out of line definitions for the GraceSet class, the underlying class for Sets in Grace.
+ *
+ *  Copyright (c) 2022 - Present, Ryan Jeffares.
+ *  All rights reserved.
+ *
+ *  For licensing information, see grace.hpp
+ */
 
 #include "grace_set.hpp"
 #include "grace_list.hpp"
@@ -188,18 +195,57 @@ namespace Grace
   std::string GraceSet::ToString() const
   {
     std::string res = "{";
-    std::size_t count = 0;
-
-    for (std::size_t i = 0; i < m_Capacity; i++) {
-      if (m_CellStates[i] != CellState::Occupied) continue;
-
-      res.append(m_Data[i].AsString());
-      if (count++ < m_Size - 1) {
+    for (std::size_t i = 0; i < m_Data.size(); i++) {
+      const auto& el = m_Data[i];
+      switch (el.GetType()) {
+        case VM::Value::Type::Char:
+          res.push_back('\'');
+          res.push_back(el.Get<char>());
+          res.push_back('\'');
+          break;
+        case VM::Value::Type::String:
+          res.push_back('"');
+          res.append(el.Get<std::string>());
+          res.push_back('"');
+          break;
+        case VM::Value::Type::Object: {
+          auto object = el.GetObject();
+          auto type = object->ObjectType();
+          if (type == GraceObjectType::Exception || type == GraceObjectType::Iterator || type == GraceObjectType::Instance) {
+            res.append(object->ToString());
+          } else {
+            std::vector<GraceObject*> visisted;
+            if (AnyMemberMatchesRecursive(this, object, visisted)) {
+              switch (type) {
+                case GraceObjectType::Dictionary:
+                case GraceObjectType::Set:
+                  res.append("{...}");
+                  break;
+                case GraceObjectType::List:
+                  res.append("[...]");
+                  break;
+                case GraceObjectType::KeyValuePair:
+                  res.append("(...)");
+                  break;
+                default:
+                  GRACE_UNREACHABLE();
+                  break;
+              }
+            } else {
+              res.append(object->ToString());
+            }
+          }
+          break;
+        }
+        default:
+          res.append(el.AsString());
+          break;
+      }
+      if (i < m_Data.size() - 1) {
         res.append(", ");
       }
     }
-
-    res.append("}");
+    res.push_back('}');
     return res;
   }
 
