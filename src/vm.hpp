@@ -58,7 +58,8 @@ namespace Grace::VM
     CreateDictionary,
     CreateInstance,
     CreateList,
-    CreateRangeList,
+    CreateRange,
+    CreateSet,
     DeclareLocal,
     DestroyHeldIterator,
     Divide,
@@ -87,7 +88,6 @@ namespace Grace::VM
     MultiplyAssign,
     NativeCall,
     Negate,
-    NoOp,
     Not,
     NotEqual,
     Or,
@@ -148,7 +148,7 @@ namespace Grace::VM
       static void PrintOps();
 
       template<BuiltinGraceType T>
-      constexpr GRACE_INLINE static void PushConstant(const T& value)
+      GRACE_INLINE static void PushConstant(const T& value)
       {
         m_FunctionLookup.at(m_LastFileNameHash).at(m_LastFunctionHash)->constantList.emplace_back(value);
       }
@@ -169,15 +169,15 @@ namespace Grace::VM
       }
 
       template<BuiltinGraceType T>
-      constexpr GRACE_INLINE static void SetConstantAtIndex(std::size_t index, const T& value)
+      GRACE_INLINE static void SetConstantAtIndex(std::size_t index, const T& value)
       {
         m_FunctionLookup.at(m_LastFileNameHash).at(m_LastFunctionHash)->constantList[index] = value;
       }
 
-      GRACE_NODISCARD GRACE_INLINE static Ops GetLastOp()
+      GRACE_NODISCARD GRACE_INLINE static std::optional<Ops> GetLastOp()
       {
         const auto& opList = m_FunctionLookup.at(m_LastFileNameHash).at(m_LastFunctionHash)->opList;
-        return opList.empty() ? Ops::NoOp : opList.back().op;
+        return opList.empty() ? std::optional<Ops>{} : opList.back().op;
       }
 
       GRACE_NODISCARD GRACE_INLINE static const std::string& GetLastFunctionName()
@@ -320,7 +320,8 @@ struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
       case Ops::CreateDictionary: name = "Ops::CreateDictionary"; break;
       case Ops::CreateInstance: name = "Ops::CreateInstance"; break;
       case Ops::CreateList: name = "Ops::CreateList"; break;
-      case Ops::CreateRangeList: name = "Ops::CreateRangeList"; break;
+      case Ops::CreateRange: name = "Ops::CreateRange"; break;
+      case Ops::CreateSet: name = "Ops::CreateSet"; break;
       case Ops::DeclareLocal: name = "Ops::DeclareLocal"; break;
       case Ops::DestroyHeldIterator: name = "Ops::DestroyHeldIterator"; break;
       case Ops::Divide: name = "Ops::Divide"; break;
@@ -345,7 +346,6 @@ struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
       case Ops::Multiply: name = "Ops::Multiply"; break;
       case Ops::NativeCall: name = "Ops::NativeCall"; break;
       case Ops::Negate: name = "Ops::Negate"; break;
-      case Ops::NoOp: name = "Ops::NoOp"; break;
       case Ops::Not: name = "Ops::Not"; break;
       case Ops::NotEqual: name = "Ops::NotEqual"; break;
       case Ops::Or: name = "Ops::Or"; break;

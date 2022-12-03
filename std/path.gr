@@ -1,0 +1,27 @@
+class export Path:
+  var data: String;
+
+  constructor(path: String):
+    data = path;
+  end
+end
+
+func export get_file_name(this Path path) :: Path:
+  return Path(__NATIVE_PATH_GET_FILE_NAME(path));
+end
+
+func export get_file_name_without_extension(this Path path) :: Path:
+  return Path(__NATIVE_PATH_GET_FILE_NAME_WITHOUT_EXTENSION(path));
+end
+
+func export get_directory(this Path path) :: Path:
+  return Path(__NATIVE_PATH_GET_DIRECTORY(path));
+end
+
+func export combine(this Path path, additions) :: Path:
+  return Path(__NATIVE_PATH_COMBINE(path, additions));
+end
+
+func export exists(this Path path) :: Bool:
+  return __NATIVE_PATH_EXISTS(path);
+end

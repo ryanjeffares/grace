@@ -1,0 +1,15 @@
+func export is_lower(this Char char):
+  return __NATIVE_CHAR_IS_LOWER(char);
+end
+
+func export is_upper(this Char char):
+  return __NATIVE_CHAR_IS_UPPER(char);
+end
+
+func export to_lower(this Char char):
+  return __NATIVE_CHAR_TO_LOWER(char);
+end
+
+func export to_upper(this Char char):
+  return __NATIVE_CHAR_TO_UPPER(char);
+end

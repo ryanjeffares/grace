@@ -20,5 +20,5 @@ jobs:
     - name: build
       run: |        
         mkdir build
-        cmake -DCMAKE_BUILD_TYPE=Release -S . -B build
+        cmake -DCMAKE_BUILD_TYPE=Release -DGRACE_BUILD_TARGET=exe -S . -B build
         cmake --build build --config Release

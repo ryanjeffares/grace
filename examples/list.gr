@@ -1,3 +1,5 @@
+import std::list;
+
 func factorial(n):
   if n < 2:
     return 1;
@@ -13,7 +15,18 @@ func multiply_list(l, multiple):
   return l * multiple;
 end
 
+func sorted(this List list):
+  return __NATIVE_LIST_SORTED(list);
+end
+
+func last(this List list):
+  return __NATIVE_LIST_LAST(list);
+end
+
 func main():
+  var l = [2, 1, 0].sorted().last();
+  println(l);
+
   var empty_list = [];
   println(empty_list);
 
@@ -44,4 +57,25 @@ func main():
   if instanceof(list_range, List):
     println("local variable is indeed, a list");
   end
+
+  final unsorted = [1, 5, 2, 100, 6, 0, 2.5, -0.14];
+  unsorted.sort();
+  println("Sorted: " + unsorted);
+
+  unsorted.append("Ryan");
+  try:
+    println(unsorted);
+    unsorted.sort();
+  catch e:
+    println(e);
+  end
+
+  println(unsorted);
+  
+  println("Popping " + unsorted.pop());
+  println(unsorted);
+
+  unsorted.remove(0);
+  unsorted.insert(2, "Hello");
+  println(unsorted);
 end

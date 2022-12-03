@@ -1,0 +1,12 @@
+import std::interop;
+import std::int;
+
+func main():
+
+  println(std::interop::CDECL_ARG_BOOL);
+  println(std::int::sqrt(9));
+  for i in [std::int::MIN..std::int::MAX]:
+    println(i);
+  end
+
+end

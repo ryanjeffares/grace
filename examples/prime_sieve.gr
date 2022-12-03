@@ -1,64 +1,73 @@
 import std::list;
 import std::int;
 import std::time;
+import std::keyvaluepair;
 
-const SIEVE_SIZE: Int = 1000000;
-const BIT_COUNT: Int = 500000;
-const CORRECT_COUNT: Int = 78498;
-
-func reset(bits: List):
-  final len: Int = bits.length();
-  for i: Int in [0..len]:
-    bits[i] = true;
-  end
-end
-
-func run_sieve(bits: List):
-  final max: Int = Int(SIEVE_SIZE.sqrt());
+func run_sieve(bits: List, sieve_size: Int):
+  final max = sieve_size.sqrt();
   var factor: Int = 3;
 
   while factor < max:
-    var f: Int = factor;
-    while f < 1000:
-      if f % 2 > 0 and bits[f / 2]:
-        factor = f;
+    var i = factor;
+    while i < sieve_size:
+      if i % 2 != 0 and bits[i / 2]:
+        factor = i;
         break;
       end
-      f = f + 1;
+      i += 1;
     end
 
-    final min: Int = factor * 3;
+    var min: Int = factor * 3;
     final jump: Int = factor * 2;
-    for i: Int in [min..SIEVE_SIZE by jump]:
-      bits[i / 2] = false;
+    while min < sieve_size:
+      bits[min / 2] = false;
+      min += jump;
     end
 
-    factor = factor + 2;
+    factor += 2;
   end
 end
 
 func main():
-  var passes: Int = 0;
 
-  final start: Int = std::time::time_ms();
+  var prime_counts = [
+    KeyValuePair(10, 4),
+    KeyValuePair(100, 25),
+    KeyValuePair(1000, 168),
+    KeyValuePair(10000, 1229),
+    KeyValuePair(100000, 9592),
+    KeyValuePair(1000000, 78498),
+    KeyValuePair(10000000, 664579),
+    KeyValuePair(100000000, 5761455),
+  ];
 
-  var bits: List;
-  while (std::time::time_ms() - start) < 5000:
-    bits = [true] * BIT_COUNT;
-    run_sieve(bits);
-    passes = passes + 1;
-  end
+  for pair in prime_counts:
+    var sieve_size = pair.key();
+    var correct_count = pair.value();
 
-  var count: Int = 0;
-  for b: Bool in bits:
-    if b:
-      count = count + 1;
+    var bit_count: Int = (sieve_size + 1) / 2;
+    var passes: Int = 0;
+    var bits: List;
+
+    final start: Int = std::time::time_ms();
+
+    while (std::time::time_ms() - start) < 5000:
+      bits = [true] * bit_count;
+      run_sieve(bits, sieve_size);
+      passes += 1;
     end
-  end
 
-  if count == CORRECT_COUNT:
-    println("Found " + count + " primes under 1,000,000 in " + passes + " passes!");
-  else:
-    println("Found incorrect number of primes " + count);
+    var count: Int = 0;
+    for b: Bool in bits:
+      if b:
+        count += 1;
+      end
+    end
+
+    if count == correct_count:
+      println("Found " + count + " primes under " + sieve_size + " in " + passes + " passes!");
+    else:
+      println("Found incorrect number of primes " + count + " for sieve size " + sieve_size);
+    end
   end
 end

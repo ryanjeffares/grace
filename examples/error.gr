@@ -1,3 +1,5 @@
+import std::float;
+
 func get():
   // func illegal():end
   return 1;
@@ -6,6 +8,7 @@ end
 func main():
   var a = Int(get());
   var b = null;
-  function_that_doesnt_exist();
-  println(a + b);
+  // function_that_doesnt_exist();
+  // println(a + b);
+  println(.sqrt());
 end

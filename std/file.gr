@@ -1,3 +1,11 @@
-func export write(path: String, contents):
+func export write(final path: String, contents):
   __NATIVE_FILE_WRITE(path, contents);
+end
+
+func export read_all_text(final path: String) :: String:
+  return __NATIVE_FILE_READ_ALL_TEXT(path);
+end
+
+func export read_all_lines(final path: String) :: List:
+  return __NATIVE_FILE_READ_ALL_LINES(path);
 end

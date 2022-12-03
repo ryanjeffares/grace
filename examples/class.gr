@@ -13,7 +13,17 @@ class Person:
   end
 end
 
+func say_hello(this Person person):
+  println("Hello my name is " + person.name);
+end
+
 func main():
+
+  var ryan = Person("Ryan", 23);
+  ryan.say_hello();
+
+  say_hello(ryan);
+
   var parent = Person("Parent", 100);
   var child = Person("Child", 10);
 

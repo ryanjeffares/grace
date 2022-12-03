@@ -1,4 +1,9 @@
+import std::char;
+
 func main():
   println('a');
   print('\n');
+
+  println('a'.to_upper().is_upper());
+  println('A'.to_lower().is_lower());
 end

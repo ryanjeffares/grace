@@ -21,12 +21,19 @@ namespace Grace
   using namespace VM;
 
   GraceList::GraceList(std::vector<Value>&& items)
-    : m_Data(std::move(items))
+    : GraceIterable{std::move(items)}
+  {
+
+  }
+
+  GraceList::GraceList(const GraceList& other)
+    : GraceIterable{other.m_Data}
   {
 
   }
 
   GraceList::GraceList(const Value& value)
+    : GraceIterable{0}
   {
     if (value.GetType() == Value::Type::String) {
       for (const auto c : value.Get<std::string>()) {
@@ -44,6 +51,7 @@ namespace Grace
   }
 
   GraceList::GraceList(const GraceList& other, std::int64_t multiple)
+    : GraceIterable{0}
   {
     m_Data.reserve(other.m_Data.size() * multiple);
     for (std::size_t i = 0; i < static_cast<std::size_t>(multiple); i++) {
@@ -52,6 +60,7 @@ namespace Grace
   }
 
   GraceList::GraceList(const Value& min, const Value& max, const Value& increment)
+    : GraceIterable{0}
   {
     bool useDouble = min.GetType() == Value::Type::Double || max.GetType() == Value::Type::Double || increment.GetType() == Value::Type::Double;
 
@@ -59,12 +68,22 @@ namespace Grace
       auto minVal = min.GetType() == Value::Type::Double ? min.Get<double>() : static_cast<double>(min.Get<std::int64_t>());
       auto maxVal = max.GetType() == Value::Type::Double ? max.Get<double>() : static_cast<double>(max.Get<std::int64_t>());
       auto incVal = increment.GetType() == Value::Type::Double ? increment.Get<double>() : static_cast<double>(increment.Get<std::int64_t>());
+      auto capacity = maxVal / incVal;
+
+      m_Data.reserve(static_cast<std::size_t>(capacity) + 1); // add 1 in case of rounding
 
       for (auto i = minVal; i < maxVal; i += incVal) {
         m_Data.emplace_back(i);
       }
     } else {
-      for (auto i = min.Get<std::int64_t>(); i < max.Get<std::int64_t>(); i += increment.Get<std::int64_t>()) {
+      auto minVal = min.Get<std::int64_t>();
+      auto maxVal = max.Get<std::int64_t>();
+      auto incVal = increment.Get<std::int64_t>();
+      auto capacity = maxVal / incVal;
+
+      m_Data.reserve(capacity);
+
+      for (auto i = minVal; i < maxVal; i += incVal) {
         m_Data.emplace_back(i);
       }
     }
@@ -76,10 +95,23 @@ namespace Grace
       it->Invalidate();
     }
   }
-  
-  void GraceList::Append(const VM::Value& value)
+
+  void GraceList::Append(VM::Value&& value)
   {
-    m_Data.push_back(value);
+    m_Data.push_back(std::forward<VM::Value>(value));
+    InvalidateIterators();
+  }
+
+  void GraceList::Insert(VM::Value&& value, std::size_t index)
+  {
+    if (index >= m_Data.size()) {
+      throw GraceException(
+        GraceException::Type::IndexOutOfRange,
+        fmt::format("The index is {} but the length is {}", index, m_Data.size())
+      );
+    }
+
+    m_Data.insert(m_Data.begin() + index, std::forward<VM::Value>(value));
     InvalidateIterators();
   }
 
@@ -90,9 +122,39 @@ namespace Grace
     InvalidateIterators();
   }
 
-  void GraceList::Remove(std::size_t index)
+  VM::Value GraceList::Remove(std::size_t index)
   {
+    if (index >= m_Data.size()) {
+      throw GraceException(
+        GraceException::Type::IndexOutOfRange,
+        fmt::format("The index is {} but the length is {}", index, m_Data.size())
+      );
+    }
+
+    auto res = std::move(m_Data[index]);
     m_Data.erase(m_Data.begin() + index);
+    InvalidateIterators();
+    return res;
+  }
+
+  VM::Value GraceList::Pop()
+  {
+    InvalidateIterators();
+    auto res = std::move(m_Data.back());
+    m_Data.pop_back();
+    return res;
+  }
+
+  void GraceList::Sort()
+  {
+    std::sort(m_Data.begin(), m_Data.end());
+    InvalidateIterators();
+  }
+
+  void GraceList::SortDescending()
+  {
+    std::sort(m_Data.begin(), m_Data.end(), std::greater<Value>());
+    InvalidateIterators();
   }
 
   void GraceList::DebugPrint() const
@@ -138,6 +200,7 @@ namespace Grace
             if (AnyMemberMatchesRecursive(this, object, visisted)) {
               switch (type) {
                 case GraceObjectType::Dictionary:
+                case GraceObjectType::Set:
                   res.append("{...}");
                   break;
                 case GraceObjectType::List:

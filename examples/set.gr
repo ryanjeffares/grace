@@ -1,0 +1,19 @@
+import std::list;
+import std::set;
+
+func main():
+
+  var list = [0..20 by 2];
+  var s = Set("Ryan");
+  println(s);
+  println(typename(s));
+
+  for el in s:
+    println(el);
+  end
+
+  println(s.contains('R'));
+  s.add(list);
+  list.append(s);
+  println(list);
+end

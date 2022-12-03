@@ -22,6 +22,7 @@
 #include "grace.hpp"
 #include "vm.hpp"
 #include "objects/grace_dictionary.hpp"
+#include "objects/grace_set.hpp"
 #include "objects/grace_exception.hpp"
 #include "objects/grace_instance.hpp"
 #include "objects/grace_list.hpp"
@@ -29,57 +30,86 @@
 
 using namespace Grace::VM;
 
-static Value SqrtFloat(std::vector<Value>& args);
-static Value SqrtInt(std::vector<Value>& args);
+using Args = std::vector<Value>&;
 
-static Value TimeHours(GRACE_MAYBE_UNUSED std::vector<Value>& args);
-static Value TimeMinutes(GRACE_MAYBE_UNUSED std::vector<Value>& args);
-static Value TimeSeconds(GRACE_MAYBE_UNUSED std::vector<Value>& args);
-static Value TimeMilliSeconds(GRACE_MAYBE_UNUSED std::vector<Value>& args);
-static Value TimeMicroSeconds(GRACE_MAYBE_UNUSED std::vector<Value>& args);
-static Value TimeNanoSeconds(GRACE_MAYBE_UNUSED std::vector<Value>& args);
-static Value Sleep(std::vector<Value>& args);
+static Value SqrtFloat(Args args);
+static Value SqrtInt(Args args);
 
-static Value ListAppend(std::vector<Value>& args);
-static Value ListSetAtIndex(std::vector<Value>& args);
-static Value ListGetAtIndex(std::vector<Value>& args);
-static Value ListLength(std::vector<Value>& args);
+static Value TimeHours(GRACE_MAYBE_UNUSED Args args);
+static Value TimeMinutes(GRACE_MAYBE_UNUSED Args args);
+static Value TimeSeconds(GRACE_MAYBE_UNUSED Args args);
+static Value TimeMilliSeconds(GRACE_MAYBE_UNUSED Args args);
+static Value TimeMicroSeconds(GRACE_MAYBE_UNUSED Args args);
+static Value TimeNanoSeconds(GRACE_MAYBE_UNUSED Args args);
+static Value Sleep(Args args);
 
-static Value DictionaryInsert(std::vector<Value>& args);
-static Value DictionaryGet(std::vector<Value>& args);
-static Value DictionaryContainsKey(std::vector<Value>& args);
-static Value DictionaryRemove(std::vector<Value>& args);
+static Value ListAppend(Args args);
+static Value ListInsert(Args args);
+static Value ListRemove(Args args);
+static Value ListPop(Args args);
+static Value ListSetAtIndex(Args args);
+static Value ListGetAtIndex(Args args);
+static Value ListLength(Args args);
+static Value ListSort(Args args);
+static Value ListSortDescending(Args args);
+static Value ListSorted(Args args);
+static Value ListSortedDescending(Args args);
+static Value ListFirst(Args args);
+static Value ListLast(Args args);
 
-static Value KeyValuePairKey(std::vector<Value>& args);
-static Value KeyValuePairValue(std::vector<Value>& args);
+static Value DictionaryInsert(Args args);
+static Value DictionaryGet(Args args);
+static Value DictionaryContainsKey(Args args);
+static Value DictionaryRemove(Args args);
 
-static Value FileWrite(std::vector<Value>& args);
+static Value KeyValuePairKey(Args args);
+static Value KeyValuePairValue(Args args);
 
-static Value FlushStdout(GRACE_MAYBE_UNUSED std::vector<Value>& args);
-static Value FlushStderr(GRACE_MAYBE_UNUSED std::vector<Value>& args);
+static Value SetAdd(Args args);
+static Value SetContains(Args args);
+static Value SetSize(Args args);
 
-static Value SystemExit(std::vector<Value>& args);
-static Value SystemRun(std::vector<Value>& args);
-static Value SystemPlatform(GRACE_MAYBE_UNUSED std::vector<Value>& args);
+static Value FileWrite(Args args);
+static Value FileReadAllText(Args args);
+static Value FileReadAllLines(Args args);
 
-static Value DirectoryExists(std::vector<Value>& args);
-static Value DirectoryCreate(std::vector<Value>& args);
+static Value FlushStdout(GRACE_MAYBE_UNUSED Args args);
+static Value FlushStderr(GRACE_MAYBE_UNUSED Args args);
 
-static Value InteropLoadLibrary(std::vector<Value>& args);
-static Value InteropDoCall(std::vector<Value>& args);
+static Value SystemExit(Args args);
+static Value SystemRun(Args args);
+static Value SystemPlatform(GRACE_MAYBE_UNUSED Args args);
 
-static Value StringLength(std::vector<Value>& args);
-static Value StringSplit(std::vector<Value>& args);
+static Value DirectoryExists(Args args);
+static Value DirectoryCreate(Args args);
 
-static Value GcSetEnabled(std::vector<Value>& args);
-static Value GcGetEnabled(GRACE_MAYBE_UNUSED std::vector<Value>& args);
-static Value GcSetVerbose(std::vector<Value>& args);
-static Value GcGetVerbose(GRACE_MAYBE_UNUSED std::vector<Value>& args);
-static Value GcCollect(GRACE_MAYBE_UNUSED std::vector<Value>& args);
-static Value GcSetThreshold(std::vector<Value>& args);
-static Value GcGetThreshold(GRACE_MAYBE_UNUSED std::vector<Value>& args);
-static Value GcSetGrowFactor(std::vector<Value>& args);
-static Value GcGetGrowFactor(GRACE_MAYBE_UNUSED std::vector<Value>& args);
+static Value InteropLoadLibrary(Args args);
+static Value InteropDoCall(Args args);
+
+static Value StringLength(Args args);
+static Value StringSplit(Args args);
+static Value StringSubstring(Args args);
+
+static Value CharIsLower(Args args);
+static Value CharIsUpper(Args args);
+static Value CharToLower(Args args);
+static Value CharToUpper(Args args);
+
+static Value GcSetEnabled(Args args);
+static Value GcGetEnabled(GRACE_MAYBE_UNUSED Args args);
+static Value GcSetVerbose(Args args);
+static Value GcGetVerbose(GRACE_MAYBE_UNUSED Args args);
+static Value GcCollect(GRACE_MAYBE_UNUSED Args args);
+static Value GcSetThreshold(Args args);
+static Value GcGetThreshold(GRACE_MAYBE_UNUSED Args args);
+static Value GcSetGrowFactor(Args args);
+static Value GcGetGrowFactor(GRACE_MAYBE_UNUSED Args args);
+
+static Value PathGetFileName(Args args);
+static Value PathGetFileNameWithoutExtension(Args args);
+static Value PathGetDirectory(Args args);
+static Value PathCombine(Args args);
+static Value PathExists(Args args);
 
 void VM::RegisterNatives()
 {
@@ -97,10 +127,19 @@ void VM::RegisterNatives()
   m_NativeFunctions.emplace_back("__NATIVE_TIME_SLEEP", 1, &Sleep);
 
   // List functions
-  m_NativeFunctions.emplace_back("__NATIVE_APPEND_LIST", 2, &ListAppend);
-  m_NativeFunctions.emplace_back("__NATIVE_SET_LIST_AT_INDEX", 3, &ListSetAtIndex);
-  m_NativeFunctions.emplace_back("__NATIVE_GET_LIST_AT_INDEX", 2, &ListGetAtIndex);
+  m_NativeFunctions.emplace_back("__NATIVE_LIST_APPEND", 2, &ListAppend);
+  m_NativeFunctions.emplace_back("__NATIVE_LIST_INSERT", 3, &ListInsert);
+  m_NativeFunctions.emplace_back("__NATIVE_LIST_REMOVE", 2, &ListRemove);
+  m_NativeFunctions.emplace_back("__NATIVE_LIST_POP", 1, &ListPop);
+  m_NativeFunctions.emplace_back("__NATIVE_LIST_SET_AT_INDEX", 3, &ListSetAtIndex);
+  m_NativeFunctions.emplace_back("__NATIVE_LIST_GET_AT_INDEX", 2, &ListGetAtIndex);
   m_NativeFunctions.emplace_back("__NATIVE_LIST_LENGTH", 1, &ListLength);
+  m_NativeFunctions.emplace_back("__NATIVE_LIST_SORT", 1, &ListSort);
+  m_NativeFunctions.emplace_back("__NATIVE_LIST_SORT_DESCENDING", 1, &ListSortDescending);
+  m_NativeFunctions.emplace_back("__NATIVE_LIST_SORTED", 1, &ListSorted);
+  m_NativeFunctions.emplace_back("__NATIVE_LIST_SORTED_DESCENDING", 1, &ListSortedDescending);
+  m_NativeFunctions.emplace_back("__NATIVE_LIST_FIRST", 1, &ListFirst);
+  m_NativeFunctions.emplace_back("__NATIVE_LIST_LAST", 1, &ListLast);
 
   // Dictionary functions
   m_NativeFunctions.emplace_back("__NATIVE_DICTIONARY_INSERT", 3, &DictionaryInsert);
@@ -111,8 +150,13 @@ void VM::RegisterNatives()
   m_NativeFunctions.emplace_back("__NATIVE_KEYVALUEPAIR_KEY", 1, &KeyValuePairKey);
   m_NativeFunctions.emplace_back("__NATIVE_KEYVALUEPAIR_VALUE", 1, &KeyValuePairValue);
 
+  m_NativeFunctions.emplace_back("__NATIVE_SET_ADD", 2, &SetAdd);
+  m_NativeFunctions.emplace_back("__NATIVE_SET_CONTAINS", 2, &SetContains);
+  m_NativeFunctions.emplace_back("__NATIVE_SET_SIZE", 1, &SetSize);
   // File functions
   m_NativeFunctions.emplace_back("__NATIVE_FILE_WRITE", 2, &FileWrite);
+  m_NativeFunctions.emplace_back("__NATIVE_FILE_READ_ALL_TEXT", 1, &FileReadAllText);
+  m_NativeFunctions.emplace_back("__NATIVE_FILE_READ_ALL_LINES", 1, &FileReadAllLines);
 
   // Console IO functions
   m_NativeFunctions.emplace_back("__NATIVE_FLUSH_STDOUT", 0, &FlushStdout);
@@ -134,6 +178,13 @@ void VM::RegisterNatives()
   // String functions
   m_NativeFunctions.emplace_back("__NATIVE_STRING_LENGTH", 1, &StringLength);
   m_NativeFunctions.emplace_back("__NATIVE_STRING_SPLIT", 2, &StringSplit);
+  m_NativeFunctions.emplace_back("__NATIVE_STRING_SUBSTRING", 3, &StringSubstring);
+
+  // Char functions
+  m_NativeFunctions.emplace_back("__NATIVE_CHAR_IS_LOWER", 1, &CharIsLower);
+  m_NativeFunctions.emplace_back("__NATIVE_CHAR_IS_UPPER", 1, &CharIsUpper);
+  m_NativeFunctions.emplace_back("__NATIVE_CHAR_TO_LOWER", 1, &CharToLower);
+  m_NativeFunctions.emplace_back("__NATIVE_CHAR_TO_UPPER", 1, &CharToUpper);
 
   // GC functions
   m_NativeFunctions.emplace_back("__NATIVE_GC_SET_ENABLED", 1, &GcSetEnabled);
@@ -145,9 +196,16 @@ void VM::RegisterNatives()
   m_NativeFunctions.emplace_back("__NATIVE_GC_GET_THRESHOLD", 0, &GcGetThreshold);
   m_NativeFunctions.emplace_back("__NATIVE_GC_SET_GROW_FACTOR", 1, &GcSetGrowFactor);
   m_NativeFunctions.emplace_back("__NATIVE_GC_GET_GROW_FACTOR", 0, &GcGetGrowFactor);
+
+  // Path functions
+  m_NativeFunctions.emplace_back("__NATIVE_PATH_GET_FILE_NAME", 1, &PathGetFileName);
+  m_NativeFunctions.emplace_back("__NATIVE_PATH_GET_FILE_NAME_WITHOUT_EXTENSION", 1, &PathGetFileNameWithoutExtension);
+  m_NativeFunctions.emplace_back("__NATIVE_PATH_GET_DIRECTORY", 1, &PathGetDirectory);
+  m_NativeFunctions.emplace_back("__NATIVE_PATH_COMBINE", 2, &PathCombine);
+  m_NativeFunctions.emplace_back("__NATIVE_PATH_EXISTS", 1, &PathExists);
 }
 
-static Value SqrtFloat(std::vector<Value>& args)
+static Value SqrtFloat(Args args)
 {
   if (args[0].GetType() != Value::Type::Double) {
     throw Grace::GraceException(
@@ -159,7 +217,7 @@ static Value SqrtFloat(std::vector<Value>& args)
   return Value(std::sqrt(args[0].Get<double>()));
 }
 
-static Value SqrtInt(std::vector<Value>& args)
+static Value SqrtInt(Args args)
 {
   if (args[0].GetType() != Value::Type::Int) {
     throw Grace::GraceException(
@@ -171,37 +229,37 @@ static Value SqrtInt(std::vector<Value>& args)
   return Value(std::sqrt(args[0].Get<std::int64_t>()));
 }
 
-static Value TimeHours(GRACE_MAYBE_UNUSED std::vector<Value>& args)
+static Value TimeHours(GRACE_MAYBE_UNUSED Args args)
 {
   return Value(static_cast<std::int64_t>(std::chrono::duration_cast<std::chrono::hours>(std::chrono::steady_clock::now().time_since_epoch()).count()));
 }
 
-static Value TimeMinutes(GRACE_MAYBE_UNUSED std::vector<Value>& args)
+static Value TimeMinutes(GRACE_MAYBE_UNUSED Args args)
 {
   return Value(static_cast<std::int64_t>(std::chrono::duration_cast<std::chrono::minutes>(std::chrono::steady_clock::now().time_since_epoch()).count()));
 }
 
-static Value TimeSeconds(GRACE_MAYBE_UNUSED std::vector<Value>& args)
+static Value TimeSeconds(GRACE_MAYBE_UNUSED Args args)
 {
   return Value(std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now().time_since_epoch()).count());
 }
 
-static Value TimeMilliSeconds(GRACE_MAYBE_UNUSED std::vector<Value>& args)
+static Value TimeMilliSeconds(GRACE_MAYBE_UNUSED Args args)
 {
   return Value(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count());
 }
 
-static Value TimeMicroSeconds(GRACE_MAYBE_UNUSED std::vector<Value>& args)
+static Value TimeMicroSeconds(GRACE_MAYBE_UNUSED Args args)
 {
   return Value(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now().time_since_epoch()).count());
 }
 
-static Value TimeNanoSeconds(GRACE_MAYBE_UNUSED std::vector<Value>& args)
+static Value TimeNanoSeconds(GRACE_MAYBE_UNUSED Args args)
 {
   return Value(std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count());
 }
 
-static Value Sleep(std::vector<Value>& args)
+static Value Sleep(Args args)
 {
   if (args[0].GetType() != Value::Type::Int) {
     throw Grace::GraceException(
@@ -211,76 +269,203 @@ static Value Sleep(std::vector<Value>& args)
   }
 
   std::this_thread::sleep_for(std::chrono::milliseconds(args[0].Get<std::int64_t>()));
-  return Value();
+  return {};
 }
 
-static Value ListAppend(std::vector<Value>& args)
+static Value ListAppend(Args args)
 {
-  if (args[0].GetObject()->GetAsList() == nullptr) {
-    throw Grace::GraceException(
-      Grace::GraceException::Type::InvalidType,
-      fmt::format("Expected `List` for `std::list::append(list, value)` but got `{}`", args[0].GetTypeName())
-    );
+  if (auto list = args[0].GetObject()->GetAsList()) {
+    list->Append(std::move(args[1]));
+    return {};
   }
 
-  args[0].GetObject()->GetAsList()->Append(std::move(args[1]));
-  return Value();
+  throw Grace::GraceException(
+    Grace::GraceException::Type::InvalidType,
+    fmt::format("Expected `List` for `std::list::append(list, value)` but got `{}`", args[0].GetTypeName())
+  );
 }
 
-static Value ListSetAtIndex(std::vector<Value>& args)
+static Value ListInsert(Args args)
 {
-  if (args[0].GetObject()->GetAsList() == nullptr) {
-    throw Grace::GraceException(
-      Grace::GraceException::Type::InvalidType,
-      fmt::format("Expected `List` for `std::list::set(list, index, value)` but got `{}`", args[0].GetTypeName())
-    );
+  if (auto list = args[0].GetObject()->GetAsList()) {
+    if (args[1].GetType() != Value::Type::Int) {
+      throw Grace::GraceException(
+        Grace::GraceException::Type::InvalidType,
+        fmt::format("Expected `Int` for `std::list::insert(list, index, value)` but got `{}`", args[1].GetTypeName())
+      );
+    }
+
+    list->Insert(std::move(args[2]), static_cast<std::size_t>(args[1].Get<std::int64_t>()));
+    return {};
   }
 
-  if (args[1].GetType() != Value::Type::Int) {
-    throw Grace::GraceException(
-      Grace::GraceException::Type::InvalidType,
-      fmt::format("Expected `Int` for `std::list::set(list, index, value)` but got `{}`", args[1].GetTypeName())
-    );
-  }
-
-  auto l = args[0].GetObject()->GetAsList();
-  (*l)[args[1].Get<std::int64_t>()] = std::move(args[2]);
-  return Value();
+  throw Grace::GraceException(
+    Grace::GraceException::Type::InvalidType,
+    fmt::format("Expected `List` for `std::list::insert(list, index, value)` but got `{}`", args[0].GetTypeName())
+  );
 }
 
-static Value ListGetAtIndex(std::vector<Value>& args)
+static Value ListRemove(Args args)
 {
-  if (args[0].GetObject()->GetAsList() == nullptr) {
-    throw Grace::GraceException(
-      Grace::GraceException::Type::InvalidType,
-      fmt::format("Expected `List` for `std::list::get(list, index)` but got `{}`", args[0].GetTypeName())
-    );
+  if (auto list = args[0].GetObject()->GetAsList()) {
+    if (args[1].GetType() != Value::Type::Int) {
+      throw Grace::GraceException(
+        Grace::GraceException::Type::InvalidType,
+        fmt::format("Expected `Int` for `std::list::remove(list, index)` but got `{}`", args[1].GetTypeName())
+      );
+    }
+
+    return list->Remove(static_cast<std::size_t>(args[1].Get<std::int64_t>()));
   }
 
-  if (args[1].GetType() != Value::Type::Int) {
-    throw Grace::GraceException(
-      Grace::GraceException::Type::InvalidType,
-      fmt::format("Expected `Int` for `std::list::get(list, index)` but got `{}`", args[1].GetTypeName())
-    );
-  }
-
-  auto l = args[0].GetObject()->GetAsList();
-  return (*l)[args[1].Get<std::int64_t>()];
+  throw Grace::GraceException(
+    Grace::GraceException::Type::InvalidType,
+    fmt::format("Expected `List` for `std::list::remove(list, index)` but got `{}`", args[0].GetTypeName())
+  );
 }
 
-static Value ListLength(std::vector<Value>& args)
+static Value ListPop(Args args)
 {
-  if (args[0].GetObject()->GetAsList() == nullptr) {
-    throw Grace::GraceException(
-      Grace::GraceException::Type::InvalidType,
-      fmt::format("Expected `List` for `std::list::get(list, index)` but got `{}`", args[0].GetTypeName())
-    );
+  if (auto list = args[0].GetObject()->GetAsList()) {
+    return list->Pop();
   }
 
-  return Value(static_cast<std::int64_t>(args[0].GetObject()->GetAsList()->Length()));
+  throw Grace::GraceException(
+    Grace::GraceException::Type::InvalidType,
+    fmt::format("Expected `List` for `std::list::pop(list)` but got `{}`", args[0].GetTypeName())
+  );
 }
 
-static Value DictionaryInsert(std::vector<Value>& args)
+static Value ListSetAtIndex(Args args)
+{
+  if (auto list = args[0].GetObject()->GetAsList()) {
+    if (args[1].GetType() != Value::Type::Int) {
+      throw Grace::GraceException(
+        Grace::GraceException::Type::InvalidType,
+        fmt::format("Expected `Int` for `std::list::set(list, index, value)` but got `{}`", args[1].GetTypeName())
+      );
+    }
+
+    (*list)[args[1].Get<std::int64_t>()] = std::move(args[2]);
+    return {};
+  }
+
+  throw Grace::GraceException(
+    Grace::GraceException::Type::InvalidType,
+    fmt::format("Expected `List` for `std::list::set(list, index, value)` but got `{}`", args[0].GetTypeName())
+  );
+}
+
+static Value ListGetAtIndex(Args args)
+{
+  if (auto list = args[0].GetObject()->GetAsList()) {
+    if (args[1].GetType() != Value::Type::Int) {
+      throw Grace::GraceException(
+        Grace::GraceException::Type::InvalidType,
+        fmt::format("Expected `Int` for `std::list::get(list, index)` but got `{}`", args[1].GetTypeName())
+      );
+    }
+
+    return (*list)[args[1].Get<std::int64_t>()];
+  }
+
+  throw Grace::GraceException(
+    Grace::GraceException::Type::InvalidType,
+    fmt::format("Expected `List` for `std::list::get(list, index)` but got `{}`", args[0].GetTypeName())
+  );
+}
+
+static Value ListLength(Args args)
+{
+  if (auto list = args[0].GetObject()->GetAsList()) {
+    return Value(static_cast<std::int64_t>(list->Length()));
+  }
+
+  throw Grace::GraceException(
+    Grace::GraceException::Type::InvalidType,
+    fmt::format("Expected `List` for `std::list::get(list, index)` but got `{}`", args[0].GetTypeName())
+  );
+}
+
+static Value ListSort(Args args)
+{
+  if (auto list = args[0].GetObject()->GetAsList()) {
+    list->Sort();
+    return {};
+  }
+
+  throw Grace::GraceException(
+    Grace::GraceException::Type::InvalidType,
+    fmt::format("Expected `List` for `std::list::sort(list)` but got `{}`", args[0].GetTypeName())
+  );
+}
+
+static Value ListSortDescending(Args args)
+{
+  if (auto list = args[0].GetObject()->GetAsList()) {
+    list->SortDescending();
+    return {};
+  }
+
+  throw Grace::GraceException(
+    Grace::GraceException::Type::InvalidType,
+    fmt::format("Expected `List` for `std::list::sort_descending(list)` but got `{}`", args[0].GetTypeName())
+  );
+}
+
+static Value ListSorted(Args args)
+{
+  if (auto list = args[0].GetObject()->GetAsList()) {
+    auto newList = Value::CreateObject<Grace::GraceList>(*list);
+    newList.GetObject()->GetAsList()->Sort();
+    return newList;
+  }
+
+  throw Grace::GraceException(
+    Grace::GraceException::Type::InvalidType,
+    fmt::format("Expected `List` for `std::list::sort(list)` but got `{}`", args[0].GetTypeName())
+  );
+}
+
+static Value ListSortedDescending(Args args)
+{
+  if (auto list = args[0].GetObject()->GetAsList()) {
+    auto newList = Value::CreateObject<Grace::GraceList>(*list);
+    newList.GetObject()->GetAsList()->SortDescending();
+    return newList;
+  }
+
+  throw Grace::GraceException(
+    Grace::GraceException::Type::InvalidType,
+    fmt::format("Expected `List` for `std::list::sort_descending(list)` but got `{}`", args[0].GetTypeName())
+  );
+}
+
+static Value ListFirst(Args args)
+{
+  if (auto list = args[0].GetObject()->GetAsList()) {
+    return list->First();
+  }
+
+  throw Grace::GraceException(
+    Grace::GraceException::Type::InvalidType,
+    fmt::format("Expected `List` for `std::list::first(list)` but got `{}`", args[0].GetTypeName())
+  );
+}
+
+static Value ListLast(Args args)
+{
+  if (auto list = args[0].GetObject()->GetAsList()) {
+    return list->Last();
+  }
+
+  throw Grace::GraceException(
+    Grace::GraceException::Type::InvalidType,
+    fmt::format("Expected `List` for `std::list::last(list)` but got `{}`", args[0].GetTypeName())
+  );
+}
+
+static Value DictionaryInsert(Args args)
 {
   if (args[0].GetObject()->GetAsDictionary() == nullptr) {
     throw Grace::GraceException(
@@ -291,10 +476,10 @@ static Value DictionaryInsert(std::vector<Value>& args)
 
   auto dict = args[0].GetObject()->GetAsDictionary();
   dict->Insert(std::move(args[1]), std::move(args[2]));
-  return Value();
+  return {};
 }
 
-static Value DictionaryGet(std::vector<Value>& args)
+static Value DictionaryGet(Args args)
 {
   if (args[0].GetObject()->GetAsDictionary() == nullptr) {
     throw Grace::GraceException(
@@ -307,7 +492,7 @@ static Value DictionaryGet(std::vector<Value>& args)
   return dict->Get(args[1]);
 }
 
-static Value DictionaryContainsKey(std::vector<Value>& args)
+static Value DictionaryContainsKey(Args args)
 {
   if (args[0].GetObject()->GetAsDictionary() == nullptr) {
     throw Grace::GraceException(
@@ -320,7 +505,7 @@ static Value DictionaryContainsKey(std::vector<Value>& args)
   return Value(dict->ContainsKey(args[1]));
 }
 
-static Value DictionaryRemove(std::vector<Value>& args)
+static Value DictionaryRemove(Args args)
 {
   if (args[0].GetObject()->GetAsDictionary() == nullptr) {
     throw Grace::GraceException(
@@ -333,7 +518,7 @@ static Value DictionaryRemove(std::vector<Value>& args)
   return Value(dict->Remove(args[1]));
 }
 
-static Value KeyValuePairKey(std::vector<Value>& args)
+static Value KeyValuePairKey(Args args)
 {
   if (args[0].GetObject()->GetAsKeyValuePair() == nullptr) {
     throw Grace::GraceException(
@@ -346,7 +531,7 @@ static Value KeyValuePairKey(std::vector<Value>& args)
   return kvp->Key();
 }
 
-static Value KeyValuePairValue(std::vector<Value>& args)
+static Value KeyValuePairValue(Args args)
 {
   if (args[0].GetObject()->GetAsKeyValuePair() == nullptr) {
     throw Grace::GraceException(
@@ -359,9 +544,46 @@ static Value KeyValuePairValue(std::vector<Value>& args)
   return kvp->Value();
 }
 
-static Value FileWrite(std::vector<Value>& args)
+static Value SetAdd(Args args)
 {
-  if (args[0].GetType() == Value::Type::String) {
+  if (auto set = args[0].GetObject()->GetAsSet()) {
+    set->Add(std::move(args[1]));
+    return {};
+  }
+
+  throw Grace::GraceException(
+    Grace::GraceException::Type::InvalidType,
+    fmt::format("Expected `Set` for `std::set::add(set, value)` but got `{}`", args[0].GetTypeName())
+  );
+}
+
+static Value SetContains(Args args)
+{
+  if (auto set = args[0].GetObject()->GetAsSet()) {
+    return Value(set->Contains(args[1]));
+  }
+
+  throw Grace::GraceException(
+    Grace::GraceException::Type::InvalidType,
+    fmt::format("Expected `Set` for `std::set::contains(set, value)` but got `{}`", args[0].GetTypeName())
+  );
+}
+
+static Value SetSize(Args args)
+{
+  if (auto set = args[0].GetObject()->GetAsSet()) {
+    return Value(static_cast<std::int64_t>(set->Size()));
+  }
+
+  throw Grace::GraceException(
+    Grace::GraceException::Type::InvalidType,
+    fmt::format("Expected `Set` for `std::set::size(set)` but got `{}`", args[0].GetTypeName())
+  );
+}
+
+static Value FileWrite(Args args)
+{
+  if (args[0].GetType() != Value::Type::String) {
     throw Grace::GraceException(
       Grace::GraceException::Type::InvalidType,
       fmt::format("Expected `String` for `std::file::write(path, contents)` but got `{}`", args[0].GetTypeName())
@@ -381,24 +603,80 @@ static Value FileWrite(std::vector<Value>& args)
     );
   }
 
-  return Value();
+  return {};
 }
 
-static Value FlushStdout(GRACE_MAYBE_UNUSED std::vector<Value>& args)
+static Value FileReadAllText(Args args)
+{
+  if (args[0].GetType() != Value::Type::String) {
+    throw Grace::GraceException(
+      Grace::GraceException::Type::InvalidType,
+      fmt::format("Expected `String` for `std::file::read_all_text(path)` but got `{}`", args[0].GetTypeName())
+    );
+  }
+
+  auto& path = args[0];
+
+  std::ifstream inStream;
+  inStream.open(path.AsString());
+
+  if (inStream.fail()) {
+    throw Grace::GraceException(
+      Grace::GraceException::Type::FileReadFailed,
+      fmt::format("Failed to open file '{}'", path)
+    );
+  }
+
+  std::stringstream ss;
+  ss << inStream.rdbuf();
+  return Value(ss.str());
+}
+
+static Value FileReadAllLines(Args args)
+{
+  if (args[0].GetType() != Value::Type::String) {
+    throw Grace::GraceException(
+      Grace::GraceException::Type::InvalidType,
+      fmt::format("Expected `String` for `std::file::read_all_lines(path)` but got `{}`", args[0].GetTypeName())
+    );
+  }
+
+  auto& path = args[0];
+
+  std::ifstream inStream;
+  inStream.open(path.AsString());
+
+  if (inStream.fail()) {
+    throw Grace::GraceException(
+      Grace::GraceException::Type::FileReadFailed,
+      fmt::format("Failed to open file '{}'", path)
+    );
+  }
+
+  auto res = Value::CreateObject<Grace::GraceList>();
+  auto list = res.GetObject()->GetAsList();
+  for (std::string line; std::getline(inStream, line);) {
+    list->Append(line);
+  }
+
+  return res;
+}
+
+static Value FlushStdout(GRACE_MAYBE_UNUSED Args args)
 {
   std::fflush(stdout);
-  return Value();
+  return {};
 }
 
-static Value FlushStderr(GRACE_MAYBE_UNUSED std::vector<Value>& args)
+static Value FlushStderr(GRACE_MAYBE_UNUSED Args args)
 {
   std::fflush(stderr);
-  return Value();
+  return {};
 }
 
-static Value SystemExit(std::vector<Value>& args)
+static Value SystemExit(Args args)
 {
-  if (args[0].GetType() == Value::Type::Int) {
+  if (args[0].GetType() != Value::Type::Int) {
     throw Grace::GraceException(
       Grace::GraceException::Type::InvalidType,
       fmt::format("Expected `Int` for `std::system::exit(exit_code)` but got `{}`", args[0].GetTypeName())
@@ -408,7 +686,7 @@ static Value SystemExit(std::vector<Value>& args)
   std::exit(static_cast<int>(args[0].Get<std::int64_t>()));
 }
 
-static Value SystemRun(std::vector<Value>& args)
+static Value SystemRun(Args args)
 {
   if (args[0].GetType() == Value::Type::String) {
     throw Grace::GraceException(
@@ -421,7 +699,7 @@ static Value SystemRun(std::vector<Value>& args)
   return Value(std::int64_t(res));
 }
 
-static Value SystemPlatform(GRACE_MAYBE_UNUSED std::vector<Value>& args)
+static Value SystemPlatform(GRACE_MAYBE_UNUSED Args args)
 {
 #ifdef _WIN32
   return Value(std::string("Win32"));
@@ -440,9 +718,9 @@ static Value SystemPlatform(GRACE_MAYBE_UNUSED std::vector<Value>& args)
 #endif
 }
 
-static Value DirectoryExists(std::vector<Value>& args)
+static Value DirectoryExists(Args args)
 {
-  if (args[0].GetType() == Value::Type::String) {
+  if (args[0].GetType() != Value::Type::String) {
     throw Grace::GraceException(
       Grace::GraceException::Type::InvalidType,
       fmt::format("Expected `String` for `std::directory::exists(path)` but got `{}`", args[0].GetTypeName())
@@ -454,9 +732,9 @@ static Value DirectoryExists(std::vector<Value>& args)
   return Value(exists);
 }
 
-static Value DirectoryCreate(std::vector<Value>& args)
+static Value DirectoryCreate(Args args)
 {
-  if (args[0].GetType() == Value::Type::String) {
+  if (args[0].GetType() != Value::Type::String) {
     throw Grace::GraceException(
       Grace::GraceException::Type::InvalidType,
       fmt::format("Expected `String` for `std::directory::create(path)` but got `{}`", args[0].GetTypeName())
@@ -468,7 +746,7 @@ static Value DirectoryCreate(std::vector<Value>& args)
   return Value(result);
 }
 
-static Value InteropLoadLibrary(std::vector<Value>& args)
+static Value InteropLoadLibrary(Args args)
 {
   if (args[0].GetType() != Value::Type::String) {
     throw Grace::GraceException(
@@ -488,7 +766,7 @@ static Value InteropLoadLibrary(std::vector<Value>& args)
   return Value(ptrAsInt);
 }
 
-static Value InteropDoCall(std::vector<Value>& args)
+static Value InteropDoCall(Args args)
 {
 #define CDECL_ARG_BOOL 0
 #define CDECL_ARG_CHAR 1
@@ -673,7 +951,7 @@ static Value InteropDoCall(std::vector<Value>& args)
 #undef CDECL_CALL_VOID
 }
 
-static Value StringLength(std::vector<Value>& args)
+static Value StringLength(Args args)
 {
   auto& s = args[0];
   if (s.GetType() != Value::Type::String) {
@@ -686,7 +964,7 @@ static Value StringLength(std::vector<Value>& args)
   return Value(static_cast<std::int64_t>(s.Get<std::string>().length()));
 }
 
-static Value StringSplit(std::vector<Value>& args)
+static Value StringSplit(Args args)
 {
   if (args[0].GetType() != Value::Type::String) {
     throw Grace::GraceException(
@@ -695,15 +973,15 @@ static Value StringSplit(std::vector<Value>& args)
     );
   }
 
-  if (args[1].GetType() != Value::Type::String) {
+  if (args[1].GetType() != Value::Type::String && args[1].GetType() != Value::Type::Char) {
     throw Grace::GraceException(
       Grace::GraceException::Type::InvalidType,
-      fmt::format("Expected `String` for `std::string::split(s, separator)` but got `{}`", args[1].GetTypeName())
+      fmt::format("Expected `String` or `Char` for `std::string::split(s, separator)` but got `{}`", args[1].GetTypeName())
     );
   }
 
   const auto& s = args[0].Get<std::string>();
-  const auto& separator = args[1].Get<std::string>();
+  auto separator = args[1].AsString();
 
   if (separator.length() == 0) {
     throw Grace::GraceException(Grace::GraceException::Type::InvalidArgument, "Separator has 0 length");
@@ -717,19 +995,95 @@ static Value StringSplit(std::vector<Value>& args)
   }
   
   std::size_t lastSplit = 0;
-  for (std::size_t i = 0; i < s.length(); i++) {
+  for (std::size_t i = 0; i < s.length();) {
     if (s.substr(i, separator.length()) == separator) {
-      list->Append(s.substr(lastSplit, i));
+      list->Append(s.substr(lastSplit, i - lastSplit));
       lastSplit = i + separator.length();
+      i = lastSplit;
+    } else {
+      i++;
     }
   }
 
   list->Append(s.substr(lastSplit));
-
   return res;
 }
 
-static Value GcSetEnabled(std::vector<Value>& args)
+static Value StringSubstring(Args args)
+{
+  if (args[0].GetType() == Value::Type::String) {
+    if (args[1].GetType() != Value::Type::Int) {
+      throw Grace::GraceException(
+        Grace::GraceException::Type::InvalidType,
+        fmt::format("Expected `Int` for `start` in `std::string::substring(string, start, length)` but got `{}`", args[1].GetType())
+      );
+    }
+
+    if (args[2].GetType() != Value::Type::Int) {
+      throw Grace::GraceException(
+        Grace::GraceException::Type::InvalidType,
+        fmt::format("Expected `Int` for `length` in `std::string::substring(string, start, length)` but got `{}`", args[2].GetType())
+      );
+    }
+
+    return Value(args[0].Get<std::string>().substr(static_cast<std::size_t>(args[1].Get<std::int64_t>()), static_cast<std::size_t>(args[2].Get<std::int64_t>())));
+  }
+
+  throw Grace::GraceException(
+    Grace::GraceException::Type::InvalidType,
+    fmt::format("Expected `String` for `std::string::substring(string, start, length)` but got `{}`", args[0].GetType())
+  );  
+}
+
+static Value CharIsLower(Args args)
+{
+  if (args[0].GetType() == Value::Type::Char) {
+    return Value(static_cast<bool>(std::islower(args[0].Get<char>())));
+  }
+
+  throw Grace::GraceException(
+      Grace::GraceException::Type::InvalidType,
+      fmt::format("Expected `Char` for `std::char::is_lower(char)` but got `{}`", args[0].GetTypeName())
+    );
+}
+
+static Value CharIsUpper(Args args)
+{
+  if (args[0].GetType() == Value::Type::Char) {
+    return Value(static_cast<bool>(std::isupper(args[0].Get<char>())));
+  }
+
+  throw Grace::GraceException(
+      Grace::GraceException::Type::InvalidType,
+      fmt::format("Expected `Char` for `std::char::is_upper(char)` but got `{}`", args[0].GetTypeName())
+    );
+}
+
+static Value CharToLower(Args args)
+{
+  if (args[0].GetType() == Value::Type::Char) {
+    return Value(static_cast<char>(std::tolower(args[0].Get<char>())));
+  }
+
+  throw Grace::GraceException(
+      Grace::GraceException::Type::InvalidType,
+      fmt::format("Expected `Char` for `std::char::to_lower(char)` but got `{}`", args[0].GetTypeName())
+    );
+}
+
+static Value CharToUpper(Args args)
+{
+  if (args[0].GetType() == Value::Type::Char) {
+    return Value(static_cast<char>(std::toupper(args[0].Get<char>())));
+  }
+
+  throw Grace::GraceException(
+      Grace::GraceException::Type::InvalidType,
+      fmt::format("Expected `Char` for `std::char::to_upper(char)` but got `{}`", args[0].GetTypeName())
+    );
+}
+
+static Value GcSetEnabled(Args args)
 {
   if (args[0].GetType() != Value::Type::Bool) {
     throw Grace::GraceException(
@@ -739,15 +1093,15 @@ static Value GcSetEnabled(std::vector<Value>& args)
   }
 
   Grace::ObjectTracker::SetEnabled(args[0].Get<bool>());
-  return Value();
+  return {};
 }
 
-static Value GcGetEnabled(GRACE_MAYBE_UNUSED std::vector<Value>& args)
+static Value GcGetEnabled(GRACE_MAYBE_UNUSED Args args)
 {
   return Value(Grace::ObjectTracker::GetEnabled());
 }
 
-static Value GcSetVerbose(std::vector<Value>& args)
+static Value GcSetVerbose(Args args)
 {
   if (args[0].GetType() != Value::Type::Bool) {
     throw Grace::GraceException(
@@ -757,21 +1111,21 @@ static Value GcSetVerbose(std::vector<Value>& args)
   }
 
   Grace::ObjectTracker::SetVerbose(args[0].Get<bool>());
-  return Value();
+  return {};
 }
 
-static Value GcGetVerbose(GRACE_MAYBE_UNUSED std::vector<Value>& args)
+static Value GcGetVerbose(GRACE_MAYBE_UNUSED Args args)
 {
   return Value(Grace::ObjectTracker::GetVerbose());
 }
 
-static Value GcCollect(GRACE_MAYBE_UNUSED std::vector<Value>& args)
+static Value GcCollect(GRACE_MAYBE_UNUSED Args args)
 {
   Grace::ObjectTracker::Collect();
-  return Value();
+  return {};
 }
 
-static Value GcSetThreshold(std::vector<Value>& args)
+static Value GcSetThreshold(Args args)
 {
   if (args[0].GetType() != Value::Type::Int) {
     throw Grace::GraceException(
@@ -789,15 +1143,15 @@ static Value GcSetThreshold(std::vector<Value>& args)
   }
 
   Grace::ObjectTracker::SetThreshold(static_cast<std::size_t>(value));
-  return Value();
+  return {};
 }
 
-static Value GcGetThreshold(GRACE_MAYBE_UNUSED std::vector<Value>& args)
+static Value GcGetThreshold(GRACE_MAYBE_UNUSED Args args)
 {
   return Value(static_cast<std::int64_t>(Grace::ObjectTracker::GetThreshold()));
 }
 
-static Value GcSetGrowFactor(std::vector<Value>& args)
+static Value GcSetGrowFactor(Args args)
 {
   if (args[0].GetType() != Value::Type::Int) {
     throw Grace::GraceException(
@@ -815,10 +1169,181 @@ static Value GcSetGrowFactor(std::vector<Value>& args)
   }
 
   Grace::ObjectTracker::SetGrowFactor(static_cast<std::size_t>(value));
-  return Value();
+  return {};
 }
 
-static Value GcGetGrowFactor(GRACE_MAYBE_UNUSED std::vector<Value>& args)
+static Value GcGetGrowFactor(GRACE_MAYBE_UNUSED Args args)
 {
   return Value(static_cast<std::int64_t>(Grace::ObjectTracker::GetGrowFactor()));
+}
+
+static Value PathGetFileName(Args args)
+{
+  namespace fs = std::filesystem;
+
+  if (args[0].GetType() == Value::Type::Object) {
+    auto instance = args[0].GetObject()->GetAsInstance();
+  	if (instance != nullptr && instance->HasMember("data")) {
+      const auto& path = instance->LoadMember("data");
+      if (path.GetType() != Value::Type::String) {
+        throw Grace::GraceException(
+          Grace::GraceException::Type::InvalidType,
+          fmt::format("Expected type of member `data` of `std::path::Path` to be `String` but got `{}`", path.GetTypeName())
+        );
+      }
+
+      try {
+        return Value(fs::path(path.Get<std::string>()).filename().string());
+      } catch (const std::exception&) {
+        throw Grace::GraceException(
+          Grace::GraceException::Type::PathError,
+          "Invalid path"
+        );
+      }
+    }
+  }
+
+  throw Grace::GraceException(
+    Grace::GraceException::Type::InvalidType,
+    fmt::format("Expected `Path` for `std::path::get_file_name(path)` but got `{}`", args[0].GetTypeName())
+  );
+}
+
+static Value PathGetFileNameWithoutExtension(Args args)
+{
+  namespace fs = std::filesystem;
+
+  if (args[0].GetType() == Value::Type::Object) {
+    auto instance = args[0].GetObject()->GetAsInstance();
+  	if (instance != nullptr && instance->HasMember("data")) {
+      const auto& path = instance->LoadMember("data");
+      if (path.GetType() != Value::Type::String) {
+        throw Grace::GraceException(
+          Grace::GraceException::Type::InvalidType,
+          fmt::format("Expected type of member `data` of `std::path::Path` to be `String` but got `{}`", path.GetTypeName())
+        );
+      }
+
+      try {
+        return Value(fs::path(path.Get<std::string>()).stem().string());
+      } catch (const std::exception&) {
+        throw Grace::GraceException(
+          Grace::GraceException::Type::PathError,
+          "Invalid path"
+        );
+      }
+    }
+  }
+
+  throw Grace::GraceException(
+    Grace::GraceException::Type::InvalidType,
+    fmt::format("Expected `Path` for `std::path::get_file_name_without_extension(path)` but got `{}`", args[0].GetTypeName())
+  );
+}
+
+static Value PathGetDirectory(Args args)
+{
+  namespace fs = std::filesystem;
+
+  if (args[0].GetType() == Value::Type::Object) {
+    auto instance = args[0].GetObject()->GetAsInstance();
+  	if (instance != nullptr && instance->HasMember("data")) {
+      const auto& path = instance->LoadMember("data");
+      if (path.GetType() != Value::Type::String) {
+        throw Grace::GraceException(
+          Grace::GraceException::Type::InvalidType,
+          fmt::format("Expected type of member `data` of `std::path::Path` to be `String` but got `{}`", path.GetTypeName())
+        );
+      }
+
+      try {
+        return Value(fs::path(path.Get<std::string>()).parent_path().string());
+      } catch (const std::exception&) {
+        throw Grace::GraceException(
+          Grace::GraceException::Type::PathError,
+          "Invalid path"
+        );
+      }
+    }
+  }
+
+  throw Grace::GraceException(
+    Grace::GraceException::Type::InvalidType,
+    fmt::format("Expected `Path` for `std::path::get_directory(path)` but got `{}`", args[0].GetTypeName())
+  );
+}
+
+static Value PathCombine(Args args)
+{
+  namespace fs = std::filesystem;
+
+  if (args[0].GetType() == Value::Type::Object) {
+    auto instance = args[0].GetObject()->GetAsInstance();
+  	if (instance != nullptr && instance->HasMember("data")) {
+      const auto& path = instance->LoadMember("data");
+      if (path.GetType() != Value::Type::String) {
+        throw Grace::GraceException(
+          Grace::GraceException::Type::InvalidType,
+          fmt::format("Expected type of member `data` of `std::path::Path` to be `String` but got `{}`", path.GetTypeName())
+        );
+      }
+
+      if (args[1].GetType() == Value::Type::String) {
+        return Value((fs::path(path.Get<std::string>()) / args[1].Get<std::string>()).string());
+      } else if (args[1].GetType() == Value::Type::Object) {
+        if (auto list = args[1].GetObject()->GetAsList()) {
+          fs::path base(path.Get<std::string>());
+
+          for (std::size_t i = 0; i < list->Length(); i++) {
+            const auto& p = (*list)[i];
+            if (p.GetType() != Value::Type::String) {
+              throw Grace::GraceException(
+                Grace::GraceException::Type::InvalidType,
+                fmt::format("Expected `String` or all elements of `additions` in `std::path::combine(path, additions)` but got `{}` at position {}", p.GetTypeName(), i)
+              );
+            }
+
+            base /= p.Get<std::string>();
+          }
+
+          return Value(base.string());
+        }
+      }
+
+      throw Grace::GraceException(
+        Grace::GraceException::Type::InvalidType,
+        fmt::format("Expected `String` or `List` for `std::path::combine(path, additions)` but got `{}`", args[1].GetTypeName())
+      );
+    }
+  }
+
+  throw Grace::GraceException(
+    Grace::GraceException::Type::InvalidType,
+    fmt::format("Expected `Path` for `std::path::combine(path)` but got `{}`", args[0].GetTypeName())
+  );
+}
+
+static Value PathExists(Args args)
+{
+  namespace fs = std::filesystem;
+
+  if (args[0].GetType() == Value::Type::Object) {
+    auto instance = args[0].GetObject()->GetAsInstance();
+  	if (instance != nullptr && instance->HasMember("data")) {
+      const auto& path = instance->LoadMember("data");
+      if (path.GetType() != Value::Type::String) {
+        throw Grace::GraceException(
+          Grace::GraceException::Type::InvalidType,
+          fmt::format("Expected type of member `data` of `std::path::Path` to be `String` but got `{}`", path.GetTypeName())
+        );
+      }
+
+      return Value(fs::exists(path.Get<std::string>()));
+    }
+  }
+
+  throw Grace::GraceException(
+    Grace::GraceException::Type::InvalidType,
+    fmt::format("Expected `Path` for `std::path::exists(path)` but got `{}`", args[0].GetTypeName())
+  );
 }

@@ -15,44 +15,19 @@
 #include "grace_dictionary.hpp"
 #include "grace_exception.hpp"
 
-static constexpr std::size_t s_InitialCapacity = 8;
-static constexpr float s_GrowFactor = 0.75f;
-
 namespace Grace
 {
-  GraceDictionary::GraceDictionary()
-    : m_Size(0),
-      m_Capacity(s_InitialCapacity),
-      m_Data(m_Capacity),
-      m_CellStates(m_Capacity, CellState::NeverUsed)
-  {
-    
-  }
-
-  GraceDictionary::GraceDictionary(const GraceDictionary& other)
-    : m_Size(other.m_Size),
-      m_Capacity(other.m_Capacity),
-      m_Data(other.m_Data),
-      m_CellStates(other.m_CellStates)
-  {
-
-  }
-
   GraceDictionary::GraceDictionary(GraceDictionary&& other)
-    : m_Size(other.m_Size),
-      m_Capacity(other.m_Capacity),
-      m_Data(std::move(other.m_Data)),
-      m_CellStates(std::move(other.m_CellStates))
   {
+    m_CellStates = std::move(other.m_CellStates);
+    m_Data = std::move(other.m_Data);
     other.m_Size = 0;
     other.m_Capacity = 0;
   }
 
   GraceDictionary::~GraceDictionary()
   {
-    for (auto it : m_ActiveIterators) {
-      it->Invalidate();
-    }
+    InvalidateIterators();
   }
 
   void GraceDictionary::DebugPrint() const
@@ -108,7 +83,7 @@ namespace Grace
     return m_Data.end();
   }
 
-  void GraceDictionary::IncrementIterator(IteratorType& toIncrement) const
+  void GraceDictionary::IncrementIterator(IteratorType& toIncrement)
   {
     GRACE_ASSERT(toIncrement != m_Data.end(), "Iterator already at end");
     do {
@@ -141,7 +116,6 @@ namespace Grace
       case CellState::Occupied: {
         if (m_Data[index].GetObject()->GetAsKeyValuePair()->Key() == key) {
           m_Data[index] = VM::Value::CreateObject<GraceKeyValuePair>(std::move(key), std::move(value));
-          m_CellStates[index] = CellState::Occupied;
           return;
         }
         for (auto i = index + 1; ; ++i) {
@@ -265,17 +239,6 @@ namespace Grace
     return false;
   }
 
-  std::vector<VM::Value> GraceDictionary::ToVector()
-  {
-    std::vector<VM::Value> res;
-    res.reserve(m_Size);
-    for (const auto& value : m_Data) {
-      if (value.GetType() == VM::Value::Type::Null) continue;
-      res.push_back(value);
-    }
-    return res;
-  }
-
   GRACE_NODISCARD std::vector<GraceObject*> GraceDictionary::GetObjectMembers() const
   {
     std::vector<GraceObject*> res;
@@ -328,7 +291,7 @@ namespace Grace
         // if its not NeverUsed it will be Occupied
         // iterate until we find a NeverUsed
         for (auto i = index + 1; ; ++i) {
-          if (i == m_Capacity) {
+          if (i >= m_Capacity) {
             i = 0;
           }
           if (m_CellStates[i] == CellState::NeverUsed) {

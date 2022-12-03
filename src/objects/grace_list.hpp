@@ -25,14 +25,17 @@ namespace Grace
   {
     public:
 
-      GraceList() = default;
+      GraceList() : GraceIterable{0}
+      {
+
+      }
+      GraceList(const GraceList& other);
       explicit GraceList(const VM::Value&);
       explicit GraceList(std::vector<VM::Value>&& items);
       GraceList(const GraceList& other, std::int64_t multiple);
       GraceList(const VM::Value& min, const VM::Value& max, const VM::Value& increment);
 
       ~GraceList() override;
-
       
       template<VM::BuiltinGraceType T>
       GRACE_INLINE void Append(const T& value)
@@ -41,9 +44,17 @@ namespace Grace
         InvalidateIterators();
       }
 
-      void Append(const VM::Value& value);
+      void Append(VM::Value&& value);
       void Append(const std::vector<VM::Value>& items);
-      void Remove(std::size_t index);
+
+      void Insert(VM::Value&& value, std::size_t index);
+
+      VM::Value Remove(std::size_t index);
+
+      VM::Value Pop();
+
+      void Sort();
+      void SortDescending();
 
       GRACE_NODISCARD GRACE_INLINE std::size_t Length() const
       {
@@ -60,7 +71,7 @@ namespace Grace
         return m_Data.end();
       }
 
-      GRACE_INLINE void IncrementIterator(IteratorType& toIncrement) const override
+      GRACE_INLINE void IncrementIterator(IteratorType& toIncrement) override
       {
         toIncrement++;
       }
@@ -115,13 +126,34 @@ namespace Grace
         return m_Data[index];
       }
 
+      GRACE_INLINE const VM::Value& First() const
+      {
+        if (m_Data.empty()) {
+          throw GraceException(
+            GraceException::Type::InvalidCollectionOperation,
+            "Collection is empty"
+          );
+        }
+
+        return m_Data.front();
+      }
+
+      GRACE_INLINE const VM::Value& Last() const
+      {
+        if (m_Data.empty()) {
+          throw GraceException(
+            GraceException::Type::InvalidCollectionOperation,
+            "Collection is empty"
+          );
+        }
+
+        return m_Data.back();
+      }
+
       GRACE_NODISCARD bool AnyMemberMatches(const GraceObject* match) const override;
       GRACE_NODISCARD std::vector<GraceObject*> GetObjectMembers() const override;
       void RemoveMember(GraceObject* object) override;
       GRACE_NODISCARD bool OnlyReferenceIsSelf() const override;
-
-    private:
-      std::vector<VM::Value> m_Data;
   };
 } // namespace Grace
 

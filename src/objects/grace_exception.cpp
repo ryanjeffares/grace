@@ -19,11 +19,13 @@ namespace Grace
 		{GraceException::Type::AssertionFailed, "Assertion failed"},
 		{GraceException::Type::Exception, "Exception"},
 		{GraceException::Type::FileWriteFailed, "File write failed"},
+		{GraceException::Type::FileReadFailed, "File read failed"},
 		{GraceException::Type::FunctionNotExported, "Function not exported"},
 		{GraceException::Type::FunctionNotFound, "Function not found"},
 		{GraceException::Type::IncorrectArgCount, "Incorrect argument count"},
 		{GraceException::Type::IndexOutOfRange, "Index out of range"},
 		{GraceException::Type::InvalidArgument, "Invalid argument"},
+		{GraceException::Type::InvalidCollectionOperation, "Invalid collection operation"},
 		{GraceException::Type::InvalidIterator, "Invalid iterator"},
 		{GraceException::Type::InvalidCast, "Invalid cast"},
 		{GraceException::Type::InvalidOperand, "Invalid operand"},
@@ -32,6 +34,7 @@ namespace Grace
 		{GraceException::Type::LibraryLoadFailure, "Library load failure"},
 		{GraceException::Type::MemberNotFound, "Member not found"},
 		{GraceException::Type::NamespaceNotFound, "Namespace not found"},
+		{GraceException::Type::PathError, "Path error"},
 		{GraceException::Type::ThrownException, "Thrown exception"},
   };
 
