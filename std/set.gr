@@ -1,0 +1,7 @@
+func export add(this Set set, value):
+  __NATIVE_SET_ADD(set, value);
+end
+
+func export contains(this Set set, value) :: Bool:
+  return __NATIVE_SET_CONTAINS(set, value);
+end

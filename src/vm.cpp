@@ -28,6 +28,7 @@
 #include "objects/grace_instance.hpp"
 #include "objects/grace_iterator.hpp"
 #include "objects/grace_dictionary.hpp"
+#include "objects/grace_set.hpp"
 #include "objects/grace_list.hpp"
 #include "objects/object_tracker.hpp"
 
@@ -631,6 +632,14 @@ namespace Grace::VM
             auto value = Pop(valueStack);
             auto parentValue = Pop(valueStack);
             auto parentObject = parentValue.GetObject();
+            
+            if (parentObject == nullptr) {
+              throw GraceException(
+                GraceException::Type::InvalidType,
+                fmt::format("`{}` has no members", parentValue.GetTypeName())
+              );
+            }
+
             auto instance = parentObject->GetAsInstance();
             if (instance == nullptr) {
               throw GraceException(
@@ -646,6 +655,13 @@ namespace Grace::VM
           case Ops::LoadMember: {
             auto parentValue = Pop(valueStack);
             auto parentObject = parentValue.GetObject();
+            if (parentObject == nullptr) {
+              throw GraceException(
+                GraceException::Type::InvalidType,
+                fmt::format("`{}` has no members", parentValue.GetTypeName())
+              );
+            }
+
             auto instance = parentObject->GetAsInstance();
             if (instance == nullptr) {
               throw GraceException(
@@ -754,8 +770,8 @@ namespace Grace::VM
               auto dictIterator = Value::CreateObject<GraceIterator>(dict, GraceIterator::IterableType::Dictionary);
               auto dictIteratorObject = dictIterator.GetObject()->GetAsIterator();
               heldIterators.push(dictIterator);
-              
-              
+
+
               if (twoIterators) {
                 auto secondIteratorId = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
                 if (dictIteratorObject->IsAtEnd()) {
@@ -767,8 +783,23 @@ namespace Grace::VM
                   localsList[secondIteratorId + localsOffsets.top()] = kvpObject->Value();
                 }
               } else {
-                localsList[iteratorId + localsOffsets.top()] = dictIteratorObject->IsAtEnd() ? Value() : dictIteratorObject->Value();
+                localsList[iteratorId + localsOffsets.top()] = dictIteratorObject->IsAtEnd() ? Value()
+                                                                                             : dictIteratorObject->Value();
                 constantCurrent++;
+              }
+            } else if (auto set = object->GetAsSet()) {
+              auto setIterator = Value::CreateObject<GraceIterator>(set, GraceIterator::IterableType::Set);
+              auto setIteratorObject = setIterator.GetObject()->GetAsIterator();
+              heldIterators.push(setIterator);
+
+              localsList[iteratorId + localsOffsets.top()] = setIteratorObject->IsAtEnd() ? Value() : setIteratorObject->Value();
+              constantCurrent++;
+
+              if (twoIterators) {
+                throw GraceException(
+                  GraceException::Type::InvalidCollectionOperation,
+                  "`Set` does not support multiple iterators"
+                );
               }
             } else {
               // unreachable (?) due to IsIterable() check
@@ -806,9 +837,14 @@ namespace Grace::VM
                   localsList[secondIteratorId + localsOffsets.top()] = nullptr;
                 }
               } else {
-                localsList[iteratorVarId + localsOffsets.top()] = heldIterator->IsAtEnd() ? Value() : heldIterator->Value();
+                localsList[iteratorVarId + localsOffsets.top()] = heldIterator->IsAtEnd() ? Value()
+                                                                                          : heldIterator->Value();
                 constantCurrent++;
               }
+            } else if (iterableType == GraceIterator::IterableType::Set){
+              heldIterator->Increment();
+              localsList[iteratorVarId + localsOffsets.top()] = heldIterator->IsAtEnd() ? Value() : heldIterator->Value();
+              constantCurrent++;
             } else {
               GRACE_UNREACHABLE();
             }
@@ -938,7 +974,7 @@ namespace Grace::VM
             auto typeIdx = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
             if (typeIdx < 6) {
               valueStack.emplace_back(typeIdx == static_cast<std::int64_t>(value.GetType()));
-            } else if (typeIdx < 10) {
+            } else if (typeIdx < 11) {
               auto object = value.GetObject();
               valueStack.emplace_back(typeIdx - 6 == static_cast<std::int64_t>(object->ObjectType()));
             } else {
@@ -1000,16 +1036,18 @@ namespace Grace::VM
               valueStack.push_back(Value::CreateObject<GraceList>());
               break;
             }
+
+            if (numItems == 1) {
+              valueStack.push_back(Value::CreateObject<GraceList>(Pop(valueStack)));
+              break;
+            }
+
             std::vector<Value> result(numItems);
             for (auto i = 0; i < numItems; i++) {
               result[numItems - i - 1] = Pop(valueStack);
             }
 
-            if (result.size() == 1) {
-              valueStack.push_back(Value::CreateObject<GraceList>(std::move(result[0])));
-            } else {
-              valueStack.push_back(Value::CreateObject<GraceList>(std::move(result)));
-            }
+            valueStack.push_back(Value::CreateObject<GraceList>(std::move(result)));
             break;
           }
           case Ops::CreateRangeList: {
@@ -1039,6 +1077,26 @@ namespace Grace::VM
             }
 
             valueStack.push_back(Value::CreateObject<GraceList>(min, max, increment));
+            break;
+          }
+          case Ops::CreateSet: {
+            auto numItems = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+            if (numItems == 0) {
+              valueStack.push_back(Value::CreateObject<GraceSet>());
+              break;
+            }
+
+            if (numItems == 1) {
+              valueStack.push_back(Value::CreateObject<GraceSet>(Pop(valueStack)));
+              break;
+            }
+
+            std::vector<Value> result(numItems);
+            for (auto i = 0; i < numItems; i++) {
+              result[numItems - i - 1] = Pop(valueStack);
+            }
+
+            valueStack.push_back(Value::CreateObject<GraceSet>(std::move(result)));
             break;
           }
           case Ops::AssignSubscript: {
@@ -1195,7 +1253,7 @@ namespace Grace::VM
 
           funcNameHash = callStack.back().calleeHash;
 
-          valueStack.push_back(Value::CreateObject<GraceException>(ge));
+          valueStack.push_back(Value::CreateObject<GraceException>(ge.GetType(), ge.Message()));
 
           while (namespaceLookupStack.size() != vmState.namespaceStackSize) {
             namespaceLookupStack.pop();

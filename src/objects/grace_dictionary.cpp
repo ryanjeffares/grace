@@ -21,28 +21,19 @@ static constexpr float s_GrowFactor = 0.75f;
 namespace Grace
 {
   GraceDictionary::GraceDictionary()
-    : m_Size(0),
-      m_Capacity(s_InitialCapacity),
-      m_Data(m_Capacity),
-      m_CellStates(m_Capacity, CellState::NeverUsed)
+    : GraceIterable{s_InitialCapacity}
+    , m_Size{0}
+    , m_Capacity{s_InitialCapacity}
+    , m_CellStates{m_Capacity, CellState::NeverUsed}
   {
     
   }
 
-  GraceDictionary::GraceDictionary(const GraceDictionary& other)
-    : m_Size(other.m_Size),
-      m_Capacity(other.m_Capacity),
-      m_Data(other.m_Data),
-      m_CellStates(other.m_CellStates)
-  {
-
-  }
-
   GraceDictionary::GraceDictionary(GraceDictionary&& other)
-    : m_Size(other.m_Size),
-      m_Capacity(other.m_Capacity),
-      m_Data(std::move(other.m_Data)),
-      m_CellStates(std::move(other.m_CellStates))
+    : GraceIterable{s_InitialCapacity}
+    , m_Size{other.m_Size}
+    , m_Capacity{other.m_Capacity}
+    , m_CellStates{std::move(other.m_CellStates)}
   {
     other.m_Size = 0;
     other.m_Capacity = 0;
@@ -141,7 +132,6 @@ namespace Grace
       case CellState::Occupied: {
         if (m_Data[index].GetObject()->GetAsKeyValuePair()->Key() == key) {
           m_Data[index] = VM::Value::CreateObject<GraceKeyValuePair>(std::move(key), std::move(value));
-          m_CellStates[index] = CellState::Occupied;
           return;
         }
         for (auto i = index + 1; ; ++i) {
@@ -328,7 +318,7 @@ namespace Grace
         // if its not NeverUsed it will be Occupied
         // iterate until we find a NeverUsed
         for (auto i = index + 1; ; ++i) {
-          if (i == m_Capacity) {
+          if (i >= m_Capacity) {
             i = 0;
           }
           if (m_CellStates[i] == CellState::NeverUsed) {

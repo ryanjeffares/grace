@@ -1,0 +1,9 @@
+import std::file;
+import std::list;
+
+func main(final args: List):
+  assert(args.length());
+
+  var input = std::file::read_all_lines(args[0]);
+  println(input);
+end

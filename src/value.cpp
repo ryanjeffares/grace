@@ -38,10 +38,8 @@ namespace Grace::VM
   }
 
   Value::Value(Value&& other)
-    : m_Type(other.m_Type)
+    : m_Type(other.m_Type), m_Data(other.m_Data)
   {
-    m_Data = other.m_Data;
-
     if (other.m_Type == Type::Object || other.m_Type == Type::String) {
       other.m_Data.m_Null = nullptr;
       other.m_Type = Type::Null;
@@ -61,6 +59,7 @@ namespace Grace::VM
       delete m_Data.m_Str;
     }
     if (m_Type == Type::Object) {
+      GRACE_ASSERT(m_Data.m_Object != nullptr, "Object was a nullptr");
       if (m_Data.m_Object->DecreaseRef() == 0) {
         ObjectTracker::StopTrackingObject(m_Data.m_Object);
         delete m_Data.m_Object;
@@ -232,10 +231,9 @@ namespace Grace::VM
       case Type::String: {
         if (other.m_Type == Type::Int) {
           std::string res;
-          if (other.m_Data.m_Int > 0) {
-            for (auto i = 0; i < other.m_Data.m_Int; i++) {
-              res += Get<std::string>();
-            }
+          res.reserve(m_Data.m_Str->size() * other.m_Data.m_Int);
+          for (auto i = 0; i < other.m_Data.m_Int; i++) {
+            res += Get<std::string>();
           }
           return Value(res);
         }
@@ -998,11 +996,9 @@ namespace Grace::VM
         try {
           result = std::stoll(*m_Data.m_Str);
           return { true, {} };
-        }
-        catch (const std::invalid_argument& e) {
+        } catch (const std::invalid_argument& e) {
           return { false, fmt::format("Could not convert '{}' to int: {}", *m_Data.m_Str, e.what()) };
-        }
-        catch (const std::out_of_range&) {
+        } catch (const std::out_of_range&) {
           return { false, "Int represented by string was out of range" };
         }
       }

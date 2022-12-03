@@ -59,6 +59,7 @@ namespace Grace::VM
     CreateInstance,
     CreateList,
     CreateRangeList,
+    CreateSet,
     DeclareLocal,
     DestroyHeldIterator,
     Divide,
@@ -148,7 +149,7 @@ namespace Grace::VM
       static void PrintOps();
 
       template<BuiltinGraceType T>
-      constexpr GRACE_INLINE static void PushConstant(const T& value)
+      GRACE_INLINE static void PushConstant(const T& value)
       {
         m_FunctionLookup.at(m_LastFileNameHash).at(m_LastFunctionHash)->constantList.emplace_back(value);
       }
@@ -169,7 +170,7 @@ namespace Grace::VM
       }
 
       template<BuiltinGraceType T>
-      constexpr GRACE_INLINE static void SetConstantAtIndex(std::size_t index, const T& value)
+      GRACE_INLINE static void SetConstantAtIndex(std::size_t index, const T& value)
       {
         m_FunctionLookup.at(m_LastFileNameHash).at(m_LastFunctionHash)->constantList[index] = value;
       }
@@ -321,6 +322,7 @@ struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
       case Ops::CreateInstance: name = "Ops::CreateInstance"; break;
       case Ops::CreateList: name = "Ops::CreateList"; break;
       case Ops::CreateRangeList: name = "Ops::CreateRangeList"; break;
+      case Ops::CreateSet: name = "Ops::CreateSet"; break;
       case Ops::DeclareLocal: name = "Ops::DeclareLocal"; break;
       case Ops::DestroyHeldIterator: name = "Ops::DestroyHeldIterator"; break;
       case Ops::Divide: name = "Ops::Divide"; break;

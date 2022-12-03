@@ -1,0 +1,45 @@
+import std::file;
+import std::list;
+import std::string;
+import std::time;
+
+func solve(input: List, num_elves: Int) :: Int:
+  var current = 0;
+  var index = 0;
+  final elves = [];
+
+  while index < input.length():
+    if input[index] == "":
+      elves.append(current);
+      current = 0;
+    else:
+      current += Int(input[index]);
+    end
+
+    index += 1;
+  end
+  
+  elves.sort_descending();
+  var total = 0;
+  for i in [0..num_elves]:
+    total += elves[i];
+  end
+
+  return total;
+end
+
+func main(final args: List):
+  assert(args.length());
+
+  final input_lines = std::file::read_all_lines(args[0]);
+
+  var timer = std::time::TimePoint();
+  final p1 = solve(input_lines, 1);
+  var elapsed = timer.elapsed_formatted();
+  println("Problem 1: " + p1 + ", completed in " + elapsed);
+
+  timer = std::time::TimePoint();
+  final p2 = solve(input_lines, 3);
+  elapsed = timer.elapsed_formatted();
+  println("Problem 2: " + p2 + ", completed in " + elapsed);
+end

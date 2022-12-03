@@ -25,3 +25,28 @@ end
 func export sleep(time_ns: Int):
   __NATIVE_TIME_SLEEP(time_ns);
 end
+
+class export TimePoint:
+  var time_point_ns;
+
+  constructor():
+    time_point_ns = time_ns();
+  end
+end
+
+func export elapsed(this TimePoint time_point) :: Int:
+  return time_ns() - time_point.time_point_ns;
+end
+
+func export elapsed_formatted(this TimePoint time_point) :: String:
+  var duration = time_ns() - time_point.time_point_ns;
+  if duration > 1000000000:
+    return String(duration / 1000000000.0) + " s";
+  else if duration > 1000000:
+    return String(duration / 1000000.0) + " ms";
+  else if duration > 1000:
+    return String(duration / 1000.0) + " us";
+  else:
+    return String(duration) + " ns";
+  end
+end

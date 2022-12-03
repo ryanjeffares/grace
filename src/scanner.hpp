@@ -43,6 +43,7 @@ namespace Grace::Scanner
     DictIdent,
     ExceptionIdent,
     KeyValuePairIdent,
+    SetIdent,
 
     // Symbols
     Colon,
@@ -259,6 +260,7 @@ struct fmt::formatter<Grace::Scanner::TokenType> : fmt::formatter<std::string_vi
       case TokenType::DictIdent: name = "TokenType::DictIdent"; break;
       case TokenType::ExceptionIdent: name = "TokenType::ExceptionIdent"; break;
       case TokenType::KeyValuePairIdent: name = "TokenType::KeyValuePairIdent"; break;
+      case TokenType::SetIdent: name = "TokenType::SetIdent"; break;
       case TokenType::ShiftLeft: name = "TokenType::ShiftLeft"; break;
       case TokenType::ShiftRight: name = "TokenType::ShiftRight"; break;
       case TokenType::Bar: name = "TokenType::Bar"; break;

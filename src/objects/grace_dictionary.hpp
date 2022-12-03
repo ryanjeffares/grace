@@ -27,7 +27,6 @@ namespace Grace
     public:
 
       GraceDictionary();
-      GraceDictionary(const GraceDictionary&);
       GraceDictionary(GraceDictionary&&);
 
       ~GraceDictionary() override;
@@ -79,9 +78,7 @@ namespace Grace
 
       GRACE_NODISCARD std::vector<VM::Value> ToVector();
 
-      // needs to be thread safe
       GRACE_NODISCARD std::vector<GraceObject*> GetObjectMembers() const override;
-      // needs to be thread safe
       GRACE_NODISCARD bool AnyMemberMatches(const GraceObject* match) const override;
       void RemoveMember(GraceObject* object) override;
 
@@ -96,7 +93,6 @@ namespace Grace
 
       std::size_t m_Size, m_Capacity;
 
-      std::vector<VM::Value> m_Data;
       std::vector<CellState> m_CellStates;
       
       std::hash<VM::Value> m_Hasher{};

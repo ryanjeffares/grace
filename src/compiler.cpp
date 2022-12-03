@@ -507,6 +507,7 @@ static bool IsTypeIdent(Scanner::TokenType type)
     Scanner::TokenType::ListIdent,
     Scanner::TokenType::DictIdent,
     Scanner::TokenType::KeyValuePairIdent,
+    Scanner::TokenType::SetIdent,
     Scanner::TokenType::ExceptionIdent,
   };
   return std::any_of(typeIdents.begin(), typeIdents.end(), [type](Scanner::TokenType t) {
@@ -528,6 +529,7 @@ static bool IsValidTypeAnnotation(const Scanner::TokenType& token)
     Scanner::TokenType::DictIdent,
     Scanner::TokenType::ExceptionIdent,
     Scanner::TokenType::KeyValuePairIdent,
+    Scanner::TokenType::SetIdent,
   };
   return std::any_of(valid.begin(), valid.end(), [token] (Scanner::TokenType t) {
     return t == token;
@@ -1211,7 +1213,7 @@ static void VarDeclaration(CompilerContext& compiler, bool isFinal)
   }
 
   if (CheckForDuplicateLocalName(localName, compiler)) {
-    MessageAtPrevious("A constant with the same name already exists", LogLevel::Error, compiler);
+    MessageAtPrevious("A local variable with the same name already exists", LogLevel::Error, compiler);
     return;
   }
 
@@ -1500,6 +1502,7 @@ static std::unordered_map<Scanner::TokenType, std::int64_t> s_CastOps = {
   std::make_pair(Scanner::TokenType::CharIdent, 4),
   std::make_pair(Scanner::TokenType::ExceptionIdent, 5),
   std::make_pair(Scanner::TokenType::KeyValuePairIdent, 6),
+  std::make_pair(Scanner::TokenType::SetIdent, 7),
 };
 
 static void ForStatement(CompilerContext& compiler)
@@ -2661,17 +2664,15 @@ static void Dot(bool canAssign, CompilerContext& compiler)
     MessageAtCurrent("Expected identifier after '.'", LogLevel::Error, compiler);
     return;
   }
-    
-  auto memberNameToken = compiler.previous.value();
-  if (Match(Scanner::TokenType::LeftParen, compiler)) {
-    // object.function()
-    DotFunctionCall(memberNameToken, compiler);
-  } else {
-    // accessing a member
-    // object.member
-    // could either be an assignment, loading the value, or more dots follow
-    // no other tokens would be valid
-    if (Match(Scanner::TokenType::Equal, compiler)) {
+  
+  bool previousWasFunctionCall = false;
+  while (true) {
+    auto memberNameToken = compiler.previous.value();
+    if (Match(Scanner::TokenType::LeftParen, compiler)) {
+      // object.function()
+      DotFunctionCall(memberNameToken, compiler);
+      previousWasFunctionCall = true;
+    } else if (Match(Scanner::TokenType::Equal, compiler)) {
       if (!canAssign) {
         MessageAtPrevious("Assignment is not valid here", LogLevel::Error, compiler);
         return;
@@ -2684,26 +2685,36 @@ static void Dot(bool canAssign, CompilerContext& compiler)
       compiler.usingExpressionResult = prevUsing;
       EmitConstant(memberNameToken.GetString());
       EmitOp(VM::Ops::AssignMember, compiler.previous.value().GetLine());
+      break;
 
     } else if (Match(Scanner::TokenType::Dot, compiler)) {
       // load the member, then recurse
       // the parent is on the top of the stack
-      EmitConstant(memberNameToken.GetString());
-      EmitOp(VM::Ops::LoadMember, memberNameToken.GetLine());
-      Dot(canAssign, compiler);
-    } else {
-      // no further access, end of expression
-      // so we need to just load the local
-      if (canAssign) {
-        // this was supposed to be an assignment
-        MessageAtCurrent("Expected expression", LogLevel::Error, compiler);
+      if (!Match(Scanner::TokenType::Identifier, compiler)) {
+        MessageAtCurrent("Expected identifier after '.'", LogLevel::Error, compiler);
         return;
       }
 
-      EmitConstant(memberNameToken.GetString());
-      EmitOp(VM::Ops::LoadMember, memberNameToken.GetLine());
+      previousWasFunctionCall = false;
+      // EmitConstant(memberNameToken.GetString());
+      // EmitOp(VM::Ops::LoadMember, memberNameToken.GetLine());
+      // Dot(canAssign, compiler);
+    } else {
+      // no further access, end of expression
+      // so we need to just load the local
+      if (!previousWasFunctionCall) {
+        if (canAssign) {
+          // this was supposed to be an assignment
+          MessageAtCurrent("Expected expression", LogLevel::Error, compiler);
+          return;
+        }
+
+        EmitConstant(memberNameToken.GetString());
+        EmitOp(VM::Ops::LoadMember, memberNameToken.GetLine());
+      }
+      break;
     }
-  }    
+  }
 }
 
 static bool ParseCallParameters(CompilerContext& compiler, int64_t& numArgs)
@@ -2956,8 +2967,11 @@ static void InstanceOf(CompilerContext& compiler)
     case Scanner::TokenType::KeyValuePairIdent:
       EmitConstant(std::int64_t(9));
       break;
-    case Scanner::TokenType::Identifier:
+    case Scanner::TokenType::SetIdent:
       EmitConstant(std::int64_t(10));
+      break;
+    case Scanner::TokenType::Identifier:
+      EmitConstant(std::int64_t(11));
       EmitConstant(compiler.current.value().GetString());
       break;
     default:
@@ -2999,7 +3013,7 @@ static void Cast(CompilerContext& compiler)
   Advance(compiler);
   Consume(Scanner::TokenType::LeftParen, "Expected '(' after type ident", compiler);
 
-  auto isList = false;
+  bool isList = false, isSet = false;
   std::int64_t numListItems = 0;
 
   switch (typeToken.GetType()) {
@@ -3069,6 +3083,37 @@ static void Cast(CompilerContext& compiler)
       EmitOp(VM::Ops::Cast, compiler.current.value().GetLine());
       break;
     }
+    case Scanner::TokenType::SetIdent: {
+      isSet = true;
+
+      auto prevUsing = compiler.usingExpressionResult;
+      compiler.usingExpressionResult = true;
+      while (true) {
+        if (Check(Scanner::TokenType::RightParen, compiler)) {
+          break;
+        }
+
+        if (Match(Scanner::TokenType::EndOfFile, compiler)) {
+          MessageAtPrevious("Unterminated `Set` constructor", LogLevel::Error, compiler);
+          return;
+        }
+
+        Expression(false, compiler);
+        numListItems++;
+
+        if (Check(Scanner::TokenType::RightParen, compiler)) {
+          break;
+        }
+
+        if (!Match(Scanner::TokenType::Comma, compiler)) {
+          MessageAtPrevious("Expected ',' between `Set` items", LogLevel::Error, compiler);
+          return;
+        }
+      }
+      compiler.usingExpressionResult = prevUsing;
+      break;
+      break;
+    }
     default:
       GRACE_UNREACHABLE();
       break;
@@ -3079,6 +3124,9 @@ static void Cast(CompilerContext& compiler)
   if (isList) {
     EmitConstant(numListItems);
     EmitOp(VM::Ops::CreateList, compiler.previous.value().GetLine());
+  } else if (isSet) {
+    EmitConstant(numListItems);
+    EmitOp(VM::Ops::CreateSet, compiler.previous.value().GetLine());
   }
 
   if (Check(Scanner::TokenType::Semicolon, compiler) && !compiler.usingExpressionResult) {

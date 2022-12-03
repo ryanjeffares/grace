@@ -35,12 +35,14 @@ namespace Grace
         AssertionFailed,
         Exception,
         FileWriteFailed,
+        FileReadFailed,
         FunctionNotExported,
         FunctionNotFound,
         IncorrectArgCount,
         IndexOutOfRange,
         InvalidArgument,
         InvalidCast,
+        InvalidCollectionOperation,
         InvalidIterator,
         InvalidOperand,
         InvalidType,
@@ -51,20 +53,14 @@ namespace Grace
         ThrownException,
       };
 
-      GraceException(Type type, std::string&& message)
+      GraceException(Type type, std::string message)
         : m_Type(type), m_Message(std::move(message))
       {
 
       }
 
-      GraceException(std::string&& message)
+      GraceException(std::string message)
         : m_Type(Type::Exception), m_Message(std::move(message))
-      {
-
-      }
-
-      GraceException(const GraceException& other)
-        : m_Type(other.m_Type), m_Message(other.m_Message)
       {
 
       }
@@ -85,6 +81,11 @@ namespace Grace
       GRACE_NODISCARD GRACE_INLINE const std::string& Message() const
       {
         return m_Message;
+      }
+
+      GRACE_NODISCARD GRACE_INLINE Type GetType() const
+      {
+        return m_Type;
       }
 
       void DebugPrint() const override;
@@ -133,11 +134,13 @@ struct fmt::formatter<Grace::GraceException::Type> : fmt::formatter<std::string_
       case GraceException::Type::AssertionFailed: name = "AssertionFailed"; break;
       case GraceException::Type::Exception: name = "Exception"; break;
       case GraceException::Type::FileWriteFailed: name = "FileWriteFailed"; break;
+      case GraceException::Type::FileReadFailed: name = "FileReadFailed"; break;
       case GraceException::Type::FunctionNotExported: name = "FunctionNotExported"; break;
       case GraceException::Type::FunctionNotFound: name = "FunctionNotFound"; break;
       case GraceException::Type::IncorrectArgCount: name = "IncorrectArgCount"; break;
       case GraceException::Type::IndexOutOfRange: name = "IndexOutOfRange"; break;
       case GraceException::Type::InvalidArgument: name = "InvalidArgument"; break;
+      case GraceException::Type::InvalidCollectionOperation: name = "InvalidCollectionOperation"; break;
       case GraceException::Type::InvalidCast: name = "InvalidCast"; break;
       case GraceException::Type::InvalidIterator: name = "InvalidIterator"; break;
       case GraceException::Type::InvalidOperand: name = "InvalidOperand"; break;

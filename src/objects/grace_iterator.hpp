@@ -34,6 +34,7 @@ namespace Grace
       {
         List,
         Dictionary,
+        Set,
       };
 
       using IteratorType = std::vector<VM::Value>::iterator;
@@ -116,6 +117,24 @@ namespace Grace
 
       using IteratorType = std::vector<VM::Value>::iterator;
 
+      explicit GraceIterable(std::size_t initialSize, const VM::Value& defaultValue = VM::Value())
+        : m_Data{initialSize, defaultValue}
+      {
+
+      }
+
+      explicit GraceIterable(std::vector<VM::Value>&& data)
+        : m_Data{std::move(data)}
+      {
+
+      }
+
+      explicit GraceIterable(const std::vector<VM::Value>& data)
+        : m_Data{data}
+      {
+
+      }
+
       virtual IteratorType Begin() = 0;
       virtual IteratorType End() = 0;
       virtual void IncrementIterator(IteratorType&) const = 0;
@@ -145,6 +164,7 @@ namespace Grace
         }
       }
 
+      std::vector<VM::Value> m_Data;
       std::vector<GraceIterator*> m_ActiveIterators;
   };
 } // namespace Grace::VM

@@ -12,6 +12,7 @@ if(GRACE_BUILD_TARGET MATCHES "dll")
     objects/grace_iterator.cpp
     objects/grace_keyvaluepair.cpp
     objects/grace_list.cpp
+    objects/grace_set.cpp
     objects/object_tracker.cpp
   )
 elseif(GRACE_BUILD_TARGET MATCHES "exe")
@@ -28,8 +29,8 @@ elseif(GRACE_BUILD_TARGET MATCHES "exe")
     objects/grace_iterator.cpp
     objects/grace_keyvaluepair.cpp
     objects/grace_list.cpp
-    objects/object_tracker.cpp
-  )
+    objects/grace_set.cpp
+    objects/object_tracker.cpp)
 else()
   message(FATAL_ERROR "GRACE_BUILD_TARGET must match 'exe' or 'dll'")
 endif()

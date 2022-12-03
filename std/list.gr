@@ -1,15 +1,51 @@
 import std::math;
 
 func export at(this List list, index: Int):
-  return __NATIVE_GET_LIST_AT_INDEX(list, index);
+  return __NATIVE_LIST_GET_AT_INDEX(list, index);
 end
 
 func export set(this List list, index: Int, value):
-  __NATIVE_SET_LIST_AT_INDEX(list, index, value);
+  __NATIVE_LIST_SET_AT_INDEX(list, index, value);
 end
 
 func export append(this List list, value):
-  __NATIVE_APPEND_LIST(list, value);
+  __NATIVE_LIST_APPEND(list, value);
+end
+
+func export insert(this List list, index: Int, value):
+  __NATIVE_LIST_INSERT(list, index, value);
+end
+
+func export remove(this List list, index: Int):
+  return __NATIVE_LIST_REMOVE(list, index);
+end
+
+func export pop(this List list):
+  return __NATIVE_LIST_POP(list);
+end
+
+func export sort(this List list):
+  __NATIVE_LIST_SORT(list);
+end
+
+func export sort_descending(this List list):
+  __NATIVE_LIST_SORT_DESCENDING(list);
+end
+
+func export sorted(this List list) :: List:
+  return __NATIVE_LIST_SORTED(list);
+end
+
+func export sorted_descending(this List list) :: List:
+  return __NATIVE_LIST_SORTED_DESCENDING(list);
+end
+
+func export first(this List list):
+  return __NATIVE_LIST_FIRST(list);
+end
+
+func export last(this List list):
+  return __NATIVE_LIST_LAST(list);
 end
 
 func export length(this List list) :: Int:

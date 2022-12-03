@@ -33,6 +33,7 @@ namespace Grace
     Dictionary,
     Exception,
     KeyValuePair,
+    Set,
     Instance,
     Iterator,
   };
@@ -43,10 +44,14 @@ namespace Grace
   class GraceKeyValuePair;
   class GraceInstance;
   class GraceIterator;
+  class GraceSet;
 
   class GraceObject
   {
     public:
+
+      GraceObject() = default;
+      GraceObject(const GraceObject&) = delete;
 
       virtual ~GraceObject() = default;
 
@@ -103,6 +108,7 @@ namespace Grace
       GRACE_NODISCARD GRACE_INLINE virtual GraceKeyValuePair* GetAsKeyValuePair() { return nullptr; }
       GRACE_NODISCARD GRACE_INLINE virtual GraceInstance* GetAsInstance() { return nullptr; }
       GRACE_NODISCARD GRACE_INLINE virtual GraceIterator* GetAsIterator() { return nullptr; }
+      GRACE_NODISCARD GRACE_INLINE virtual GraceSet* GetAsSet() { return nullptr; }
 
 
       GRACE_NODISCARD static bool AnyMemberMatchesRecursive(const GraceObject* toFind, GraceObject* root, std::vector<GraceObject*>& visitedObjects)
