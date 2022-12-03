@@ -58,7 +58,7 @@ namespace Grace
     m_Direction = maxVal > minVal;
 
     auto delta = static_cast<std::size_t>(std::llabs(maxVal - minVal));
-    auto size = delta < 8 ? delta : 8;
+    auto size = delta < s_BaseCapacity ? delta : s_BaseCapacity;
 
     m_Data.reserve(size);
     for (std::size_t i = 0; i < size; i++) {
