@@ -91,6 +91,17 @@ namespace Grace
 		);
   }
 
+	GRACE_NODISCARD bool GraceInstance::HasMember(const std::string& memberName) const
+	{
+		for (const auto& [name, val] : m_Members) {
+			if (name == memberName) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
   GRACE_NODISCARD std::vector<GraceObject*> GraceInstance::GetObjectMembers() const
   {
 		std::vector<GraceObject*> res;

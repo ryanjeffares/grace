@@ -27,7 +27,11 @@ namespace Grace
 
       void Add(VM::Value&& value);
 
-      bool Contains(const VM::Value& value) const;
+      GRACE_NODISCARD bool Contains(const VM::Value& value) const;
+      GRACE_NODISCARD GRACE_INLINE std::size_t Size() const
+      {
+        return m_Size;
+      }
 
       void DebugPrint() const override;
       void Print(bool err) const override;

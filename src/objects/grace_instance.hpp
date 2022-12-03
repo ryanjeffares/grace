@@ -70,6 +70,7 @@ namespace Grace
 
 		void AssignMember(const std::string& memberName, VM::Value&& value);
 		GRACE_NODISCARD const VM::Value& LoadMember(const std::string& memberName);
+		GRACE_NODISCARD bool HasMember(const std::string& memberName) const;
 
 		GRACE_NODISCARD std::vector<GraceObject*> GetObjectMembers() const override;
 		GRACE_NODISCARD bool AnyMemberMatches(const GraceObject* match) const override;

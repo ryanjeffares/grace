@@ -10,6 +10,9 @@ parser.add_argument(
 parser.add_argument(
     'config', type=str, help='Configuration (Release/Debug/All)'
 )
+parser.add_argument(
+    '--install', action='store_true', help='Install grace system-wide'
+)
 
 
 if __name__ == "__main__":
@@ -34,4 +37,8 @@ if __name__ == "__main__":
         os.system(f'cmake -DGRACE_BUILD_TARGET={build_type} -DCMAKE_BUILD_TYPE={config} -S . -B build')
         print()
         print(f'INFO: Building configuration: {config}\n')
-        os.system(f'cmake --build build --config {config}')
+        
+        if args.install:
+            os.system(f'cmake --build build --config {config} --target install')
+        else:
+            os.system(f'cmake --build build --config {config}')        

@@ -34,6 +34,7 @@ namespace Grace
 		{GraceException::Type::LibraryLoadFailure, "Library load failure"},
 		{GraceException::Type::MemberNotFound, "Member not found"},
 		{GraceException::Type::NamespaceNotFound, "Namespace not found"},
+		{GraceException::Type::PathError, "Path error"},
 		{GraceException::Type::ThrownException, "Thrown exception"},
   };
 

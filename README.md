@@ -65,6 +65,7 @@ This will build the `grace` executable, which you can add to your path or move s
 * Reduce code duplication in compiler, general clean up
 * Ensure use of backticks and quotes is consistent in error messages
 * Think about how `char`s should behave in binary operations
+* Should all file related functions in the std use `Path`?
 
 ## Long Term Goals 
 * Optional type annotations for use by a static analyzer

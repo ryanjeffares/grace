@@ -67,6 +67,7 @@ static Value KeyValuePairValue(Args args);
 
 static Value SetAdd(Args args);
 static Value SetContains(Args args);
+static Value SetSize(Args args);
 
 static Value FileWrite(Args args);
 static Value FileReadAllText(Args args);
@@ -87,6 +88,7 @@ static Value InteropDoCall(Args args);
 
 static Value StringLength(Args args);
 static Value StringSplit(Args args);
+static Value StringSubstring(Args args);
 
 static Value CharIsLower(Args args);
 static Value CharIsUpper(Args args);
@@ -102,6 +104,12 @@ static Value GcSetThreshold(Args args);
 static Value GcGetThreshold(GRACE_MAYBE_UNUSED Args args);
 static Value GcSetGrowFactor(Args args);
 static Value GcGetGrowFactor(GRACE_MAYBE_UNUSED Args args);
+
+static Value PathGetFileName(Args args);
+static Value PathGetFileNameWithoutExtension(Args args);
+static Value PathGetDirectory(Args args);
+static Value PathCombine(Args args);
+static Value PathExists(Args args);
 
 void VM::RegisterNatives()
 {
@@ -144,6 +152,7 @@ void VM::RegisterNatives()
 
   m_NativeFunctions.emplace_back("__NATIVE_SET_ADD", 2, &SetAdd);
   m_NativeFunctions.emplace_back("__NATIVE_SET_CONTAINS", 2, &SetContains);
+  m_NativeFunctions.emplace_back("__NATIVE_SET_SIZE", 1, &SetSize);
   // File functions
   m_NativeFunctions.emplace_back("__NATIVE_FILE_WRITE", 2, &FileWrite);
   m_NativeFunctions.emplace_back("__NATIVE_FILE_READ_ALL_TEXT", 1, &FileReadAllText);
@@ -169,6 +178,7 @@ void VM::RegisterNatives()
   // String functions
   m_NativeFunctions.emplace_back("__NATIVE_STRING_LENGTH", 1, &StringLength);
   m_NativeFunctions.emplace_back("__NATIVE_STRING_SPLIT", 2, &StringSplit);
+  m_NativeFunctions.emplace_back("__NATIVE_STRING_SUBSTRING", 3, &StringSubstring);
 
   // Char functions
   m_NativeFunctions.emplace_back("__NATIVE_CHAR_IS_LOWER", 1, &CharIsLower);
@@ -186,6 +196,13 @@ void VM::RegisterNatives()
   m_NativeFunctions.emplace_back("__NATIVE_GC_GET_THRESHOLD", 0, &GcGetThreshold);
   m_NativeFunctions.emplace_back("__NATIVE_GC_SET_GROW_FACTOR", 1, &GcSetGrowFactor);
   m_NativeFunctions.emplace_back("__NATIVE_GC_GET_GROW_FACTOR", 0, &GcGetGrowFactor);
+
+  // Path functions
+  m_NativeFunctions.emplace_back("__NATIVE_PATH_GET_FILE_NAME", 1, &PathGetFileName);
+  m_NativeFunctions.emplace_back("__NATIVE_PATH_GET_FILE_NAME_WITHOUT_EXTENSION", 1, &PathGetFileNameWithoutExtension);
+  m_NativeFunctions.emplace_back("__NATIVE_PATH_GET_DIRECTORY", 1, &PathGetDirectory);
+  m_NativeFunctions.emplace_back("__NATIVE_PATH_COMBINE", 2, &PathCombine);
+  m_NativeFunctions.emplace_back("__NATIVE_PATH_EXISTS", 1, &PathExists);
 }
 
 static Value SqrtFloat(Args args)
@@ -549,6 +566,18 @@ static Value SetContains(Args args)
   throw Grace::GraceException(
     Grace::GraceException::Type::InvalidType,
     fmt::format("Expected `Set` for `std::set::contains(set, value)` but got `{}`", args[0].GetTypeName())
+  );
+}
+
+static Value SetSize(Args args)
+{
+  if (auto set = args[0].GetObject()->GetAsSet()) {
+    return Value(static_cast<std::int64_t>(set->Size()));
+  }
+
+  throw Grace::GraceException(
+    Grace::GraceException::Type::InvalidType,
+    fmt::format("Expected `Set` for `std::set::size(set)` but got `{}`", args[0].GetTypeName())
   );
 }
 
@@ -980,6 +1009,32 @@ static Value StringSplit(Args args)
   return res;
 }
 
+static Value StringSubstring(Args args)
+{
+  if (args[0].GetType() == Value::Type::String) {
+    if (args[1].GetType() != Value::Type::Int) {
+      throw Grace::GraceException(
+        Grace::GraceException::Type::InvalidType,
+        fmt::format("Expected `Int` for `start` in `std::string::substring(string, start, length)` but got `{}`", args[1].GetType())
+      );
+    }
+
+    if (args[2].GetType() != Value::Type::Int) {
+      throw Grace::GraceException(
+        Grace::GraceException::Type::InvalidType,
+        fmt::format("Expected `Int` for `length` in `std::string::substring(string, start, length)` but got `{}`", args[2].GetType())
+      );
+    }
+
+    return Value(args[0].Get<std::string>().substr(static_cast<std::size_t>(args[1].Get<std::int64_t>()), static_cast<std::size_t>(args[2].Get<std::int64_t>())));
+  }
+
+  throw Grace::GraceException(
+    Grace::GraceException::Type::InvalidType,
+    fmt::format("Expected `String` for `std::string::substring(string, start, length)` but got `{}`", args[0].GetType())
+  );  
+}
+
 static Value CharIsLower(Args args)
 {
   if (args[0].GetType() == Value::Type::Char) {
@@ -1120,4 +1175,175 @@ static Value GcSetGrowFactor(Args args)
 static Value GcGetGrowFactor(GRACE_MAYBE_UNUSED Args args)
 {
   return Value(static_cast<std::int64_t>(Grace::ObjectTracker::GetGrowFactor()));
+}
+
+static Value PathGetFileName(Args args)
+{
+  namespace fs = std::filesystem;
+
+  if (args[0].GetType() == Value::Type::Object) {
+    auto instance = args[0].GetObject()->GetAsInstance();
+  	if (instance != nullptr && instance->HasMember("data")) {
+      const auto& path = instance->LoadMember("data");
+      if (path.GetType() != Value::Type::String) {
+        throw Grace::GraceException(
+          Grace::GraceException::Type::InvalidType,
+          fmt::format("Expected type of member `data` of `std::path::Path` to be `String` but got `{}`", path.GetTypeName())
+        );
+      }
+
+      try {
+        return Value(fs::path(path.Get<std::string>()).filename().string());
+      } catch (const std::exception&) {
+        throw Grace::GraceException(
+          Grace::GraceException::Type::PathError,
+          "Invalid path"
+        );
+      }
+    }
+  }
+
+  throw Grace::GraceException(
+    Grace::GraceException::Type::InvalidType,
+    fmt::format("Expected `Path` for `std::path::get_file_name(path)` but got `{}`", args[0].GetTypeName())
+  );
+}
+
+static Value PathGetFileNameWithoutExtension(Args args)
+{
+  namespace fs = std::filesystem;
+
+  if (args[0].GetType() == Value::Type::Object) {
+    auto instance = args[0].GetObject()->GetAsInstance();
+  	if (instance != nullptr && instance->HasMember("data")) {
+      const auto& path = instance->LoadMember("data");
+      if (path.GetType() != Value::Type::String) {
+        throw Grace::GraceException(
+          Grace::GraceException::Type::InvalidType,
+          fmt::format("Expected type of member `data` of `std::path::Path` to be `String` but got `{}`", path.GetTypeName())
+        );
+      }
+
+      try {
+        return Value(fs::path(path.Get<std::string>()).stem().string());
+      } catch (const std::exception&) {
+        throw Grace::GraceException(
+          Grace::GraceException::Type::PathError,
+          "Invalid path"
+        );
+      }
+    }
+  }
+
+  throw Grace::GraceException(
+    Grace::GraceException::Type::InvalidType,
+    fmt::format("Expected `Path` for `std::path::get_file_name_without_extension(path)` but got `{}`", args[0].GetTypeName())
+  );
+}
+
+static Value PathGetDirectory(Args args)
+{
+  namespace fs = std::filesystem;
+
+  if (args[0].GetType() == Value::Type::Object) {
+    auto instance = args[0].GetObject()->GetAsInstance();
+  	if (instance != nullptr && instance->HasMember("data")) {
+      const auto& path = instance->LoadMember("data");
+      if (path.GetType() != Value::Type::String) {
+        throw Grace::GraceException(
+          Grace::GraceException::Type::InvalidType,
+          fmt::format("Expected type of member `data` of `std::path::Path` to be `String` but got `{}`", path.GetTypeName())
+        );
+      }
+
+      try {
+        return Value(fs::path(path.Get<std::string>()).parent_path().string());
+      } catch (const std::exception&) {
+        throw Grace::GraceException(
+          Grace::GraceException::Type::PathError,
+          "Invalid path"
+        );
+      }
+    }
+  }
+
+  throw Grace::GraceException(
+    Grace::GraceException::Type::InvalidType,
+    fmt::format("Expected `Path` for `std::path::get_directory(path)` but got `{}`", args[0].GetTypeName())
+  );
+}
+
+static Value PathCombine(Args args)
+{
+  namespace fs = std::filesystem;
+
+  if (args[0].GetType() == Value::Type::Object) {
+    auto instance = args[0].GetObject()->GetAsInstance();
+  	if (instance != nullptr && instance->HasMember("data")) {
+      const auto& path = instance->LoadMember("data");
+      if (path.GetType() != Value::Type::String) {
+        throw Grace::GraceException(
+          Grace::GraceException::Type::InvalidType,
+          fmt::format("Expected type of member `data` of `std::path::Path` to be `String` but got `{}`", path.GetTypeName())
+        );
+      }
+
+      if (args[1].GetType() == Value::Type::String) {
+        return Value((fs::path(path.Get<std::string>()) / args[1].Get<std::string>()).string());
+      } else if (args[1].GetType() == Value::Type::Object) {
+        if (auto list = args[1].GetObject()->GetAsList()) {
+          fs::path base(path.Get<std::string>());
+
+          for (std::size_t i = 0; i < list->Length(); i++) {
+            const auto& p = (*list)[i];
+            if (p.GetType() != Value::Type::String) {
+              throw Grace::GraceException(
+                Grace::GraceException::Type::InvalidType,
+                fmt::format("Expected `String` or all elements of `additions` in `std::path::combine(path, additions)` but got `{}` at position {}", p.GetTypeName(), i)
+              );
+            }
+
+            base /= p.Get<std::string>();
+          }
+
+          return Value(base.string());
+        }
+      }
+
+      throw Grace::GraceException(
+        Grace::GraceException::Type::InvalidType,
+        fmt::format("Expected `String` or `List` for `std::path::combine(path, additions)` but got `{}`", args[1].GetTypeName())
+      );
+    }
+  }
+
+  throw Grace::GraceException(
+    Grace::GraceException::Type::InvalidType,
+    fmt::format("Expected `Path` for `std::path::combine(path)` but got `{}`", args[0].GetTypeName())
+  );
+}
+
+static Value PathExists(Args args)
+{
+  namespace fs = std::filesystem;
+
+  if (args[0].GetType() == Value::Type::Object) {
+    auto instance = args[0].GetObject()->GetAsInstance();
+  	if (instance != nullptr && instance->HasMember("data")) {
+      const auto& path = instance->LoadMember("data");
+      if (path.GetType() != Value::Type::String) {
+        throw Grace::GraceException(
+          Grace::GraceException::Type::InvalidType,
+          fmt::format("Expected type of member `data` of `std::path::Path` to be `String` but got `{}`", path.GetTypeName())
+        );
+      }
+
+      return Value(fs::exists(path.Get<std::string>()));
+    }
+  }
+
+  throw Grace::GraceException(
+    Grace::GraceException::Type::InvalidType,
+    fmt::format("Expected `Path` for `std::path::exists(path)` but got `{}`", args[0].GetTypeName())
+  );
 }

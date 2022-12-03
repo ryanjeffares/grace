@@ -13,3 +13,7 @@ end
 func export split(this String s, final separator: String) :: List:
   return __NATIVE_STRING_SPLIT(s, separator);
 end
+
+func export substring(this String string, start: Int, length: Int) :: String:
+  return __NATIVE_STRING_SUBSTRING(string, start, length);
+end

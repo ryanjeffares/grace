@@ -50,6 +50,7 @@ namespace Grace
         LibraryLoadFailure,
         MemberNotFound,
         NamespaceNotFound,
+        PathError,
         ThrownException,
       };
 
@@ -149,6 +150,7 @@ struct fmt::formatter<Grace::GraceException::Type> : fmt::formatter<std::string_
       case GraceException::Type::LibraryLoadFailure: name = "LibraryLoadFailure"; break;
       case GraceException::Type::MemberNotFound: name = "MemberNotFound"; break;
       case GraceException::Type::NamespaceNotFound: name = "NamespaceNotFound"; break;
+      case GraceException::Type::PathError: name = "PathError"; break;
       case GraceException::Type::ThrownException: name = "ThrownException"; break;
     }
     return fmt::formatter<std::string_view>::format(name, context);

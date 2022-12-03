@@ -74,3 +74,6 @@ else()
     PRIVATE ${CMAKE_DL_LIBS} 
   )  
 endif()
+
+install(TARGETS grace RUNTIME DESTINATION bin)
+install(DIRECTORY ../std/ DESTINATION std/)
