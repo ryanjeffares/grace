@@ -182,6 +182,7 @@ static void IsObject(CompilerContext& compiler);
 static void Cast(CompilerContext& compiler);
 static void List(CompilerContext& compiler);
 static void Dictionary(CompilerContext& compiler);
+// static void Range(CompilerContext& compiler);
 static void Typename(CompilerContext& compiler);
 
 enum class LogLevel
@@ -508,6 +509,7 @@ static bool IsTypeIdent(Scanner::TokenType type)
     Scanner::TokenType::DictIdent,
     Scanner::TokenType::KeyValuePairIdent,
     Scanner::TokenType::ExceptionIdent,
+    // Scanner::TokenType::RangeIdent,
   };
   return std::any_of(typeIdents.begin(), typeIdents.end(), [type](Scanner::TokenType t) {
     return t == type;
@@ -528,6 +530,7 @@ static bool IsValidTypeAnnotation(const Scanner::TokenType& token)
     Scanner::TokenType::DictIdent,
     Scanner::TokenType::ExceptionIdent,
     Scanner::TokenType::KeyValuePairIdent,
+    // Scanner::TokenType::RangeIdent,
   };
   return std::any_of(valid.begin(), valid.end(), [token] (Scanner::TokenType t) {
     return t == token;
@@ -1500,6 +1503,7 @@ static std::unordered_map<Scanner::TokenType, std::int64_t> s_CastOps = {
   std::make_pair(Scanner::TokenType::CharIdent, 4),
   std::make_pair(Scanner::TokenType::ExceptionIdent, 5),
   std::make_pair(Scanner::TokenType::KeyValuePairIdent, 6),
+  // std::make_pair(Scanner::TokenType::RangeIdent, 7),
 };
 
 static void ForStatement(CompilerContext& compiler)
@@ -2956,6 +2960,9 @@ static void InstanceOf(CompilerContext& compiler)
     case Scanner::TokenType::KeyValuePairIdent:
       EmitConstant(std::int64_t(9));
       break;
+    // case Scanner::TokenType::RangeIdent:
+    //   EmitConstant(std::int64_t(10));
+    //   break;
     case Scanner::TokenType::Identifier:
       EmitConstant(std::int64_t(10));
       EmitConstant(compiler.current->GetString());
@@ -3069,6 +3076,10 @@ static void Cast(CompilerContext& compiler)
       EmitOp(VM::Ops::Cast, compiler.current->GetLine());
       break;
     }
+    // case Scanner::TokenType::RangeIdent: {
+    //   GRACE_NOT_IMPLEMENTED();
+    //   break;
+    // }
     default:
       GRACE_UNREACHABLE();
       break;
@@ -3149,7 +3160,7 @@ static void List(CompilerContext& compiler)
 
   if (numItems == 0) {
     if (parsedRangeExpression) {
-      EmitOp(VM::Ops::CreateRangeList, line);
+      EmitOp(VM::Ops::CreateRange, line);
     } else {
       EmitConstant(numItems);
       EmitOp(VM::Ops::CreateList, line);

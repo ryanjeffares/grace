@@ -33,6 +33,7 @@ namespace Grace
     Dictionary,
     Exception,
     KeyValuePair,
+    Range,
     Instance,
     Iterator,
   };
@@ -42,6 +43,7 @@ namespace Grace
   class GraceException;
   class GraceKeyValuePair;
   class GraceInstance;
+  class GraceRange;
   class GraceIterator;
 
   class GraceObject
@@ -103,6 +105,7 @@ namespace Grace
       GRACE_NODISCARD GRACE_INLINE virtual GraceKeyValuePair* GetAsKeyValuePair() { return nullptr; }
       GRACE_NODISCARD GRACE_INLINE virtual GraceInstance* GetAsInstance() { return nullptr; }
       GRACE_NODISCARD GRACE_INLINE virtual GraceIterator* GetAsIterator() { return nullptr; }
+      GRACE_NODISCARD GRACE_INLINE virtual GraceRange* GetAsRange() { return nullptr; }
 
 
       GRACE_NODISCARD static bool AnyMemberMatchesRecursive(const GraceObject* toFind, GraceObject* root, std::vector<GraceObject*>& visitedObjects)

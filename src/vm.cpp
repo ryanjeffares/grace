@@ -29,6 +29,7 @@
 #include "objects/grace_iterator.hpp"
 #include "objects/grace_dictionary.hpp"
 #include "objects/grace_list.hpp"
+#include "objects/grace_range.hpp"
 #include "objects/object_tracker.hpp"
 
 namespace Grace::VM
@@ -927,6 +928,10 @@ namespace Grace::VM
                 valueStack.emplace_back(Value::CreateObject<GraceKeyValuePair>(std::move(key), std::move(value)));
                 break;
               }
+              case 7: { // range
+                GRACE_NOT_IMPLEMENTED();
+                break;
+              }
               default:
                 GRACE_UNREACHABLE();
                 break;
@@ -1012,7 +1017,7 @@ namespace Grace::VM
             }
             break;
           }
-          case Ops::CreateRangeList: {
+          case Ops::CreateRange: {
             auto increment = Pop(valueStack);
             auto max = Pop(valueStack);
             auto min = Pop(valueStack);

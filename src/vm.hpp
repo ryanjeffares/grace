@@ -58,7 +58,7 @@ namespace Grace::VM
     CreateDictionary,
     CreateInstance,
     CreateList,
-    CreateRangeList,
+    CreateRange,
     DeclareLocal,
     DestroyHeldIterator,
     Divide,
@@ -319,7 +319,7 @@ struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
       case Ops::CreateDictionary: name = "Ops::CreateDictionary"; break;
       case Ops::CreateInstance: name = "Ops::CreateInstance"; break;
       case Ops::CreateList: name = "Ops::CreateList"; break;
-      case Ops::CreateRangeList: name = "Ops::CreateRangeList"; break;
+      case Ops::CreateRange: name = "Ops::CreateRange"; break;
       case Ops::DeclareLocal: name = "Ops::DeclareLocal"; break;
       case Ops::DestroyHeldIterator: name = "Ops::DestroyHeldIterator"; break;
       case Ops::Divide: name = "Ops::Divide"; break;

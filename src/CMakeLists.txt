@@ -12,6 +12,7 @@ if(GRACE_BUILD_TARGET MATCHES "dll")
     objects/grace_iterator.cpp
     objects/grace_keyvaluepair.cpp
     objects/grace_list.cpp
+    objects/grace_range.cpp
     objects/object_tracker.cpp
   )
 elseif(GRACE_BUILD_TARGET MATCHES "exe")
