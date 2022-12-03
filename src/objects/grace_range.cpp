@@ -17,10 +17,13 @@
 
 namespace Grace
 {
-  using namespace VM:
+  using namespace VM;
 
   GraceRange::GraceRange(Value&& min, Value&& max, Value&& increment)
-    : m_Min(std::move(min)), m_Max(std::move(max)), m_Increment(std::move(increment))
+    : GraceIterable{8}
+    , m_Min(std::move(min))
+    , m_Max(std::move(max))
+    , m_Increment(std::move(increment))
   {
     if (!m_Min.IsNumber()) {
       throw GraceException(
@@ -106,7 +109,7 @@ namespace Grace
     return true;
   }
 
-  void GraceRange::IncrementIterator(GraceRange::IteratorType& toIncrement) const
+  void GraceRange::IncrementIterator(GRACE_MAYBE_UNUSED GraceRange::IteratorType& toIncrement) const
   {
     if (m_Current == m_Data.size() - 1) {
 
