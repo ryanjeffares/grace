@@ -1,0 +1,7 @@
+func main():
+
+  for i in Range(1000000000):
+    println(i);
+  end
+
+end

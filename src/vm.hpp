@@ -88,7 +88,6 @@ namespace Grace::VM
     MultiplyAssign,
     NativeCall,
     Negate,
-    NoOp,
     Not,
     NotEqual,
     Or,
@@ -175,10 +174,10 @@ namespace Grace::VM
         m_FunctionLookup.at(m_LastFileNameHash).at(m_LastFunctionHash)->constantList[index] = value;
       }
 
-      GRACE_NODISCARD GRACE_INLINE static Ops GetLastOp()
+      GRACE_NODISCARD GRACE_INLINE static std::optional<Ops> GetLastOp()
       {
         const auto& opList = m_FunctionLookup.at(m_LastFileNameHash).at(m_LastFunctionHash)->opList;
-        return opList.empty() ? Ops::NoOp : opList.back().op;
+        return opList.empty() ? std::optional<Ops>{} : opList.back().op;
       }
 
       GRACE_NODISCARD GRACE_INLINE static const std::string& GetLastFunctionName()
@@ -347,7 +346,6 @@ struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
       case Ops::Multiply: name = "Ops::Multiply"; break;
       case Ops::NativeCall: name = "Ops::NativeCall"; break;
       case Ops::Negate: name = "Ops::Negate"; break;
-      case Ops::NoOp: name = "Ops::NoOp"; break;
       case Ops::Not: name = "Ops::Not"; break;
       case Ops::NotEqual: name = "Ops::NotEqual"; break;
       case Ops::Or: name = "Ops::Or"; break;
