@@ -198,7 +198,7 @@ static void CleanCyclesInternal()
     auto root = s_TrackedObjects[i];
 
     auto type = root->ObjectType();
-    if (type == GraceObjectType::Exception || type == GraceObjectType::Iterator) {
+    if (type == GraceObjectType::Exception || type == GraceObjectType::Iterator || type == GraceObjectType::Range) {
       // these objects don't have members/elements
       continue;
     }
@@ -245,7 +245,7 @@ static void CleanCyclesInternal()
     if (object->RefCount() > 1) continue;
       
     auto type = object->ObjectType();
-    if (type == GraceObjectType::Exception || type == GraceObjectType::Iterator) {
+    if (type == GraceObjectType::Exception || type == GraceObjectType::Iterator || type == GraceObjectType::Range) {
       // these objects don't have members/elements
       continue;
     }

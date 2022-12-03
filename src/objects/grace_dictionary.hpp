@@ -16,17 +16,17 @@
 #include <mutex>
 #include <vector>
 
-#include "grace_iterator.hpp"
+#include "grace_hashable.hpp"
 #include "grace_keyvaluepair.hpp"
 #include "../value.hpp"
 
 namespace Grace
 {
-  class GraceDictionary : public GraceIterable
+  class GraceDictionary : public GraceHashable
   {
     public:
 
-      GraceDictionary();
+      GraceDictionary() = default;
       GraceDictionary(GraceDictionary&&);
 
       ~GraceDictionary() override;
@@ -59,7 +59,7 @@ namespace Grace
 
       GRACE_NODISCARD IteratorType Begin() override;
       GRACE_NODISCARD IteratorType End() override;
-      void IncrementIterator(IteratorType& toIncrement) const override;
+      void IncrementIterator(IteratorType& toIncrement) override;
 
       GRACE_NODISCARD GRACE_INLINE std::size_t Size() const
       {
@@ -74,28 +74,15 @@ namespace Grace
       void Insert(VM::Value&& key, VM::Value&& value);
       GRACE_NODISCARD VM::Value Get(const VM::Value& key);
       GRACE_NODISCARD bool ContainsKey(const VM::Value& key);
-      GRACE_NODISCARD bool Remove(const VM::Value& key);
-
-      GRACE_NODISCARD std::vector<VM::Value> ToVector();
+      GRACE_NODISCARD bool Remove(const VM::Value& key);      
 
       GRACE_NODISCARD std::vector<GraceObject*> GetObjectMembers() const override;
       GRACE_NODISCARD bool AnyMemberMatches(const GraceObject* match) const override;
       void RemoveMember(GraceObject* object) override;
 
-    private:
+    protected:
 
-      void Rehash();
-
-      enum class CellState
-      {
-        NeverUsed, Tombstone, Occupied
-      };
-
-      std::size_t m_Size, m_Capacity;
-
-      std::vector<CellState> m_CellStates;
-      
-      std::hash<VM::Value> m_Hasher{};
+      void Rehash() override;
   };
 }
 

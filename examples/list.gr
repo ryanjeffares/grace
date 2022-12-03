@@ -64,11 +64,14 @@ func main():
 
   unsorted.append("Ryan");
   try:
+    println(unsorted);
     unsorted.sort();
   catch e:
     println(e);
   end
 
+  println(unsorted);
+  
   println("Popping " + unsorted.pop());
   println(unsorted);
 

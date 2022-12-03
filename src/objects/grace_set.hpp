@@ -12,18 +12,18 @@
 #ifndef GRACE_SET_HPP
 #define GRACE_SET_HPP
 
-#include "grace_iterator.hpp"
+#include "grace_hashable.hpp"
 
 namespace Grace
 {
-  class GraceSet : public GraceIterable
+  class GraceSet : public GraceHashable
   {
     public:
-      GraceSet();
+      GraceSet() = default;
       GraceSet(std::vector<VM::Value>&& data);
       GraceSet(VM::Value&& value);
 
-      ~GraceSet() override = default;
+      ~GraceSet() override;
 
       void Add(VM::Value&& value);
 
@@ -57,28 +57,16 @@ namespace Grace
 
       GRACE_NODISCARD IteratorType Begin() override;
       GRACE_NODISCARD IteratorType End() override;
-      void IncrementIterator(IteratorType& toIncrement) const override;
+      void IncrementIterator(IteratorType& toIncrement) override;
 
       GRACE_NODISCARD std::vector<GraceObject*> GetObjectMembers() const override;
       GRACE_NODISCARD bool AnyMemberMatches(const GraceObject* match) const override;
       void RemoveMember(GraceObject* object) override;
 
-    private:
-
-      GRACE_NODISCARD std::vector<VM::Value> ToVector() const;
-      void Rehash();
-
-      enum class CellState
-      {
-        NeverUsed, Tombstone, Occupied,
-      };
-
-      std::size_t m_Size, m_Capacity;
-
-      std::vector<CellState> m_CellStates;
-
-      std::hash<VM::Value> m_Hasher;
+    protected:
+      
+      void Rehash() override;
   };
-}
+} // namespace Grace
 
 #endif // GRACE_SET_HPP

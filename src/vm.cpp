@@ -802,6 +802,20 @@ namespace Grace::VM
                   "`Set` does not support multiple iterators"
                 );
               }
+            } else if (auto range = object->GetAsRange()) {
+              auto rangeIterator = Value::CreateObject<GraceIterator>(range, GraceIterator::IterableType::Range);
+              auto rangeIteratorObject = rangeIterator.GetObject()->GetAsIterator();
+              heldIterators.push(rangeIterator);
+
+              localsList[iteratorId + localsOffsets.top()] = rangeIteratorObject->IsAtEnd() ? Value() : rangeIteratorObject->Value();
+              constantCurrent++;
+
+              if (twoIterators) {
+                throw GraceException(
+                  GraceException::Type::InvalidCollectionOperation,
+                  "`Range` does not support multiple iterators"
+                );
+              }
             } else {
               // unreachable (?) due to IsIterable() check
               GRACE_ASSERT(false, "Object did not dynamic_cast to a valid iterable type");
@@ -842,7 +856,7 @@ namespace Grace::VM
                                                                                           : heldIterator->Value();
                 constantCurrent++;
               }
-            } else if (iterableType == GraceIterator::IterableType::Set){
+            } else if (iterableType == GraceIterator::IterableType::Set || iterableType == GraceIterator::IterableType::Range){
               heldIterator->Increment();
               localsList[iteratorVarId + localsOffsets.top()] = heldIterator->IsAtEnd() ? Value() : heldIterator->Value();
               constantCurrent++;
@@ -1059,29 +1073,7 @@ namespace Grace::VM
             auto increment = Pop(valueStack);
             auto max = Pop(valueStack);
             auto min = Pop(valueStack);
-
-            if (!min.IsNumber()) {
-              throw GraceException(
-                GraceException::Type::InvalidType,
-                fmt::format("All values in range expression must be numbers, got `{}` for min", min.GetTypeName())
-              );
-            }
-
-            if (!max.IsNumber()) {
-              throw GraceException(
-                GraceException::Type::InvalidType,
-                fmt::format("All values in range expression must be numbers, got `{}` for max", max.GetTypeName())
-              );
-            }
-
-            if (!increment.IsNumber()) {
-              throw GraceException(
-                GraceException::Type::InvalidType,
-                fmt::format("All values in range expression must be numbers, got `{}` for increment", increment.GetTypeName())
-              );
-            }
-
-            valueStack.push_back(Value::CreateObject<GraceList>(min, max, increment));
+            valueStack.push_back(Value::CreateObject<GraceRange>(std::move(min), std::move(max), std::move(increment)));
             break;
           }
           case Ops::CreateSet: {

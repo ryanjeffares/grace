@@ -35,6 +35,7 @@ namespace Grace
         List,
         Dictionary,
         Set,
+        Range,
       };
 
       using IteratorType = std::vector<VM::Value>::iterator;
@@ -137,7 +138,12 @@ namespace Grace
 
       virtual IteratorType Begin() = 0;
       virtual IteratorType End() = 0;
-      virtual void IncrementIterator(IteratorType&) const = 0;
+      virtual void IncrementIterator(IteratorType&) = 0;
+
+      virtual bool IsAtEnd(const IteratorType& iterator) const
+      {
+        return iterator == m_Data.end();
+      }
 
       void AddIterator(GraceIterator* iterator)
       {

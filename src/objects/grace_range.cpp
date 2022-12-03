@@ -9,71 +9,61 @@
  *  For licensing information, see grace.hpp
  */
 
+#include "grace_range.hpp"
+
+#include "grace_exception.hpp"
+
 #include <fmt/core.h>
 #include <fmt/format.h>
 
-#include "grace_range.hpp"
-#include "grace_exception.hpp"
+#include <cinttypes>
+
+static constexpr std::size_t s_BaseCapacity = 8;
 
 namespace Grace
 {
   using namespace VM;
 
   GraceRange::GraceRange(Value&& min, Value&& max, Value&& increment)
-    : GraceIterable{8}
-    , m_Min(std::move(min))
-    , m_Max(std::move(max))
-    , m_Increment(std::move(increment))
+    : GraceIterable{0}
+    , m_Min{std::move(min)}
+    , m_Max{std::move(max)}
+    , m_Increment{std::move(increment)}
   {
-    if (!m_Min.IsNumber()) {
+    if (m_Min.GetType() != Value::Type::Int) {
       throw GraceException(
         GraceException::Type::InvalidType,
-        fmt::format("All values in range expression must be numbers, got `{}` for min", m_Min.GetTypeName())
+        fmt::format("All values in range expression must be `Ints`, got `{}` for min", m_Min.GetTypeName())
       );
     }
 
-    if (!m_Max.IsNumber()) {
+    if (m_Max.GetType() != Value::Type::Int) {
       throw GraceException(
         GraceException::Type::InvalidType,
-        fmt::format("All values in range expression must be numbers, got `{}` for max", m_Max.GetTypeName())
+        fmt::format("All values in range expression must be `Ints`, got `{}` for max", m_Max.GetTypeName())
       );
     }
 
-    if (!m_Increment.IsNumber()) {
+    if (m_Increment.GetType() != Value::Type::Int) {
       throw GraceException(
         GraceException::Type::InvalidType,
-        fmt::format("All values in range expression must be numbers, got `{}` for increment", increment.GetTypeName())
+        fmt::format("All values in range expression must be `Ints`, got `{}` for increment", m_Increment.GetTypeName())
       );
     }
 
-    bool useDouble = m_Min.GetType() == Value::Type::Double || max.GetType() == Value::Type::Double || m_Increment.GetType() == Value::Type::Double;
+    auto minVal = m_Min.Get<std::int64_t>();
+    auto maxVal = m_Max.Get<std::int64_t>();
+    auto incVal = m_Increment.Get<std::int64_t>();
 
-    if (useDouble) {
-      auto minVal = m_Min.GetType() == Value::Type::Double ? m_Min.Get<double>() : static_cast<double>(m_Min.Get<std::int64_t>());
-      auto maxVal = m_Max.GetType() == Value::Type::Double ? m_Max.Get<double>() : static_cast<double>(m_Max.Get<std::int64_t>());
-      auto incVal = m_Increment.GetType() == Value::Type::Double ? m_Increment.Get<double>() : static_cast<double>(m_Increment.Get<std::int64_t>());
+    m_Direction = maxVal > minVal;
 
-      auto numElements = static_cast<std::size_t>(maxVal / incVal);
-      auto vecSize = numElements < 8 ? numElements : 8;
+    auto delta = static_cast<std::size_t>(std::llabs(maxVal - minVal));
+    auto size = delta < 8 ? delta : 8;
 
-      m_Data.reserve(vecSize);
-      for (auto i = 0; i < vecSize; i++) {
-        m_Data.emplace_back(minVal);
-        minVal += incVal;
-      }
-    } else {
-      auto minVal = m_Min.Get<std::int64_t>();
-      auto maxVal = m_Max.Get<std::int64_t>();
-      auto incVal = m_Increment.Get<std::int64_t>();
-
-      auto numElements = static_cast<std::size_t>(maxVal / incVal);
-      auto vecSize = numElements < 8 ? numElements : 8;
-
-      m_Data.reserve(vecSize);
-      for (auto i = 0; i < vecSize; i++) {
-        m_Data.emplace_back(minVal);
-        minVal += incVal;
-      }
+    m_Data.reserve(size);
+    for (std::size_t i = 0; i < size; i++) {
+      m_Data.emplace_back(minVal);
+      minVal += incVal;
     }
   }
 
@@ -84,7 +74,7 @@ namespace Grace
 
   void GraceRange::DebugPrint() const
   {
-    fmt::print("Range: {}, current {}\n", ToString(), m_Current);
+    fmt::print("Range: {}, current {}\n", ToString(), m_Data[m_Current]);
   }
 
   void GraceRange::Print(bool err) const
@@ -109,12 +99,24 @@ namespace Grace
     return true;
   }
 
-  void GraceRange::IncrementIterator(GRACE_MAYBE_UNUSED GraceRange::IteratorType& toIncrement) const
+  void GraceRange::IncrementIterator(IteratorType& toIncrement)
   {
     if (m_Current == m_Data.size() - 1) {
-
+      m_Current = 0;
+      auto lastValue = toIncrement->Get<std::int64_t>();
+      for (std::size_t i = 0; i < m_Data.size(); i++) {
+        auto curr = lastValue + m_Increment.Get<std::int64_t>() * static_cast<std::int64_t>(i);
+        m_Data[i] = curr;
+      }
+      toIncrement = m_Data.begin();
     } else {
-
+      m_Current++;
+      toIncrement++;
     }
+  }
+
+  bool GraceRange::IsAtEnd(GRACE_MAYBE_UNUSED const IteratorType& iterator) const
+  {
+    return m_Direction ? m_Data[m_Current] >= m_Max : m_Data[m_Current] <= m_Max;
   }
 }

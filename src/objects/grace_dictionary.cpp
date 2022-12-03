@@ -15,35 +15,19 @@
 #include "grace_dictionary.hpp"
 #include "grace_exception.hpp"
 
-static constexpr std::size_t s_InitialCapacity = 8;
-static constexpr float s_GrowFactor = 0.75f;
-
 namespace Grace
 {
-  GraceDictionary::GraceDictionary()
-    : GraceIterable{s_InitialCapacity}
-    , m_Size{0}
-    , m_Capacity{s_InitialCapacity}
-    , m_CellStates{m_Capacity, CellState::NeverUsed}
-  {
-    
-  }
-
   GraceDictionary::GraceDictionary(GraceDictionary&& other)
-    : GraceIterable{s_InitialCapacity}
-    , m_Size{other.m_Size}
-    , m_Capacity{other.m_Capacity}
-    , m_CellStates{std::move(other.m_CellStates)}
   {
+    m_CellStates = std::move(other.m_CellStates);
+    m_Data = std::move(other.m_Data);
     other.m_Size = 0;
     other.m_Capacity = 0;
   }
 
   GraceDictionary::~GraceDictionary()
   {
-    for (auto it : m_ActiveIterators) {
-      it->Invalidate();
-    }
+    InvalidateIterators();
   }
 
   void GraceDictionary::DebugPrint() const
@@ -99,7 +83,7 @@ namespace Grace
     return m_Data.end();
   }
 
-  void GraceDictionary::IncrementIterator(IteratorType& toIncrement) const
+  void GraceDictionary::IncrementIterator(IteratorType& toIncrement)
   {
     GRACE_ASSERT(toIncrement != m_Data.end(), "Iterator already at end");
     do {
@@ -253,17 +237,6 @@ namespace Grace
 
     GRACE_UNREACHABLE();
     return false;
-  }
-
-  std::vector<VM::Value> GraceDictionary::ToVector()
-  {
-    std::vector<VM::Value> res;
-    res.reserve(m_Size);
-    for (const auto& value : m_Data) {
-      if (value.GetType() == VM::Value::Type::Null) continue;
-      res.push_back(value);
-    }
-    return res;
   }
 
   GRACE_NODISCARD std::vector<GraceObject*> GraceDictionary::GetObjectMembers() const

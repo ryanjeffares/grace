@@ -572,7 +572,12 @@ static bool IsLiteral(Scanner::TokenType token)
   };
   return std::any_of(literalTypes.begin(), literalTypes.end(), [token](Scanner::TokenType t) {
     return t == token;
-    });
+  });
+}
+
+static bool IsNumber(Scanner::TokenType token)
+{
+  return token == Scanner::TokenType::Integer || token == Scanner::TokenType::Double;
 }
 
 static std::optional<std::string> TryParseChar(const Scanner::Token& token, char& outValue)
@@ -1227,7 +1232,6 @@ static void VarDeclaration(CompilerContext& compiler, bool isFinal)
   auto line = nameToken.GetLine();
 
   auto localId = static_cast<std::int64_t>(compiler.locals.size());
-  compiler.locals.emplace_back(std::move(localName), isFinal, false, localId);
   EmitOp(VM::Ops::DeclareLocal, line);
 
   if (Match(Scanner::TokenType::Equal, compiler)) {
@@ -1245,6 +1249,7 @@ static void VarDeclaration(CompilerContext& compiler, bool isFinal)
     }
   }
 
+  compiler.locals.emplace_back(std::move(localName), isFinal, false, localId);
   Consume(Scanner::TokenType::Semicolon, fmt::format("Expected ';' after `{}` declaration", diagnosticName), compiler);
 }
 
@@ -1284,18 +1289,29 @@ static void ConstDeclaration(CompilerContext& compiler)
     MessageAtCurrent("Must assign to `const` upon declaration", LogLevel::Error, compiler);
     return;
   }
+  
+  bool isNegativeNumber = false;
+  std::optional<Scanner::Token> valueToken{};
 
-  if (!IsLiteral(compiler.current->GetType())) {
-    MessageAtCurrent("Must assign a primitive literal value to `const`", LogLevel::Error, compiler);
-    return;
+  if (IsLiteral(compiler.current->GetType())) {
+    valueToken = *compiler.current;
+    Advance(compiler);    
+  } else {
+    if (Match(Scanner::TokenType::Minus, compiler)) {
+      if (IsNumber(compiler.current->GetType())) {
+        valueToken = *compiler.current;
+        isNegativeNumber = true;
+        Advance(compiler);
+      } else {
+        MessageAtCurrent(fmt::format("Cannot negate `{}`", compiler.current->GetType()), LogLevel::Error, compiler);
+        return;
+      }
+    }
   }
-
-  auto valueToken = *compiler.current;
-  Advance(compiler);
 
   auto fullFilePath = compiler.fullPath.string();
 
-  switch (valueToken.GetType()) {
+  switch (valueToken->GetType()) {
     case Scanner::TokenType::True:
       s_FileConstantsLookup[fullFilePath][constantName] = {VM::Value(true), isExport};
       break;
@@ -1304,9 +1320,9 @@ static void ConstDeclaration(CompilerContext& compiler)
       break;
     case Scanner::TokenType::Integer: {
       std::int64_t value;
-      auto result = TryParseInt(valueToken, value);
+      auto result = isNegativeNumber ? TryParseInt(*valueToken, value, 10, -1) : TryParseInt(*valueToken, value);
       if (result) {
-        Message(valueToken, fmt::format("Token could not be parsed as an int: {}", *result), LogLevel::Error, compiler);
+        Message(*valueToken, fmt::format("Token could not be parsed as an int: {}", *result), LogLevel::Error, compiler);
         return;
       }
       s_FileConstantsLookup[fullFilePath][constantName] = {VM::Value(value), isExport};
@@ -1314,19 +1330,19 @@ static void ConstDeclaration(CompilerContext& compiler)
     }
     case Scanner::TokenType::Double: {
       double value;
-      auto result = TryParseDouble(valueToken, value);
+      auto result = TryParseDouble(*valueToken, value);
       if (result) {
-        Message(valueToken, fmt::format("Token could not be parsed as an float: {}", result->what()), LogLevel::Error, compiler);
+        Message(*valueToken, fmt::format("Token could not be parsed as an float: {}", result->what()), LogLevel::Error, compiler);
         return;
       }
-      s_FileConstantsLookup[fullFilePath][constantName] = {VM::Value(value), isExport};
+      s_FileConstantsLookup[fullFilePath][constantName] = {VM::Value(value * static_cast<std::int64_t>(isNegativeNumber ? -1 : 1)), isExport};
       break;
     }
     case Scanner::TokenType::String: {
       std::string res;
-      auto err = TryParseString(valueToken, res);
+      auto err = TryParseString(*valueToken, res);
       if (err) {
-        Message(valueToken, fmt::format("Token could not be parsed as string: {}", *err), LogLevel::Error, compiler);
+        Message(*valueToken, fmt::format("Token could not be parsed as string: {}", *err), LogLevel::Error, compiler);
         return;
       }
       s_FileConstantsLookup[fullFilePath][constantName] = {VM::Value(res), isExport};
@@ -1334,9 +1350,9 @@ static void ConstDeclaration(CompilerContext& compiler)
     }
     case Scanner::TokenType::Char: {
       char res;
-      auto err = TryParseChar(valueToken, res);
+      auto err = TryParseChar(*valueToken, res);
       if (err) {
-        Message(valueToken, fmt::format("Token could not be parsed as char: {}", *err), LogLevel::Error, compiler);
+        Message(*valueToken, fmt::format("Token could not be parsed as char: {}", *err), LogLevel::Error, compiler);
         return;
       }
       s_FileConstantsLookup[fullFilePath][constantName] = {VM::Value(res), isExport};

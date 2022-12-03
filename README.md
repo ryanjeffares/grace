@@ -47,14 +47,16 @@ This will build the `grace` executable, which you can add to your path or move s
 * TEST THE CYCLE CLEANER
 * Lambdas 
 * Global const fields
-  * Allow expressions containing literals and other constants
+  * Allow expressions
   * Improve error reporting
+  * STD imports are broken?
 * Allow importing files that require going higher up the folder tree
 * Expand standard library
 * Dynamic library loading
   * This is in, but need to handle pointer types for things that aren't strings
   * And also pointer return types for strings and others...
 * Ability to get relative path from a Grace file
+  * Path library in std?
 * Default function parameter values
 * Install process 
 * Tests 
@@ -63,7 +65,6 @@ This will build the `grace` executable, which you can add to your path or move s
 * Reduce code duplication in compiler, general clean up
 * Ensure use of backticks and quotes is consistent in error messages
 * Think about how `char`s should behave in binary operations
-* Should `5 += 0.5` turn the LHS into a `Float` ?
 
 ## Long Term Goals 
 * Optional type annotations for use by a static analyzer

@@ -13,25 +13,9 @@
 #include "grace_list.hpp"
 #include "grace_dictionary.hpp"
 
-static constexpr std::size_t s_InitialCapacity = 8;
-static constexpr float s_GrowFactor = 0.75f;
-
 namespace Grace
 {
-  GraceSet::GraceSet()
-    : GraceIterable{s_InitialCapacity}
-    , m_Size{0}
-    , m_Capacity{s_InitialCapacity}
-    , m_CellStates{m_Capacity, CellState::NeverUsed}
-  {
-
-  }
-
   GraceSet::GraceSet(std::vector<VM::Value>&& data)
-    : GraceIterable{s_InitialCapacity}
-    , m_Size{0}
-    , m_Capacity{s_InitialCapacity}
-    , m_CellStates{m_Capacity, CellState::NeverUsed}
   {
     for (auto& value : data) {
       Add(std::move(value));
@@ -39,10 +23,6 @@ namespace Grace
   }
 
   GraceSet::GraceSet(VM::Value&& value)
-    : GraceIterable{s_InitialCapacity}
-    , m_Size{0}
-    , m_Capacity{s_InitialCapacity}
-    , m_CellStates{s_InitialCapacity, CellState::NeverUsed}
   {
     switch (value.GetType()) {
       case VM::Value::Type::Bool:
@@ -94,6 +74,11 @@ namespace Grace
         }
         break;
     }
+  }
+
+  GraceSet::~GraceSet()
+  {
+    InvalidateIterators();
   }
 
   void GraceSet::Add(VM::Value&& value)
@@ -270,7 +255,7 @@ namespace Grace
     return m_Data.end();
   }
 
-  void GraceSet::IncrementIterator(IteratorType& toIncrement) const
+  void GraceSet::IncrementIterator(IteratorType& toIncrement)
   {
     GRACE_ASSERT(toIncrement != m_Data.end(), "Iterator already at end");
     do {
@@ -307,20 +292,6 @@ namespace Grace
         m_CellStates[i] = CellState::Tombstone;
       }
     }
-  }
-
-  std::vector<VM::Value> GraceSet::ToVector() const
-  {
-    std::vector<VM::Value> res;
-    res.reserve(m_Size);
-
-    for (auto& value : m_Data) {
-      if (value.GetType() != VM::Value::Type::Null) {
-        res.push_back(value);
-      }
-    }
-
-    return res;
   }
 
   void GraceSet::Rehash()

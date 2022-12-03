@@ -1,3 +1,6 @@
+const export MAX: Int =  9223372036854775807;
+const export MIN: Int = -9223372036854775808;
+
 func export sqrt(this Int i) :: Int:
   return __NATIVE_SQRT_INT(i);
 end

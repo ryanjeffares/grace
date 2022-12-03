@@ -46,7 +46,7 @@ namespace Grace
 
   bool GraceIterator::IsAtEnd() const
   {
-    return m_Iterator == m_Iterable->End();
+    return m_Iterable->IsAtEnd(m_Iterator);
   }
 
   void GraceIterator::Print(bool err) const

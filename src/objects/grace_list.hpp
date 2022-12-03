@@ -71,7 +71,7 @@ namespace Grace
         return m_Data.end();
       }
 
-      GRACE_INLINE void IncrementIterator(IteratorType& toIncrement) const override
+      GRACE_INLINE void IncrementIterator(IteratorType& toIncrement) override
       {
         toIncrement++;
       }
