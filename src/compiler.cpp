@@ -1820,6 +1820,9 @@ static void IfStatement(CompilerContext& compiler)
 
       if (Match(Scanner::TokenType::Colon, compiler)) {
         elseBlockFound = true;
+        if (Match(Scanner::TokenType::End, compiler)) {
+          break;  // Declaration() will fail if this block is empty
+        }
       } else if (Check(Scanner::TokenType::If, compiler)) {
         elseIfBlockFound = true;
         needsElseBlock = false;
@@ -2640,10 +2643,14 @@ static void Primary(bool canAssign, CompilerContext& compiler)
     Expression(canAssign, compiler);
   }
 
-  if (Match(Scanner::TokenType::Dot, compiler)) {
-    Dot(canAssign, compiler);
-  } else if (Match(Scanner::TokenType::LeftSquareParen, compiler)) {
-    Subscript(canAssign, compiler);
+  while (true) {
+    if (Match(Scanner::TokenType::Dot, compiler)) {
+      Dot(canAssign, compiler);
+    } else if (Match(Scanner::TokenType::LeftSquareParen, compiler)) {
+      Subscript(canAssign, compiler);
+    } else {
+      break;
+    }
   }
 }
 
