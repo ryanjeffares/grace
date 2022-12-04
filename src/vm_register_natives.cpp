@@ -418,9 +418,7 @@ static Value ListSortDescending(Args args)
 static Value ListSorted(Args args)
 {
   if (auto list = args[0].GetObject()->GetAsList()) {
-    auto newList = Value::CreateObject<Grace::GraceList>(*list);
-    newList.GetObject()->GetAsList()->Sort();
-    return newList;
+    return list->Sorted();
   }
 
   throw Grace::GraceException(
@@ -432,9 +430,7 @@ static Value ListSorted(Args args)
 static Value ListSortedDescending(Args args)
 {
   if (auto list = args[0].GetObject()->GetAsList()) {
-    auto newList = Value::CreateObject<Grace::GraceList>(*list);
-    newList.GetObject()->GetAsList()->SortDescending();
-    return newList;
+    return list->SortedDescending();
   }
 
   throw Grace::GraceException(

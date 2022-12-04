@@ -1041,12 +1041,15 @@ namespace Grace::VM
               valueStack.push_back(Value::CreateObject<GraceDictionary>());
               break;
             }
-            GraceDictionary dict;
+            
+            auto value = Value::CreateObject<GraceDictionary>();
+            auto dict = value.GetObject()->GetAsDictionary();
+
             for (std::int64_t i = 0; i < numItems; i++) {
-              auto [key, value] = PopLastTwo(valueStack);
-              dict.Insert(std::move(key), std::move(value));
+              auto [key, val] = PopLastTwo(valueStack);
+              dict->Insert(std::move(key), std::move(val));
             }
-            valueStack.push_back(Value::CreateObject<GraceDictionary>(std::move(dict)));
+            valueStack.push_back(std::move(value));
             break;
           }
           case Ops::CreateList: {

@@ -40,6 +40,7 @@ namespace Grace
 
       using IteratorType = std::vector<VM::Value>::iterator;
 
+      // Iterators are not default constructable, and must be given an Iterable and a Type.
       GraceIterator() = delete;
       GraceIterator(GraceIterable* iterable, IterableType type);
 
@@ -136,6 +137,11 @@ namespace Grace
 
       }
 
+      ~GraceIterable() override
+      {
+        InvalidateIterators();
+      }
+
       virtual IteratorType Begin() = 0;
       virtual IteratorType End() = 0;
       virtual void IncrementIterator(IteratorType&) = 0;
@@ -163,6 +169,7 @@ namespace Grace
       }
       
     protected:
+
       void InvalidateIterators()
       {
         for (auto it : m_ActiveIterators) {

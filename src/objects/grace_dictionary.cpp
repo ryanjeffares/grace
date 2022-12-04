@@ -17,19 +17,6 @@
 
 namespace Grace
 {
-  GraceDictionary::GraceDictionary(GraceDictionary&& other)
-  {
-    m_CellStates = std::move(other.m_CellStates);
-    m_Data = std::move(other.m_Data);
-    other.m_Size = 0;
-    other.m_Capacity = 0;
-  }
-
-  GraceDictionary::~GraceDictionary()
-  {
-    InvalidateIterators();
-  }
-
   void GraceDictionary::DebugPrint() const
   {
     fmt::print("Dictionary: {}\n", ToString());

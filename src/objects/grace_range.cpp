@@ -55,6 +55,7 @@ namespace Grace
     auto maxVal = m_Max.Get<std::int64_t>();
     auto incVal = m_Increment.Get<std::int64_t>();
 
+    m_Current = minVal;
     m_Direction = maxVal > minVal;
 
     auto delta = static_cast<std::size_t>(std::llabs(maxVal - minVal));
@@ -67,14 +68,9 @@ namespace Grace
     }
   }
 
-  GraceRange::~GraceRange()
-  {
-    InvalidateIterators();
-  }
-
   void GraceRange::DebugPrint() const
   {
-    fmt::print("Range: {}, current {}\n", ToString(), m_Data[m_Current]);
+    fmt::print("Range: {}, current {}\n", ToString(), m_Current);
   }
 
   void GraceRange::Print(bool err) const
@@ -101,22 +97,24 @@ namespace Grace
 
   void GraceRange::IncrementIterator(IteratorType& toIncrement)
   {
-    if (m_Current == m_Data.size() - 1) {
-      m_Current = 0;
-      auto lastValue = toIncrement->Get<std::int64_t>();
-      for (std::size_t i = 0; i < m_Data.size(); i++) {
-        auto curr = lastValue + m_Increment.Get<std::int64_t>() * static_cast<std::int64_t>(i);
-        m_Data[i] = curr;
-      }
-      toIncrement = m_Data.begin();
-    } else {
-      m_Current++;
-      toIncrement++;
-    }
-  }
+    toIncrement++;
 
-  bool GraceRange::IsAtEnd(GRACE_MAYBE_UNUSED const IteratorType& iterator) const
-  {
-    return m_Direction ? m_Data[m_Current] >= m_Max : m_Data[m_Current] <= m_Max;
+    if (toIncrement == m_Data.end()) {
+      if (m_Direction ? m_Data.back() < m_Max : m_Data.back() > m_Max) {
+        // not at end yet, refill vector
+        auto inc = m_Increment.Get<std::int64_t>();
+        auto next = m_Data.back().Get<std::int64_t>() + inc;
+
+        for (std::size_t i = 0; i < m_Data.size(); i++) {
+          m_Data[i] = next + inc * static_cast<std::int64_t>(i);
+        }
+
+        toIncrement = m_Data.begin();
+      }
+    }
+
+    if (m_Direction ? *toIncrement >= m_Max : *toIncrement <= m_Max) {
+      toIncrement = m_Data.end();
+    }
   }
 }

@@ -26,12 +26,6 @@ namespace Grace
 
   }
 
-  GraceList::GraceList(const GraceList& other)
-    : GraceIterable{other.m_Data}
-  {
-
-  }
-
   GraceList::GraceList(const Value& value)
     : GraceIterable{0}
   {
@@ -57,43 +51,6 @@ namespace Grace
     for (std::size_t i = 0; i < static_cast<std::size_t>(multiple); i++) {
       m_Data.insert(m_Data.begin() + (i * other.m_Data.size()), other.m_Data.begin(), other.m_Data.end());
     }    
-  }
-
-  GraceList::GraceList(const Value& min, const Value& max, const Value& increment)
-    : GraceIterable{0}
-  {
-    bool useDouble = min.GetType() == Value::Type::Double || max.GetType() == Value::Type::Double || increment.GetType() == Value::Type::Double;
-
-    if (useDouble) {
-      auto minVal = min.GetType() == Value::Type::Double ? min.Get<double>() : static_cast<double>(min.Get<std::int64_t>());
-      auto maxVal = max.GetType() == Value::Type::Double ? max.Get<double>() : static_cast<double>(max.Get<std::int64_t>());
-      auto incVal = increment.GetType() == Value::Type::Double ? increment.Get<double>() : static_cast<double>(increment.Get<std::int64_t>());
-      auto capacity = maxVal / incVal;
-
-      m_Data.reserve(static_cast<std::size_t>(capacity) + 1); // add 1 in case of rounding
-
-      for (auto i = minVal; i < maxVal; i += incVal) {
-        m_Data.emplace_back(i);
-      }
-    } else {
-      auto minVal = min.Get<std::int64_t>();
-      auto maxVal = max.Get<std::int64_t>();
-      auto incVal = increment.Get<std::int64_t>();
-      auto capacity = maxVal / incVal;
-
-      m_Data.reserve(capacity);
-
-      for (auto i = minVal; i < maxVal; i += incVal) {
-        m_Data.emplace_back(i);
-      }
-    }
-  }
-
-  GraceList::~GraceList()
-  {
-    for (auto it : m_ActiveIterators) {
-      it->Invalidate();
-    }
   }
 
   void GraceList::Append(VM::Value&& value)
@@ -155,6 +112,20 @@ namespace Grace
   {
     std::sort(m_Data.begin(), m_Data.end(), std::greater<Value>());
     InvalidateIterators();
+  }
+
+  Value GraceList::Sorted() const
+  {
+    auto data = m_Data;  // copy
+    std::sort(data.begin(), data.end());
+    return Value::CreateObject<GraceList>(std::move(data));
+  }
+
+  Value GraceList::SortedDescending() const
+  {
+    auto data = m_Data;  // copy
+    std::sort(data.begin(), data.end(), std::greater<Value>());
+    return Value::CreateObject<GraceList>(std::move(data));
   }
 
   void GraceList::DebugPrint() const

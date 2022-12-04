@@ -76,11 +76,6 @@ namespace Grace
     }
   }
 
-  GraceSet::~GraceSet()
-  {
-    InvalidateIterators();
-  }
-
   void GraceSet::Add(VM::Value&& value)
   {
     auto fullness = static_cast<float>(m_Size) / static_cast<float>(m_Capacity);
@@ -282,6 +277,13 @@ namespace Grace
     return std::any_of(m_Data.begin(), m_Data.end(), [match] (const VM::Value& value) {
       return value.GetObject() == match;
     });
+  }
+
+  bool GraceSet::OnlyReferenceIsSelf() const
+  {
+    return static_cast<std::uint32_t>(std::count_if(m_Data.begin(), m_Data.end(), [this](const VM::Value& value) {
+      return value.GetObject() == this;
+    })) == m_RefCount;
   }
 
   void GraceSet::RemoveMember(GraceObject* object)

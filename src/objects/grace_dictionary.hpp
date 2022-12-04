@@ -27,9 +27,7 @@ namespace Grace
     public:
 
       GraceDictionary() = default;
-      GraceDictionary(GraceDictionary&&);
-
-      ~GraceDictionary() override;
+      ~GraceDictionary() override = default;
 
       void DebugPrint() const override;
       void Print(bool err) const override;

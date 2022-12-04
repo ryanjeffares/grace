@@ -66,12 +66,6 @@ namespace Grace
 
       }
 
-      GraceException(GraceException&& other)
-        : m_Type(other.m_Type), m_Message(std::move(other.m_Message))
-      {
-
-      }
-
       ~GraceException() override = default;
 
       GRACE_NODISCARD const char* what() const noexcept override

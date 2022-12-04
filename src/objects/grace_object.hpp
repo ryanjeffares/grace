@@ -53,7 +53,11 @@ namespace Grace
     public:
 
       GraceObject() = default;
+
+      // GraceObjects should not be copyable/movable to avoid issues with reference counts.
+      // Objects that require a copy/move mechanism should be handle it through a function that returns the new object wrapped in a VM::Value
       GraceObject(const GraceObject&) = delete;
+      GraceObject(GraceObject&&) = delete;
 
       virtual ~GraceObject() = default;
 
@@ -82,24 +86,24 @@ namespace Grace
       // and I couldn't be bothered making them pure virtual and implementing them in every class
       GRACE_NODISCARD virtual bool AnyMemberMatches(GRACE_MAYBE_UNUSED const GraceObject* match) const
       {
-        GRACE_ASSERT(false, "AnyMemberMatches() should only be called on Lists, Dictionaries, and Instances");
+        GRACE_ASSERT(false, "AnyMemberMatches() should only be called on Lists, Dictionaries, Sets, and Instances");
         return false;
       }
 
       GRACE_NODISCARD virtual std::vector<GraceObject*> GetObjectMembers() const
       {
-        GRACE_ASSERT(false, "GetObjectMembers() should only be called on Lists, Dictionaries, and Instances");
+        GRACE_ASSERT(false, "GetObjectMembers() should only be called on Lists, Dictionaries, Sets, and Instances");
         return {};
       }
 
       virtual void RemoveMember(GRACE_MAYBE_UNUSED GraceObject* object)
       {
-        GRACE_ASSERT(false, "RemoveMember() should only be called on Lists, Dictionaries, and Instances");
+        GRACE_ASSERT(false, "RemoveMember() should only be called on Lists, Dictionaries, Sets,and Instances");
       }
 
       GRACE_NODISCARD virtual bool OnlyReferenceIsSelf() const
       {
-        GRACE_ASSERT(false, "OnlyReferenceIsSelf() should only be called on Lists and Instances");
+        GRACE_ASSERT(false, "OnlyReferenceIsSelf() should only be called on Lists, Sets, and Instances");
         return false;
       }
 

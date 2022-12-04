@@ -21,8 +21,8 @@ namespace Grace
   {
   public:
 
-	  GraceRange(VM::Value&& min, VM::Value&& max, VM::Value&& increment);
-	  ~GraceRange() override;
+	GraceRange(VM::Value&& min, VM::Value&& max, VM::Value&& increment);
+	~GraceRange() override = default;
 
     void DebugPrint() const override;
     void Print(bool err) const override;
@@ -61,12 +61,11 @@ namespace Grace
     }
 
     void IncrementIterator(IteratorType& toIncrement) override;
-    bool IsAtEnd(const IteratorType& iterator) const override;
     
   private:
     
     bool m_Direction;
-    std::size_t m_Current{0};
+    VM::Value m_Current;
     VM::Value m_Min, m_Max, m_Increment;    
   };
 }

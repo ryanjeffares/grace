@@ -23,7 +23,7 @@ namespace Grace
       GraceSet(std::vector<VM::Value>&& data);
       GraceSet(VM::Value&& value);
 
-      ~GraceSet() override;
+      ~GraceSet() override = default;
 
       void Add(VM::Value&& value);
 
@@ -65,6 +65,7 @@ namespace Grace
 
       GRACE_NODISCARD std::vector<GraceObject*> GetObjectMembers() const override;
       GRACE_NODISCARD bool AnyMemberMatches(const GraceObject* match) const override;
+      GRACE_NODISCARD bool OnlyReferenceIsSelf() const override;
       void RemoveMember(GraceObject* object) override;
 
     protected:

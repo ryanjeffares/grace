@@ -29,13 +29,13 @@ namespace Grace
       {
 
       }
-      GraceList(const GraceList& other);
+
       explicit GraceList(const VM::Value&);
       explicit GraceList(std::vector<VM::Value>&& items);
-      GraceList(const GraceList& other, std::int64_t multiple);
-      GraceList(const VM::Value& min, const VM::Value& max, const VM::Value& increment);
 
-      ~GraceList() override;
+      GraceList(const GraceList& other, std::int64_t multiple);
+
+      ~GraceList() override = default;
       
       template<VM::BuiltinGraceType T>
       GRACE_INLINE void Append(const T& value)
@@ -55,6 +55,8 @@ namespace Grace
 
       void Sort();
       void SortDescending();
+      VM::Value Sorted() const;
+      VM::Value SortedDescending() const;
 
       GRACE_NODISCARD GRACE_INLINE std::size_t Length() const
       {
