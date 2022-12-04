@@ -180,8 +180,11 @@ namespace Grace
   std::string GraceSet::ToString() const
   {
     std::string res = "{";
+    std::size_t count = 0;
     for (std::size_t i = 0; i < m_Data.size(); i++) {
       const auto& el = m_Data[i];
+      if (el.GetType() == VM::Value::Type::Null) continue;
+
       switch (el.GetType()) {
         case VM::Value::Type::Char:
           res.push_back('\'');
@@ -226,7 +229,7 @@ namespace Grace
           res.append(el.AsString());
           break;
       }
-      if (i < m_Data.size() - 1) {
+      if (count++ < m_Size - 1) {
         res.append(", ");
       }
     }

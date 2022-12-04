@@ -1,13 +1,11 @@
 func export exists(path: String) :: Bool:
-  if !instanceof(path, String):
-    throw("Expected argument for std::directory::exists(path) to be `String` but got `" + typename(path) + '`');
-  end
   return __NATIVE_DIRECTORY_EXISTS(path);
 end
 
 func export create(path: String) :: Bool:
-  if !instanceof(path, String):
-    throw("Expected argument for std::directory::create(path) to be `String` but got `" + typename(path) + '`');
-  end
   return __NATIVE_DIRECTORY_CREATE(path);
+end
+
+func export get_directories(path: String) :: Bool:
+  return __NATIVE_DIRECTORY_GET_DIRECTORIES(path);
 end

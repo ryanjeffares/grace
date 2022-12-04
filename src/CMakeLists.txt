@@ -76,4 +76,9 @@ else()
 endif()
 
 install(TARGETS grace RUNTIME DESTINATION bin)
-install(DIRECTORY ../std/ DESTINATION std/)
+
+if (MSVC)
+  install(DIRECTORY ../std/ DESTINATION std/)
+else()
+  install(DIRECTORY ../std/ DESTINATION share/grace/std)
+endif()

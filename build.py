@@ -39,6 +39,12 @@ if __name__ == "__main__":
         print(f'INFO: Building configuration: {config}\n')
         
         if args.install:
-            os.system(f'cmake --build build --config {config} --target install')
+            install_status = os.system(f'cmake --build build --config {config} --target install')
+            if install_status == 0:
+                print("\n\n=== INSTALLATION SUCCESSFUL ===\n\n")
+                if os.name == 'nt':
+                    print("To use grace, add grace's installation directory to your PATH and set the GRACE_STD_PATH environment variable. This is usually C:/Program Files (x86)/grace/bin and C:/Program Files (x86)/grace/std, but check the above log to see if it was different.")
+                else:
+                    print("To use grace, set the GRACE_STD_PATH environment variable in your shell config. This will be /usr/local/share/grace/std")
         else:
             os.system(f'cmake --build build --config {config}')        

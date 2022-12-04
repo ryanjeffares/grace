@@ -82,6 +82,7 @@ static Value SystemPlatform(GRACE_MAYBE_UNUSED Args args);
 
 static Value DirectoryExists(Args args);
 static Value DirectoryCreate(Args args);
+static Value DirectoryGetDirectories(Args args);
 
 static Value InteropLoadLibrary(Args args);
 static Value InteropDoCall(Args args);
@@ -170,6 +171,7 @@ void VM::RegisterNatives()
   // Directory functions
   m_NativeFunctions.emplace_back("__NATIVE_DIRECTORY_EXISTS", 1, &DirectoryExists);
   m_NativeFunctions.emplace_back("__NATIVE_DIRECTORY_CREATE", 1, &DirectoryCreate);
+  m_NativeFunctions.emplace_back("__NATIVE_DIRECTORY_GET_DIRECTORIES", 1, &DirectoryGetDirectories);
 
   // Interop functions
   m_NativeFunctions.emplace_back("__NATIVE_INTEROP_LOAD_LIBRARY", 1, &InteropLoadLibrary);
@@ -689,14 +691,14 @@ static Value SystemExit(Args args)
 static Value SystemRun(Args args)
 {
   if (args[0].GetType() == Value::Type::String) {
-    throw Grace::GraceException(
-      Grace::GraceException::Type::InvalidType,
-      fmt::format("Expected `String` for `std::system::run(command)` but got `{}`", args[0].GetTypeName())
-    );
+    auto res = std::system(args[0].Get<std::string>().c_str());
+    return Value(std::int64_t(res));
   }
 
-  auto res = std::system(args[0].Get<std::string>().c_str());
-  return Value(std::int64_t(res));
+  throw Grace::GraceException(
+    Grace::GraceException::Type::InvalidType,
+    fmt::format("Expected `String` for `std::system::run(command)` but got `{}`", args[0].GetTypeName())
+  );
 }
 
 static Value SystemPlatform(GRACE_MAYBE_UNUSED Args args)
@@ -744,6 +746,37 @@ static Value DirectoryCreate(Args args)
   const auto& path = args[0].Get<std::string>();
   auto result = std::filesystem::create_directories(path);
   return Value(result);
+}
+
+static Value DirectoryGetDirectories(Args args)
+{
+  namespace fs = std::filesystem;
+
+  if (args[0].GetType() == Value::Type::String) {
+    fs::path path(args[0].Get<std::string>());
+
+    if (!fs::is_directory(path)) {
+      throw Grace::GraceException(
+        Grace::GraceException::Type::PathError,
+        fmt::format("{} is not a directory", path.string())
+      );
+    }
+
+    auto res = Value::CreateObject<Grace::GraceList>();
+    auto list = res.GetObject()->GetAsList();
+    for (const auto& dir : fs::directory_iterator(path)) {
+      if (dir.is_directory()) {
+        list->Append(dir.path().string());
+      }
+    }
+
+    return res;
+  }
+
+  throw Grace::GraceException(
+    Grace::GraceException::Type::InvalidType,
+    fmt::format("Expected `String` for `std::directory::get_directories(path)` but got `{}`", args[0].GetTypeName())
+  );
 }
 
 static Value InteropLoadLibrary(Args args)
