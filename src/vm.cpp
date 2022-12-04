@@ -1264,10 +1264,18 @@ namespace Grace::VM
           }
 
         } else {
-          // exception unhandled, report the error and quit
-          RuntimeError(ge, line, callStack);
+          // exception unhandled, report the error, clean up and quit
+          RuntimeError(ge, line, callStack);          
           interpretResult = InterpretResult::RuntimeError;
-          break;
+
+          valueStack.clear();
+          localsList.clear();
+          while (!heldIterators.empty()) {
+            heldIterators.pop();
+          }
+
+          ObjectTracker::Finalise();
+          return interpretResult;
         }
       }
     }
