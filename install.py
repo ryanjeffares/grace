@@ -5,7 +5,7 @@ if __name__ == "__main__":
         os.mkdir('build')
 
     print('INFO: Generating CMake project\n')
-    os.system('cmake -DGRACE_BUILD_TARGET=exe-DCMAKE_BUILD_TYPE=Release -S . -B build')
+    os.system('cmake -DGRACE_BUILD_TARGET=exe -DCMAKE_BUILD_TYPE=Release -S . -B build')
     print()
     print('INFO: Building configuration\n')
 

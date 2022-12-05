@@ -21,13 +21,13 @@ namespace Grace
   using namespace VM;
 
   GraceList::GraceList(std::vector<Value>&& items)
-    : GraceIterable{std::move(items)}
+    : GraceIterable{ std::move(items) }
   {
 
   }
 
   GraceList::GraceList(const Value& value)
-    : GraceIterable{0}
+    : GraceIterable{ 0 }
   {
     if (value.GetType() == Value::Type::String) {
       for (const auto c : value.Get<std::string>()) {
@@ -45,17 +45,23 @@ namespace Grace
   }
 
   GraceList::GraceList(const GraceList& other, std::int64_t multiple)
-    : GraceIterable{0}
+    : GraceIterable{ 0 }
   {
     m_Data.reserve(other.m_Data.size() * multiple);
     for (std::size_t i = 0; i < static_cast<std::size_t>(multiple); i++) {
       m_Data.insert(m_Data.begin() + (i * other.m_Data.size()), other.m_Data.begin(), other.m_Data.end());
-    }    
+    }
   }
 
   void GraceList::Append(VM::Value&& value)
   {
     m_Data.push_back(std::forward<VM::Value>(value));
+    InvalidateIterators();
+  }
+
+  void GraceList::Append(const VM::Value& value)
+  {
+    m_Data.push_back(value);
     InvalidateIterators();
   }
 
@@ -72,7 +78,7 @@ namespace Grace
     InvalidateIterators();
   }
 
-  void GraceList::Append(const std::vector<Value>& items)
+  void GraceList::AppendRange(const std::vector<Value>& items)
   {
     m_Data.reserve(items.size());
     m_Data.insert(m_Data.end(), items.begin(), items.end());
@@ -92,6 +98,25 @@ namespace Grace
     m_Data.erase(m_Data.begin() + index);
     InvalidateIterators();
     return res;
+  }
+
+  void GraceList::RemoveRange(std::size_t start, std::size_t count)
+  {
+    if (start >= m_Data.size()) {
+      throw GraceException(
+        GraceException::Type::IndexOutOfRange,
+        fmt::format("Start of range {} greater than length {}", start, m_Data.size())
+      );
+    }
+
+    if (start + count > m_Data.size()) {
+      throw GraceException(
+        GraceException::Type::IndexOutOfRange,
+        fmt::format("End of range {} greater than length {}", start + count, m_Data.size())
+      );
+    }
+
+    m_Data.erase(m_Data.begin() + start, m_Data.begin() + start + count);
   }
 
   VM::Value GraceList::Pop()
@@ -126,6 +151,31 @@ namespace Grace
     auto data = m_Data;  // copy
     std::sort(data.begin(), data.end(), std::greater<Value>());
     return Value::CreateObject<GraceList>(std::move(data));
+  }
+
+  Value GraceList::GetRange(std::size_t start, std::size_t count) const
+  {
+    if (start >= m_Data.size()) {
+      throw GraceException(
+        GraceException::Type::IndexOutOfRange,
+        fmt::format("Start of range {} greater than length {}", start, m_Data.size())
+      );
+    }
+
+    if (start + count > m_Data.size()) {
+      throw GraceException(
+        GraceException::Type::IndexOutOfRange,
+        fmt::format("End of range {} greater than length {}", start + count, m_Data.size())
+      );
+    }
+
+    auto res = Value::CreateObject<GraceList>();
+    auto list = res.GetObject()->GetAsList();
+    for (std::size_t i = start; i < start + count; i++) {
+      list->Append(m_Data[i]);
+    }
+
+    return res;
   }
 
   void GraceList::DebugPrint() const

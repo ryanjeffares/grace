@@ -12,12 +12,20 @@ func export append(this List list, value):
   __NATIVE_LIST_APPEND(list, value);
 end
 
+func export append_range(this List dest, source: List):
+  __NATIVE_LIST_APPEND_RANGE(dest, source);
+end
+
 func export insert(this List list, index: Int, value):
   __NATIVE_LIST_INSERT(list, index, value);
 end
 
 func export remove(this List list, index: Int):
   return __NATIVE_LIST_REMOVE(list, index);
+end
+
+func export remove_range(this List list, start: Int, count: Int):
+  return __NATIVE_LIST_REMOVE_RANGE(list, start, count);
 end
 
 func export pop(this List list):
@@ -38,6 +46,10 @@ end
 
 func export sorted_descending(this List list) :: List:
   return __NATIVE_LIST_SORTED_DESCENDING(list);
+end
+
+func export get_range(this List list, start: Int, count: Int) :: List:
+  return __NATIVE_LIST_GET_RANGE(list, start, count);
 end
 
 func export first(this List list):

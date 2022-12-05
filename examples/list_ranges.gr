@@ -1,0 +1,22 @@
+import std::list;
+
+func main():
+  
+  final nums = [];
+  for i in [0..100]:
+    nums.append(i);
+  end
+
+  final range = nums.get_range(50, 50);
+  println(range);
+  
+  final new = [0, 1, 2];
+  try:
+    new.append_range(range.get_range(40, 20));
+  catch e:
+    println(e);
+  end
+
+  new.append_range(range.get_range(0, 10));
+  println(new);
+end

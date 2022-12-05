@@ -13,6 +13,9 @@ parser.add_argument(
 parser.add_argument(
     '--install', action='store_true', help='Install grace system-wide'
 )
+parser.add_argument(
+    '--profile-ops', action='store_true', help='Profile each operation during bytecode execution'
+)
 
 
 if __name__ == "__main__":
@@ -34,7 +37,7 @@ if __name__ == "__main__":
 
     for config in configs:
         print(f'INFO: Generating CMake project for configuration: {config}\n')
-        os.system(f'cmake -DGRACE_BUILD_TARGET={build_type} -DCMAKE_BUILD_TYPE={config} -S . -B build')
+        os.system(f'cmake -DGRACE_BUILD_TARGET={build_type} -DCMAKE_BUILD_TYPE={config} -DGRACE_PROFILE_OPS={"ON" if args.profile_ops else "OFF"} -S . -B build')
         print()
         print(f'INFO: Building configuration: {config}\n')
         

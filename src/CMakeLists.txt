@@ -45,6 +45,9 @@ target_include_directories(grace
 )
 
 target_compile_definitions(grace PRIVATE FMT_HEADER_ONLY)
+if (GRACE_PROFILE_OPS MATCHES "ON")
+  target_compile_definitions(grace PRIVATE GRACE_PROFILE_OPS)
+endif()
 
 set_target_properties(grace PROPERTIES
   CXX_STANDARD 20

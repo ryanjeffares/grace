@@ -115,9 +115,5 @@ int main(int argc, const char* argv[])
     return 1;
   }
 
-  return static_cast<int>(
-    Grace::Compiler::Compile(
-      filePath.string(), verbose, warningsError, graceMainArgs
-    )
-  );
+  return static_cast<int>(Grace::Compiler::Compile(filePath.string(), verbose, warningsError, graceMainArgs));
 }

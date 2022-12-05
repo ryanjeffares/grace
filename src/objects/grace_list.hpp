@@ -45,18 +45,22 @@ namespace Grace
       }
 
       void Append(VM::Value&& value);
-      void Append(const std::vector<VM::Value>& items);
+      void Append(const VM::Value& value);
+      void AppendRange(const std::vector<VM::Value>& items);
 
       void Insert(VM::Value&& value, std::size_t index);
 
-      VM::Value Remove(std::size_t index);
+      GRACE_NODISCARD VM::Value Remove(std::size_t index);
+      void RemoveRange(std::size_t start, std::size_t count);
 
-      VM::Value Pop();
+      GRACE_NODISCARD VM::Value Pop();
 
       void Sort();
       void SortDescending();
-      VM::Value Sorted() const;
-      VM::Value SortedDescending() const;
+      GRACE_NODISCARD VM::Value Sorted() const;
+      GRACE_NODISCARD VM::Value SortedDescending() const;
+
+      GRACE_NODISCARD VM::Value GetRange(std::size_t start, std::size_t count) const;
 
       GRACE_NODISCARD GRACE_INLINE std::size_t Length() const
       {

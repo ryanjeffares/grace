@@ -146,7 +146,7 @@ namespace Grace
       virtual IteratorType End() = 0;
       virtual void IncrementIterator(IteratorType&) = 0;
 
-      virtual bool IsAtEnd(const IteratorType& iterator) const
+      GRACE_NODISCARD GRACE_INLINE virtual bool IsAtEnd(const IteratorType& iterator) const
       {
         return iterator == m_Data.end();
       }
@@ -167,8 +167,13 @@ namespace Grace
         }
         m_ActiveIterators.erase(it);
       }
-      
-    protected:
+  
+      GRACE_NODISCARD GRACE_INLINE const std::vector<VM::Value>& GetData() const
+      {
+        return m_Data;
+      }
+
+  protected:
 
       void InvalidateIterators()
       {

@@ -44,8 +44,10 @@ static Value TimeNanoSeconds(GRACE_MAYBE_UNUSED Args args);
 static Value Sleep(Args args);
 
 static Value ListAppend(Args args);
+static Value ListAppendRange(Args args);
 static Value ListInsert(Args args);
 static Value ListRemove(Args args);
+static Value ListRemoveRange(Args args);
 static Value ListPop(Args args);
 static Value ListSetAtIndex(Args args);
 static Value ListGetAtIndex(Args args);
@@ -54,6 +56,7 @@ static Value ListSort(Args args);
 static Value ListSortDescending(Args args);
 static Value ListSorted(Args args);
 static Value ListSortedDescending(Args args);
+static Value ListGetRange(Args args);
 static Value ListFirst(Args args);
 static Value ListLast(Args args);
 
@@ -129,8 +132,10 @@ void VM::RegisterNatives()
 
   // List functions
   m_NativeFunctions.emplace_back("__NATIVE_LIST_APPEND", 2, &ListAppend);
+  m_NativeFunctions.emplace_back("__NATIVE_LIST_APPEND_RANGE", 2, &ListAppendRange);
   m_NativeFunctions.emplace_back("__NATIVE_LIST_INSERT", 3, &ListInsert);
   m_NativeFunctions.emplace_back("__NATIVE_LIST_REMOVE", 2, &ListRemove);
+  m_NativeFunctions.emplace_back("__NATIVE_LIST_REMOVE_RANGE", 3, &ListRemoveRange);
   m_NativeFunctions.emplace_back("__NATIVE_LIST_POP", 1, &ListPop);
   m_NativeFunctions.emplace_back("__NATIVE_LIST_SET_AT_INDEX", 3, &ListSetAtIndex);
   m_NativeFunctions.emplace_back("__NATIVE_LIST_GET_AT_INDEX", 2, &ListGetAtIndex);
@@ -139,6 +144,7 @@ void VM::RegisterNatives()
   m_NativeFunctions.emplace_back("__NATIVE_LIST_SORT_DESCENDING", 1, &ListSortDescending);
   m_NativeFunctions.emplace_back("__NATIVE_LIST_SORTED", 1, &ListSorted);
   m_NativeFunctions.emplace_back("__NATIVE_LIST_SORTED_DESCENDING", 1, &ListSortedDescending);
+  m_NativeFunctions.emplace_back("__NATIVE_LIST_GET_RANGE", 3, &ListGetRange);
   m_NativeFunctions.emplace_back("__NATIVE_LIST_FIRST", 1, &ListFirst);
   m_NativeFunctions.emplace_back("__NATIVE_LIST_LAST", 1, &ListLast);
 
@@ -287,6 +293,26 @@ static Value ListAppend(Args args)
   );
 }
 
+static Value ListAppendRange(Args args)
+{
+  if (auto dest = args[0].GetObject()->GetAsList()) {
+    if (auto source = args[1].GetObject()->GetAsList()) {
+      dest->AppendRange(source->GetData());
+      return {};
+    }
+
+    throw Grace::GraceException(
+      Grace::GraceException::Type::InvalidType,
+      fmt::format("Expected `List` for `source` in `std::list::append_range(dest, source)` but got `{}`", args[1].GetTypeName())
+    );
+  }
+
+  throw Grace::GraceException(
+    Grace::GraceException::Type::InvalidType,
+    fmt::format("Expected `List` for `dest` in `std::list::append_range(dest, source)` but got `{}`", args[0].GetTypeName())
+  );
+}
+
 static Value ListInsert(Args args)
 {
   if (auto list = args[0].GetObject()->GetAsList()) {
@@ -323,6 +349,49 @@ static Value ListRemove(Args args)
   throw Grace::GraceException(
     Grace::GraceException::Type::InvalidType,
     fmt::format("Expected `List` for `std::list::remove(list, index)` but got `{}`", args[0].GetTypeName())
+  );
+}
+
+static Value ListRemoveRange(Args args)
+{
+  if (auto list = args[0].GetObject()->GetAsList()) {
+    if (args[1].GetType() != Value::Type::Int) {
+      throw Grace::GraceException(
+        Grace::GraceException::Type::InvalidType,
+        fmt::format("Expected `Int` for `start` in `std::list::remove_range(list, start, count)` but got `{}`", args[1].GetTypeName())
+      );
+    }
+
+    if (args[2].GetType() != Value::Type::Int) {
+      throw Grace::GraceException(
+        Grace::GraceException::Type::InvalidType,
+        fmt::format("Expected `Int` for `count` in `std::list::remove_range(list, start, count)` but got `{}`", args[2].GetTypeName())
+      );
+    }
+
+    auto start = args[1].Get<std::int64_t>();
+    if (start < 0) {
+      throw Grace::GraceException(
+        Grace::GraceException::Type::IndexOutOfRange,
+        "`start` was negative"
+      );
+    }
+
+    auto count = args[2].Get<std::int64_t>();
+    if (count < 0) {
+      throw Grace::GraceException(
+        Grace::GraceException::Type::IndexOutOfRange,
+        "`count` was negative"
+      );
+    }
+
+    list->RemoveRange(static_cast<std::size_t>(start), static_cast<std::size_t>(count));
+    return {};
+  }
+
+  throw Grace::GraceException(
+    Grace::GraceException::Type::InvalidType,
+    fmt::format("Expected `List` for `std::list::remove_range(list, start, count)` but got `{}`", args[0].GetTypeName())
   );
 }
 
@@ -436,6 +505,48 @@ static Value ListSortedDescending(Args args)
   throw Grace::GraceException(
     Grace::GraceException::Type::InvalidType,
     fmt::format("Expected `List` for `std::list::sort_descending(list)` but got `{}`", args[0].GetTypeName())
+  );
+}
+
+static Value ListGetRange(Args args)
+{
+  if (auto list = args[0].GetObject()->GetAsList()) {
+    if (args[1].GetType() != Value::Type::Int) {
+      throw Grace::GraceException(
+        Grace::GraceException::Type::InvalidType,
+        fmt::format("Expected `Int` for `start` in `std::list::get_range(list, start, count)` but got `{}`", args[1].GetTypeName())
+      );
+    }
+
+    if (args[2].GetType() != Value::Type::Int) {
+      throw Grace::GraceException(
+        Grace::GraceException::Type::InvalidType,
+        fmt::format("Expected `Int` for `count` in `std::list::get_range(list, start, count)` but got `{}`", args[2].GetTypeName())
+      );
+    }
+
+    auto start = args[1].Get<std::int64_t>();
+    if (start < 0) {
+      throw Grace::GraceException(
+        Grace::GraceException::Type::IndexOutOfRange,
+        "`start` was negative"
+      );
+    }
+
+    auto count = args[2].Get<std::int64_t>();
+    if (count < 0) {
+      throw Grace::GraceException(
+        Grace::GraceException::Type::IndexOutOfRange,
+        "`count` was negative"
+      );
+    }
+
+    return list->GetRange(static_cast<std::size_t>(start), static_cast<std::size_t>(count));
+  }
+
+  throw Grace::GraceException(
+    Grace::GraceException::Type::InvalidType,
+    fmt::format("Expected `List` for `std::list::get_range(list, start, count)` but got `{}`", args[0].GetTypeName())
   );
 }
 

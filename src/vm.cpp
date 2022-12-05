@@ -268,9 +268,45 @@ namespace Grace::VM
 
     ObjectTracker::SetVerbose(verbose);
 
+#ifdef GRACE_PROFILE_OPS
+    using namespace std::chrono;
+
+    using TimeList = std::unordered_map<Ops, std::pair<std::int64_t, std::int64_t>>;
+    TimeList opTimes;
+
+    struct OpTimer
+    {
+      TimeList& timeList;
+      Ops op;
+      steady_clock::time_point start;
+
+      OpTimer(TimeList& list, Ops op_) 
+        : timeList{ list }
+        , op { op_ }
+        , start{ steady_clock::now() }
+      {
+      }
+
+      ~OpTimer()
+      {
+        auto end = steady_clock::now();
+        auto dur = duration_cast<nanoseconds>(end - start).count();
+        if (timeList.find(op) == timeList.end()) {
+          timeList[op] = { 1, dur };
+        } else {
+          auto [count, time] = timeList[op];
+          timeList[op] = { count + 1, time + dur };
+        }
+      }
+    };
+#endif
+
     while (true) {
       auto [op, line] = m_FullOpList[opCurrent++];
 
+#ifdef GRACE_PROFILE_OPS
+      OpTimer p{ opTimes, op };
+#endif
       try {
 
         switch (op) {
@@ -1290,6 +1326,24 @@ namespace Grace::VM
 #endif
 
     ObjectTracker::Finalise();
+
+#ifdef GRACE_PROFILE_OPS
+    using Pair = std::pair<Ops, std::int64_t>;
+    std::vector<Pair> timesVes;
+    for (const auto& [op, stats] : opTimes) {
+      auto& [count, time] = stats;
+      auto average = time / count;
+      timesVes.emplace_back(op, average);
+    }
+
+    std::sort(timesVes.begin(), timesVes.end(), [](const Pair& a, const Pair& b) {
+      return a.second < b.second;
+    });
+    fmt::print("OP TIMES:\n");
+    for (const auto& [op, time] : timesVes) {
+      fmt::print("\t{}: {} ns/op average\n", op, time);
+    }
+#endif
 
     return interpretResult;
 
