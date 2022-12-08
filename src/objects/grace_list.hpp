@@ -21,6 +21,8 @@
 
 namespace Grace
 {
+  class GraceDictionary;
+
   class GraceList : public GraceIterable
   {
     public:
@@ -30,12 +32,13 @@ namespace Grace
 
       }
 
-      explicit GraceList(const VM::Value&);
       explicit GraceList(std::vector<VM::Value>&& items);
-
       GraceList(const GraceList& other, std::int64_t multiple);
 
       ~GraceList() override = default;
+
+      static VM::Value FromString(const std::string& string);
+      static VM::Value FromDict(GraceDictionary* dict);
       
       template<VM::BuiltinGraceType T>
       GRACE_INLINE void Append(const T& value)

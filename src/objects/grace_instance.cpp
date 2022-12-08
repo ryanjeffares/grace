@@ -19,7 +19,9 @@ namespace Grace
   GraceInstance::GraceInstance(std::string&& className, std::vector<Member> && members)
 	: m_ClassName(std::move(className)), m_Members(std::move(members))
   {
-
+	if (m_Members.size() == 2 && m_ClassName == "Directory") {
+	  fmt::print("Here\n");
+	}
   }
 
   void GraceInstance::DebugPrint() const

@@ -1095,17 +1095,37 @@ namespace Grace::VM
               break;
             }
 
-            if (numItems == 1) {
-              valueStack.push_back(Value::CreateObject<GraceList>(Pop(valueStack)));
-              break;
-            }
-
             std::vector<Value> result(numItems);
             for (auto i = 0; i < numItems; i++) {
               result[numItems - i - 1] = Pop(valueStack);
             }
 
             valueStack.push_back(Value::CreateObject<GraceList>(std::move(result)));
+            break;
+          }
+          case Ops::CreateListFromCast: {
+            auto numItems = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+
+            if (numItems == 0) {
+              valueStack.push_back(Value::CreateObject<GraceList>());
+            } else if (numItems == 1) {
+              auto value = Pop(valueStack);
+              if (value.GetType() == Value::Type::String) {
+                valueStack.push_back(GraceList::FromString(value.Get<std::string>()));
+              } else if (value.GetType() == Value::Type::Object && value.GetObject()->GetAsDictionary() != nullptr) {
+                valueStack.push_back(GraceList::FromDict(value.GetObject()->GetAsDictionary()));
+              } else {
+                std::vector<Value> items{ value };
+                valueStack.push_back(Value::CreateObject<GraceList>(std::move(items)));
+              }
+            } else {
+              std::vector<Value> items(numItems);
+              for (auto i = 0; i < numItems; i++) {
+                items[numItems - i - 1] = Pop(valueStack);
+              }
+
+              valueStack.push_back(Value::CreateObject<GraceList>(std::move(items)));
+            }
             break;
           }
           case Ops::CreateRange: {
@@ -1246,7 +1266,7 @@ namespace Grace::VM
             break;
           }
           case Ops::ExitTry: {
-            auto targetNumLocals = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+            auto targetNumLocals = m_FullConstantList[constantCurrent++].Get<std::int64_t>() + localsOffsets.top();
             localsList.resize(targetNumLocals);
             vmStateStack.pop();
             inTryBlock = !vmStateStack.empty();

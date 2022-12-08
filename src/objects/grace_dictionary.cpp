@@ -166,6 +166,11 @@ namespace Grace
 
   bool GraceDictionary::ContainsKey(const VM::Value& key)
   {
+    static int count = 0;
+    if ((count == 88 || count == 90)) {
+      fmt::print("here\n");
+    }
+    count++;
     auto hash = m_Hasher(key);
     auto index = hash % m_Capacity;
     while (true) {
@@ -258,7 +263,7 @@ namespace Grace
   }
 
   void GraceDictionary::Rehash()
-  {
+  {    
     auto pairs = ToVector();
 
     std::fill(m_Data.begin(), m_Data.end(), VM::Value());
@@ -272,7 +277,7 @@ namespace Grace
 
       auto state = m_CellStates[index];
       if (state == CellState::NeverUsed) {
-        m_Data[index] = std::move(pair);
+        m_Data[index] = pair;
         m_CellStates[index] = CellState::Occupied;
       } else {
         // if its not NeverUsed it will be Occupied
@@ -282,7 +287,7 @@ namespace Grace
             i = 0;
           }
           if (m_CellStates[i] == CellState::NeverUsed) {
-            m_Data[i] = std::move(pair);
+            m_Data[i] = pair;
             m_CellStates[i] = CellState::Occupied;
             break;
           }

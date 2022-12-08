@@ -45,6 +45,7 @@ This will build the `grace` executable, which you can add to your path or move s
 ## Alpha Release Roadmap
 * Prevent integer overflow by automatically promoting to a `BigInt` class
 * TEST THE CYCLE CLEANER
+  * There is a problem - see backup day 7 aoc solution
 * Lambdas 
 * Global const fields
   * Allow expressions
@@ -66,6 +67,8 @@ This will build the `grace` executable, which you can add to your path or move s
 * Ensure use of backticks and quotes is consistent in error messages
 * Think about how `char`s should behave in binary operations
 * Should all file related functions in the std use `Path`?
+* Think about dict modification functions - should insert replace, or throw, or do nothing?
+* Compound assignment to subscripts
 
 ## Long Term Goals 
 * Optional type annotations for use by a static analyzer

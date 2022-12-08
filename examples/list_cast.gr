@@ -1,0 +1,15 @@
+func main():
+
+  var l = ["Hello"];
+  println(l);
+
+  l = List("Hello");
+  println(l);
+
+  var d = {"Hello": "World"};
+  l = [d];
+  println(l);
+
+  l = List(d);
+  println(l);
+end

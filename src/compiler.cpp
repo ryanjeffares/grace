@@ -1703,17 +1703,17 @@ static void ForStatement(CompilerContext& compiler)
     compiler.continueJumpNeedsIndexes = !compiler.continueIdxPairs.empty();
   }
 
-  // increment iterator
-  EmitConstant(twoIterators);
-  EmitConstant(iteratorId);
-  EmitConstant(secondIteratorId);
-  EmitOp(VM::Ops::IncrementIterator, line);
-
   // pop any locals created within the loop scope
   if (compiler.locals.size() != static_cast<std::size_t>(numLocalsStart)) {
     EmitConstant(numLocalsStart);
     EmitOp(VM::Ops::PopLocals, line);
   }
+
+  // increment iterator
+  EmitConstant(twoIterators);
+  EmitConstant(iteratorId);
+  EmitConstant(secondIteratorId);
+  EmitOp(VM::Ops::IncrementIterator, line);
 
   // always jump back to re-evaluate the condition
   EmitConstant(startConstantIdx);
@@ -1729,14 +1729,15 @@ static void ForStatement(CompilerContext& compiler)
     compiler.breakIdxPairs.pop();
     compiler.breakJumpNeedsIndexes = !compiler.breakIdxPairs.empty();
 
-    if (compiler.locals.size() != static_cast<std::size_t>(numLocalsStart)) {
-      EmitConstant(numLocalsStart);
-      EmitOp(VM::Ops::PopLocals, line);
-    }
   }
   
   VM::VM::SetConstantAtIndex(endJumpConstantIndex, static_cast<std::int64_t>(VM::VM::GetNumConstants()));
   VM::VM::SetConstantAtIndex(endJumpOpIndex, static_cast<std::int64_t>(VM::VM::GetNumOps()));
+  
+  if (compiler.locals.size() != static_cast<std::size_t>(numLocalsStart)) {
+    EmitConstant(numLocalsStart);
+    EmitOp(VM::Ops::PopLocals, line);
+  }
   
   // get rid of any variables made within the loop scope
   while (compiler.locals.size() != static_cast<std::size_t>(numLocalsStart)) {
@@ -1799,6 +1800,10 @@ static void IfStatement(CompilerContext& compiler)
         return;
       }
       
+      while (compiler.locals.size() != static_cast<std::size_t>(numLocalsStart)) {
+        compiler.locals.pop_back();
+      }
+
       // if the ifs condition passed and its block executed, it needs to jump to the end
       auto endConstantIdx = VM::VM::GetNumConstants();
       EmitConstant(std::int64_t{});
@@ -2691,54 +2696,28 @@ static void Dot(bool canAssign, CompilerContext& compiler)
   }
   
   bool previousWasFunctionCall = false;
-  while (true) {
-    auto memberNameToken = compiler.previous.value();
-    if (Match(Scanner::TokenType::LeftParen, compiler)) {
-      // object.function()
-      DotFunctionCall(memberNameToken, compiler);
-      previousWasFunctionCall = true;
-    } else if (Match(Scanner::TokenType::Equal, compiler)) {
-      if (!canAssign) {
-        MessageAtPrevious("Assignment is not valid here", LogLevel::Error, compiler);
-        return;
-      }
+  auto memberNameToken = compiler.previous.value();
 
-      // todo..
-      auto prevUsing = compiler.usingExpressionResult;
-      compiler.usingExpressionResult = true;
-      Expression(false, compiler);
-      compiler.usingExpressionResult = prevUsing;
-      EmitConstant(memberNameToken.GetString());
-      EmitOp(VM::Ops::AssignMember, compiler.previous.value().GetLine());
-      break;
-
-    } else if (Match(Scanner::TokenType::Dot, compiler)) {
-      // load the member, then recurse
-      // the parent is on the top of the stack
-      if (!Match(Scanner::TokenType::Identifier, compiler)) {
-        MessageAtCurrent("Expected identifier after '.'", LogLevel::Error, compiler);
-        return;
-      }
-
-      previousWasFunctionCall = false;
-      // EmitConstant(memberNameToken.GetString());
-      // EmitOp(VM::Ops::LoadMember, memberNameToken.GetLine());
-      // Dot(canAssign, compiler);
-    } else {
-      // no further access, end of expression
-      // so we need to just load the local
-      if (!previousWasFunctionCall) {
-        if (canAssign) {
-          // this was supposed to be an assignment
-          MessageAtCurrent("Expected expression", LogLevel::Error, compiler);
-          return;
-        }
-
-        EmitConstant(memberNameToken.GetString());
-        EmitOp(VM::Ops::LoadMember, memberNameToken.GetLine());
-      }
-      break;
+  if (Match(Scanner::TokenType::LeftParen, compiler)) {
+    // object.function()
+    DotFunctionCall(memberNameToken, compiler);
+    previousWasFunctionCall = true;
+  } else if (Match(Scanner::TokenType::Equal, compiler)) {
+    if (!canAssign) {
+      MessageAtPrevious("Assignment is not valid here", LogLevel::Error, compiler);
+      return;
     }
+
+    // todo..
+    auto prevUsing = compiler.usingExpressionResult;
+    compiler.usingExpressionResult = true;
+    Expression(false, compiler);
+    compiler.usingExpressionResult = prevUsing;
+    EmitConstant(memberNameToken.GetString());
+    EmitOp(VM::Ops::AssignMember, compiler.previous.value().GetLine());
+  } else {
+    EmitConstant(memberNameToken.GetString());
+    EmitOp(VM::Ops::LoadMember, memberNameToken.GetLine());
   }
 }
 
@@ -3148,7 +3127,7 @@ static void Cast(CompilerContext& compiler)
 
   if (isList) {
     EmitConstant(numListItems);
-    EmitOp(VM::Ops::CreateList, compiler.previous.value().GetLine());
+    EmitOp(VM::Ops::CreateListFromCast, compiler.previous.value().GetLine());
   } else if (isSet) {
     EmitConstant(numListItems);
     EmitOp(VM::Ops::CreateSet, compiler.previous.value().GetLine());
@@ -3220,13 +3199,8 @@ static void List(CompilerContext& compiler)
 
   auto line = compiler.previous->GetLine();
 
-  if (numItems == 0) {
-    if (parsedRangeExpression) {
-      EmitOp(VM::Ops::CreateRange, line);
-    } else {
-      EmitConstant(numItems);
-      EmitOp(VM::Ops::CreateList, line);
-    }
+  if (parsedRangeExpression) {
+    EmitOp(VM::Ops::CreateRange, line);
   } else {
     EmitConstant(numItems);
     EmitOp(VM::Ops::CreateList, line);

@@ -26,24 +26,6 @@ namespace Grace
 
   }
 
-  GraceList::GraceList(const Value& value)
-    : GraceIterable{ 0 }
-  {
-    if (value.GetType() == Value::Type::String) {
-      for (const auto c : value.Get<std::string>()) {
-        m_Data.emplace_back(c);
-      }
-    } else if (value.GetObject() != nullptr) {
-      if (auto dict = value.GetObject()->GetAsDictionary()) {
-        m_Data = dict->ToVector();
-      } else {
-        m_Data.push_back(value);
-      }
-    } else {
-      m_Data.push_back(value);
-    }
-  }
-
   GraceList::GraceList(const GraceList& other, std::int64_t multiple)
     : GraceIterable{ 0 }
   {
@@ -51,6 +33,23 @@ namespace Grace
     for (std::size_t i = 0; i < static_cast<std::size_t>(multiple); i++) {
       m_Data.insert(m_Data.begin() + (i * other.m_Data.size()), other.m_Data.begin(), other.m_Data.end());
     }
+  }
+
+  VM::Value GraceList::FromString(const std::string &string)
+  {
+    auto value = VM::Value::CreateObject<GraceList>();
+    auto list = value.GetObject()->GetAsList();
+    for (auto c : string) {
+      list->Append(c);
+    }
+
+    return value;
+  }
+
+  VM::Value GraceList::FromDict(GraceDictionary* dict)
+  {
+    auto value = VM::Value::CreateObject<GraceList>(dict->ToVector());
+    return value;
   }
 
   void GraceList::Append(VM::Value&& value)
