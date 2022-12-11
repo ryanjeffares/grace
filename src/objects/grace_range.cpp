@@ -20,30 +20,27 @@ namespace Grace
   using namespace VM;
 
   GraceRange::GraceRange(Value&& min, Value&& max, Value&& increment)
-    : GraceIterable{0}
-    , m_Min{std::move(min)}
-    , m_Max{std::move(max)}
-    , m_Increment{std::move(increment)}
+      : GraceIterable {0}
+      , m_Min {std::move(min)}
+      , m_Max {std::move(max)}
+      , m_Increment {std::move(increment)}
   {
     if (m_Min.GetType() != Value::Type::Int) {
       throw GraceException(
         GraceException::Type::InvalidType,
-        fmt::format("All values in range expression must be `Ints`, got `{}` for min", m_Min.GetTypeName())
-      );
+        fmt::format("All values in range expression must be `Ints`, got `{}` for min", m_Min.GetTypeName()));
     }
 
     if (m_Max.GetType() != Value::Type::Int) {
       throw GraceException(
         GraceException::Type::InvalidType,
-        fmt::format("All values in range expression must be `Ints`, got `{}` for max", m_Max.GetTypeName())
-      );
+        fmt::format("All values in range expression must be `Ints`, got `{}` for max", m_Max.GetTypeName()));
     }
 
     if (m_Increment.GetType() != Value::Type::Int) {
       throw GraceException(
         GraceException::Type::InvalidType,
-        fmt::format("All values in range expression must be `Ints`, got `{}` for increment", m_Increment.GetTypeName())
-      );
+        fmt::format("All values in range expression must be `Ints`, got `{}` for increment", m_Increment.GetTypeName()));
     }
 
     auto minVal = m_Min.Get<std::int64_t>();
@@ -84,7 +81,7 @@ namespace Grace
   {
     return fmt::format("[{}..{} by {}]", m_Min, m_Max, m_Increment);
   }
-  
+
   GRACE_NODISCARD bool GraceRange::AsBool() const
   {
     return true;
@@ -112,4 +109,4 @@ namespace Grace
       toIncrement = m_Data.end();
     }
   }
-}
+}// namespace Grace

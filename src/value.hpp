@@ -36,17 +36,14 @@ namespace Grace
     concept DerivedGraceObject = std::is_base_of<GraceObject, T>::value;
 
     template<typename T>
-    concept BuiltinGraceType = std::is_same<T, std::int64_t>::value || std::is_same<T, double>::value
-            || std::is_same<T, bool>::value || std::is_same<T, char>::value
-            || std::is_same<T, std::string>::value || std::is_same<T, std::nullptr_t>::value;
+    concept BuiltinGraceType = std::is_same<T, std::int64_t>::value || std::is_same<T, double>::value || std::is_same<T, bool>::value || std::is_same<T, char>::value || std::is_same<T, std::string>::value || std::is_same<T, std::nullptr_t>::value;
 
-    class Value final 
+    class Value final
     {
     public:
+      using NullValue = std::nullptr_t;
 
-      using NullValue = std::nullptr_t; 
-
-      enum class Type : std::uint8_t 
+      enum class Type : std::uint8_t
       {
         Bool,
         Char,
@@ -99,7 +96,7 @@ namespace Grace
         res.m_Type = Type::Object;
         res.m_Data.m_Object = new T(std::forward<Args>(args)...);
         res.m_Data.m_Object->IncreaseRef();
-        ObjectTracker::TrackObject(res.m_Data.m_Object);        
+        ObjectTracker::TrackObject(res.m_Data.m_Object);
         return res;
       }
 
@@ -136,7 +133,7 @@ namespace Grace
           if (m_Type == Type::String) {
             delete m_Data.m_Str;
           }
-          
+
           if (m_Type == Type::Object) {
             if (m_Data.m_Object->DecreaseRef() == 0) {
               ObjectTracker::StopTrackingObject(m_Data.m_Object);
@@ -189,7 +186,7 @@ namespace Grace
           m_Data.m_Null = nullptr;
         }
         return *this;
-      }      
+      }
 
       GRACE_NODISCARD Value operator+(const Value&) const;
       GRACE_NODISCARD Value operator-(const Value&) const;
@@ -234,7 +231,7 @@ namespace Grace
       GRACE_NODISCARD std::tuple<bool, std::optional<std::string>> AsDouble(double& result) const;
       GRACE_NODISCARD std::tuple<bool, std::optional<std::string>> AsChar(char& result) const;
 
-      template<BuiltinGraceType T> 
+      template<BuiltinGraceType T>
       GRACE_NODISCARD constexpr GRACE_INLINE const T& Get() const
       {
         if constexpr (std::is_same<T, std::int64_t>::value) {
@@ -268,8 +265,7 @@ namespace Grace
       GRACE_NODISCARD std::string GetTypeName() const;
 
     private:
-
-      Type m_Type{ Type::Null }; 
+      Type m_Type {Type::Null};
 
       union
       {
@@ -280,10 +276,10 @@ namespace Grace
         NullValue m_Null;
         GraceObject* m_Object;
         std::string* m_Str;
-      } m_Data{};
+      } m_Data {};
     };
-  } // namespace VM
-} // namespace Grace
+  }// namespace VM
+}// namespace Grace
 
 template<>
 struct fmt::formatter<Grace::VM::Value::Type> : fmt::formatter<std::string_view>
@@ -325,6 +321,6 @@ namespace std
   {
     std::size_t operator()(const Grace::VM::Value&) const;
   };
-}
+}// namespace std
 
-#endif  // ifndef GRACE_VALUE_HPP
+#endif// ifndef GRACE_VALUE_HPP

@@ -10,8 +10,8 @@
  */
 
 #include "grace_set.hpp"
-#include "grace_list.hpp"
 #include "grace_dictionary.hpp"
+#include "grace_list.hpp"
 
 namespace Grace
 {
@@ -84,7 +84,7 @@ namespace Grace
     }
 
     auto index = m_Hasher(value) % m_Capacity;
-    
+
     while (true) {
       switch (m_CellStates[index]) {
         case CellState::NeverUsed:
@@ -95,7 +95,7 @@ namespace Grace
           m_Size++;
           return;
         case CellState::Occupied: {
-          if (m_Data[index] == value) {            
+          if (m_Data[index] == value) {
             return;
           }
           // keep going, might find a free slot
@@ -157,7 +157,8 @@ namespace Grace
     std::string res = "{";
     std::size_t count = 0;
     for (const auto& el : m_Data) {
-      if (el.GetType() == VM::Value::Type::Null) continue;
+      if (el.GetType() == VM::Value::Type::Null)
+        continue;
 
       switch (el.GetType()) {
         case VM::Value::Type::Char:
@@ -218,7 +219,7 @@ namespace Grace
 
   GraceSet::IteratorType GraceSet::Begin()
   {
-    for (auto it = m_Data.begin(); it != m_Data.end(); it++){
+    for (auto it = m_Data.begin(); it != m_Data.end(); it++) {
       if (it->GetType() != VM::Value::Type::Null) {
         return it;
       }
@@ -244,7 +245,8 @@ namespace Grace
   {
     std::vector<GraceObject*> res;
     for (const auto& el : m_Data) {
-      if (el.GetType() != VM::Value::Type::Object) continue;
+      if (el.GetType() != VM::Value::Type::Object)
+        continue;
       res.push_back(el.GetObject());
     }
 
@@ -253,7 +255,7 @@ namespace Grace
 
   bool GraceSet::AnyMemberMatches(const GraceObject* match) const
   {
-    return std::any_of(m_Data.begin(), m_Data.end(), [match] (const VM::Value& value) {
+    return std::any_of(m_Data.begin(), m_Data.end(), [match](const VM::Value& value) {
       return value.GetObject() == match;
     });
   }
@@ -269,7 +271,8 @@ namespace Grace
   {
     for (std::size_t i = 0; i < m_Data.size(); i++) {
       auto& el = m_Data[i];
-      if (el.GetType() != VM::Value::Type::Object) continue;
+      if (el.GetType() != VM::Value::Type::Object)
+        continue;
 
       if (el.GetObject() == object) {
         el = VM::Value::NullValue();
@@ -310,4 +313,4 @@ namespace Grace
 
     InvalidateIterators();
   }
-} // namespace Grace
+}// namespace Grace

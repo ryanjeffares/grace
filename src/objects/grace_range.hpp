@@ -12,17 +12,16 @@
 #ifndef GRACE_RANGE_HPP
 #define GRACE_RANGE_HPP
 
-#include "grace_iterator.hpp"
 #include "../value.hpp"
+#include "grace_iterator.hpp"
 
 namespace Grace
 {
   class GraceRange : public GraceIterable
   {
   public:
-
-	GraceRange(VM::Value&& min, VM::Value&& max, VM::Value&& increment);
-	~GraceRange() override = default;
+    GraceRange(VM::Value&& min, VM::Value&& max, VM::Value&& increment);
+    ~GraceRange() override = default;
 
     void DebugPrint() const override;
     void Print(bool err) const override;
@@ -61,13 +60,12 @@ namespace Grace
     }
 
     void IncrementIterator(IteratorType& toIncrement) override;
-    
+
   private:
-    
     bool m_Direction;
     VM::Value m_Current;
-    VM::Value m_Min, m_Max, m_Increment;    
+    VM::Value m_Min, m_Max, m_Increment;
   };
-}
+}// namespace Grace
 
-#endif	// ifndef GRACE_RANGE_HPP
+#endif// ifndef GRACE_RANGE_HPP

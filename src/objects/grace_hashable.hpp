@@ -19,7 +19,6 @@ namespace Grace
   class GraceHashable : public GraceIterable
   {
   public:
-
     GRACE_NODISCARD std::vector<VM::Value> ToVector() const
     {
       std::vector<VM::Value> res;
@@ -35,32 +34,32 @@ namespace Grace
     }
 
   protected:
-
     static constexpr std::size_t s_InitialCapacity = 8;
     static constexpr std::size_t s_GrowFactor = 2;
     static constexpr float s_MaxLoad = 0.75f;
 
     explicit GraceHashable(const VM::Value& defaultValue = VM::Value())
-      : GraceIterable{s_InitialCapacity, defaultValue}
-      , m_CellStates{s_InitialCapacity, CellState::NeverUsed}
+        : GraceIterable {s_InitialCapacity, defaultValue}
+        , m_CellStates {s_InitialCapacity, CellState::NeverUsed}
     {
-
     }
 
     virtual void GrowAndRehash() = 0;
 
     enum class CellState
     {
-      NeverUsed, Tombstone, Occupied
+      NeverUsed,
+      Tombstone,
+      Occupied
     };
 
-    std::size_t m_Size{0};
+    std::size_t m_Size {0};
     std::size_t m_Capacity = s_InitialCapacity;
 
     std::vector<CellState> m_CellStates;
     std::hash<VM::Value> m_Hasher;
   };
-} // namespace Grace
+}// namespace Grace
 
 
-#endif  // ifndef GRACE_HASHABLE_HPP
+#endif// ifndef GRACE_HASHABLE_HPP

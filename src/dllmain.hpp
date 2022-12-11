@@ -12,15 +12,15 @@
 #ifndef GRACE_DLLMAIN_HPP
 #define GRACE_DLLMAIN_HPP
 
-#include "grace.hpp"
 #include "compiler.hpp"
+#include "grace.hpp"
 
 #ifdef GRACE_MSC
-# define WIN32_LEAN_AND_MEAN
-# include <windows.h>
-# define EXPORT __declspec(dllexport)
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#define EXPORT __declspec(dllexport)
 #else
-# define EXPORT
+#define EXPORT
 #endif
 
 extern "C"
@@ -28,4 +28,4 @@ extern "C"
   EXPORT Grace::VM::InterpretResult RunFile(const char* filePath, int interpreterArgc, const char* interpreterArgv[], int graceArgc, const char* graceArgv[]);
 }
 
-#endif	// ifndef GRACE_DLLMAIN_HPP
+#endif// ifndef GRACE_DLLMAIN_HPP

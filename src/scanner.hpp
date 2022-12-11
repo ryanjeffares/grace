@@ -117,7 +117,7 @@ namespace Grace::Scanner
     Null,
     Or,
     Print,
-    PrintLn,    
+    PrintLn,
     Return,
     This,
     Throw,
@@ -130,37 +130,58 @@ namespace Grace::Scanner
 
   class Token
   {
-    public:
+  public:
+    Token(TokenType,
+      std::size_t start,
+      std::size_t length,
+      std::size_t line,
+      std::size_t column,
+      const std::string& code);
 
-      Token(TokenType,
-        std::size_t start,
-        std::size_t length,
-        std::size_t line,
-        std::size_t column,
-        const std::string& code
-      );
+    Token(TokenType, std::size_t line, std::size_t column, std::string&& errorMessage);
+    Token(const Token& other) = default;
+    Token& operator=(const Token& other) = default;
 
-      Token(TokenType, std::size_t line, std::size_t column, std::string&& errorMessage);
-      Token(const Token& other) = default;
-      Token& operator=(const Token& other) = default;
+    GRACE_NODISCARD std::string ToString() const;
+    GRACE_NODISCARD GRACE_INLINE TokenType GetType() const
+    {
+      return m_Type;
+    }
+    GRACE_NODISCARD GRACE_INLINE std::size_t GetLine() const
+    {
+      return m_Line;
+    }
+    GRACE_NODISCARD GRACE_INLINE std::size_t GetColumn() const
+    {
+      return m_Column;
+    }
+    GRACE_NODISCARD GRACE_INLINE std::string GetErrorMessage() const
+    {
+      return m_ErrorMessage;
+    }
+    GRACE_NODISCARD GRACE_INLINE std::size_t GetLength() const
+    {
+      return m_Length;
+    }
+    GRACE_NODISCARD GRACE_INLINE std::string_view GetText() const
+    {
+      return m_Text.substr(0, m_Length);
+    }
+    GRACE_NODISCARD GRACE_INLINE std::string GetString() const
+    {
+      return std::string(m_Text.substr(0, m_Length));
+    }
+    GRACE_NODISCARD GRACE_INLINE const char* GetData() const
+    {
+      return m_Text.data();
+    }
 
-      GRACE_NODISCARD std::string ToString() const;
-      GRACE_NODISCARD GRACE_INLINE TokenType GetType() const { return m_Type; }
-      GRACE_NODISCARD GRACE_INLINE std::size_t GetLine() const { return m_Line; }
-      GRACE_NODISCARD GRACE_INLINE std::size_t GetColumn() const { return m_Column; }
-      GRACE_NODISCARD GRACE_INLINE std::string GetErrorMessage() const { return m_ErrorMessage; }
-      GRACE_NODISCARD GRACE_INLINE std::size_t GetLength() const { return m_Length; }
-      GRACE_NODISCARD GRACE_INLINE std::string_view GetText() const { return m_Text.substr(0, m_Length); }
-      GRACE_NODISCARD GRACE_INLINE std::string GetString() const { return std::string(m_Text.substr(0, m_Length)); }
-      GRACE_NODISCARD GRACE_INLINE const char* GetData() const { return m_Text.data(); }
-
-    private:
-
-      TokenType m_Type;
-      std::size_t m_Start, m_Length;
-      std::size_t m_Line, m_Column;
-      std::string_view m_Text;
-      std::string m_ErrorMessage;
+  private:
+    TokenType m_Type;
+    std::size_t m_Start, m_Length;
+    std::size_t m_Line, m_Column;
+    std::string_view m_Text;
+    std::string m_ErrorMessage;
   };
 
   void InitScanner(const std::string& fileName, std::string&& code);
@@ -169,7 +190,7 @@ namespace Grace::Scanner
   GRACE_NODISCARD Token ScanToken();
   GRACE_NODISCARD bool HasFile(const std::string& fileName);
   GRACE_NODISCARD std::string GetCodeAtLine(const std::string& fileName, std::size_t line);
-} // namespace Grace::Scanner
+}// namespace Grace::Scanner
 
 template<>
 struct fmt::formatter<Grace::Scanner::TokenType> : fmt::formatter<std::string_view>
@@ -284,4 +305,4 @@ struct fmt::formatter<Grace::Scanner::TokenType> : fmt::formatter<std::string_vi
   }
 };
 
-#endif  // ifndef GRACE_SCANNER_HPP
+#endif// ifndef GRACE_SCANNER_HPP

@@ -12,20 +12,20 @@
 #include <type_traits>
 
 #include "grace.hpp"
-#include "value.hpp"
 #include "objects/grace_list.hpp"
+#include "value.hpp"
 
 namespace Grace::VM
 {
 
   Value::Value()
-    : m_Type(Type::Null)
+      : m_Type(Type::Null)
   {
     m_Data.m_Null = nullptr;
   }
 
   Value::Value(const Value& other)
-    : m_Type(other.m_Type)
+      : m_Type(other.m_Type)
   {
     if (other.m_Type == Type::String) {
       m_Data.m_Str = new std::string(*other.m_Data.m_Str);
@@ -38,7 +38,8 @@ namespace Grace::VM
   }
 
   Value::Value(Value&& other) noexcept
-    : m_Type(other.m_Type), m_Data(other.m_Data)
+      : m_Type(other.m_Type)
+      , m_Data(other.m_Data)
   {
     if (other.m_Type == Type::Object || other.m_Type == Type::String) {
       other.m_Data.m_Null = nullptr;
@@ -47,7 +48,7 @@ namespace Grace::VM
   }
 
   Value::Value(GraceObject* object)
-    : m_Type(Type::Object)
+      : m_Type(Type::Object)
   {
     m_Data.m_Object = object;
     object->IncreaseRef();
@@ -120,8 +121,7 @@ namespace Grace::VM
     }
     throw GraceException(
       GraceException::Type::InvalidOperand,
-      fmt::format("Cannot add {} to {}", other.GetTypeName(), GetTypeName())
-    );
+      fmt::format("Cannot add {} to {}", other.GetTypeName(), GetTypeName()));
   }
 
   Value Value::operator-(const Value& other) const
@@ -155,8 +155,7 @@ namespace Grace::VM
     }
     throw GraceException(
       GraceException::Type::InvalidOperand,
-      fmt::format("Cannot subtract {} from {}", other.GetTypeName(), GetTypeName())
-    );
+      fmt::format("Cannot subtract {} from {}", other.GetTypeName(), GetTypeName()));
   }
 
   Value Value::operator/(const Value& other) const
@@ -190,8 +189,7 @@ namespace Grace::VM
     }
     throw GraceException(
       GraceException::Type::InvalidOperand,
-      fmt::format("Cannot divide {} by {}", GetTypeName(), other.GetTypeName())
-    );
+      fmt::format("Cannot divide {} by {}", GetTypeName(), other.GetTypeName()));
   }
 
   Value Value::operator*(const Value& other) const
@@ -250,8 +248,7 @@ namespace Grace::VM
     }
     throw GraceException(
       GraceException::Type::InvalidOperand,
-      fmt::format("Cannot multiply {} by {}", GetTypeName(), other.GetTypeName())
-    );
+      fmt::format("Cannot multiply {} by {}", GetTypeName(), other.GetTypeName()));
   }
 
   Value Value::operator%(const Value& other) const
@@ -285,8 +282,7 @@ namespace Grace::VM
     }
     throw GraceException(
       GraceException::Type::InvalidOperand,
-      fmt::format("Cannot mod {} by {}", GetTypeName(), other.GetTypeName())
-    );
+      fmt::format("Cannot mod {} by {}", GetTypeName(), other.GetTypeName()));
   }
 
   Value Value::operator<<(const Value& other) const
@@ -294,8 +290,7 @@ namespace Grace::VM
     if (m_Type != Type::Int || other.m_Type != Type::Int) {
       throw GraceException(
         GraceException::Type::InvalidOperand,
-        fmt::format("Cannot shift {} by {}", GetTypeName(), other.GetTypeName())
-      );
+        fmt::format("Cannot shift {} by {}", GetTypeName(), other.GetTypeName()));
     }
     return Value(m_Data.m_Int << other.m_Data.m_Int);
   }
@@ -305,8 +300,7 @@ namespace Grace::VM
     if (m_Type != Type::Int || other.m_Type != Type::Int) {
       throw GraceException(
         GraceException::Type::InvalidOperand,
-        fmt::format("Cannot shift {} by {}", GetTypeName(), other.GetTypeName())
-      );
+        fmt::format("Cannot shift {} by {}", GetTypeName(), other.GetTypeName()));
     }
     return Value(m_Data.m_Int >> other.m_Data.m_Int);
   }
@@ -316,8 +310,7 @@ namespace Grace::VM
     if (m_Type != Type::Int || other.m_Type != Type::Int) {
       throw GraceException(
         GraceException::Type::InvalidOperand,
-        fmt::format("Cannot bitwise or {} by {}", GetTypeName(), other.GetTypeName())
-      );
+        fmt::format("Cannot bitwise or {} by {}", GetTypeName(), other.GetTypeName()));
     }
     return Value(m_Data.m_Int | other.m_Data.m_Int);
   }
@@ -327,8 +320,7 @@ namespace Grace::VM
     if (m_Type != Type::Int || other.m_Type != Type::Int) {
       throw GraceException(
         GraceException::Type::InvalidOperand,
-        fmt::format("Cannot bitwise xor {} by {}", GetTypeName(), other.GetTypeName())
-      );
+        fmt::format("Cannot bitwise xor {} by {}", GetTypeName(), other.GetTypeName()));
     }
     return Value(m_Data.m_Int ^ other.m_Data.m_Int);
   }
@@ -338,8 +330,7 @@ namespace Grace::VM
     if (m_Type != Type::Int || other.m_Type != Type::Int) {
       throw GraceException(
         GraceException::Type::InvalidOperand,
-        fmt::format("Cannot bitwise and {} by {}", GetTypeName(), other.GetTypeName())
-      );
+        fmt::format("Cannot bitwise and {} by {}", GetTypeName(), other.GetTypeName()));
     }
     return Value(m_Data.m_Int & other.m_Data.m_Int);
   }
@@ -457,8 +448,7 @@ namespace Grace::VM
     }
     throw GraceException(
       GraceException::Type::InvalidOperand,
-      fmt::format("Cannot compare {} with {}", GetTypeName(), other.GetTypeName())
-    );
+      fmt::format("Cannot compare {} with {}", GetTypeName(), other.GetTypeName()));
   }
 
   bool Value::operator<=(const Value& other) const
@@ -498,8 +488,7 @@ namespace Grace::VM
     }
     throw GraceException(
       GraceException::Type::InvalidOperand,
-      fmt::format("Cannot compare {} with {}", GetTypeName(), other.GetTypeName())
-    );
+      fmt::format("Cannot compare {} with {}", GetTypeName(), other.GetTypeName()));
   }
 
   bool Value::operator>(const Value& other) const
@@ -530,8 +519,7 @@ namespace Grace::VM
     }
     throw GraceException(
       GraceException::Type::InvalidType,
-      fmt::format("Cannot negate type {}", m_Type)
-    );
+      fmt::format("Cannot negate type {}", m_Type));
   }
 
   Value Value::operator~() const
@@ -539,8 +527,7 @@ namespace Grace::VM
     if (m_Type != Type::Int) {
       throw GraceException(
         GraceException::Type::InvalidOperand,
-        fmt::format("Cannot bitwise not {}", GetTypeName())
-      );
+        fmt::format("Cannot bitwise not {}", GetTypeName()));
     }
     return Value(~(m_Data.m_Int));
   }
@@ -578,10 +565,9 @@ namespace Grace::VM
 
     throw GraceException(
       GraceException::Type::InvalidOperand,
-      fmt::format("Cannot add `{}` to `{}`", other.m_Type, m_Type)
-    );
+      fmt::format("Cannot add `{}` to `{}`", other.m_Type, m_Type));
   }
-  
+
   Value& Value::operator-=(const Value& other)
   {
     switch (m_Type) {
@@ -612,10 +598,9 @@ namespace Grace::VM
 
     throw GraceException(
       GraceException::Type::InvalidOperand,
-      fmt::format("Cannot subtract `{}` from `{}`", other.m_Type, m_Type)
-    );
+      fmt::format("Cannot subtract `{}` from `{}`", other.m_Type, m_Type));
   }
-  
+
   Value& Value::operator*=(const Value& other)
   {
     switch (m_Type) {
@@ -646,10 +631,9 @@ namespace Grace::VM
 
     throw GraceException(
       GraceException::Type::InvalidOperand,
-      fmt::format("Cannot multiply `{}` by `{}`", m_Type, other.m_Type)
-    );
+      fmt::format("Cannot multiply `{}` by `{}`", m_Type, other.m_Type));
   }
-  
+
   Value& Value::operator/=(const Value& other)
   {
     switch (m_Type) {
@@ -680,8 +664,7 @@ namespace Grace::VM
 
     throw GraceException(
       GraceException::Type::InvalidOperand,
-      fmt::format("Cannot divide `{}` by `{}`", m_Type, other.m_Type)
-    );   
+      fmt::format("Cannot divide `{}` by `{}`", m_Type, other.m_Type));
   }
 
   Value& Value::operator&=(const Value& other)
@@ -692,8 +675,7 @@ namespace Grace::VM
     } else {
       throw GraceException(
         GraceException::Type::InvalidOperand,
-        fmt::format("Cannot bitwise and `{}` with `{}`", m_Type, other.m_Type)
-      );
+        fmt::format("Cannot bitwise and `{}` with `{}`", m_Type, other.m_Type));
     }
   }
 
@@ -705,8 +687,7 @@ namespace Grace::VM
     } else {
       throw GraceException(
         GraceException::Type::InvalidOperand,
-        fmt::format("Cannot bitwise or `{}` with `{}`", m_Type, other.m_Type)
-      );
+        fmt::format("Cannot bitwise or `{}` with `{}`", m_Type, other.m_Type));
     }
   }
 
@@ -718,8 +699,7 @@ namespace Grace::VM
     } else {
       throw GraceException(
         GraceException::Type::InvalidOperand,
-        fmt::format("Cannot bitwise xor `{}` with `{}`", m_Type, other.m_Type)
-      );
+        fmt::format("Cannot bitwise xor `{}` with `{}`", m_Type, other.m_Type));
     }
   }
 
@@ -753,8 +733,7 @@ namespace Grace::VM
 
     throw GraceException(
       GraceException::Type::InvalidOperand,
-      fmt::format("Cannot mod `{}` with `{}`", m_Type, other.m_Type)
-    );
+      fmt::format("Cannot mod `{}` with `{}`", m_Type, other.m_Type));
   }
 
   Value& Value::operator<<=(const Value& other)
@@ -765,8 +744,7 @@ namespace Grace::VM
     } else {
       throw GraceException(
         GraceException::Type::InvalidOperand,
-        fmt::format("Cannot shift `{}` with `{}`", m_Type, other.m_Type)
-      );
+        fmt::format("Cannot shift `{}` with `{}`", m_Type, other.m_Type));
     }
   }
 
@@ -778,8 +756,7 @@ namespace Grace::VM
     } else {
       throw GraceException(
         GraceException::Type::InvalidOperand,
-        fmt::format("Cannot shift `{}` with `{}`", m_Type, other.m_Type)
-      );
+        fmt::format("Cannot shift `{}` with `{}`", m_Type, other.m_Type));
     }
   }
 
@@ -814,8 +791,7 @@ namespace Grace::VM
     }
     throw GraceException(
       GraceException::Type::InvalidOperand,
-      fmt::format("Cannot exponentiate {} with {}", GetTypeName(), other.GetTypeName())
-    );
+      fmt::format("Cannot exponentiate {} with {}", GetTypeName(), other.GetTypeName()));
   }
 
   void Value::PrintLn(bool err) const
@@ -981,35 +957,35 @@ namespace Grace::VM
     switch (m_Type) {
       case Type::Int: {
         result = m_Data.m_Int;
-        return { true, {} };
+        return {true, {}};
       }
       case Type::Double: {
         result = static_cast<std::int64_t>(m_Data.m_Double);
-        return { true, {} };
+        return {true, {}};
       }
       case Type::Bool: {
         result = m_Data.m_Bool ? 1 : 0;
-        return { true, {} };
+        return {true, {}};
       }
       case Type::String: {
         try {
           result = std::stoll(*m_Data.m_Str);
-          return { true, {} };
+          return {true, {}};
         } catch (const std::invalid_argument& e) {
-          return { false, fmt::format("Could not convert '{}' to int: {}", *m_Data.m_Str, e.what()) };
+          return {false, fmt::format("Could not convert '{}' to int: {}", *m_Data.m_Str, e.what())};
         } catch (const std::out_of_range&) {
-          return { false, "Int represented by string was out of range" };
+          return {false, "Int represented by string was out of range"};
         }
       }
       case Type::Char: {
         result = static_cast<std::int64_t>(static_cast<unsigned char>(m_Data.m_Char));
-        return { true, {} };
+        return {true, {}};
       }
       case Type::Null: {
-        return { false, "Cannot convert `null` to int" };
+        return {false, "Cannot convert `null` to int"};
       }
       default:
-        return { false, "Cannot convert object to int" };
+        return {false, "Cannot convert object to int"};
     }
   }
 
@@ -1018,37 +994,35 @@ namespace Grace::VM
     switch (m_Type) {
       case Type::Int: {
         result = static_cast<double>(m_Data.m_Int);
-        return { true, {} };
+        return {true, {}};
       }
       case Type::Double: {
         result = m_Data.m_Double;
-        return { true, {} };
+        return {true, {}};
       }
       case Type::Bool: {
         result = m_Data.m_Bool ? 1.0 : 0.0;
-        return { true, {} };
+        return {true, {}};
       }
       case Type::String: {
         try {
           result = std::stod(*m_Data.m_Str);
-          return { true, {} };
-        }
-        catch (const std::invalid_argument& e) {
-          return { false, fmt::format("Could not convert '{}' to float: {}", *m_Data.m_Str, e.what()) };
-        }
-        catch (const std::out_of_range&) {
-          return { false, "Float represented by string was out of range" };
+          return {true, {}};
+        } catch (const std::invalid_argument& e) {
+          return {false, fmt::format("Could not convert '{}' to float: {}", *m_Data.m_Str, e.what())};
+        } catch (const std::out_of_range&) {
+          return {false, "Float represented by string was out of range"};
         }
       }
       case Type::Char: {
         result = static_cast<double>(m_Data.m_Char);
-        return { true, {} };
+        return {true, {}};
       }
       case Type::Null: {
-        return { false, "Cannot convert `null` to float" };
+        return {false, "Cannot convert `null` to float"};
       }
       default:
-        return { false, "Cannot convert object to float" };
+        return {false, "Cannot convert object to float"};
     }
   }
 
@@ -1057,34 +1031,33 @@ namespace Grace::VM
     switch (m_Type) {
       case Type::Int: {
         result = static_cast<char>(m_Data.m_Int);
-        return { true, {} };
+        return {true, {}};
       }
       case Type::Double: {
         result = static_cast<char>(m_Data.m_Double);
-        return { true, {} };
+        return {true, {}};
       }
       case Type::Bool: {
         result = static_cast<char>(m_Data.m_Bool);
-        return { true, {} };
+        return {true, {}};
       }
       case Type::String: {
         if (m_Data.m_Str->length() == 1) {
           result = (*m_Data.m_Str)[0];
-          return { true,{} };
-        }
-        else {
-          return { false, fmt::format("Cannot convert {} to `char`, string must be 1 character long to convert to char", *m_Data.m_Str) };
+          return {true, {}};
+        } else {
+          return {false, fmt::format("Cannot convert {} to `char`, string must be 1 character long to convert to char", *m_Data.m_Str)};
         }
       }
       case Type::Char: {
         result = m_Data.m_Char;
-        return { true, {} };
+        return {true, {}};
       }
       case Type::Null: {
-        return { false, "Cannot convert `null` to char" };
+        return {false, "Cannot convert `null` to char"};
       }
       default:
-        return { false, "Cannot convert object to char" };
+        return {false, "Cannot convert object to char"};
     }
   }
 
@@ -1095,16 +1068,16 @@ namespace Grace::VM
     }
     return fmt::format("{}", m_Type);
   }
-} // namespace Grace::VM
+}// namespace Grace::VM
 
 namespace std
 {
-  static hash<std::int64_t> s_IntHash{};
-  static hash<double> s_DoubleHash{};
-  static hash<char> s_CharHash{};
-  static hash<bool> s_BoolHash{};
-  static hash<std::string> s_StringHash{};
-  static hash<Grace::GraceObject*> s_ObjectHash{};
+  static hash<std::int64_t> s_IntHash {};
+  static hash<double> s_DoubleHash {};
+  static hash<char> s_CharHash {};
+  static hash<bool> s_BoolHash {};
+  static hash<std::string> s_StringHash {};
+  static hash<Grace::GraceObject*> s_ObjectHash {};
 
   size_t hash<Grace::VM::Value>::operator()(const Grace::VM::Value& value) const
   {
@@ -1120,8 +1093,7 @@ namespace std
       case Grace::VM::Value::Type::Null:
         throw Grace::GraceException(
           Grace::GraceException::Type::InvalidType,
-          "Cannot hash null value"
-        );
+          "Cannot hash null value");
       case Grace::VM::Value::Type::Object:
         return s_ObjectHash(value.GetObject());
       case Grace::VM::Value::Type::String:
@@ -1131,4 +1103,4 @@ namespace std
         return 0;
     }
   }
-}
+}// namespace std

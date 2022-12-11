@@ -20,65 +20,65 @@
 namespace Grace::Scanner
 {
   static std::unordered_map<char, TokenType> s_SymbolLookup =
-  {
-    {';', TokenType::Semicolon},
-    {'(', TokenType::LeftParen},
-    {')', TokenType::RightParen},
-    {'[', TokenType::LeftSquareParen},
-    {']', TokenType::RightSquareParen},
-    {'{', TokenType::LeftCurlyParen},
-    {'}', TokenType::RightCurlyParen},
-    {',', TokenType::Comma},
-    {'~', TokenType::Tilde},
+    {
+      {';', TokenType::Semicolon},
+      {'(', TokenType::LeftParen},
+      {')', TokenType::RightParen},
+      {'[', TokenType::LeftSquareParen},
+      {']', TokenType::RightSquareParen},
+      {'{', TokenType::LeftCurlyParen},
+      {'}', TokenType::RightCurlyParen},
+      {',', TokenType::Comma},
+      {'~', TokenType::Tilde},
   };
 
   static std::unordered_map<std::string, TokenType> s_KeywordLookup =
-  {
-    {"assert", TokenType::Assert},
-    {"and", TokenType::And},
-    {"or", TokenType::Or},
-    {"break", TokenType::Break},
-    {"by", TokenType::By},
-    {"class", TokenType::Class},
-    {"catch", TokenType::Catch},
-    {"const", TokenType::Const},
-    {"constructor", TokenType::Constructor},
-    {"continue", TokenType::Continue},
-    {"end", TokenType::End},
-    {"else", TokenType::Else},
-    {"false", TokenType::False},
-    {"final", TokenType::Final},
-    {"for", TokenType::For},
-    {"func", TokenType::Func},
-    {"if", TokenType::If},
-    {"import", TokenType::Import},
-    {"in", TokenType::In},
-    {"instanceof", TokenType::InstanceOf},
-    {"isobject", TokenType::IsObject},
-    {"null", TokenType::Null},
-    {"print", TokenType::Print},
-    {"println", TokenType::PrintLn},
-    {"eprint", TokenType::Eprint},
-    {"eprintln", TokenType::EprintLn},
-    {"export", TokenType::Export},
-    {"return", TokenType::Return},
-    {"while", TokenType::While},
-    {"this", TokenType::This},
-    {"throw", TokenType::Throw},
-    {"true", TokenType::True},
-    {"try", TokenType::Try},
-    {"typename", TokenType::Typename},
-    {"var", TokenType::Var},
-    {"Int", TokenType::IntIdent},
-    {"Float", TokenType::FloatIdent},
-    {"Bool", TokenType::BoolIdent},
-    {"String", TokenType::StringIdent},
-    {"Char", TokenType::CharIdent},
-    {"List", TokenType::ListIdent},
-    {"Dict", TokenType::DictIdent},
-    {"Exception", TokenType::ExceptionIdent},
-    {"KeyValuePair", TokenType::KeyValuePairIdent},
-    {"Set", TokenType::SetIdent},
+    {
+      {"assert", TokenType::Assert},
+      {"and", TokenType::And},
+      {"or", TokenType::Or},
+      {"break", TokenType::Break},
+      {"by", TokenType::By},
+      {"class", TokenType::Class},
+      {"catch", TokenType::Catch},
+      {"const", TokenType::Const},
+      {"constructor", TokenType::Constructor},
+      {"continue", TokenType::Continue},
+      {"end", TokenType::End},
+      {"else", TokenType::Else},
+      {"false", TokenType::False},
+      {"final", TokenType::Final},
+      {"for", TokenType::For},
+      {"func", TokenType::Func},
+      {"if", TokenType::If},
+      {"import", TokenType::Import},
+      {"in", TokenType::In},
+      {"instanceof", TokenType::InstanceOf},
+      {"isobject", TokenType::IsObject},
+      {"null", TokenType::Null},
+      {"print", TokenType::Print},
+      {"println", TokenType::PrintLn},
+      {"eprint", TokenType::Eprint},
+      {"eprintln", TokenType::EprintLn},
+      {"export", TokenType::Export},
+      {"return", TokenType::Return},
+      {"while", TokenType::While},
+      {"this", TokenType::This},
+      {"throw", TokenType::Throw},
+      {"true", TokenType::True},
+      {"try", TokenType::Try},
+      {"typename", TokenType::Typename},
+      {"var", TokenType::Var},
+      {"Int", TokenType::IntIdent},
+      {"Float", TokenType::FloatIdent},
+      {"Bool", TokenType::BoolIdent},
+      {"String", TokenType::StringIdent},
+      {"Char", TokenType::CharIdent},
+      {"List", TokenType::ListIdent},
+      {"Dict", TokenType::DictIdent},
+      {"Exception", TokenType::ExceptionIdent},
+      {"KeyValuePair", TokenType::KeyValuePairIdent},
+      {"Set", TokenType::SetIdent},
   };
 
   static bool IsIdentifierChar(char c)
@@ -91,17 +91,24 @@ namespace Grace::Scanner
     std::size_t length,
     std::size_t line,
     std::size_t column,
-    const std::string& code
-  ) : m_Type(type), m_Start(start), m_Length(length),
-    m_Line(line), m_Column(column), m_Text(code.c_str() + start, length)
+    const std::string& code)
+      : m_Type(type)
+      , m_Start(start)
+      , m_Length(length)
+      , m_Line(line)
+      , m_Column(column)
+      , m_Text(code.c_str() + start, length)
   {
-
   }
 
   Token::Token(TokenType type, std::size_t line, std::size_t column, std::string&& errorMessage)
-    : m_Type(type), m_Start(0), m_Length(1), m_Line(line), m_Column(column), m_ErrorMessage(std::move(errorMessage))
+      : m_Type(type)
+      , m_Start(0)
+      , m_Length(1)
+      , m_Line(line)
+      , m_Column(column)
+      , m_ErrorMessage(std::move(errorMessage))
   {
-
   }
 
   std::string Token::ToString() const
@@ -132,9 +139,8 @@ namespace Grace::Scanner
     std::size_t scannerLine = 1, scannerColumn = 1;
 
     explicit ScannerContext(std::string&& code)
-      : codeString{ std::move(code) }
+        : codeString {std::move(code)}
     {
-
     }
   };
 
@@ -189,48 +195,48 @@ namespace Grace::Scanner
 
     switch (c) {
       case '!':
-        return MatchChars({ {'=', TokenType::BangEqual} }, TokenType::Bang);
+        return MatchChars({{'=', TokenType::BangEqual}}, TokenType::Bang);
       case '=':
-        return MatchChars({ {'=', TokenType::EqualEqual} }, TokenType::Equal);
+        return MatchChars({{'=', TokenType::EqualEqual}}, TokenType::Equal);
       case '<':
         if (Peek() == '<' && PeekNext() == '=') {
           Advance();
           Advance();
           return MakeToken(TokenType::ShiftLeftEquals);
         }
-        return MatchChars({ {'=', TokenType::LessEqual}, {'<', TokenType::ShiftLeft} }, TokenType::LessThan);
+        return MatchChars({{'=', TokenType::LessEqual}, {'<', TokenType::ShiftLeft}}, TokenType::LessThan);
       case '>':
         if (Peek() == '>' && PeekNext() == '=') {
           Advance();
           Advance();
           return MakeToken(TokenType::ShiftRightEquals);
         }
-        return MatchChars({ {'=', TokenType::GreaterEqual}, {'>', TokenType::ShiftRight} }, TokenType::GreaterThan);
+        return MatchChars({{'=', TokenType::GreaterEqual}, {'>', TokenType::ShiftRight}}, TokenType::GreaterThan);
       case '+':
-        return MatchChars({ {'=', TokenType::PlusEquals} }, TokenType::Plus);
+        return MatchChars({{'=', TokenType::PlusEquals}}, TokenType::Plus);
       case '-':
-        return MatchChars({ {'=', TokenType::MinusEquals} }, TokenType::Minus);
+        return MatchChars({{'=', TokenType::MinusEquals}}, TokenType::Minus);
       case '*':
         if (Peek() == '*' && PeekNext() == '=') {
           Advance();
           Advance();
           return MakeToken(TokenType::StarStarEquals);
         }
-        return MatchChars({ {'*', TokenType::StarStar}, {'=', TokenType::StarEquals} }, TokenType::Star);
+        return MatchChars({{'*', TokenType::StarStar}, {'=', TokenType::StarEquals}}, TokenType::Star);
       case '/':
-        return MatchChars({ {'=', TokenType::SlashEquals} }, TokenType::Slash);
+        return MatchChars({{'=', TokenType::SlashEquals}}, TokenType::Slash);
       case '&':
-        return MatchChars({ {'=', TokenType::AmpersandEquals} }, TokenType::Ampersand);
+        return MatchChars({{'=', TokenType::AmpersandEquals}}, TokenType::Ampersand);
       case '|':
-        return MatchChars({ {'=', TokenType::BarEquals} }, TokenType::Bar);
+        return MatchChars({{'=', TokenType::BarEquals}}, TokenType::Bar);
       case '^':
-        return MatchChars({ {'=', TokenType::CaretEquals} }, TokenType::Caret);
+        return MatchChars({{'=', TokenType::CaretEquals}}, TokenType::Caret);
       case '%':
-        return MatchChars({ {'=', TokenType::ModEquals} }, TokenType::Mod);
+        return MatchChars({{'=', TokenType::ModEquals}}, TokenType::Mod);
       case '.':
-        return MatchChars({ {'.', TokenType::DotDot} }, TokenType::Dot);
+        return MatchChars({{'.', TokenType::DotDot}}, TokenType::Dot);
       case ':':
-        return MatchChars({ {':', TokenType::ColonColon} }, TokenType::Colon);
+        return MatchChars({{':', TokenType::ColonColon}}, TokenType::Colon);
       case '"':
         return MakeString();
       case '\'':
@@ -476,4 +482,4 @@ namespace Grace::Scanner
     Advance();
     return MakeToken(TokenType::Char);
   }
-}
+}// namespace Grace::Scanner

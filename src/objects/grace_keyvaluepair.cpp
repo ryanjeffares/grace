@@ -16,15 +16,15 @@
 namespace Grace
 {
   GraceKeyValuePair::GraceKeyValuePair(VM::Value key, VM::Value value)
-    : m_Key{ std::move(key) }, m_Value{ std::move(value) }
+      : m_Key {std::move(key)}
+      , m_Value {std::move(value)}
   {
-
   }
 
   GraceKeyValuePair::GraceKeyValuePair(std::pair<VM::Value, VM::Value>&& pair)
-    : m_Key{ std::move(pair.first) }, m_Value{ std::move(pair.second) }
+      : m_Key {std::move(pair.first)}
+      , m_Value {std::move(pair.second)}
   {
-
   }
 
   void GraceKeyValuePair::DebugPrint() const
@@ -60,8 +60,7 @@ namespace Grace
       auto type = object->ObjectType();
       if (type == GraceObjectType::Exception || type == GraceObjectType::Iterator || type == GraceObjectType::Instance) {
         res.append(object->ToString());
-      }
-      else {
+      } else {
         std::vector<GraceObject*> visited;
         if (AnyMemberMatchesRecursive(this, object, visited)) {
           switch (type) {
@@ -78,8 +77,7 @@ namespace Grace
               GRACE_UNREACHABLE();
               break;
           }
-        }
-        else {
+        } else {
           res.append(object->ToString());
         }
       }
@@ -93,8 +91,7 @@ namespace Grace
       res.push_back('"');
       res.append(m_Value.AsString());
       res.push_back('"');
-    }
-    else if (m_Value.GetType() == VM::Value::Type::Char) {
+    } else if (m_Value.GetType() == VM::Value::Type::Char) {
       res.push_back('\'');
       res.append(m_Value.AsString());
       res.push_back('\'');
@@ -103,8 +100,7 @@ namespace Grace
       auto type = object->ObjectType();
       if (type == GraceObjectType::Exception || type == GraceObjectType::Iterator || type == GraceObjectType::Instance) {
         res.append(object->ToString());
-      }
-      else {
+      } else {
         std::vector<GraceObject*> visited;
         if (AnyMemberMatchesRecursive(this, object, visited)) {
           switch (type) {
@@ -121,8 +117,7 @@ namespace Grace
               GRACE_UNREACHABLE();
               break;
           }
-        }
-        else {
+        } else {
           res.append(object->ToString());
         }
       }
@@ -170,4 +165,4 @@ namespace Grace
   {
     return m_Key.GetObject() == this && m_Value.GetObject() == this;
   }
-}
+}// namespace Grace

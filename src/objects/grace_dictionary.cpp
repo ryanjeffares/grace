@@ -37,7 +37,8 @@ namespace Grace
     std::string res = "{";
     std::size_t count = 0;
     for (std::size_t i = 0; i < m_Capacity; ++i) {
-      if (m_CellStates[i] != CellState::Occupied) continue;
+      if (m_CellStates[i] != CellState::Occupied)
+        continue;
       auto kvp = m_Data[i].GetObject()->GetAsKeyValuePair();
       res.append(kvp->ToString());
       if (count++ < m_Size - 1) {
@@ -51,7 +52,7 @@ namespace Grace
   bool GraceDictionary::AsBool() const
   {
     return m_Size > 0;
-  } 
+  }
 
   GraceDictionary::IteratorType GraceDictionary::Begin()
   {
@@ -79,7 +80,7 @@ namespace Grace
   void GraceDictionary::Insert(VM::Value&& key, VM::Value&& value)
   {
     auto fullness = static_cast<float>(m_Size) / static_cast<float>(m_Capacity);
-    if (fullness > s_MaxLoad) {      
+    if (fullness > s_MaxLoad) {
       GrowAndRehash();
     }
 
@@ -99,8 +100,7 @@ namespace Grace
             // error, use Update to update existing keys
             throw GraceException(
               GraceException::Type::DuplicateKey,
-              fmt::format("{} was already present in the dictionary", key)
-            );
+              fmt::format("{} was already present in the dictionary", key));
           }
           // keep going, might find a free slot
           index = (index + 1) % m_Capacity;
@@ -162,8 +162,7 @@ namespace Grace
           // nothing has been inserted here
           throw GraceException(
             GraceException::Type::KeyNotFound,
-            fmt::format("Dict did not contain key {}", key)
-          );
+            fmt::format("Dict did not contain key {}", key));
         case CellState::Tombstone:
           // our desired value may have been inserted after this...
           index = (index + 1) % m_Capacity;
@@ -254,7 +253,8 @@ namespace Grace
   {
     std::vector<GraceObject*> res;
     for (const auto& el : m_Data) {
-      if (el.GetType() == VM::Value::Type::Null) continue;
+      if (el.GetType() == VM::Value::Type::Null)
+        continue;
       res.push_back(el.GetObject());
     }
 
@@ -263,7 +263,7 @@ namespace Grace
 
   GRACE_NODISCARD bool GraceDictionary::AnyMemberMatches(const GraceObject* match) const
   {
-    return std::any_of(m_Data.begin(), m_Data.end(), [match] (const VM::Value& value) {
+    return std::any_of(m_Data.begin(), m_Data.end(), [match](const VM::Value& value) {
       return value.GetObject() == match;
     });
   }
@@ -272,7 +272,8 @@ namespace Grace
   {
     for (std::size_t i = 0; i < m_Data.size(); i++) {
       auto& el = m_Data[i];
-      if (el.GetType() == VM::Value::Type::Null) continue;
+      if (el.GetType() == VM::Value::Type::Null)
+        continue;
 
       if (el.GetObject() == object) {
         el = VM::Value::NullValue();
@@ -318,4 +319,4 @@ namespace Grace
 
     InvalidateIterators();
   }
-} // namespace Grace
+}// namespace Grace

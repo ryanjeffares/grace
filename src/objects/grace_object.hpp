@@ -20,7 +20,7 @@
 
 #include "../grace.hpp"
 
-namespace Grace 
+namespace Grace
 {
   namespace VM
   {
@@ -50,95 +50,121 @@ namespace Grace
 
   class GraceObject
   {
-    public:
+  public:
+    GraceObject() = default;
 
-      GraceObject() = default;
+    // GraceObjects should not be copyable/movable to avoid issues with reference counts.
+    // Objects that require a copy/move mechanism should be handle it through a function that returns the new object wrapped in a VM::Value
+    GraceObject(const GraceObject&) = delete;
+    GraceObject(GraceObject&&) = delete;
 
-      // GraceObjects should not be copyable/movable to avoid issues with reference counts.
-      // Objects that require a copy/move mechanism should be handle it through a function that returns the new object wrapped in a VM::Value
-      GraceObject(const GraceObject&) = delete;
-      GraceObject(GraceObject&&) = delete;
+    virtual ~GraceObject() = default;
 
-      virtual ~GraceObject() = default;
+    virtual void DebugPrint() const = 0;
+    virtual void Print(bool err) const = 0;
+    virtual void PrintLn(bool err) const = 0;
+    GRACE_NODISCARD virtual std::string ToString() const = 0;
+    GRACE_NODISCARD virtual bool AsBool() const = 0;
+    GRACE_NODISCARD virtual constexpr std::string_view ObjectName() const = 0;
+    GRACE_NODISCARD virtual constexpr bool IsIterable() const = 0;
+    GRACE_NODISCARD virtual constexpr GraceObjectType ObjectType() const = 0;
 
-      virtual void DebugPrint() const = 0;
-      virtual void Print(bool err) const = 0;
-      virtual void PrintLn(bool err) const = 0;
-      GRACE_NODISCARD virtual std::string ToString() const = 0;
-      GRACE_NODISCARD virtual bool AsBool() const = 0;
-      GRACE_NODISCARD virtual constexpr std::string_view ObjectName() const = 0;
-      GRACE_NODISCARD virtual constexpr bool IsIterable() const = 0;
-      GRACE_NODISCARD virtual constexpr GraceObjectType ObjectType() const = 0;
+    GRACE_INLINE std::uint32_t IncreaseRef()
+    {
+      return ++m_RefCount;
+    }
 
-      GRACE_INLINE std::uint32_t IncreaseRef()
-      {
-        return ++m_RefCount;
-      }
+    GRACE_INLINE std::uint32_t DecreaseRef()
+    {
+      return --m_RefCount;
+    }
 
-      GRACE_INLINE std::uint32_t DecreaseRef()
-      {
-        return --m_RefCount;
-      }
+    GRACE_NODISCARD GRACE_INLINE std::uint32_t RefCount() const
+    {
+      return m_RefCount;
+    }
 
-      GRACE_NODISCARD GRACE_INLINE std::uint32_t RefCount() const { return m_RefCount; }
+    // it would be nice to give more detailed messages here, but ObjectName() can't be called here
+    // and I couldn't be bothered making them pure virtual and implementing them in every class
+    GRACE_NODISCARD virtual bool AnyMemberMatches(GRACE_MAYBE_UNUSED const GraceObject* match) const
+    {
+      GRACE_ASSERT(false, "AnyMemberMatches() should only be called on Lists, Dictionaries, Sets, and Instances");
+      return false;
+    }
 
-      // it would be nice to give more detailed messages here, but ObjectName() can't be called here
-      // and I couldn't be bothered making them pure virtual and implementing them in every class
-      GRACE_NODISCARD virtual bool AnyMemberMatches(GRACE_MAYBE_UNUSED const GraceObject* match) const
-      {
-        GRACE_ASSERT(false, "AnyMemberMatches() should only be called on Lists, Dictionaries, Sets, and Instances");
-        return false;
-      }
+    GRACE_NODISCARD virtual std::vector<GraceObject*> GetObjectMembers() const
+    {
+      GRACE_ASSERT(false, "GetObjectMembers() should only be called on Lists, Dictionaries, Sets, and Instances");
+      return {};
+    }
 
-      GRACE_NODISCARD virtual std::vector<GraceObject*> GetObjectMembers() const
-      {
-        GRACE_ASSERT(false, "GetObjectMembers() should only be called on Lists, Dictionaries, Sets, and Instances");
-        return {};
-      }
+    virtual void RemoveMember(GRACE_MAYBE_UNUSED GraceObject* object)
+    {
+      GRACE_ASSERT(false, "RemoveMember() should only be called on Lists, Dictionaries, Sets,and Instances");
+    }
 
-      virtual void RemoveMember(GRACE_MAYBE_UNUSED GraceObject* object)
-      {
-        GRACE_ASSERT(false, "RemoveMember() should only be called on Lists, Dictionaries, Sets,and Instances");
-      }
+    GRACE_NODISCARD virtual bool OnlyReferenceIsSelf() const
+    {
+      GRACE_ASSERT(false, "OnlyReferenceIsSelf() should only be called on Lists, Sets, and Instances");
+      return false;
+    }
 
-      GRACE_NODISCARD virtual bool OnlyReferenceIsSelf() const
-      {
-        GRACE_ASSERT(false, "OnlyReferenceIsSelf() should only be called on Lists, Sets, and Instances");
-        return false;
-      }
+    // the derived classes can overload the respective function to avoid dynamic_casts
+    GRACE_NODISCARD GRACE_INLINE virtual GraceList* GetAsList()
+    {
+      return nullptr;
+    }
+    GRACE_NODISCARD GRACE_INLINE virtual GraceDictionary* GetAsDictionary()
+    {
+      return nullptr;
+    }
+    GRACE_NODISCARD GRACE_INLINE virtual GraceException* GetAsException()
+    {
+      return nullptr;
+    }
+    GRACE_NODISCARD GRACE_INLINE virtual GraceKeyValuePair* GetAsKeyValuePair()
+    {
+      return nullptr;
+    }
+    GRACE_NODISCARD GRACE_INLINE virtual GraceInstance* GetAsInstance()
+    {
+      return nullptr;
+    }
+    GRACE_NODISCARD GRACE_INLINE virtual GraceIterator* GetAsIterator()
+    {
+      return nullptr;
+    }
+    GRACE_NODISCARD GRACE_INLINE virtual GraceSet* GetAsSet()
+    {
+      return nullptr;
+    }
+    GRACE_NODISCARD GRACE_INLINE virtual GraceRange* GetAsRange()
+    {
+      return nullptr;
+    }
 
-      // the derived classes can overload the respective function to avoid dynamic_casts 
-      GRACE_NODISCARD GRACE_INLINE virtual GraceList* GetAsList() { return nullptr; }
-      GRACE_NODISCARD GRACE_INLINE virtual GraceDictionary* GetAsDictionary() { return nullptr; }
-      GRACE_NODISCARD GRACE_INLINE virtual GraceException* GetAsException() { return nullptr; }
-      GRACE_NODISCARD GRACE_INLINE virtual GraceKeyValuePair* GetAsKeyValuePair() { return nullptr; }
-      GRACE_NODISCARD GRACE_INLINE virtual GraceInstance* GetAsInstance() { return nullptr; }
-      GRACE_NODISCARD GRACE_INLINE virtual GraceIterator* GetAsIterator() { return nullptr; }
-      GRACE_NODISCARD GRACE_INLINE virtual GraceSet* GetAsSet() { return nullptr; }
-      GRACE_NODISCARD GRACE_INLINE virtual GraceRange* GetAsRange() { return nullptr; }
 
-
-      GRACE_NODISCARD static bool AnyMemberMatchesRecursive(const GraceObject* toFind, GraceObject* root, std::vector<GraceObject*>& visitedObjects)
-      {
-        for (auto object : root->GetObjectMembers()) {
-          if (object == toFind) {
-            return true;
-          } else {
-            if (std::find(visitedObjects.begin(), visitedObjects.end(), object) == visitedObjects.end()) {
-              visitedObjects.push_back(object);
-              if (AnyMemberMatchesRecursive(toFind, object, visitedObjects)) {
-                return true;
-              }
+    GRACE_NODISCARD static bool AnyMemberMatchesRecursive(const GraceObject* toFind, GraceObject* root, std::vector<GraceObject*>& visitedObjects)
+    {
+      for (auto object : root->GetObjectMembers()) {
+        if (object == toFind) {
+          return true;
+        } else {
+          if (std::find(visitedObjects.begin(), visitedObjects.end(), object) == visitedObjects.end()) {
+            visitedObjects.push_back(object);
+            if (AnyMemberMatchesRecursive(toFind, object, visitedObjects)) {
+              return true;
             }
           }
         }
-
-        return false;
       }
 
-    protected:
-      std::uint32_t m_RefCount = 0;      
-  };
-} // namespace Grace
+      return false;
+    }
 
-#endif  // ifndef GRACE_OBJECT_HPP
+  protected:
+    std::uint32_t m_RefCount = 0;
+  };
+}// namespace Grace
+
+#endif// ifndef GRACE_OBJECT_HPP

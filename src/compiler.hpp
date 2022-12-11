@@ -29,6 +29,6 @@ namespace Grace::Compiler
    *  @param warningsError    Display compiler warnings, warnings result in errors
    */
   GRACE_NODISCARD VM::InterpretResult Compile(const std::string& fileName, bool verbose, bool warningsError, const std::vector<std::string>& args);
-} // namespace Grace::Compiler
+}// namespace Grace::Compiler
 
-#endif  // ifndef GRACE_COMPILER_HPP
+#endif// ifndef GRACE_COMPILER_HPP

@@ -29,72 +29,72 @@
 
 #include <cassert>
 
-#ifdef GRACE_MSC    // __cplusplus isn't always set correctly on MSVC
-# if (_MSVC_LANG < 202002L)
-#   error "C++20 is required"
-# endif
+#ifdef GRACE_MSC// __cplusplus isn't always set correctly on MSVC
+#if (_MSVC_LANG < 202002L)
+#error "C++20 is required"
+#endif
 #else
-# if (__cplusplus < 202002L)
-#   error "C++20 is required"
-# endif
+#if (__cplusplus < 202002L)
+#error "C++20 is required"
+#endif
 #endif
 
 #ifndef GRACE_MAJOR_VERSION
-# define GRACE_MAJOR_VERSION				0
+#define GRACE_MAJOR_VERSION 0
 #endif
 
 #ifndef GRACE_MINOR_VERSION
-# define GRACE_MINOR_VERSION				0
+#define GRACE_MINOR_VERSION 0
 #endif
 
 #ifndef GRACE_PATCH_NUMBER
-# define GRACE_PATCH_NUMBER					1
+#define GRACE_PATCH_NUMBER 1
 #endif
 
 #ifndef GRACE_LIKELY
-# define GRACE_LIKELY						[[likely]]
+#define GRACE_LIKELY [[likely]]
 #endif
 
 #ifndef GRACE_UNLIKELY
-# define GRACE_UNLIKELY						[[unlikely]]
+#define GRACE_UNLIKELY [[unlikely]]
 #endif
 
 #ifndef GRACE_NODISCARD
-# define GRACE_NODISCARD					[[nodiscard]]
+#define GRACE_NODISCARD [[nodiscard]]
 #endif
 
 #ifndef GRACE_MAYBE_UNUSED
-# define GRACE_MAYBE_UNUSED					[[maybe_unused]]
+#define GRACE_MAYBE_UNUSED [[maybe_unused]]
 #endif
 
 #ifndef GRACE_NORETURN
-# define GRACE_NORETURN						[[noreturn]]
+#define GRACE_NORETURN [[noreturn]]
 #endif
 
 #ifndef GRACE_INLINE
-# ifdef GRACE_MSC 
-#   define GRACE_INLINE						__forceinline
-# elif defined GRACE_GCC_CLANG
-#   define GRACE_INLINE						__attribute__((always_inline))
-# else
-#   define GRACE_INLINE						inline
-# endif
+#ifdef GRACE_MSC
+#define GRACE_INLINE __forceinline
+#elif defined GRACE_GCC_CLANG
+#define GRACE_INLINE __attribute__((always_inline))
+#else
+#define GRACE_INLINE inline
+#endif
 #endif
 
 #ifndef GRACE_UNREACHABLE
-# define GRACE_UNREACHABLE()				assert(false && "Unreachable code detected") 
+#define GRACE_UNREACHABLE() assert(false && "Unreachable code detected")
 #endif
 
 #ifndef GRACE_NOT_IMPLEMENTED
-# define GRACE_NOT_IMPLEMENTED()			assert(false && "Not implemented")
+#define GRACE_NOT_IMPLEMENTED() assert(false && "Not implemented")
 #endif
 
 #ifndef GRACE_ASSERT
-# define GRACE_ASSERT(expression, message)  assert((expression) && (message))
+#define GRACE_ASSERT(expression, message) assert((expression) && (message))
 #endif
 
 #ifndef GRACE_ASSERT_FALSE
-# define GRACE_ASSERT_FALSE()				assert(false)
+#define GRACE_ASSERT_FALSE() assert(false)
 #endif
 
-#endif  // ifndef GRACE_GRACE_HPP
+#endif// ifndef GRACE_GRACE_HPP

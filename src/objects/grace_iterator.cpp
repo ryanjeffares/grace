@@ -14,8 +14,8 @@
 namespace Grace
 {
   GraceIterator::GraceIterator(GraceIterable* iterable, IterableType type)
-    : m_Iterable(iterable),
-    m_IterableType(type)
+      : m_Iterable(iterable)
+      , m_IterableType(type)
   {
     m_IsValid = true;
     m_Iterable->IncreaseRef();
@@ -38,8 +38,7 @@ namespace Grace
     if (!m_IsValid) {
       throw GraceException(
         GraceException::Type::InvalidIterator,
-        "Iterator is no longer valid, due to either being incremented past the end of the collection or the collection being modified"
-      );
+        "Iterator is no longer valid, due to either being incremented past the end of the collection or the collection being modified");
     }
     m_Iterable->IncrementIterator(m_Iterator);
   }
@@ -74,4 +73,4 @@ namespace Grace
     }
     return Value().AsString();
   }
-} // namespace Grace
+}// namespace Grace

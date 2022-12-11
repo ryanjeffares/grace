@@ -11,11 +11,11 @@
 
 #include <fmt/core.h>
 
-#include "object_tracker.hpp"
-#include "grace_object.hpp"
-#include "grace_list.hpp"
 #include "grace_dictionary.hpp"
 #include "grace_instance.hpp"
+#include "grace_list.hpp"
+#include "grace_object.hpp"
+#include "object_tracker.hpp"
 
 using namespace Grace;
 
@@ -84,7 +84,7 @@ std::size_t ObjectTracker::GetThreshold()
 void ObjectTracker::TrackObject(GraceObject* object)
 {
   GRACE_ASSERT(object != nullptr, "Trying to track an object that is a nullptr");
-  GRACE_ASSERT(std::find(s_TrackedObjects.begin(), s_TrackedObjects.end(), object) == s_TrackedObjects.end(), 
+  GRACE_ASSERT(std::find(s_TrackedObjects.begin(), s_TrackedObjects.end(), object) == s_TrackedObjects.end(),
     "Object is already being tracked");
   s_TrackedObjects.push_back(object);
 
@@ -124,7 +124,8 @@ void ObjectTracker::Finalise()
 
   if (!s_TrackedObjects.empty()) {
 #ifndef GRACE_DEBUG
-    if (!s_Verbose) return;
+    if (!s_Verbose)
+      return;
 #endif
 
     fmt::print(stderr, "Some objects are still being tracked:\n");
@@ -154,41 +155,42 @@ static void CleanObjects(const std::vector<VM::Value>& objectsToBeDeleted)
 
 static void CleanCyclesInternal()
 {
-  if (s_TrackedObjects.empty()) return;
+  if (s_TrackedObjects.empty())
+    return;
 
   // First deal with objects caught in a weird complicated cycle, for example
-  // 
+  //
   // ```
   // var first = Object();
   // var second = Object();
   // var third = Object();
-  // 
+  //
   // first.child = second;
   // second.child = third;
   // third.child = first;
   // ```
-  // 
+  //
   // in a cycle like this, if all of their reference counts are only 1 AND they all come from eachother
   // they can be safely deleted, since if they were still also being referenced by a local variable in the VM etc
   // they would have more than 1 ref
-  // 
+  //
   // an even more complicated situation could come from something like this:
-  // 
+  //
   // ```
   // var object = Object();
   // var dict = {};
   // dict.insert(dict, object);
   // object.member = dict;
   // ```
-  // 
+  //
   // in this nightmare situation (which is code you should never write, but is technically allowed)
   // the dict's reference is coming from a KeyValuePair, which the dict itself is giving a ref to
   // but the KeyValuePair is giving a ref to the Object instance which is giving a ref to the dict
-  // 
+  //
   // any object in the vector can be treated as a "root" in our "graph" of objects
   // if that root has a single ref, and traversing the graph can lead back itself, it can be deleted
 
-  std::vector<VM::Value> objectsToBeDeleted;  
+  std::vector<VM::Value> objectsToBeDeleted;
 
   for (auto root : s_TrackedObjects) {
     auto type = root->ObjectType();
@@ -225,19 +227,20 @@ static void CleanCyclesInternal()
   objectsToBeDeleted.clear();
 
   // now we can deal with simple "one way" cycles, like:
-  // 
+  //
   // ```
   // var o1 = Object();
   // var o2 = Object();
   // o1.member = o2;
   // o2.member = o1;
   // ```
-  // 
+  //
   // if any two objects have 1 reference left each and they are eachother, that is a cycle that can be deleted
-  
+
   for (auto object : s_TrackedObjects) {
-    if (object->RefCount() > 1) continue;
-      
+    if (object->RefCount() > 1)
+      continue;
+
     auto type = object->ObjectType();
     if (type == GraceObjectType::Exception || type == GraceObjectType::Iterator || type == GraceObjectType::Range) {
       // these objects don't have members/elements
@@ -246,7 +249,8 @@ static void CleanCyclesInternal()
 
     auto members = object->GetObjectMembers();
     for (auto member : members) {
-      if (member->RefCount() > 1) continue;
+      if (member->RefCount() > 1)
+        continue;
 
       auto memberType = member->ObjectType();
       if (memberType == GraceObjectType::Exception || memberType == GraceObjectType::Iterator) {

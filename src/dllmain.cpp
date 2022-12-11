@@ -15,8 +15,7 @@
 
 BOOL APIENTRY DllMain(GRACE_MAYBE_UNUSED HMODULE hModule, DWORD ul_reason_for_call, GRACE_MAYBE_UNUSED LPVOID lpReserved)
 {
-  switch (ul_reason_for_call)
-  {
+  switch (ul_reason_for_call) {
     case DLL_PROCESS_ATTACH:
     case DLL_THREAD_ATTACH:
     case DLL_THREAD_DETACH:
@@ -33,7 +32,7 @@ extern "C"
   EXPORT Grace::VM::InterpretResult RunFile(const char* filePath, int interpreterArgc, const char* interpreterArgv[], int graceArgc, const char* graceArgv[])
   {
     std::vector<std::string> interpreterArgs, graceArgs;
-    
+
     for (auto i = 0; i < interpreterArgc; i++) {
       interpreterArgs.push_back(interpreterArgv[i]);
     }

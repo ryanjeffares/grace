@@ -29,93 +29,93 @@ namespace Grace
 
   class GraceException : public std::exception, public GraceObject
   {
-    public:
-      enum class Type
-      {
-        AssertionFailed,
-        DuplicateKey,
-        Exception,
-        FileWriteFailed,
-        FileReadFailed,
-        FunctionNotExported,
-        FunctionNotFound,
-        IncorrectArgCount,
-        IndexOutOfRange,
-        InvalidArgument,
-        InvalidCast,
-        InvalidCollectionOperation,
-        InvalidIterator,
-        InvalidOperand,
-        InvalidType,
-        KeyNotFound,
-        LibraryLoadFailure,
-        MemberNotFound,
-        NamespaceNotFound,
-        PathError,
-        ThrownException,
-      };
+  public:
+    enum class Type
+    {
+      AssertionFailed,
+      DuplicateKey,
+      Exception,
+      FileWriteFailed,
+      FileReadFailed,
+      FunctionNotExported,
+      FunctionNotFound,
+      IncorrectArgCount,
+      IndexOutOfRange,
+      InvalidArgument,
+      InvalidCast,
+      InvalidCollectionOperation,
+      InvalidIterator,
+      InvalidOperand,
+      InvalidType,
+      KeyNotFound,
+      LibraryLoadFailure,
+      MemberNotFound,
+      NamespaceNotFound,
+      PathError,
+      ThrownException,
+    };
 
-      GraceException(Type type, std::string message)
-        : m_Type{ type }, m_Message{ std::move(message) }
-      {
+    GraceException(Type type, std::string message)
+        : m_Type {type}
+        , m_Message {std::move(message)}
+    {
+    }
 
-      }
+    explicit GraceException(std::string message)
+        : m_Type {Type::Exception}
+        , m_Message {std::move(message)}
+    {
+    }
 
-      explicit GraceException(std::string message)
-        : m_Type{ Type::Exception }, m_Message{ std::move(message) }
-      {
+    ~GraceException() override = default;
 
-      }
+    GRACE_NODISCARD const char* what() const noexcept override
+    {
+      return s_ExceptionMessages.at(m_Type);
+    }
 
-      ~GraceException() override = default;
+    GRACE_NODISCARD GRACE_INLINE const std::string& Message() const
+    {
+      return m_Message;
+    }
 
-      GRACE_NODISCARD const char* what() const noexcept override
-      {
-        return s_ExceptionMessages.at(m_Type);
-      }
+    GRACE_NODISCARD GRACE_INLINE Type GetType() const
+    {
+      return m_Type;
+    }
 
-      GRACE_NODISCARD GRACE_INLINE const std::string& Message() const
-      {
-        return m_Message;
-      }
+    void DebugPrint() const override;
+    void Print(bool err) const override;
+    void PrintLn(bool err) const override;
+    GRACE_NODISCARD std::string ToString() const override;
+    GRACE_NODISCARD bool AsBool() const override;
 
-      GRACE_NODISCARD GRACE_INLINE Type GetType() const
-      {
-        return m_Type;
-      }
+    GRACE_NODISCARD GRACE_INLINE constexpr std::string_view ObjectName() const override
+    {
+      return "Exception";
+    }
 
-      void DebugPrint() const override;
-      void Print(bool err) const override;
-      void PrintLn(bool err) const override;
-      GRACE_NODISCARD std::string ToString() const override;
-      GRACE_NODISCARD bool AsBool() const override;
-      
-      GRACE_NODISCARD GRACE_INLINE constexpr std::string_view ObjectName() const override
-      {
-        return "Exception";
-      }
+    GRACE_NODISCARD GRACE_INLINE constexpr bool IsIterable() const override
+    {
+      return false;
+    }
 
-      GRACE_NODISCARD GRACE_INLINE constexpr bool IsIterable() const override
-      {
-        return false;
-      }
+    GRACE_NODISCARD GRACE_INLINE constexpr GraceObjectType ObjectType() const override
+    {
+      return GraceObjectType::Exception;
+    }
 
-      GRACE_NODISCARD GRACE_INLINE constexpr GraceObjectType ObjectType() const override
-      {
-        return GraceObjectType::Exception;
-      }
+    GRACE_NODISCARD GRACE_INLINE GraceException* GetAsException() override
+    {
+      return this;
+    }
 
-      GRACE_NODISCARD GRACE_INLINE GraceException* GetAsException() override
-      {
-        return this;
-      }
-
-    private:
-      Type m_Type;
-      std::string m_Message;
-      static std::unordered_map<Type, const char*> s_ExceptionMessages;
+  private:
+    Type m_Type;
+    std::string m_Message;
+    static std::unordered_map<Type, const char*> s_ExceptionMessages;
   };
-} // namespace Grace::VM
+}// namespace Grace
 
 template<>
 struct fmt::formatter<Grace::GraceException::Type> : fmt::formatter<std::string_view>
@@ -153,4 +153,4 @@ struct fmt::formatter<Grace::GraceException::Type> : fmt::formatter<std::string_
   }
 };
 
-#endif  // ifndef GRACE_EXCEPTION_HPP
+#endif// ifndef GRACE_EXCEPTION_HPP

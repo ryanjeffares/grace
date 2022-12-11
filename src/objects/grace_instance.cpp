@@ -16,8 +16,9 @@
 
 namespace Grace
 {
-  GraceInstance::GraceInstance(std::string className, std::vector<Member> && members)
-	: m_ClassName{ std::move(className) }, m_Members{ std::move(members) }
+  GraceInstance::GraceInstance(std::string className, std::vector<Member>&& members)
+      : m_ClassName {std::move(className)}
+      , m_Members {std::move(members)}
   {
     if (m_Members.size() == 2 && m_ClassName == "Directory") {
       fmt::print("Here\n");
@@ -60,23 +61,22 @@ namespace Grace
   }
 
   std::string GraceInstance::ToString() const
-  {	
-	  return fmt::format("<{} instance at {}>", m_ClassName, fmt::ptr(this));
-  }  
+  {
+    return fmt::format("<{} instance at {}>", m_ClassName, fmt::ptr(this));
+  }
 
   void GraceInstance::AssignMember(const std::string& memberName, VM::Value&& value)
   {
-	  for (auto& [name, val] : m_Members) {
+    for (auto& [name, val] : m_Members) {
       if (name == memberName) {
         val = value;
         return;
-	    }
-	  }
+      }
+    }
 
     throw GraceException(
       GraceException::Type::MemberNotFound,
-      fmt::format("`{}` has no member name '{}'", ObjectName(), memberName)
-    );
+      fmt::format("`{}` has no member name '{}'", ObjectName(), memberName));
   }
 
   GRACE_NODISCARD const VM::Value& GraceInstance::LoadMember(const std::string& memberName)
@@ -89,13 +89,12 @@ namespace Grace
 
     throw GraceException(
       GraceException::Type::MemberNotFound,
-      fmt::format("`{}` has no member name '{}'", ObjectName(), memberName)
-    );
+      fmt::format("`{}` has no member name '{}'", ObjectName(), memberName));
   }
 
   GRACE_NODISCARD bool GraceInstance::HasMember(const std::string& memberName) const
   {
-    return std::any_of(m_Members.begin(), m_Members.end(), [&memberName] (const Member& member) {
+    return std::any_of(m_Members.begin(), m_Members.end(), [&memberName](const Member& member) {
       return member.name == memberName;
     });
   }
@@ -114,14 +113,14 @@ namespace Grace
 
   GRACE_NODISCARD bool GraceInstance::AnyMemberMatches(const GraceObject* match) const
   {
-    return std::any_of(m_Members.begin(), m_Members.end(), [match] (const Member& member) {
+    return std::any_of(m_Members.begin(), m_Members.end(), [match](const Member& member) {
       return member.value.GetObject() == match;
     });
   }
 
   void GraceInstance::RemoveMember(GraceObject* object)
   {
-    auto it = std::find_if(m_Members.begin(), m_Members.end(), [object] (const Member& member) {
+    auto it = std::find_if(m_Members.begin(), m_Members.end(), [object](const Member& member) {
       return member.value.GetObject() == object;
     });
 
@@ -132,8 +131,8 @@ namespace Grace
 
   GRACE_NODISCARD bool GraceInstance::OnlyReferenceIsSelf() const
   {
-    return static_cast<std::uint32_t>(std::count_if(m_Members.begin(), m_Members.end(), [this] (const Member& member) {
+    return static_cast<std::uint32_t>(std::count_if(m_Members.begin(), m_Members.end(), [this](const Member& member) {
       return member.value.GetObject() == this;
     })) == m_RefCount;
   }
-} // namespace Grace
+}// namespace Grace

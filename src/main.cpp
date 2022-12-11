@@ -13,11 +13,11 @@
 #include <fstream>
 #include <vector>
 
-#include <fmt/core.h>
 #include <fmt/color.h>
+#include <fmt/core.h>
 
-#include "grace.hpp"
 #include "compiler.hpp"
+#include "grace.hpp"
 
 static void Error(const std::string& message)
 {
@@ -38,7 +38,7 @@ static void Usage()
 }
 
 int main(int argc, const char* argv[])
-{  
+{
   if (argc < 2) {
     Usage();
     return 1;
@@ -108,7 +108,7 @@ int main(int argc, const char* argv[])
     Error("no '.gr' file given");
     return 1;
   }
-  
+
   if (!std::filesystem::exists(filePath)) {
     Error(fmt::format("provided file '{}' does not exist", filePath.string()));
     return 1;

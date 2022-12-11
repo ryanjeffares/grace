@@ -11,21 +11,20 @@
 
 #include <fmt/core.h>
 
-#include "grace_list.hpp"
 #include "grace_dictionary.hpp"
+#include "grace_list.hpp"
 
 namespace Grace
 {
   using namespace VM;
 
   GraceList::GraceList(std::vector<Value>&& items)
-    : GraceIterable{ std::move(items) }
+      : GraceIterable {std::move(items)}
   {
-
   }
 
   GraceList::GraceList(const GraceList& other, std::size_t multiple)
-    : GraceIterable{ 0 }
+      : GraceIterable {0}
   {
     m_Data.reserve(other.m_Data.size() * multiple);
     for (std::size_t i = 0; i < multiple; i++) {
@@ -33,7 +32,7 @@ namespace Grace
     }
   }
 
-  VM::Value GraceList::FromString(const std::string &string)
+  VM::Value GraceList::FromString(const std::string& string)
   {
     auto value = VM::Value::CreateObject<GraceList>();
     auto list = value.GetObject()->GetAsList();
@@ -67,8 +66,7 @@ namespace Grace
     if (index >= m_Data.size()) {
       throw GraceException(
         GraceException::Type::IndexOutOfRange,
-        fmt::format("The index is {} but the length is {}", index, m_Data.size())
-      );
+        fmt::format("The index is {} but the length is {}", index, m_Data.size()));
     }
 
     m_Data.insert(m_Data.begin() + index, std::forward<VM::Value>(value));
@@ -87,8 +85,7 @@ namespace Grace
     if (index >= m_Data.size()) {
       throw GraceException(
         GraceException::Type::IndexOutOfRange,
-        fmt::format("The index is {} but the length is {}", index, m_Data.size())
-      );
+        fmt::format("The index is {} but the length is {}", index, m_Data.size()));
     }
 
     auto res = std::move(m_Data[index]);
@@ -102,15 +99,13 @@ namespace Grace
     if (start >= m_Data.size()) {
       throw GraceException(
         GraceException::Type::IndexOutOfRange,
-        fmt::format("Start of range {} greater than length {}", start, m_Data.size())
-      );
+        fmt::format("Start of range {} greater than length {}", start, m_Data.size()));
     }
 
     if (start + count > m_Data.size()) {
       throw GraceException(
         GraceException::Type::IndexOutOfRange,
-        fmt::format("End of range {} greater than length {}", start + count, m_Data.size())
-      );
+        fmt::format("End of range {} greater than length {}", start + count, m_Data.size()));
     }
 
     m_Data.erase(m_Data.begin() + start, m_Data.begin() + start + count);
@@ -138,14 +133,14 @@ namespace Grace
 
   Value GraceList::Sorted() const
   {
-    auto data = m_Data;  // copy
+    auto data = m_Data;// copy
     std::sort(data.begin(), data.end());
     return Value::CreateObject<GraceList>(std::move(data));
   }
 
   Value GraceList::SortedDescending() const
   {
-    auto data = m_Data;  // copy
+    auto data = m_Data;// copy
     std::sort(data.begin(), data.end(), std::greater<>());
     return Value::CreateObject<GraceList>(std::move(data));
   }
@@ -155,15 +150,13 @@ namespace Grace
     if (start >= m_Data.size()) {
       throw GraceException(
         GraceException::Type::IndexOutOfRange,
-        fmt::format("Start of range {} greater than length {}", start, m_Data.size())
-      );
+        fmt::format("Start of range {} greater than length {}", start, m_Data.size()));
     }
 
     if (start + count > m_Data.size()) {
       throw GraceException(
         GraceException::Type::IndexOutOfRange,
-        fmt::format("End of range {} greater than length {}", start + count, m_Data.size())
-      );
+        fmt::format("End of range {} greater than length {}", start + count, m_Data.size()));
     }
 
     auto res = Value::CreateObject<GraceList>();
@@ -256,7 +249,7 @@ namespace Grace
 
   GRACE_NODISCARD bool Grace::GraceList::AnyMemberMatches(const GraceObject* match) const
   {
-    return std::any_of(m_Data.begin(), m_Data.end(), [match] (const Value& value) {
+    return std::any_of(m_Data.begin(), m_Data.end(), [match](const Value& value) {
       return value.GetObject() == match;
     });
   }
@@ -287,8 +280,8 @@ namespace Grace
 
   GRACE_NODISCARD bool GraceList::OnlyReferenceIsSelf() const
   {
-    return static_cast<std::uint32_t>(std::count_if(m_Data.begin(), m_Data.end(), [this] (const Value& value) {
+    return static_cast<std::uint32_t>(std::count_if(m_Data.begin(), m_Data.end(), [this](const Value& value) {
       return value.GetObject() == this;
     })) == m_RefCount;
   }
-}
+}// namespace Grace

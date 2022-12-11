@@ -20,11 +20,11 @@
 #include <dynload.h>
 
 #include "grace.hpp"
-#include "vm.hpp"
 #include "objects/grace_dictionary.hpp"
-#include "objects/grace_set.hpp"
 #include "objects/grace_instance.hpp"
 #include "objects/grace_list.hpp"
+#include "objects/grace_set.hpp"
+#include "vm.hpp"
 
 using namespace Grace::VM;
 
@@ -222,8 +222,7 @@ static Value SqrtFloat(Args args)
   if (args[0].GetType() != Value::Type::Double) {
     throw Grace::GraceException(
       Grace::GraceException::Type::InvalidType,
-      fmt::format("Expected `Float` for `std::float::sqrt(f)` but got `{}`", args[0].GetTypeName())
-    );
+      fmt::format("Expected `Float` for `std::float::sqrt(f)` but got `{}`", args[0].GetTypeName()));
   }
 
   return Value(std::sqrt(args[0].Get<double>()));
@@ -234,8 +233,7 @@ static Value SqrtInt(Args args)
   if (args[0].GetType() != Value::Type::Int) {
     throw Grace::GraceException(
       Grace::GraceException::Type::InvalidType,
-      fmt::format("Expected `Int` for `std::int::sqrt(i)` but got `{}`", args[0].GetTypeName())
-    );
+      fmt::format("Expected `Int` for `std::int::sqrt(i)` but got `{}`", args[0].GetTypeName()));
   }
 
   return Value(std::sqrt(args[0].Get<std::int64_t>()));
@@ -249,8 +247,7 @@ static Value IntAbs(Args args)
 
   throw Grace::GraceException(
     Grace::GraceException::Type::InvalidType,
-    fmt::format("Expected `Int` for `std::int::abs(i)` but got `{}`", args[0].GetTypeName())
-  );
+    fmt::format("Expected `Int` for `std::int::abs(i)` but got `{}`", args[0].GetTypeName()));
 }
 
 static Value FloatAbs(Args args)
@@ -261,8 +258,7 @@ static Value FloatAbs(Args args)
 
   throw Grace::GraceException(
     Grace::GraceException::Type::InvalidType,
-    fmt::format("Expected `Float` for `std::float::abs(i)` but got `{}`", args[0].GetTypeName())
-  );
+    fmt::format("Expected `Float` for `std::float::abs(i)` but got `{}`", args[0].GetTypeName()));
 }
 
 static Value TimeHours(GRACE_MAYBE_UNUSED Args args)
@@ -300,8 +296,7 @@ static Value Sleep(Args args)
   if (args[0].GetType() != Value::Type::Int) {
     throw Grace::GraceException(
       Grace::GraceException::Type::InvalidType,
-      fmt::format("Expected `Int` for `std::time::sleep(time_ns)` but got `{}`", args[0].GetTypeName())
-    );
+      fmt::format("Expected `Int` for `std::time::sleep(time_ns)` but got `{}`", args[0].GetTypeName()));
   }
 
   std::this_thread::sleep_for(std::chrono::milliseconds(args[0].Get<std::int64_t>()));
@@ -317,8 +312,7 @@ static Value ListAppend(Args args)
 
   throw Grace::GraceException(
     Grace::GraceException::Type::InvalidType,
-    fmt::format("Expected `List` for `std::list::append(list, value)` but got `{}`", args[0].GetTypeName())
-  );
+    fmt::format("Expected `List` for `std::list::append(list, value)` but got `{}`", args[0].GetTypeName()));
 }
 
 static Value ListAppendRange(Args args)
@@ -331,14 +325,12 @@ static Value ListAppendRange(Args args)
 
     throw Grace::GraceException(
       Grace::GraceException::Type::InvalidType,
-      fmt::format("Expected `List` for `source` in `std::list::append_range(dest, source)` but got `{}`", args[1].GetTypeName())
-    );
+      fmt::format("Expected `List` for `source` in `std::list::append_range(dest, source)` but got `{}`", args[1].GetTypeName()));
   }
 
   throw Grace::GraceException(
     Grace::GraceException::Type::InvalidType,
-    fmt::format("Expected `List` for `dest` in `std::list::append_range(dest, source)` but got `{}`", args[0].GetTypeName())
-  );
+    fmt::format("Expected `List` for `dest` in `std::list::append_range(dest, source)` but got `{}`", args[0].GetTypeName()));
 }
 
 static Value ListInsert(Args args)
@@ -347,8 +339,7 @@ static Value ListInsert(Args args)
     if (args[1].GetType() != Value::Type::Int) {
       throw Grace::GraceException(
         Grace::GraceException::Type::InvalidType,
-        fmt::format("Expected `Int` for `std::list::insert(list, index, value)` but got `{}`", args[1].GetTypeName())
-      );
+        fmt::format("Expected `Int` for `std::list::insert(list, index, value)` but got `{}`", args[1].GetTypeName()));
     }
 
     list->Insert(std::move(args[2]), static_cast<std::size_t>(args[1].Get<std::int64_t>()));
@@ -357,8 +348,7 @@ static Value ListInsert(Args args)
 
   throw Grace::GraceException(
     Grace::GraceException::Type::InvalidType,
-    fmt::format("Expected `List` for `std::list::insert(list, index, value)` but got `{}`", args[0].GetTypeName())
-  );
+    fmt::format("Expected `List` for `std::list::insert(list, index, value)` but got `{}`", args[0].GetTypeName()));
 }
 
 static Value ListRemove(Args args)
@@ -367,8 +357,7 @@ static Value ListRemove(Args args)
     if (args[1].GetType() != Value::Type::Int) {
       throw Grace::GraceException(
         Grace::GraceException::Type::InvalidType,
-        fmt::format("Expected `Int` for `std::list::remove(list, index)` but got `{}`", args[1].GetTypeName())
-      );
+        fmt::format("Expected `Int` for `std::list::remove(list, index)` but got `{}`", args[1].GetTypeName()));
     }
 
     return list->Remove(static_cast<std::size_t>(args[1].Get<std::int64_t>()));
@@ -376,8 +365,7 @@ static Value ListRemove(Args args)
 
   throw Grace::GraceException(
     Grace::GraceException::Type::InvalidType,
-    fmt::format("Expected `List` for `std::list::remove(list, index)` but got `{}`", args[0].GetTypeName())
-  );
+    fmt::format("Expected `List` for `std::list::remove(list, index)` but got `{}`", args[0].GetTypeName()));
 }
 
 static Value ListRemoveRange(Args args)
@@ -386,31 +374,27 @@ static Value ListRemoveRange(Args args)
     if (args[1].GetType() != Value::Type::Int) {
       throw Grace::GraceException(
         Grace::GraceException::Type::InvalidType,
-        fmt::format("Expected `Int` for `start` in `std::list::remove_range(list, start, count)` but got `{}`", args[1].GetTypeName())
-      );
+        fmt::format("Expected `Int` for `start` in `std::list::remove_range(list, start, count)` but got `{}`", args[1].GetTypeName()));
     }
 
     if (args[2].GetType() != Value::Type::Int) {
       throw Grace::GraceException(
         Grace::GraceException::Type::InvalidType,
-        fmt::format("Expected `Int` for `count` in `std::list::remove_range(list, start, count)` but got `{}`", args[2].GetTypeName())
-      );
+        fmt::format("Expected `Int` for `count` in `std::list::remove_range(list, start, count)` but got `{}`", args[2].GetTypeName()));
     }
 
     auto start = args[1].Get<std::int64_t>();
     if (start < 0) {
       throw Grace::GraceException(
         Grace::GraceException::Type::IndexOutOfRange,
-        "`start` was negative"
-      );
+        "`start` was negative");
     }
 
     auto count = args[2].Get<std::int64_t>();
     if (count < 0) {
       throw Grace::GraceException(
         Grace::GraceException::Type::IndexOutOfRange,
-        "`count` was negative"
-      );
+        "`count` was negative");
     }
 
     list->RemoveRange(static_cast<std::size_t>(start), static_cast<std::size_t>(count));
@@ -419,8 +403,7 @@ static Value ListRemoveRange(Args args)
 
   throw Grace::GraceException(
     Grace::GraceException::Type::InvalidType,
-    fmt::format("Expected `List` for `std::list::remove_range(list, start, count)` but got `{}`", args[0].GetTypeName())
-  );
+    fmt::format("Expected `List` for `std::list::remove_range(list, start, count)` but got `{}`", args[0].GetTypeName()));
 }
 
 static Value ListPop(Args args)
@@ -431,8 +414,7 @@ static Value ListPop(Args args)
 
   throw Grace::GraceException(
     Grace::GraceException::Type::InvalidType,
-    fmt::format("Expected `List` for `std::list::pop(list)` but got `{}`", args[0].GetTypeName())
-  );
+    fmt::format("Expected `List` for `std::list::pop(list)` but got `{}`", args[0].GetTypeName()));
 }
 
 static Value ListSetAtIndex(Args args)
@@ -441,8 +423,7 @@ static Value ListSetAtIndex(Args args)
     if (args[1].GetType() != Value::Type::Int) {
       throw Grace::GraceException(
         Grace::GraceException::Type::InvalidType,
-        fmt::format("Expected `Int` for `std::list::set(list, index, value)` but got `{}`", args[1].GetTypeName())
-      );
+        fmt::format("Expected `Int` for `std::list::set(list, index, value)` but got `{}`", args[1].GetTypeName()));
     }
 
     (*list)[static_cast<std::size_t>(args[1].Get<std::int64_t>())] = std::move(args[2]);
@@ -451,8 +432,7 @@ static Value ListSetAtIndex(Args args)
 
   throw Grace::GraceException(
     Grace::GraceException::Type::InvalidType,
-    fmt::format("Expected `List` for `std::list::set(list, index, value)` but got `{}`", args[0].GetTypeName())
-  );
+    fmt::format("Expected `List` for `std::list::set(list, index, value)` but got `{}`", args[0].GetTypeName()));
 }
 
 static Value ListGetAtIndex(Args args)
@@ -461,8 +441,7 @@ static Value ListGetAtIndex(Args args)
     if (args[1].GetType() != Value::Type::Int) {
       throw Grace::GraceException(
         Grace::GraceException::Type::InvalidType,
-        fmt::format("Expected `Int` for `std::list::get(list, index)` but got `{}`", args[1].GetTypeName())
-      );
+        fmt::format("Expected `Int` for `std::list::get(list, index)` but got `{}`", args[1].GetTypeName()));
     }
 
     return (*list)[static_cast<std::size_t>(args[1].Get<std::int64_t>())];
@@ -470,8 +449,7 @@ static Value ListGetAtIndex(Args args)
 
   throw Grace::GraceException(
     Grace::GraceException::Type::InvalidType,
-    fmt::format("Expected `List` for `std::list::get(list, index)` but got `{}`", args[0].GetTypeName())
-  );
+    fmt::format("Expected `List` for `std::list::get(list, index)` but got `{}`", args[0].GetTypeName()));
 }
 
 static Value ListLength(Args args)
@@ -482,8 +460,7 @@ static Value ListLength(Args args)
 
   throw Grace::GraceException(
     Grace::GraceException::Type::InvalidType,
-    fmt::format("Expected `List` for `std::list::get(list, index)` but got `{}`", args[0].GetTypeName())
-  );
+    fmt::format("Expected `List` for `std::list::get(list, index)` but got `{}`", args[0].GetTypeName()));
 }
 
 static Value ListSort(Args args)
@@ -495,8 +472,7 @@ static Value ListSort(Args args)
 
   throw Grace::GraceException(
     Grace::GraceException::Type::InvalidType,
-    fmt::format("Expected `List` for `std::list::sort(list)` but got `{}`", args[0].GetTypeName())
-  );
+    fmt::format("Expected `List` for `std::list::sort(list)` but got `{}`", args[0].GetTypeName()));
 }
 
 static Value ListSortDescending(Args args)
@@ -508,8 +484,7 @@ static Value ListSortDescending(Args args)
 
   throw Grace::GraceException(
     Grace::GraceException::Type::InvalidType,
-    fmt::format("Expected `List` for `std::list::sort_descending(list)` but got `{}`", args[0].GetTypeName())
-  );
+    fmt::format("Expected `List` for `std::list::sort_descending(list)` but got `{}`", args[0].GetTypeName()));
 }
 
 static Value ListSorted(Args args)
@@ -520,8 +495,7 @@ static Value ListSorted(Args args)
 
   throw Grace::GraceException(
     Grace::GraceException::Type::InvalidType,
-    fmt::format("Expected `List` for `std::list::sort(list)` but got `{}`", args[0].GetTypeName())
-  );
+    fmt::format("Expected `List` for `std::list::sort(list)` but got `{}`", args[0].GetTypeName()));
 }
 
 static Value ListSortedDescending(Args args)
@@ -532,8 +506,7 @@ static Value ListSortedDescending(Args args)
 
   throw Grace::GraceException(
     Grace::GraceException::Type::InvalidType,
-    fmt::format("Expected `List` for `std::list::sort_descending(list)` but got `{}`", args[0].GetTypeName())
-  );
+    fmt::format("Expected `List` for `std::list::sort_descending(list)` but got `{}`", args[0].GetTypeName()));
 }
 
 static Value ListGetRange(Args args)
@@ -542,31 +515,27 @@ static Value ListGetRange(Args args)
     if (args[1].GetType() != Value::Type::Int) {
       throw Grace::GraceException(
         Grace::GraceException::Type::InvalidType,
-        fmt::format("Expected `Int` for `start` in `std::list::get_range(list, start, count)` but got `{}`", args[1].GetTypeName())
-      );
+        fmt::format("Expected `Int` for `start` in `std::list::get_range(list, start, count)` but got `{}`", args[1].GetTypeName()));
     }
 
     if (args[2].GetType() != Value::Type::Int) {
       throw Grace::GraceException(
         Grace::GraceException::Type::InvalidType,
-        fmt::format("Expected `Int` for `count` in `std::list::get_range(list, start, count)` but got `{}`", args[2].GetTypeName())
-      );
+        fmt::format("Expected `Int` for `count` in `std::list::get_range(list, start, count)` but got `{}`", args[2].GetTypeName()));
     }
 
     auto start = args[1].Get<std::int64_t>();
     if (start < 0) {
       throw Grace::GraceException(
         Grace::GraceException::Type::IndexOutOfRange,
-        "`start` was negative"
-      );
+        "`start` was negative");
     }
 
     auto count = args[2].Get<std::int64_t>();
     if (count < 0) {
       throw Grace::GraceException(
         Grace::GraceException::Type::IndexOutOfRange,
-        "`count` was negative"
-      );
+        "`count` was negative");
     }
 
     return list->GetRange(static_cast<std::size_t>(start), static_cast<std::size_t>(count));
@@ -574,8 +543,7 @@ static Value ListGetRange(Args args)
 
   throw Grace::GraceException(
     Grace::GraceException::Type::InvalidType,
-    fmt::format("Expected `List` for `std::list::get_range(list, start, count)` but got `{}`", args[0].GetTypeName())
-  );
+    fmt::format("Expected `List` for `std::list::get_range(list, start, count)` but got `{}`", args[0].GetTypeName()));
 }
 
 static Value ListFirst(Args args)
@@ -586,8 +554,7 @@ static Value ListFirst(Args args)
 
   throw Grace::GraceException(
     Grace::GraceException::Type::InvalidType,
-    fmt::format("Expected `List` for `std::list::first(list)` but got `{}`", args[0].GetTypeName())
-  );
+    fmt::format("Expected `List` for `std::list::first(list)` but got `{}`", args[0].GetTypeName()));
 }
 
 static Value ListLast(Args args)
@@ -598,8 +565,7 @@ static Value ListLast(Args args)
 
   throw Grace::GraceException(
     Grace::GraceException::Type::InvalidType,
-    fmt::format("Expected `List` for `std::list::last(list)` but got `{}`", args[0].GetTypeName())
-  );
+    fmt::format("Expected `List` for `std::list::last(list)` but got `{}`", args[0].GetTypeName()));
 }
 
 static Value DictionaryInsert(Args args)
@@ -607,8 +573,7 @@ static Value DictionaryInsert(Args args)
   if (args[0].GetObject()->GetAsDictionary() == nullptr) {
     throw Grace::GraceException(
       Grace::GraceException::Type::InvalidType,
-      fmt::format("Expected `Dict` for `std::dict::insert(dict, key, value)` but got `{}`", args[0].GetTypeName())
-    );
+      fmt::format("Expected `Dict` for `std::dict::insert(dict, key, value)` but got `{}`", args[0].GetTypeName()));
   }
 
   auto dict = args[0].GetObject()->GetAsDictionary();
@@ -621,8 +586,7 @@ static Value DictionaryGet(Args args)
   if (args[0].GetObject()->GetAsDictionary() == nullptr) {
     throw Grace::GraceException(
       Grace::GraceException::Type::InvalidType,
-      fmt::format("Expected `Dict` for `std::dict::get(dict, key)` but got `{}`", args[0].GetTypeName())
-    );
+      fmt::format("Expected `Dict` for `std::dict::get(dict, key)` but got `{}`", args[0].GetTypeName()));
   }
 
   auto dict = args[0].GetObject()->GetAsDictionary();
@@ -634,8 +598,7 @@ static Value DictionaryContainsKey(Args args)
   if (args[0].GetObject()->GetAsDictionary() == nullptr) {
     throw Grace::GraceException(
       Grace::GraceException::Type::InvalidType,
-      fmt::format("Expected `Dict` for `std::dict::contains_key(dict, key)` but got `{}`", args[0].GetTypeName())
-    );
+      fmt::format("Expected `Dict` for `std::dict::contains_key(dict, key)` but got `{}`", args[0].GetTypeName()));
   }
 
   auto dict = args[0].GetObject()->GetAsDictionary();
@@ -647,8 +610,7 @@ static Value DictionaryRemove(Args args)
   if (args[0].GetObject()->GetAsDictionary() == nullptr) {
     throw Grace::GraceException(
       Grace::GraceException::Type::InvalidType,
-      fmt::format("Expected `Dict` for `std::dict::remove(dict, key)` but got `{}`", args[0].GetTypeName())
-    );
+      fmt::format("Expected `Dict` for `std::dict::remove(dict, key)` but got `{}`", args[0].GetTypeName()));
   }
 
   auto dict = args[0].GetObject()->GetAsDictionary();
@@ -660,8 +622,7 @@ static Value KeyValuePairKey(Args args)
   if (args[0].GetObject()->GetAsKeyValuePair() == nullptr) {
     throw Grace::GraceException(
       Grace::GraceException::Type::InvalidType,
-      fmt::format("Expected `KeyValuePair` for `std::keyvaluepair::key(pair)` but got `{}`", args[0].GetTypeName())
-    );
+      fmt::format("Expected `KeyValuePair` for `std::keyvaluepair::key(pair)` but got `{}`", args[0].GetTypeName()));
   }
 
   auto kvp = args[0].GetObject()->GetAsKeyValuePair();
@@ -673,8 +634,7 @@ static Value KeyValuePairValue(Args args)
   if (args[0].GetObject()->GetAsKeyValuePair() == nullptr) {
     throw Grace::GraceException(
       Grace::GraceException::Type::InvalidType,
-      fmt::format("Expected `KeyValuePair` for `std::keyvaluepair::value(pair)` but got `{}`", args[0].GetTypeName())
-    );
+      fmt::format("Expected `KeyValuePair` for `std::keyvaluepair::value(pair)` but got `{}`", args[0].GetTypeName()));
   }
 
   auto kvp = args[0].GetObject()->GetAsKeyValuePair();
@@ -690,8 +650,7 @@ static Value SetAdd(Args args)
 
   throw Grace::GraceException(
     Grace::GraceException::Type::InvalidType,
-    fmt::format("Expected `Set` for `std::set::add(set, value)` but got `{}`", args[0].GetTypeName())
-  );
+    fmt::format("Expected `Set` for `std::set::add(set, value)` but got `{}`", args[0].GetTypeName()));
 }
 
 static Value SetContains(Args args)
@@ -702,8 +661,7 @@ static Value SetContains(Args args)
 
   throw Grace::GraceException(
     Grace::GraceException::Type::InvalidType,
-    fmt::format("Expected `Set` for `std::set::contains(set, value)` but got `{}`", args[0].GetTypeName())
-  );
+    fmt::format("Expected `Set` for `std::set::contains(set, value)` but got `{}`", args[0].GetTypeName()));
 }
 
 static Value SetSize(Args args)
@@ -714,8 +672,7 @@ static Value SetSize(Args args)
 
   throw Grace::GraceException(
     Grace::GraceException::Type::InvalidType,
-    fmt::format("Expected `Set` for `std::set::size(set)` but got `{}`", args[0].GetTypeName())
-  );
+    fmt::format("Expected `Set` for `std::set::size(set)` but got `{}`", args[0].GetTypeName()));
 }
 
 static Value FileWrite(Args args)
@@ -723,8 +680,7 @@ static Value FileWrite(Args args)
   if (args[0].GetType() != Value::Type::String) {
     throw Grace::GraceException(
       Grace::GraceException::Type::InvalidType,
-      fmt::format("Expected `String` for `std::file::write(path, contents)` but got `{}`", args[0].GetTypeName())
-    );
+      fmt::format("Expected `String` for `std::file::write(path, contents)` but got `{}`", args[0].GetTypeName()));
   }
 
   auto& path = args[0];
@@ -736,8 +692,7 @@ static Value FileWrite(Args args)
   if (outStream.fail()) {
     throw Grace::GraceException(
       Grace::GraceException::Type::FileWriteFailed,
-      fmt::format("failed to write to {}", path)
-    );
+      fmt::format("failed to write to {}", path));
   }
 
   return {};
@@ -748,8 +703,7 @@ static Value FileReadAllText(Args args)
   if (args[0].GetType() != Value::Type::String) {
     throw Grace::GraceException(
       Grace::GraceException::Type::InvalidType,
-      fmt::format("Expected `String` for `std::file::read_all_text(path)` but got `{}`", args[0].GetTypeName())
-    );
+      fmt::format("Expected `String` for `std::file::read_all_text(path)` but got `{}`", args[0].GetTypeName()));
   }
 
   auto& path = args[0];
@@ -760,8 +714,7 @@ static Value FileReadAllText(Args args)
   if (inStream.fail()) {
     throw Grace::GraceException(
       Grace::GraceException::Type::FileReadFailed,
-      fmt::format("Failed to open file '{}'", path)
-    );
+      fmt::format("Failed to open file '{}'", path));
   }
 
   std::stringstream ss;
@@ -774,8 +727,7 @@ static Value FileReadAllLines(Args args)
   if (args[0].GetType() != Value::Type::String) {
     throw Grace::GraceException(
       Grace::GraceException::Type::InvalidType,
-      fmt::format("Expected `String` for `std::file::read_all_lines(path)` but got `{}`", args[0].GetTypeName())
-    );
+      fmt::format("Expected `String` for `std::file::read_all_lines(path)` but got `{}`", args[0].GetTypeName()));
   }
 
   auto& path = args[0];
@@ -786,8 +738,7 @@ static Value FileReadAllLines(Args args)
   if (inStream.fail()) {
     throw Grace::GraceException(
       Grace::GraceException::Type::FileReadFailed,
-      fmt::format("Failed to open file '{}'", path)
-    );
+      fmt::format("Failed to open file '{}'", path));
   }
 
   auto res = Value::CreateObject<Grace::GraceList>();
@@ -816,8 +767,7 @@ static Value SystemExit(Args args)
   if (args[0].GetType() != Value::Type::Int) {
     throw Grace::GraceException(
       Grace::GraceException::Type::InvalidType,
-      fmt::format("Expected `Int` for `std::system::exit(exit_code)` but got `{}`", args[0].GetTypeName())
-    );
+      fmt::format("Expected `Int` for `std::system::exit(exit_code)` but got `{}`", args[0].GetTypeName()));
   }
 
   std::exit(static_cast<int>(args[0].Get<std::int64_t>()));
@@ -832,8 +782,7 @@ static Value SystemRun(Args args)
 
   throw Grace::GraceException(
     Grace::GraceException::Type::InvalidType,
-    fmt::format("Expected `String` for `std::system::run(command)` but got `{}`", args[0].GetTypeName())
-  );
+    fmt::format("Expected `String` for `std::system::run(command)` but got `{}`", args[0].GetTypeName()));
 }
 
 static Value SystemPlatform(GRACE_MAYBE_UNUSED Args args)
@@ -860,8 +809,7 @@ static Value DirectoryExists(Args args)
   if (args[0].GetType() != Value::Type::String) {
     throw Grace::GraceException(
       Grace::GraceException::Type::InvalidType,
-      fmt::format("Expected `String` for `std::directory::exists(path)` but got `{}`", args[0].GetTypeName())
-    );
+      fmt::format("Expected `String` for `std::directory::exists(path)` but got `{}`", args[0].GetTypeName()));
   }
 
   const auto& path = args[0].Get<std::string>();
@@ -874,8 +822,7 @@ static Value DirectoryCreate(Args args)
   if (args[0].GetType() != Value::Type::String) {
     throw Grace::GraceException(
       Grace::GraceException::Type::InvalidType,
-      fmt::format("Expected `String` for `std::directory::create(path)` but got `{}`", args[0].GetTypeName())
-    );
+      fmt::format("Expected `String` for `std::directory::create(path)` but got `{}`", args[0].GetTypeName()));
   }
 
   const auto& path = args[0].Get<std::string>();
@@ -893,8 +840,7 @@ static Value DirectoryGetDirectories(Args args)
     if (!fs::is_directory(path)) {
       throw Grace::GraceException(
         Grace::GraceException::Type::PathError,
-        fmt::format("{} is not a directory", path.string())
-      );
+        fmt::format("{} is not a directory", path.string()));
     }
 
     auto res = Value::CreateObject<Grace::GraceList>();
@@ -910,8 +856,7 @@ static Value DirectoryGetDirectories(Args args)
 
   throw Grace::GraceException(
     Grace::GraceException::Type::InvalidType,
-    fmt::format("Expected `String` for `std::directory::get_directories(path)` but got `{}`", args[0].GetTypeName())
-  );
+    fmt::format("Expected `String` for `std::directory::get_directories(path)` but got `{}`", args[0].GetTypeName()));
 }
 
 static Value InteropLoadLibrary(Args args)
@@ -919,8 +864,7 @@ static Value InteropLoadLibrary(Args args)
   if (args[0].GetType() != Value::Type::String) {
     throw Grace::GraceException(
       Grace::GraceException::Type::InvalidType,
-      fmt::format("Expected `String` for `std::interop::load_library(library_path)` but got `{}`", args[0].GetTypeName())
-    );
+      fmt::format("Expected `String` for `std::interop::load_library(library_path)` but got `{}`", args[0].GetTypeName()));
   }
 
   const auto& libName = args[0].Get<std::string>();
@@ -962,15 +906,13 @@ static Value InteropDoCall(Args args)
   if (handleInstance == nullptr || handleInstance->ObjectName() != "LibraryHandle") {
     throw Grace::GraceException(
       Grace::GraceException::Type::InvalidType,
-      fmt::format("Expected `std::interop::LibraryHandle` for `handle` in `std::interop::do_call(handle, func_name, args, call_type)` but got `{}`", args[0].GetTypeName())
-    );
+      fmt::format("Expected `std::interop::LibraryHandle` for `handle` in `std::interop::do_call(handle, func_name, args, call_type)` but got `{}`", args[0].GetTypeName()));
   }
 
   if (args[1].GetType() != Value::Type::String) {
     throw Grace::GraceException(
       Grace::GraceException::Type::InvalidType,
-      fmt::format("Expected `String` for `func_name` in `std::interop::do_call(handle, func_name, args, call_type)` but got `{}`", args[1].GetTypeName())
-    );
+      fmt::format("Expected `String` for `func_name` in `std::interop::do_call(handle, func_name, args, call_type)` but got `{}`", args[1].GetTypeName()));
   }
 
   const auto& funcName = args[1].Get<std::string>();
@@ -979,16 +921,14 @@ static Value InteropDoCall(Args args)
   if (argsObject == nullptr || argsObject->GetAsList() == nullptr) {
     throw Grace::GraceException(
       Grace::GraceException::Type::InvalidType,
-      fmt::format("Expected `List` for `args` in `std::interop::do_call(handle, func_name, args, call_type)` but got `{}`", args[2].GetTypeName())
-    );
+      fmt::format("Expected `List` for `args` in `std::interop::do_call(handle, func_name, args, call_type)` but got `{}`", args[2].GetTypeName()));
   }
   auto argList = argsObject->GetAsList();
 
   if (args[3].GetType() != Value::Type::Int) {
     throw Grace::GraceException(
       Grace::GraceException::Type::InvalidType,
-      fmt::format("Expected `Int` for `call_type` in `std::interop::do_call(handle, func_name, args, call_type)` but got `{}`", args[3].GetTypeName())
-    );
+      fmt::format("Expected `Int` for `call_type` in `std::interop::do_call(handle, func_name, args, call_type)` but got `{}`", args[3].GetTypeName()));
   }
   auto callType = args[3].Get<std::int64_t>();
 
@@ -997,8 +937,7 @@ static Value InteropDoCall(Args args)
   if (funcPtr == nullptr) {
     throw Grace::GraceException(
       Grace::GraceException::Type::FunctionNotFound,
-      fmt::format("Failed to load function `{}` from dynamic library `{}`", funcName, handleInstance->LoadMember("library_name").Get<std::string>())
-    );
+      fmt::format("Failed to load function `{}` from dynamic library `{}`", funcName, handleInstance->LoadMember("library_name").Get<std::string>()));
   }
 
   auto stackSize = static_cast<std::size_t>(handleInstance->LoadMember("stack_size").Get<std::int64_t>());
@@ -1042,7 +981,7 @@ static Value InteropDoCall(Args args)
         break;
       case CDECL_ARG_POINTER: {
         auto& str = pair->Value().Get<std::string>();
-        auto charArray = new char[str.size() + 1];  // + 1 for null terminated char
+        auto charArray = new char[str.size() + 1];// + 1 for null terminated char
         std::memcpy(charArray, str.data(), str.size());
         charArray[str.size()] = '\0';
         argsToDelete.push_back(charArray);
@@ -1125,8 +1064,7 @@ static Value StringLength(Args args)
   if (s.GetType() != Value::Type::String) {
     throw Grace::GraceException(
       Grace::GraceException::Type::InvalidType,
-      fmt::format("Expected `String` for `std::string::length(s)` but got `{}`", args[0].GetTypeName())
-    );
+      fmt::format("Expected `String` for `std::string::length(s)` but got `{}`", args[0].GetTypeName()));
   }
 
   return Value(static_cast<std::int64_t>(s.Get<std::string>().length()));
@@ -1137,15 +1075,13 @@ static Value StringSplit(Args args)
   if (args[0].GetType() != Value::Type::String) {
     throw Grace::GraceException(
       Grace::GraceException::Type::InvalidType,
-      fmt::format("Expected `String` for `std::string::split(s, separator)` but got `{}`", args[0].GetTypeName())
-    );
+      fmt::format("Expected `String` for `std::string::split(s, separator)` but got `{}`", args[0].GetTypeName()));
   }
 
   if (args[1].GetType() != Value::Type::String && args[1].GetType() != Value::Type::Char) {
     throw Grace::GraceException(
       Grace::GraceException::Type::InvalidType,
-      fmt::format("Expected `String` or `Char` for `std::string::split(s, separator)` but got `{}`", args[1].GetTypeName())
-    );
+      fmt::format("Expected `String` or `Char` for `std::string::split(s, separator)` but got `{}`", args[1].GetTypeName()));
   }
 
   const auto& s = args[0].Get<std::string>();
@@ -1161,7 +1097,7 @@ static Value StringSplit(Args args)
     list->Append(s);
     return res;
   }
-  
+
   std::size_t lastSplit = 0;
   for (std::size_t i = 0; i < s.length();) {
     if (s.substr(i, separator.length()) == separator) {
@@ -1183,15 +1119,13 @@ static Value StringSubstring(Args args)
     if (args[1].GetType() != Value::Type::Int) {
       throw Grace::GraceException(
         Grace::GraceException::Type::InvalidType,
-        fmt::format("Expected `Int` for `start` in `std::string::substring(string, start, length)` but got `{}`", args[1].GetType())
-      );
+        fmt::format("Expected `Int` for `start` in `std::string::substring(string, start, length)` but got `{}`", args[1].GetType()));
     }
 
     if (args[2].GetType() != Value::Type::Int) {
       throw Grace::GraceException(
         Grace::GraceException::Type::InvalidType,
-        fmt::format("Expected `Int` for `length` in `std::string::substring(string, start, length)` but got `{}`", args[2].GetType())
-      );
+        fmt::format("Expected `Int` for `length` in `std::string::substring(string, start, length)` but got `{}`", args[2].GetType()));
     }
 
     return Value(args[0].Get<std::string>().substr(static_cast<std::size_t>(args[1].Get<std::int64_t>()), static_cast<std::size_t>(args[2].Get<std::int64_t>())));
@@ -1199,8 +1133,7 @@ static Value StringSubstring(Args args)
 
   throw Grace::GraceException(
     Grace::GraceException::Type::InvalidType,
-    fmt::format("Expected `String` for `std::string::substring(string, start, length)` but got `{}`", args[0].GetType())
-  );  
+    fmt::format("Expected `String` for `std::string::substring(string, start, length)` but got `{}`", args[0].GetType()));
 }
 
 static Value CharIsLower(Args args)
@@ -1210,9 +1143,8 @@ static Value CharIsLower(Args args)
   }
 
   throw Grace::GraceException(
-      Grace::GraceException::Type::InvalidType,
-      fmt::format("Expected `Char` for `std::char::is_lower(char)` but got `{}`", args[0].GetTypeName())
-    );
+    Grace::GraceException::Type::InvalidType,
+    fmt::format("Expected `Char` for `std::char::is_lower(char)` but got `{}`", args[0].GetTypeName()));
 }
 
 static Value CharIsUpper(Args args)
@@ -1222,9 +1154,8 @@ static Value CharIsUpper(Args args)
   }
 
   throw Grace::GraceException(
-      Grace::GraceException::Type::InvalidType,
-      fmt::format("Expected `Char` for `std::char::is_upper(char)` but got `{}`", args[0].GetTypeName())
-    );
+    Grace::GraceException::Type::InvalidType,
+    fmt::format("Expected `Char` for `std::char::is_upper(char)` but got `{}`", args[0].GetTypeName()));
 }
 
 static Value CharToLower(Args args)
@@ -1234,9 +1165,8 @@ static Value CharToLower(Args args)
   }
 
   throw Grace::GraceException(
-      Grace::GraceException::Type::InvalidType,
-      fmt::format("Expected `Char` for `std::char::to_lower(char)` but got `{}`", args[0].GetTypeName())
-    );
+    Grace::GraceException::Type::InvalidType,
+    fmt::format("Expected `Char` for `std::char::to_lower(char)` but got `{}`", args[0].GetTypeName()));
 }
 
 static Value CharToUpper(Args args)
@@ -1246,9 +1176,8 @@ static Value CharToUpper(Args args)
   }
 
   throw Grace::GraceException(
-      Grace::GraceException::Type::InvalidType,
-      fmt::format("Expected `Char` for `std::char::to_upper(char)` but got `{}`", args[0].GetTypeName())
-    );
+    Grace::GraceException::Type::InvalidType,
+    fmt::format("Expected `Char` for `std::char::to_upper(char)` but got `{}`", args[0].GetTypeName()));
 }
 
 static Value GcSetEnabled(Args args)
@@ -1256,8 +1185,7 @@ static Value GcSetEnabled(Args args)
   if (args[0].GetType() != Value::Type::Bool) {
     throw Grace::GraceException(
       Grace::GraceException::Type::InvalidType,
-      fmt::format("Expected `Bool` for `std::gc::set_enabled(state)` but got `{}`", args[0].GetTypeName())
-    );
+      fmt::format("Expected `Bool` for `std::gc::set_enabled(state)` but got `{}`", args[0].GetTypeName()));
   }
 
   Grace::ObjectTracker::SetEnabled(args[0].Get<bool>());
@@ -1274,8 +1202,7 @@ static Value GcSetVerbose(Args args)
   if (args[0].GetType() != Value::Type::Bool) {
     throw Grace::GraceException(
       Grace::GraceException::Type::InvalidType,
-      fmt::format("Expected `Bool` for `std::gc::set_debug(state)` but got `{}`", args[0].GetTypeName())
-    );
+      fmt::format("Expected `Bool` for `std::gc::set_debug(state)` but got `{}`", args[0].GetTypeName()));
   }
 
   Grace::ObjectTracker::SetVerbose(args[0].Get<bool>());
@@ -1298,16 +1225,14 @@ static Value GcSetThreshold(Args args)
   if (args[0].GetType() != Value::Type::Int) {
     throw Grace::GraceException(
       Grace::GraceException::Type::InvalidType,
-      fmt::format("Expected `Int` for `std::gc::set_threshold(threshold)` but got `{}`", args[0].GetTypeName())
-    );
+      fmt::format("Expected `Int` for `std::gc::set_threshold(threshold)` but got `{}`", args[0].GetTypeName()));
   }
 
   auto value = args[0].Get<std::int64_t>();
   if (value <= 0) {
     throw Grace::GraceException(
       Grace::GraceException::Type::InvalidArgument,
-      fmt::format("Expected positive number for `std::gc::set_threshold(threshold)` but got `{}`", value)
-    );
+      fmt::format("Expected positive number for `std::gc::set_threshold(threshold)` but got `{}`", value));
   }
 
   Grace::ObjectTracker::SetThreshold(static_cast<std::size_t>(value));
@@ -1324,16 +1249,14 @@ static Value GcSetGrowFactor(Args args)
   if (args[0].GetType() != Value::Type::Int) {
     throw Grace::GraceException(
       Grace::GraceException::Type::InvalidType,
-      fmt::format("Expected `Int` for `std::gc::set_grow_factor(grow_factor)` but got `{}`", args[0].GetTypeName())
-    );
+      fmt::format("Expected `Int` for `std::gc::set_grow_factor(grow_factor)` but got `{}`", args[0].GetTypeName()));
   }
 
   auto value = args[0].Get<std::int64_t>();
   if (value <= 0) {
     throw Grace::GraceException(
       Grace::GraceException::Type::InvalidArgument,
-      fmt::format("Expected positive number for `std::gc::set_grow_factor(grow_factor)` but got `{}`", value)
-    );
+      fmt::format("Expected positive number for `std::gc::set_grow_factor(grow_factor)` but got `{}`", value));
   }
 
   Grace::ObjectTracker::SetGrowFactor(static_cast<std::size_t>(value));
@@ -1351,13 +1274,12 @@ static Value PathGetFileName(Args args)
 
   if (args[0].GetType() == Value::Type::Object) {
     auto instance = args[0].GetObject()->GetAsInstance();
-  	if (instance != nullptr && instance->HasMember("data")) {
+    if (instance != nullptr && instance->HasMember("data")) {
       const auto& path = instance->LoadMember("data");
       if (path.GetType() != Value::Type::String) {
         throw Grace::GraceException(
           Grace::GraceException::Type::InvalidType,
-          fmt::format("Expected type of member `data` of `std::path::Path` to be `String` but got `{}`", path.GetTypeName())
-        );
+          fmt::format("Expected type of member `data` of `std::path::Path` to be `String` but got `{}`", path.GetTypeName()));
       }
 
       try {
@@ -1365,16 +1287,14 @@ static Value PathGetFileName(Args args)
       } catch (const std::exception&) {
         throw Grace::GraceException(
           Grace::GraceException::Type::PathError,
-          "Invalid path"
-        );
+          "Invalid path");
       }
     }
   }
 
   throw Grace::GraceException(
     Grace::GraceException::Type::InvalidType,
-    fmt::format("Expected `Path` for `std::path::get_file_name(path)` but got `{}`", args[0].GetTypeName())
-  );
+    fmt::format("Expected `Path` for `std::path::get_file_name(path)` but got `{}`", args[0].GetTypeName()));
 }
 
 static Value PathGetFileNameWithoutExtension(Args args)
@@ -1383,13 +1303,12 @@ static Value PathGetFileNameWithoutExtension(Args args)
 
   if (args[0].GetType() == Value::Type::Object) {
     auto instance = args[0].GetObject()->GetAsInstance();
-  	if (instance != nullptr && instance->HasMember("data")) {
+    if (instance != nullptr && instance->HasMember("data")) {
       const auto& path = instance->LoadMember("data");
       if (path.GetType() != Value::Type::String) {
         throw Grace::GraceException(
           Grace::GraceException::Type::InvalidType,
-          fmt::format("Expected type of member `data` of `std::path::Path` to be `String` but got `{}`", path.GetTypeName())
-        );
+          fmt::format("Expected type of member `data` of `std::path::Path` to be `String` but got `{}`", path.GetTypeName()));
       }
 
       try {
@@ -1397,16 +1316,14 @@ static Value PathGetFileNameWithoutExtension(Args args)
       } catch (const std::exception&) {
         throw Grace::GraceException(
           Grace::GraceException::Type::PathError,
-          "Invalid path"
-        );
+          "Invalid path");
       }
     }
   }
 
   throw Grace::GraceException(
     Grace::GraceException::Type::InvalidType,
-    fmt::format("Expected `Path` for `std::path::get_file_name_without_extension(path)` but got `{}`", args[0].GetTypeName())
-  );
+    fmt::format("Expected `Path` for `std::path::get_file_name_without_extension(path)` but got `{}`", args[0].GetTypeName()));
 }
 
 static Value PathGetDirectory(Args args)
@@ -1415,13 +1332,12 @@ static Value PathGetDirectory(Args args)
 
   if (args[0].GetType() == Value::Type::Object) {
     auto instance = args[0].GetObject()->GetAsInstance();
-  	if (instance != nullptr && instance->HasMember("data")) {
+    if (instance != nullptr && instance->HasMember("data")) {
       const auto& path = instance->LoadMember("data");
       if (path.GetType() != Value::Type::String) {
         throw Grace::GraceException(
           Grace::GraceException::Type::InvalidType,
-          fmt::format("Expected type of member `data` of `std::path::Path` to be `String` but got `{}`", path.GetTypeName())
-        );
+          fmt::format("Expected type of member `data` of `std::path::Path` to be `String` but got `{}`", path.GetTypeName()));
       }
 
       try {
@@ -1429,16 +1345,14 @@ static Value PathGetDirectory(Args args)
       } catch (const std::exception&) {
         throw Grace::GraceException(
           Grace::GraceException::Type::PathError,
-          "Invalid path"
-        );
+          "Invalid path");
       }
     }
   }
 
   throw Grace::GraceException(
     Grace::GraceException::Type::InvalidType,
-    fmt::format("Expected `Path` for `std::path::get_directory(path)` but got `{}`", args[0].GetTypeName())
-  );
+    fmt::format("Expected `Path` for `std::path::get_directory(path)` but got `{}`", args[0].GetTypeName()));
 }
 
 static Value PathCombine(Args args)
@@ -1447,13 +1361,12 @@ static Value PathCombine(Args args)
 
   if (args[0].GetType() == Value::Type::Object) {
     auto instance = args[0].GetObject()->GetAsInstance();
-  	if (instance != nullptr && instance->HasMember("data")) {
+    if (instance != nullptr && instance->HasMember("data")) {
       const auto& path = instance->LoadMember("data");
       if (path.GetType() != Value::Type::String) {
         throw Grace::GraceException(
           Grace::GraceException::Type::InvalidType,
-          fmt::format("Expected type of member `data` of `std::path::Path` to be `String` but got `{}`", path.GetTypeName())
-        );
+          fmt::format("Expected type of member `data` of `std::path::Path` to be `String` but got `{}`", path.GetTypeName()));
       }
 
       if (args[1].GetType() == Value::Type::String) {
@@ -1467,8 +1380,7 @@ static Value PathCombine(Args args)
             if (p.GetType() != Value::Type::String) {
               throw Grace::GraceException(
                 Grace::GraceException::Type::InvalidType,
-                fmt::format("Expected `String` or all elements of `additions` in `std::path::combine(path, additions)` but got `{}` at position {}", p.GetTypeName(), i)
-              );
+                fmt::format("Expected `String` or all elements of `additions` in `std::path::combine(path, additions)` but got `{}` at position {}", p.GetTypeName(), i));
             }
 
             base /= p.Get<std::string>();
@@ -1480,15 +1392,13 @@ static Value PathCombine(Args args)
 
       throw Grace::GraceException(
         Grace::GraceException::Type::InvalidType,
-        fmt::format("Expected `String` or `List` for `std::path::combine(path, additions)` but got `{}`", args[1].GetTypeName())
-      );
+        fmt::format("Expected `String` or `List` for `std::path::combine(path, additions)` but got `{}`", args[1].GetTypeName()));
     }
   }
 
   throw Grace::GraceException(
     Grace::GraceException::Type::InvalidType,
-    fmt::format("Expected `Path` for `std::path::combine(path)` but got `{}`", args[0].GetTypeName())
-  );
+    fmt::format("Expected `Path` for `std::path::combine(path)` but got `{}`", args[0].GetTypeName()));
 }
 
 static Value PathExists(Args args)
@@ -1497,13 +1407,12 @@ static Value PathExists(Args args)
 
   if (args[0].GetType() == Value::Type::Object) {
     auto instance = args[0].GetObject()->GetAsInstance();
-  	if (instance != nullptr && instance->HasMember("data")) {
+    if (instance != nullptr && instance->HasMember("data")) {
       const auto& path = instance->LoadMember("data");
       if (path.GetType() != Value::Type::String) {
         throw Grace::GraceException(
           Grace::GraceException::Type::InvalidType,
-          fmt::format("Expected type of member `data` of `std::path::Path` to be `String` but got `{}`", path.GetTypeName())
-        );
+          fmt::format("Expected type of member `data` of `std::path::Path` to be `String` but got `{}`", path.GetTypeName()));
       }
 
       return Value(fs::exists(path.Get<std::string>()));
@@ -1512,6 +1421,5 @@ static Value PathExists(Args args)
 
   throw Grace::GraceException(
     Grace::GraceException::Type::InvalidType,
-    fmt::format("Expected `Path` for `std::path::exists(path)` but got `{}`", args[0].GetTypeName())
-  );
+    fmt::format("Expected `Path` for `std::path::exists(path)` but got `{}`", args[0].GetTypeName()));
 }
