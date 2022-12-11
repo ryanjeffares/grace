@@ -1,0 +1,8 @@
+extraction:
+  cpp:
+    configure:
+      command:
+        - mkdir build
+        - cmake -DCMAKE_BUILD_TYPE=Debug -DGRACE_BUILD_TARGET=exe -S . -B build
+    index:
+      build_command: cmake --build build -- -j
