@@ -10,11 +10,9 @@
  */
 
 #include <fmt/core.h>
-#include <fmt/format.h>
 
 #include "grace_list.hpp"
 #include "grace_dictionary.hpp"
-#include "object_tracker.hpp"
 
 namespace Grace
 {
@@ -26,11 +24,11 @@ namespace Grace
 
   }
 
-  GraceList::GraceList(const GraceList& other, std::int64_t multiple)
+  GraceList::GraceList(const GraceList& other, std::size_t multiple)
     : GraceIterable{ 0 }
   {
     m_Data.reserve(other.m_Data.size() * multiple);
-    for (std::size_t i = 0; i < static_cast<std::size_t>(multiple); i++) {
+    for (std::size_t i = 0; i < multiple; i++) {
       m_Data.insert(m_Data.begin() + (i * other.m_Data.size()), other.m_Data.begin(), other.m_Data.end());
     }
   }
@@ -134,7 +132,7 @@ namespace Grace
 
   void GraceList::SortDescending()
   {
-    std::sort(m_Data.begin(), m_Data.end(), std::greater<Value>());
+    std::sort(m_Data.begin(), m_Data.end(), std::greater<>());
     InvalidateIterators();
   }
 
@@ -148,7 +146,7 @@ namespace Grace
   Value GraceList::SortedDescending() const
   {
     auto data = m_Data;  // copy
-    std::sort(data.begin(), data.end(), std::greater<Value>());
+    std::sort(data.begin(), data.end(), std::greater<>());
     return Value::CreateObject<GraceList>(std::move(data));
   }
 
@@ -216,8 +214,8 @@ namespace Grace
           if (type == GraceObjectType::Exception || type == GraceObjectType::Iterator || type == GraceObjectType::Instance) {
             res.append(object->ToString());
           } else {
-            std::vector<GraceObject*> visisted;
-            if (AnyMemberMatchesRecursive(this, object, visisted)) {
+            std::vector<GraceObject*> visited;
+            if (AnyMemberMatchesRecursive(this, object, visited)) {
               switch (type) {
                 case GraceObjectType::Dictionary:
                 case GraceObjectType::Set:

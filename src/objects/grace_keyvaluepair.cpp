@@ -15,14 +15,8 @@
 
 namespace Grace
 {
-  GraceKeyValuePair::GraceKeyValuePair(VM::Value&& key, VM::Value&& value)
+  GraceKeyValuePair::GraceKeyValuePair(VM::Value key, VM::Value value)
     : m_Key{ std::move(key) }, m_Value{ std::move(value) }
-  {
-
-  }
-
-  GraceKeyValuePair::GraceKeyValuePair(const VM::Value& key, const VM::Value& value)
-    : m_Key{ key }, m_Value{ value }
   {
 
   }

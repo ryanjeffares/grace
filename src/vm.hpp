@@ -187,7 +187,7 @@ namespace Grace::VM
       }
 
       GRACE_NODISCARD static bool AddFunction(std::string&& name, std::size_t arity, const std::string& fileName, bool exported, bool extension, std::size_t objectNameHash = {});
-      GRACE_NODISCARD static bool AddClass(std::string&& name, const std::vector<std::string>& members, const std::string& fileName, bool exported);
+      GRACE_NODISCARD static bool AddClass(std::string&& name, const std::string& fileName);
 
       GRACE_NODISCARD static std::tuple<bool, std::size_t> HasNativeFunction(const std::string& name)
       {
@@ -229,7 +229,6 @@ namespace Grace::VM
       struct Function 
       {
         std::string name;
-        std::int64_t nameHash;
         std::size_t arity;
 
         std::string fileName;
@@ -242,11 +241,10 @@ namespace Grace::VM
 
         std::size_t opIndexStart{}, constantIndexStart{};
 
-        // TODO: it's possible that the Function won't need to know if it's an extension or not
-        bool exported{}, extensionMethod{};
+        bool exported{};
 
-        Function(std::string&& name_, std::int64_t nameHash_, std::size_t arity_, const std::string& fileName_, bool exported_, bool extension)
-          : name(std::move(name_)), nameHash(nameHash_), arity(arity_), fileName(fileName_), exported(exported_), extensionMethod(extension)
+        Function(std::string&& name_, std::size_t arity_, const std::string& fileName_, bool exported_)
+          : name{ std::move(name_) }, arity{ arity_ }, fileName{ fileName_ }, exported{ exported_ }
         {
           static std::hash<std::string> hasher;
           fileNameHash = static_cast<std::int64_t>(hasher(fileName_));
@@ -257,22 +255,6 @@ namespace Grace::VM
             namespaceHashVec.push_back(static_cast<std::int64_t>(hasher(part)));
           }
         }
-
-        GRACE_INLINE bool CompareNamespace(const std::vector<std::string>& nameSpace) const
-        {
-          return namespaceVec == nameSpace;
-        }
-      };
-
-      struct Class
-      {       
-        std::string name;
-        std::vector<std::string> members;
-
-        std::string fileName;
-        std::int64_t fileNameHash;
-
-        bool exported;
       };
 
       // { filename { function name, function } }
@@ -283,8 +265,8 @@ namespace Grace::VM
 
       static std::vector<Native::NativeFunction> m_NativeFunctions;
 
-      // { filename { function name, class } }
-      static std::unordered_map<std::int64_t, std::unordered_map<std::int64_t, Class>> m_ClassLookup;
+      // { filename { function name, class name } }
+      static std::unordered_map<std::int64_t, std::unordered_map<std::int64_t, std::string>> m_ClassLookup;
 
       static std::vector<OpLine> m_FullOpList;
       static std::vector<Value> m_FullConstantList;

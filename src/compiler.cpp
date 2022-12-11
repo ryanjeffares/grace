@@ -24,7 +24,6 @@
 #endif
 
 #include <fmt/color.h>
-#include <fmt/core.h>
 
 #include "compiler.hpp"
 #include "scanner.hpp"
@@ -59,8 +58,8 @@ struct Local
 
 struct CompilerContext
 {
-  CompilerContext(const std::string& fileName_, const std::filesystem::path& parentPath_, std::string&& code)
-    : fileName(fileName_)
+  CompilerContext(std::string fileName_, const std::filesystem::path& parentPath_, std::string&& code)
+    : fileName{ std::move(fileName_) }
   {
     parentPath = std::filesystem::absolute(parentPath_);
     fullPath = std::filesystem::absolute(parentPath / std::filesystem::path(fileName).filename());
@@ -916,10 +915,9 @@ static void ClassDeclaration(CompilerContext& compiler)
       }
       
       // make the class' members at the start of the constructor
-      for (std::size_t i = 0; i < classMembers.size(); i++) {
+      for (auto memberName : classMembers) {
         EmitOp(VM::Ops::DeclareLocal, compiler.previous->GetLine());
         auto localId = static_cast<std::int64_t>(compiler.locals.size());
-        auto memberName = classMembers[i];
         compiler.locals.emplace_back(std::move(memberName), false, false, localId);
       }
       
@@ -958,16 +956,15 @@ static void ClassDeclaration(CompilerContext& compiler)
       return;
     }
 
-    for (std::size_t i = 0; i < classMembers.size(); i++) {
+    for (auto memberName : classMembers) {
       // and declare the class' members as locals in this function that will be used by the VM to assign to the instance
       EmitOp(VM::Ops::DeclareLocal, compiler.previous->GetLine());
       auto localId = static_cast<std::int64_t>(compiler.locals.size());
-      auto memberName = classMembers[i];
       compiler.locals.emplace_back(std::move(memberName), false, false, localId);
     }
   }
 
-  if (!VM::VM::AddClass(classNameToken.GetString(), classMembers, compiler.fileName, exported)) {
+  if (!VM::VM::AddClass(classNameToken.GetString(), compiler.fileName)) {
     // technically unreachable, since it would have been caught by trying to add the constructor as a function
     Message(classNameToken, "A class in the same namespace already exists with the same name", LogLevel::Error, compiler);
     return;
@@ -1142,7 +1139,7 @@ static void FuncDeclaration(CompilerContext& compiler)
   // but don't use up the name "args"
   // by giving it a __ prefix here we can stop the user from double declaring
   // since identifiers starting with __ aren't allowed
-  if (isMainFunction && parameters.size() == 0) {
+  if (isMainFunction && parameters.empty()) {
     compiler.locals.emplace_back("__ARGS", true, false, 0);
   }
 
@@ -1384,8 +1381,8 @@ static std::size_t GetEditDistance(const std::string& first, const std::string& 
   }
 
   std::vector<std::vector<std::size_t>> matrix(l1 + 1);
-  for (std::size_t i = 0; i < matrix.size(); i++) {
-    matrix[i].resize(l2 + 1);
+  for (auto& i : matrix) {
+    i.resize(l2 + 1);
   }
 
   for (std::size_t i = 1; i <= l1; i++) {
@@ -1482,7 +1479,7 @@ static void BreakStatement(CompilerContext& compiler)
   EmitOp(VM::Ops::Jump, compiler.previous->GetLine());
 
   // we will patch in these indexes when the containing loop finishes
-  compiler.breakIdxPairs.top().push_back(std::make_pair(constIdx, opIdx));
+  compiler.breakIdxPairs.top().emplace_back(constIdx, opIdx);
   Consume(Scanner::TokenType::Semicolon, "Expected ';' after `break`", compiler);
 }
 
@@ -1508,7 +1505,7 @@ static void ContinueStatement(CompilerContext& compiler)
   EmitOp(VM::Ops::Jump, compiler.previous->GetLine());
 
   // we will patch in these indexes when the containing loop finishes
-  compiler.continueIdxPairs.top().push_back(std::make_pair(constIdx, opIdx));
+  compiler.continueIdxPairs.top().emplace_back(constIdx, opIdx);
   Consume(Scanner::TokenType::Semicolon, "Expected ';' after `break`", compiler);
 }
 
@@ -1854,8 +1851,8 @@ static void IfStatement(CompilerContext& compiler)
   auto numOps = static_cast<std::int64_t>(VM::VM::GetNumOps());
 
   for (auto [constIdx, opIdx] : endJumpIndexPairs) {
-    VM::VM::SetConstantAtIndex(constIdx, numConstants);
-    VM::VM::SetConstantAtIndex(opIdx, numOps);
+    VM::VM::SetConstantAtIndex(static_cast<std::size_t>(constIdx), numConstants);
+    VM::VM::SetConstantAtIndex(static_cast<std::size_t>(opIdx), numOps);
   }
   
   // if there was no else or elseif block, jump to here

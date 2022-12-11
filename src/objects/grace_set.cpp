@@ -156,8 +156,7 @@ namespace Grace
   {
     std::string res = "{";
     std::size_t count = 0;
-    for (std::size_t i = 0; i < m_Data.size(); i++) {
-      const auto& el = m_Data[i];
+    for (const auto& el : m_Data) {
       if (el.GetType() == VM::Value::Type::Null) continue;
 
       switch (el.GetType()) {

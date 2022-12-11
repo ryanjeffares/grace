@@ -56,13 +56,13 @@ namespace Grace
       };
 
       GraceException(Type type, std::string message)
-        : m_Type(type), m_Message(std::move(message))
+        : m_Type{ type }, m_Message{ std::move(message) }
       {
 
       }
 
-      GraceException(std::string message)
-        : m_Type(Type::Exception), m_Message(std::move(message))
+      explicit GraceException(std::string message)
+        : m_Type{ Type::Exception }, m_Message{ std::move(message) }
       {
 
       }

@@ -125,14 +125,8 @@ namespace Grace
 
       }
 
-      explicit GraceIterable(std::vector<VM::Value>&& data)
-        : m_Data{std::move(data)}
-      {
-
-      }
-
-      explicit GraceIterable(const std::vector<VM::Value>& data)
-        : m_Data{data}
+      explicit GraceIterable(std::vector<VM::Value> data)
+        : m_Data{ std::move(data) }
       {
 
       }

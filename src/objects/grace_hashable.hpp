@@ -40,7 +40,7 @@ namespace Grace
     static constexpr std::size_t s_GrowFactor = 2;
     static constexpr float s_MaxLoad = 0.75f;
 
-    GraceHashable(const VM::Value defaultValue = VM::Value())
+    explicit GraceHashable(const VM::Value& defaultValue = VM::Value())
       : GraceIterable{s_InitialCapacity, defaultValue}
       , m_CellStates{s_InitialCapacity, CellState::NeverUsed}
     {

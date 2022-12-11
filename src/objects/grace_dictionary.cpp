@@ -10,10 +10,8 @@
  */
 
 #include <fmt/core.h>
-#include <fmt/format.h>
 
 #include "grace_dictionary.hpp"
-#include "grace_exception.hpp"
 
 namespace Grace
 {

@@ -11,11 +11,6 @@
 
 #include "grace_range.hpp"
 
-#include "grace_exception.hpp"
-
-#include <fmt/core.h>
-#include <fmt/format.h>
-
 #include <cinttypes>
 
 static constexpr std::size_t s_BaseCapacity = 8;

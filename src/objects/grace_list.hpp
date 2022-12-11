@@ -33,7 +33,7 @@ namespace Grace
       }
 
       explicit GraceList(std::vector<VM::Value>&& items);
-      GraceList(const GraceList& other, std::int64_t multiple);
+      GraceList(const GraceList& other, std::size_t multiple);
 
       ~GraceList() override = default;
 
@@ -135,7 +135,7 @@ namespace Grace
         return m_Data[index];
       }
 
-      GRACE_INLINE const VM::Value& First() const
+      GRACE_NODISCARD GRACE_INLINE const VM::Value& First() const
       {
         if (m_Data.empty()) {
           throw GraceException(
@@ -147,7 +147,7 @@ namespace Grace
         return m_Data.front();
       }
 
-      GRACE_INLINE const VM::Value& Last() const
+      GRACE_NODISCARD GRACE_INLINE const VM::Value& Last() const
       {
         if (m_Data.empty()) {
           throw GraceException(

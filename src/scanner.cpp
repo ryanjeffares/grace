@@ -131,8 +131,8 @@ namespace Grace::Scanner
     std::size_t scannerStart = 0, scannerCurrent = 0;
     std::size_t scannerLine = 1, scannerColumn = 1;
 
-    ScannerContext(std::string&& code)
-      : codeString(std::move(code))
+    explicit ScannerContext(std::string&& code)
+      : codeString{ std::move(code) }
     {
 
     }

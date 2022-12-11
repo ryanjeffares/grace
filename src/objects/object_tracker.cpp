@@ -32,8 +32,6 @@ static std::size_t s_GrowFactor = 2;
 static std::vector<GraceObject*> s_AllObjects;
 #endif
 
-static bool s_CycleCleanerRunning;
-
 static void CleanCycles();
 static void CleanCyclesInternal();
 
@@ -158,8 +156,6 @@ static void CleanCyclesInternal()
 {
   if (s_TrackedObjects.empty()) return;
 
-  s_CycleCleanerRunning = true;
-
   // First deal with objects caught in a weird complicated cycle, for example
   // 
   // ```
@@ -194,9 +190,7 @@ static void CleanCyclesInternal()
 
   std::vector<VM::Value> objectsToBeDeleted;  
 
-  for (std::size_t i = 0; i < s_TrackedObjects.size(); i++) {
-    auto root = s_TrackedObjects[i];
-
+  for (auto root : s_TrackedObjects) {
     auto type = root->ObjectType();
     if (type == GraceObjectType::Exception || type == GraceObjectType::Iterator || type == GraceObjectType::Range) {
       // these objects don't have members/elements
@@ -279,8 +273,6 @@ static void CleanCyclesInternal()
 
   CleanObjects(objectsToBeDeleted);
   objectsToBeDeleted.clear();
-
-  s_CycleCleanerRunning = false;
 }
 
 static void CleanCycles()

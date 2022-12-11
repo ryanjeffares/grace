@@ -35,7 +35,7 @@ namespace Grace
 			VM::Value value;
 		};
 
-		GraceInstance(std::string&& className, std::vector<Member>&& members);
+		GraceInstance(std::string className, std::vector<Member>&& members);
 		~GraceInstance() override = default;
 
 		void DebugPrint() const override;

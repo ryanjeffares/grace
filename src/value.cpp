@@ -37,7 +37,7 @@ namespace Grace::VM
     }
   }
 
-  Value::Value(Value&& other)
+  Value::Value(Value&& other) noexcept
     : m_Type(other.m_Type), m_Data(other.m_Data)
   {
     if (other.m_Type == Type::Object || other.m_Type == Type::String) {
@@ -115,7 +115,6 @@ namespace Grace::VM
             return Value(Get<std::string>() + other.AsString());
           }
         }
-        break;
       }
       default: break;
     }
@@ -224,14 +223,14 @@ namespace Grace::VM
       }
       case Type::Char: {
         if (other.m_Type == Type::Int) {
-          return Value(std::string(other.m_Data.m_Int, m_Data.m_Char));
+          return Value(std::string(static_cast<std::size_t>(other.m_Data.m_Int), m_Data.m_Char));
         }
         break;
       }
       case Type::String: {
         if (other.m_Type == Type::Int) {
           std::string res;
-          res.reserve(m_Data.m_Str->size() * other.m_Data.m_Int);
+          res.reserve(m_Data.m_Str->size() * static_cast<std::size_t>(other.m_Data.m_Int));
           for (auto i = 0; i < other.m_Data.m_Int; i++) {
             res += Get<std::string>();
           }
@@ -242,7 +241,7 @@ namespace Grace::VM
       case Type::Object: {
         if (auto list = GetObject()->GetAsList()) {
           if (other.m_Type == Type::Int) {
-            return Value(CreateObject<GraceList>(*list, other.m_Data.m_Int));
+            return Value(CreateObject<GraceList>(*list, static_cast<std::size_t>(other.m_Data.m_Int)));
           }
         }
         break;
@@ -251,7 +250,7 @@ namespace Grace::VM
     }
     throw GraceException(
       GraceException::Type::InvalidOperand,
-      fmt::format("Cannot multiple {} by {}", GetTypeName(), other.GetTypeName())
+      fmt::format("Cannot multiply {} by {}", GetTypeName(), other.GetTypeName())
     );
   }
 

@@ -24,14 +24,12 @@
 
 #include "scanner.hpp"
 #include "vm.hpp"
-#include "objects/grace_exception.hpp"
 #include "objects/grace_instance.hpp"
 #include "objects/grace_iterator.hpp"
 #include "objects/grace_dictionary.hpp"
 #include "objects/grace_set.hpp"
 #include "objects/grace_list.hpp"
 #include "objects/grace_range.hpp"
-#include "objects/object_tracker.hpp"
 
 namespace Grace::VM
 {
@@ -39,7 +37,7 @@ namespace Grace::VM
   std::unordered_map<std::size_t, std::vector<std::shared_ptr<VM::Function>>> VM::m_ExtensionMethodLookup;
   std::unordered_map<std::int64_t, std::string> VM::m_FileNameLookup;
   std::vector<Native::NativeFunction> VM::m_NativeFunctions;
-  std::unordered_map<std::int64_t, std::unordered_map<std::int64_t, VM::Class>> VM::m_ClassLookup;
+  std::unordered_map<std::int64_t, std::unordered_map<std::int64_t, std::string>> VM::m_ClassLookup;
   std::vector<VM::OpLine> VM::m_FullOpList;
   std::vector<Value> VM::m_FullConstantList;
   std::int64_t VM::m_LastFileNameHash{};
@@ -104,7 +102,7 @@ namespace Grace::VM
       m_FileNameLookup.insert({ fileNameHash, fileName });
     }
 
-    auto func = std::make_shared<Function>(std::move(name), funcNameHash, arity, fileName, exported, extension);
+    auto func = std::make_shared<Function>(std::move(name), arity, fileName, exported);
 
     if (extension) {
       m_ExtensionMethodLookup[objectNameHash].push_back(func);
@@ -119,7 +117,7 @@ namespace Grace::VM
     return false;
   }
 
-  bool VM::AddClass(std::string&& name, const std::vector<std::string>& members, const std::string& fileName, bool exported)
+  bool VM::AddClass(std::string&& name, const std::string& fileName)
   {
     auto classNameHash = static_cast<std::int64_t>(m_Hasher(name));
     auto fileNameHash = static_cast<std::int64_t>(m_Hasher(fileName));
@@ -129,9 +127,7 @@ namespace Grace::VM
       m_FileNameLookup.insert({ fileNameHash, fileName });
     }
 
-    Class cls{ std::move(name), members, fileName, fileNameHash, exported };
-
-    auto [it, res] = m_ClassLookup.at(fileNameHash).try_emplace(classNameHash, cls);
+    auto [it, res] = m_ClassLookup.at(fileNameHash).try_emplace(classNameHash, std::move(name));
     if (res) {
       m_LastFileNameHash = fileNameHash;
       return true;
@@ -256,7 +252,8 @@ namespace Grace::VM
     {
       std::size_t stackSize{}, numLocals{}, callStackSize{}, opOffsetSize{}, localsOffsetsSize{}, 
         heldIteratorsSize{}, namespaceStackSize{}, fileNameStackSize{};
-      std::int64_t opIndexToJump{}, constIndexToJump{};
+
+      std::size_t opIndexToJump{}, constIndexToJump{};
     };
 
     std::stack<VMState> vmStateStack;
@@ -424,7 +421,7 @@ namespace Grace::VM
             valueStack.push_back(m_FullConstantList[constantCurrent++]);
             break;
           case Ops::LoadLocal: {
-            auto id = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+            auto id = static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>());
             auto& value = localsList[id + localsOffsets.top()];
             valueStack.push_back(value);
             break;
@@ -436,7 +433,7 @@ namespace Grace::VM
             localsList.pop_back();
             break;
           case Ops::PopLocals: {
-            auto targetNumLocals = m_FullConstantList[constantCurrent++].Get<std::int64_t>() + localsOffsets.top();
+            auto targetNumLocals = static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>() + localsOffsets.top());
             localsList.resize(targetNumLocals);
             break;
           }
@@ -585,7 +582,7 @@ namespace Grace::VM
             break;
           }
           case Ops::NativeCall: {
-            auto calleeIndex = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+            auto calleeIndex = static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>());
             auto& calleeFunc = m_NativeFunctions[calleeIndex];
             auto arity = calleeFunc.GetArity();
             auto numArgsGiven = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
@@ -713,62 +710,62 @@ namespace Grace::VM
           }
           case Ops::AssignLocal: {
             auto value = Pop(valueStack);
-            localsList[m_FullConstantList[constantCurrent++].Get<std::int64_t>() + localsOffsets.top()] = std::move(value);
+            localsList[static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>()) + localsOffsets.top()] = std::move(value);
             break;
           }
           case Ops::AddAssign: {
             auto value = Pop(valueStack);
-            localsList[m_FullConstantList[constantCurrent++].Get<std::int64_t>() + localsOffsets.top()] += value;
+            localsList[static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>()) + localsOffsets.top()] += value;
             break;
           }
           case Ops::DivideAssign: {
             auto value = Pop(valueStack);
-            localsList[m_FullConstantList[constantCurrent++].Get<std::int64_t>() + localsOffsets.top()] /= value;
+            localsList[static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>()) + localsOffsets.top()] /= value;
             break;
           }
           case Ops::MultiplyAssign: {
             auto value = Pop(valueStack);
-            localsList[m_FullConstantList[constantCurrent++].Get<std::int64_t>() + localsOffsets.top()] *= value;
+            localsList[static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>()) + localsOffsets.top()] *= value;
             break;
           }
           case Ops::SubtractAssign: {
             auto value = Pop(valueStack);
-            localsList[m_FullConstantList[constantCurrent++].Get<std::int64_t>() + localsOffsets.top()] -= value;
+            localsList[static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>()) + localsOffsets.top()] -= value;
             break;
           }
           case Ops::BitwiseAndAssign: {
             auto value = Pop(valueStack);
-            localsList[m_FullConstantList[constantCurrent++].Get<std::int64_t>() + localsOffsets.top()] &= value;
+            localsList[static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>()) + localsOffsets.top()] &= value;
             break;
           }
           case Ops::BitwiseOrAssign: {
             auto value = Pop(valueStack);
-            localsList[m_FullConstantList[constantCurrent++].Get<std::int64_t>() + localsOffsets.top()] |= value;
+            localsList[static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>()) + localsOffsets.top()] |= value;
             break;
           }
           case Ops::BitwiseXOrAssign: {
             auto value = Pop(valueStack);
-            localsList[m_FullConstantList[constantCurrent++].Get<std::int64_t>() + localsOffsets.top()] ^= value;
+            localsList[static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>()) + localsOffsets.top()] ^= value;
             break;
           }
           case Ops::ModAssign: {
             auto value = Pop(valueStack);
-            localsList[m_FullConstantList[constantCurrent++].Get<std::int64_t>() + localsOffsets.top()] %= value;
+            localsList[static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>()) + localsOffsets.top()] %= value;
             break;
           }
           case Ops::ShiftLeftAssign: {
             auto value = Pop(valueStack);
-            localsList[m_FullConstantList[constantCurrent++].Get<std::int64_t>() + localsOffsets.top()] <<= value;
+            localsList[static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>()) + localsOffsets.top()] <<= value;
             break;
           }
           case Ops::ShiftRightAssign: {
             auto value = Pop(valueStack);
-            localsList[m_FullConstantList[constantCurrent++].Get<std::int64_t>() + localsOffsets.top()] >>= value;
+            localsList[static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>()) + localsOffsets.top()] >>= value;
             break;
           }
           case Ops::PowAssign: {
             auto value = Pop(valueStack);
-            auto& local = localsList[m_FullConstantList[constantCurrent++].Get<std::int64_t>() + localsOffsets.top()];
+            auto& local = localsList[static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>()) + localsOffsets.top()];
             local = local.Pow(value);
             break;
           }
@@ -788,20 +785,18 @@ namespace Grace::VM
             }
 
             auto twoIterators = m_FullConstantList[constantCurrent++].Get<bool>();
-            auto iteratorId = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+            auto iteratorId = static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>());
+            auto secondIteratorId = static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>());
 
             if (auto list = object->GetAsList()) {
               auto listIterator = Value::CreateObject<GraceIterator>(list, GraceIterator::IterableType::List);
               auto listIteratorObject = listIterator.GetObject()->GetAsIterator();
               heldIterators.push(listIterator);
-              
+
               localsList[iteratorId + localsOffsets.top()] = listIteratorObject->IsAtEnd() ? Value() : listIteratorObject->Value();
-            
+
               if (twoIterators) {
-                auto secondIteratorId = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
                 localsList[secondIteratorId + localsOffsets.top()] = std::int64_t(0);
-              } else {
-                constantCurrent++;
               }
             } else if (auto dict = object->GetAsDictionary()) {
               auto dictIterator = Value::CreateObject<GraceIterator>(dict, GraceIterator::IterableType::Dictionary);
@@ -810,7 +805,6 @@ namespace Grace::VM
 
 
               if (twoIterators) {
-                auto secondIteratorId = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
                 if (dictIteratorObject->IsAtEnd()) {
                   localsList[iteratorId + localsOffsets.top()] = nullptr;
                   localsList[secondIteratorId + localsOffsets.top()] = nullptr;
@@ -820,9 +814,7 @@ namespace Grace::VM
                   localsList[secondIteratorId + localsOffsets.top()] = kvpObject->Value();
                 }
               } else {
-                localsList[iteratorId + localsOffsets.top()] = dictIteratorObject->IsAtEnd() ? Value()
-                                                                                             : dictIteratorObject->Value();
-                constantCurrent++;
+                localsList[iteratorId + localsOffsets.top()] = dictIteratorObject->IsAtEnd() ? Value() : dictIteratorObject->Value();
               }
             } else if (auto set = object->GetAsSet()) {
               auto setIterator = Value::CreateObject<GraceIterator>(set, GraceIterator::IterableType::Set);
@@ -830,7 +822,6 @@ namespace Grace::VM
               heldIterators.push(setIterator);
 
               localsList[iteratorId + localsOffsets.top()] = setIteratorObject->IsAtEnd() ? Value() : setIteratorObject->Value();
-              constantCurrent++;
 
               if (twoIterators) {
                 throw GraceException(
@@ -844,7 +835,6 @@ namespace Grace::VM
               heldIterators.push(rangeIterator);
 
               localsList[iteratorId + localsOffsets.top()] = rangeIteratorObject->IsAtEnd() ? Value() : rangeIteratorObject->Value();
-              constantCurrent++;
 
               if (twoIterators) {
                 throw GraceException(
@@ -860,7 +850,8 @@ namespace Grace::VM
           }
           case Ops::IncrementIterator: {
             auto twoIterators = m_FullConstantList[constantCurrent++].Get<bool>();
-            auto iteratorVarId = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+            auto iteratorVarId = static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>());
+            auto secondIteratorId = static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>());
             auto heldIterator = heldIterators.top().GetObject()->GetAsIterator();
             auto iterableType = heldIterator->GetType();
 
@@ -868,17 +859,13 @@ namespace Grace::VM
               heldIterator->Increment();
               localsList[iteratorVarId + localsOffsets.top()] = heldIterator->IsAtEnd() ? Value() : heldIterator->Value();
               if (twoIterators) {
-                auto secondIteratorId = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
-                auto& local = localsList[secondIteratorId + localsOffsets.top()]; 
+                auto& local = localsList[secondIteratorId + localsOffsets.top()];
                 auto value = local.Get<std::int64_t>();
                 local = value + 1;
-              } else {
-                constantCurrent++;
               }
             } else if (iterableType == GraceIterator::IterableType::Dictionary) {
               heldIterator->Increment();
               if (twoIterators) {
-                auto secondIteratorId = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
                 if (!heldIterator->IsAtEnd()) {
                   auto kvpObject = heldIterator->Value().GetObject()->GetAsKeyValuePair();
                   localsList[iteratorVarId + localsOffsets.top()] = kvpObject->Key();
@@ -888,14 +875,11 @@ namespace Grace::VM
                   localsList[secondIteratorId + localsOffsets.top()] = nullptr;
                 }
               } else {
-                localsList[iteratorVarId + localsOffsets.top()] = heldIterator->IsAtEnd() ? Value()
-                                                                                          : heldIterator->Value();
-                constantCurrent++;
+                localsList[iteratorVarId + localsOffsets.top()] = heldIterator->IsAtEnd() ? Value() : heldIterator->Value();
               }
             } else if (iterableType == GraceIterator::IterableType::Set || iterableType == GraceIterator::IterableType::Range){
               heldIterator->Increment();
               localsList[iteratorVarId + localsOffsets.top()] = heldIterator->IsAtEnd() ? Value() : heldIterator->Value();
-              constantCurrent++;
             } else {
               GRACE_UNREACHABLE();
             }
@@ -911,16 +895,16 @@ namespace Grace::VM
             break;
           }
           case Ops::Jump: {
-            auto constIdx = m_FullConstantList[constantCurrent++].Get<std::int64_t>(); 
-            auto opIdx = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+            auto constIdx = static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>());
+            auto opIdx = static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>());
             auto [opOffset, constOffset] = opConstOffsets.back();
             opCurrent = opIdx + opOffset;
             constantCurrent = constIdx + constOffset;
             break;
           }
           case Ops::JumpIfFalse: {
-            auto constIdx = m_FullConstantList[constantCurrent++].Get<std::int64_t>(); 
-            auto opIdx = m_FullConstantList[constantCurrent++].Get<std::int64_t>(); 
+            auto constIdx = static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>());
+            auto opIdx = static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>());
             auto condition = Pop(valueStack);
             if (!condition.AsBool()) {
               auto [opOffset, constOffset] = opConstOffsets.back();
@@ -1047,7 +1031,7 @@ namespace Grace::VM
             break;
           }
           case Ops::Dup: {
-            auto numDups = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+            auto numDups = static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>());
             auto value = valueStack.back();
             valueStack.reserve(numDups);
             valueStack.insert(valueStack.end(), numDups, value);
@@ -1066,9 +1050,8 @@ namespace Grace::VM
             auto classFileNameHash = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
 
             // i don't think we need to check these since the call to the constructor would have already failed...
-            auto& classType = m_ClassLookup.at(classFileNameHash).at(classNameHash);
-            auto className = classType.name;
-            valueStack.push_back(Value::CreateObject<GraceInstance>(std::move(className), std::move(memberList)));
+            auto& className = m_ClassLookup.at(classFileNameHash).at(classNameHash);
+            valueStack.push_back(Value::CreateObject<GraceInstance>(className, std::move(memberList)));
             break;
           }
           case Ops::CreateDictionary: {
@@ -1089,14 +1072,14 @@ namespace Grace::VM
             break;
           }
           case Ops::CreateList: {
-            auto numItems = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+            auto numItems = static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>());
             if (numItems == 0) {
               valueStack.push_back(Value::CreateObject<GraceList>());
               break;
             }
 
             std::vector<Value> result(numItems);
-            for (auto i = 0; i < numItems; i++) {
+            for (std::size_t i = 0; i < numItems; i++) {
               result[numItems - i - 1] = Pop(valueStack);
             }
 
@@ -1104,7 +1087,7 @@ namespace Grace::VM
             break;
           }
           case Ops::CreateListFromCast: {
-            auto numItems = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+            auto numItems = static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>());
 
             if (numItems == 0) {
               valueStack.push_back(Value::CreateObject<GraceList>());
@@ -1120,7 +1103,7 @@ namespace Grace::VM
               }
             } else {
               std::vector<Value> items(numItems);
-              for (auto i = 0; i < numItems; i++) {
+              for (std::size_t i = 0; i < numItems; i++) {
                 items[numItems - i - 1] = Pop(valueStack);
               }
 
@@ -1136,7 +1119,7 @@ namespace Grace::VM
             break;
           }
           case Ops::CreateSet: {
-            auto numItems = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+            auto numItems = static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>());
             if (numItems == 0) {
               valueStack.push_back(Value::CreateObject<GraceSet>());
               break;
@@ -1148,7 +1131,7 @@ namespace Grace::VM
             }
 
             std::vector<Value> result(numItems);
-            for (auto i = 0; i < numItems; i++) {
+            for (std::size_t i = 0; i < numItems; i++) {
               result[numItems - i - 1] = Pop(valueStack);
             }
 
@@ -1249,8 +1232,8 @@ namespace Grace::VM
           }
           case Ops::EnterTry: {
             inTryBlock = true;
-            auto opIdx = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
-            auto constIdx = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
+            auto opIdx = static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>());
+            auto constIdx = static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>());
             vmStateStack.push({
               valueStack.size(),
               localsList.size(),
@@ -1266,7 +1249,7 @@ namespace Grace::VM
             break;
           }
           case Ops::ExitTry: {
-            auto targetNumLocals = m_FullConstantList[constantCurrent++].Get<std::int64_t>() + localsOffsets.top();
+            auto targetNumLocals = static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>() + localsOffsets.top());
             localsList.resize(targetNumLocals);
             vmStateStack.pop();
             inTryBlock = !vmStateStack.empty();

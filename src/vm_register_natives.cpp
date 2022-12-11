@@ -23,10 +23,8 @@
 #include "vm.hpp"
 #include "objects/grace_dictionary.hpp"
 #include "objects/grace_set.hpp"
-#include "objects/grace_exception.hpp"
 #include "objects/grace_instance.hpp"
 #include "objects/grace_list.hpp"
-#include "objects/object_tracker.hpp"
 
 using namespace Grace::VM;
 
@@ -447,7 +445,7 @@ static Value ListSetAtIndex(Args args)
       );
     }
 
-    (*list)[args[1].Get<std::int64_t>()] = std::move(args[2]);
+    (*list)[static_cast<std::size_t>(args[1].Get<std::int64_t>())] = std::move(args[2]);
     return {};
   }
 
@@ -467,7 +465,7 @@ static Value ListGetAtIndex(Args args)
       );
     }
 
-    return (*list)[args[1].Get<std::int64_t>()];
+    return (*list)[static_cast<std::size_t>(args[1].Get<std::int64_t>())];
   }
 
   throw Grace::GraceException(

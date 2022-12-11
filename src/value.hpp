@@ -83,10 +83,10 @@ namespace Grace
 
       Value();
       Value(const Value& other);
-      Value(Value&& other);
+      Value(Value&& other) noexcept;
 
       // ONLY call with an object that already exists and has refs elsewhere, this is really only for use in the cycle cleaner
-      Value(GraceObject* object);
+      explicit Value(GraceObject* object);
 
       ~Value();
 
@@ -130,7 +130,7 @@ namespace Grace
         return *this;
       }
 
-      constexpr Value& operator=(Value&& other)
+      constexpr Value& operator=(Value&& other) noexcept
       {
         if (this != &other) {
           if (m_Type == Type::String) {
@@ -227,11 +227,6 @@ namespace Grace
       void PrintLn(bool err) const;
       void Print(bool err) const;
       void DebugPrint() const;
-
-      GRACE_NODISCARD GRACE_INLINE bool IsNumber() const
-      {
-        return m_Type == Type::Int || m_Type == Type::Double;
-      }
 
       GRACE_NODISCARD std::string AsString() const;
       GRACE_NODISCARD bool AsBool() const;

@@ -11,7 +11,6 @@
 
 #include <filesystem>
 #include <fstream>
-#include <sstream>
 #include <vector>
 
 #include <fmt/core.h>
@@ -46,7 +45,7 @@ int main(int argc, const char* argv[])
   }
 
   std::vector<std::string> args;
-  args.reserve(argc);
+  args.reserve(static_cast<std::size_t>(argc));
   for (auto i = 0; i < argc; i++) {
     args.emplace_back(argv[i]);
   }

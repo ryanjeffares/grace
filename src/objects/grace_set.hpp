@@ -20,8 +20,8 @@ namespace Grace
   {
     public:
       GraceSet() = default;
-      GraceSet(std::vector<VM::Value>&& data);
-      GraceSet(VM::Value&& value);
+      explicit GraceSet(std::vector<VM::Value>&& data);
+      explicit GraceSet(VM::Value&& value);
 
       ~GraceSet() override = default;
 
