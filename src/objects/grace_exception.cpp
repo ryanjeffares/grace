@@ -17,6 +17,7 @@ namespace Grace
 {
   std::unordered_map<GraceException::Type, const char*> GraceException::s_ExceptionMessages = {
 	{GraceException::Type::AssertionFailed, "Assertion failed"},
+	{GraceException::Type::DuplicateKey, "Duplicate key"},
 	{GraceException::Type::Exception, "Exception"},
 	{GraceException::Type::FileWriteFailed, "File write failed"},
 	{GraceException::Type::FileReadFailed, "File read failed"},

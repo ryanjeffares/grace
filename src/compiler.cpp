@@ -2695,20 +2695,17 @@ static void Dot(bool canAssign, CompilerContext& compiler)
     return;
   }
   
-  bool previousWasFunctionCall = false;
   auto memberNameToken = compiler.previous.value();
 
   if (Match(Scanner::TokenType::LeftParen, compiler)) {
     // object.function()
     DotFunctionCall(memberNameToken, compiler);
-    previousWasFunctionCall = true;
   } else if (Match(Scanner::TokenType::Equal, compiler)) {
     if (!canAssign) {
       MessageAtPrevious("Assignment is not valid here", LogLevel::Error, compiler);
       return;
     }
 
-    // todo..
     auto prevUsing = compiler.usingExpressionResult;
     compiler.usingExpressionResult = true;
     Expression(false, compiler);

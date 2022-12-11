@@ -81,78 +81,31 @@ namespace Grace
   void GraceDictionary::Insert(VM::Value&& key, VM::Value&& value)
   {
     auto fullness = static_cast<float>(m_Size) / static_cast<float>(m_Capacity);
-    if (fullness > s_GrowFactor) {
-      m_Capacity *= 2;
-      m_Data.resize(m_Capacity);
-      m_CellStates.resize(m_Capacity, CellState::NeverUsed);
-      Rehash();
-      InvalidateIterators();
+    if (fullness > s_MaxLoad) {      
+      GrowAndRehash();
     }
 
-    auto hash = m_Hasher(key);
-    auto index = hash % m_Capacity;
+    auto index = m_Hasher(key) % m_Capacity;
 
-    auto state = m_CellStates[index];
-    switch (state) {
-      case CellState::NeverUsed:
-      case CellState::Tombstone:
-        m_Data[index] = VM::Value::CreateObject<GraceKeyValuePair>(std::move(key), std::move(value));
-        m_CellStates[index] = CellState::Occupied;
-        m_Size++;
-        return;
-      case CellState::Occupied: {
-        if (m_Data[index].GetObject()->GetAsKeyValuePair()->Key() == key) {
-          m_Data[index] = VM::Value::CreateObject<GraceKeyValuePair>(std::move(key), std::move(value));
-          return;
-        }
-        for (auto i = index + 1; ; ++i) {
-          if (i == m_Capacity) {
-            i = 0;
-          }
-          if (m_CellStates[i] == CellState::Occupied) {
-            if (m_Data[i].GetObject()->GetAsKeyValuePair()->Key() == key) {
-              m_Data[index] = VM::Value::CreateObject<GraceKeyValuePair>(std::move(key), std::move(value));
-              m_CellStates[index] = CellState::Occupied;
-              return;
-            }
-          } else {
-            m_Data[i] = VM::Value::CreateObject<GraceKeyValuePair>(std::move(key), std::move(value));
-            m_CellStates[i] = CellState::Occupied;
-            m_Size++;
-            return;
-          }
-        }
-      }
-      default:
-        GRACE_UNREACHABLE();
-        break;
-    }
-  }
-
-  VM::Value GraceDictionary::Get(const VM::Value& key)
-  {
-    auto hash = m_Hasher(key);
-    auto index = hash % m_Capacity;
     while (true) {
-      if (index >= m_Capacity) {
-        index = 0;
-      }
       switch (m_CellStates[index]) {
         case CellState::NeverUsed:
-          throw GraceException(
-            GraceException::Type::KeyNotFound,
-            fmt::format("Dict did not contain key {}", key)
-          );
-        case CellState::Occupied: {
-          auto kvp = m_Data[index].GetObject()->GetAsKeyValuePair();
-          if (key == kvp->Key()) {
-            return kvp->Value();
-          }
-          index++;
-          break;
-        }
         case CellState::Tombstone:
-          index++;
+          // we can insert it here
+          m_Data[index] = VM::Value::CreateObject<GraceKeyValuePair>(std::move(key), std::move(value));
+          m_CellStates[index] = CellState::Occupied;
+          m_Size++;
+          return;
+        case CellState::Occupied:
+          if (m_Data[index].GetObject()->GetAsKeyValuePair()->Key() == key) {
+            // error, use Update to update existing keys
+            throw GraceException(
+              GraceException::Type::DuplicateKey,
+              fmt::format("{} was already present in the dictionary", key)
+            );
+          }
+          // keep going, might find a free slot
+          index = (index + 1) % m_Capacity;
           break;
         default:
           GRACE_UNREACHABLE();
@@ -161,33 +114,101 @@ namespace Grace
     }
 
     GRACE_UNREACHABLE();
-    return VM::Value();
+  }
+
+  void GraceDictionary::Update(const VM::Value& key, VM::Value&& value)
+  {
+    auto fullness = static_cast<float>(m_Size) / static_cast<float>(m_Capacity);
+    if (fullness > s_MaxLoad) {
+      GrowAndRehash();
+    }
+
+    auto index = m_Hasher(key) % m_Capacity;
+
+    while (true) {
+      switch (m_CellStates[index]) {
+        case CellState::NeverUsed:
+        case CellState::Tombstone:
+          // we can insert it here
+          m_Data[index] = VM::Value::CreateObject<GraceKeyValuePair>(key, std::move(value));
+          m_CellStates[index] = CellState::Occupied;
+          m_Size++;
+          return;
+        case CellState::Occupied: {
+          auto kvp = m_Data[index].GetObject()->GetAsKeyValuePair();
+          if (kvp->Key() == key) {
+            // update
+            kvp->Value() = std::move(value);
+            return;
+          }
+          // keep going, might find a free slot
+          index = (index + 1) % m_Capacity;
+          break;
+        }
+        default:
+          GRACE_UNREACHABLE();
+          break;
+      }
+    }
+
+    GRACE_UNREACHABLE();
+  }
+
+  const VM::Value& GraceDictionary::Get(const VM::Value& key)
+  {
+    auto index = m_Hasher(key) % m_Capacity;
+
+    while (true) {
+      switch (m_CellStates[index]) {
+        case CellState::NeverUsed:
+          // nothing has been inserted here
+          throw GraceException(
+            GraceException::Type::KeyNotFound,
+            fmt::format("Dict did not contain key {}", key)
+          );
+        case CellState::Tombstone:
+          // our desired value may have been inserted after this...
+          index = (index + 1) % m_Capacity;
+          break;
+        case CellState::Occupied: {
+          auto kvp = m_Data[index].GetObject()->GetAsKeyValuePair();
+          if (kvp->Key() == key) {
+            // found!
+            return kvp->Value();
+          }
+          // keep going
+          index = (index + 1) % m_Capacity;
+          break;
+        }
+        default:
+          GRACE_UNREACHABLE();
+          break;
+      }
+    }
+
+    GRACE_UNREACHABLE();
   }
 
   bool GraceDictionary::ContainsKey(const VM::Value& key)
   {
-    static int count = 0;
-    if ((count == 88 || count == 90)) {
-      fmt::print("here\n");
-    }
-    count++;
-    auto hash = m_Hasher(key);
-    auto index = hash % m_Capacity;
+    auto index = m_Hasher(key) % m_Capacity;
+
     while (true) {
-      if (index >= m_Capacity) {
-        index = 0;
-      }
       switch (m_CellStates[index]) {
         case CellState::NeverUsed:
+          // end of iteration - nothing has been inserted here
           return false;
-        case CellState::Occupied:
-          if (key != m_Data[index].GetObject()->GetAsKeyValuePair()->Key()) {
-            index++;
-            break;
-          }
-          return true;
         case CellState::Tombstone:
-          index++;
+          // our desired value may have been inserted after this...
+          index = (index + 1) % m_Capacity;
+          break;
+        case CellState::Occupied:
+          if (m_Data[index].GetObject()->GetAsKeyValuePair()->Key() == key) {
+            // found!
+            return true;
+          }
+          // keep going
+          index = (index + 1) % m_Capacity;
           break;
         default:
           GRACE_UNREACHABLE();
@@ -201,25 +222,25 @@ namespace Grace
 
   bool GraceDictionary::Remove(const VM::Value& key)
   {
-    auto hash = m_Hasher(key);
-    auto index = hash % m_Capacity;
+    auto index = m_Hasher(key) % m_Capacity;
     while (true) {
-      if (index >= m_Capacity) {
-        index = 0;
-      }
       switch (m_CellStates[index]) {
         case CellState::NeverUsed:
+          // end of iteration - nothing has been inserted here
           return false;
-        case CellState::Occupied:
-          if (key != m_Data[index].GetObject()->GetAsKeyValuePair()->Key()) {
-            index++;
-            break;
-          }
-          m_Data[index] = VM::Value();
-          m_CellStates[index] = CellState::Tombstone;
-          return true;
         case CellState::Tombstone:
-          index++;
+          // our desired value may have been inserted after this...
+          index = (index + 1) % m_Capacity;
+          break;
+        case CellState::Occupied:
+          if (m_Data[index].GetObject()->GetAsKeyValuePair()->Key() == key) {
+            // found! remove
+            m_Data[index] = VM::Value();
+            m_CellStates[index] = CellState::Tombstone;
+            return true;
+          }
+          // keep going
+          index = (index + 1) % m_Capacity;
           break;
         default:
           GRACE_UNREACHABLE();
@@ -262,37 +283,41 @@ namespace Grace
     }
   }
 
-  void GraceDictionary::Rehash()
-  {    
+  void GraceDictionary::GrowAndRehash()
+  {
+    // keep a copy of current pairs
     auto pairs = ToVector();
 
+    // grow arrays
+    m_Capacity *= s_GrowFactor;
+    m_Data.resize(m_Capacity, VM::Value());
+    m_CellStates.resize(m_Capacity, CellState::NeverUsed);
+
+    // refill them as all empty/never used
     std::fill(m_Data.begin(), m_Data.end(), VM::Value());
     std::fill(m_CellStates.begin(), m_CellStates.end(), CellState::NeverUsed);
 
     for (auto& pair : pairs) {
       auto kvp = pair.GetObject()->GetAsKeyValuePair();
       const auto& key = kvp->Key();
-      auto hash = m_Hasher(key);
-      auto index = hash % m_Capacity;
+      // find the desired index of each key
+      auto index = m_Hasher(key) % m_Capacity;
 
-      auto state = m_CellStates[index];
-      if (state == CellState::NeverUsed) {
-        m_Data[index] = pair;
-        m_CellStates[index] = CellState::Occupied;
-      } else {
-        // if its not NeverUsed it will be Occupied
-        // iterate until we find a NeverUsed
-        for (auto i = index + 1; ; ++i) {
-          if (i >= m_Capacity) {
-            i = 0;
-          }
-          if (m_CellStates[i] == CellState::NeverUsed) {
-            m_Data[i] = pair;
-            m_CellStates[i] = CellState::Occupied;
-            break;
-          }
+      while (true) {
+        GRACE_ASSERT(m_CellStates[index] != CellState::Tombstone, "Shouldn't be any tombstones present during rehash");
+
+        // if its never used, insert it
+        if (m_CellStates[index] == CellState::NeverUsed) {
+          m_CellStates[index] = CellState::Occupied;
+          m_Data[index] = std::move(pair);
+          break;
         }
+
+        // otherwise keep going
+        index = (index + 1) % m_Capacity;
       }
     }
+
+    InvalidateIterators();
   }
 } // namespace Grace

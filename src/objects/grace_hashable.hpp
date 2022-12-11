@@ -35,8 +35,10 @@ namespace Grace
     }
 
   protected:
+
     static constexpr std::size_t s_InitialCapacity = 8;
-    static constexpr float s_GrowFactor = 0.75f;
+    static constexpr std::size_t s_GrowFactor = 2;
+    static constexpr float s_MaxLoad = 0.75f;
 
     GraceHashable(const VM::Value defaultValue = VM::Value())
       : GraceIterable{s_InitialCapacity, defaultValue}
@@ -45,7 +47,7 @@ namespace Grace
 
     }
 
-    virtual void Rehash() = 0;
+    virtual void GrowAndRehash() = 0;
 
     enum class CellState
     {

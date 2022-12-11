@@ -1,3 +1,7 @@
 func export sqrt(this Float f) :: Float:
   return __NATIVE_SQRT_FLOAT(f);
 end
+
+func export abs(this Float f) :: Float:
+  return __NATIVE_FLOAT_ABS(f);
+end

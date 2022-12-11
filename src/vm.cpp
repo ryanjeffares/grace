@@ -1173,7 +1173,7 @@ namespace Grace::VM
                   break;
                 }
                 case GraceObjectType::Dictionary:
-                  object->GetAsDictionary()->Insert(std::move(subscript), std::move(newValue));
+                  object->GetAsDictionary()->Update(subscript, std::move(newValue));
                   break;
                 default:
                   GRACE_UNREACHABLE();

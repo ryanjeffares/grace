@@ -79,48 +79,33 @@ namespace Grace
   void GraceSet::Add(VM::Value&& value)
   {
     auto fullness = static_cast<float>(m_Size) / static_cast<float>(m_Capacity);
-    if (fullness > s_GrowFactor) {
-      m_Capacity *= 2;
-      m_Data.resize(m_Capacity);
-      m_CellStates.resize(m_Capacity, CellState::NeverUsed);
-      Rehash();
-      InvalidateIterators();
+    if (fullness > s_MaxLoad) {
+      GrowAndRehash();
     }
 
     auto index = m_Hasher(value) % m_Capacity;
-    auto state = m_CellStates[index];
-    switch (state) {
-      case CellState::NeverUsed:
-      case CellState::Tombstone:
-        m_Data[index] = std::forward<VM::Value>(value);
-        m_CellStates[index] = CellState::Occupied;
-        m_Size++;
-        break;
-      case CellState::Occupied: {
-        if (m_Data[index] == value) {
+    
+    while (true) {
+      switch (m_CellStates[index]) {
+        case CellState::NeverUsed:
+        case CellState::Tombstone:
+          // we can insert it here
+          m_Data[index] = std::move(value);
+          m_CellStates[index] = CellState::Occupied;
+          m_Size++;
           return;
-        } else {
-          for (auto i = index + 1; ; ++i) {
-            if (i == m_Capacity) {
-              i = 0;
-            }
-
-            if (m_CellStates[i] == CellState::Occupied) {
-              if (m_Data[i] == value) {
-                return;
-              }
-            } else {
-              m_Data[i] = std::forward<VM::Value>(value);
-              m_CellStates[i] = CellState::Occupied;
-              m_Size++;
-              return;
-            }
+        case CellState::Occupied: {
+          if (m_Data[index] == value) {            
+            return;
           }
+          // keep going, might find a free slot
+          index = (index + 1) % m_Capacity;
+          break;
         }
+        default:
+          GRACE_UNREACHABLE();
+          break;
       }
-      default:
-        GRACE_UNREACHABLE();
-        break;
     }
   }
 
@@ -128,22 +113,17 @@ namespace Grace
   {
     auto index = m_Hasher(value) % m_Capacity;
     while (true) {
-      if (index >= m_Capacity) {
-        index = 0;
-      }
-
       switch (m_CellStates[index]) {
         case CellState::NeverUsed:
           return false;
+        case CellState::Tombstone:
+          index = (index + 1) % m_Capacity;
+          break;
         case CellState::Occupied:
-          if (m_Data[index] != value) {
-            index++;
-            break;
-          } else {
+          if (m_Data[index] == value) {
             return true;
           }
-        case CellState::Tombstone:
-          index++;
+          index = (index + 1) % m_Capacity;
           break;
         default:
           GRACE_UNREACHABLE();
@@ -299,9 +279,14 @@ namespace Grace
     }
   }
 
-  void GraceSet::Rehash()
+  void GraceSet::GrowAndRehash()
   {
     auto vec = ToVector();
+
+    // grow arrays
+    m_Capacity *= s_GrowFactor;
+    m_Data.resize(m_Capacity, VM::Value());
+    m_CellStates.resize(m_Capacity, CellState::NeverUsed);
 
     std::fill(m_Data.begin(), m_Data.end(), VM::Value());
     std::fill(m_CellStates.begin(), m_CellStates.end(), CellState::NeverUsed);
@@ -309,23 +294,21 @@ namespace Grace
     for (auto& value : vec) {
       auto index = m_Hasher(value) % m_Capacity;
 
-      auto state = m_CellStates[index];
-      if (state == CellState::NeverUsed) {
-        m_Data[index] = std::move(value);
-        m_CellStates[index] = CellState::Occupied;
-      } else {
-        for (auto i = index + 1; ; i++) {
-          if (i >= m_Capacity) {
-            i = 0;
-          }
+      while (true) {
+        GRACE_ASSERT(m_CellStates[index] != CellState::Tombstone, "Shouldn't be any tombstones present during rehash");
 
-          if (m_CellStates[i] == CellState::NeverUsed) {
-            m_Data[i] = std::move(value);
-            m_CellStates[i] = CellState::Occupied;
-            break;
-          }
+        // if its never used, insert it
+        if (m_CellStates[index] == CellState::NeverUsed) {
+          m_CellStates[index] = CellState::Occupied;
+          m_Data[index] = std::move(value);
+          break;
         }
+
+        // otherwise keep going
+        index = (index + 1) % m_Capacity;
       }
     }
+
+    InvalidateIterators();
   }
 } // namespace Grace

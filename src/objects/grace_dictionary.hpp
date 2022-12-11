@@ -70,7 +70,9 @@ namespace Grace
       }
 
       void Insert(VM::Value&& key, VM::Value&& value);
-      GRACE_NODISCARD VM::Value Get(const VM::Value& key);
+      void Update(const VM::Value& key, VM::Value&& value);
+
+      GRACE_NODISCARD const VM::Value& Get(const VM::Value& key);
       GRACE_NODISCARD bool ContainsKey(const VM::Value& key);
       GRACE_NODISCARD bool Remove(const VM::Value& key);      
 
@@ -80,7 +82,7 @@ namespace Grace
 
     protected:
 
-      void Rehash() override;
+      void GrowAndRehash() override;
   };
 }
 

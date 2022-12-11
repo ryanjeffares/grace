@@ -35,6 +35,9 @@ using Args = std::vector<Value>&;
 static Value SqrtFloat(Args args);
 static Value SqrtInt(Args args);
 
+static Value IntAbs(Args args);
+static Value FloatAbs(Args args);
+
 static Value TimeHours(GRACE_MAYBE_UNUSED Args args);
 static Value TimeMinutes(GRACE_MAYBE_UNUSED Args args);
 static Value TimeSeconds(GRACE_MAYBE_UNUSED Args args);
@@ -120,6 +123,9 @@ void VM::RegisterNatives()
   // Math functions
   m_NativeFunctions.emplace_back("__NATIVE_SQRT_FLOAT", 1, &SqrtFloat);
   m_NativeFunctions.emplace_back("__NATIVE_SQRT_INT", 1, &SqrtInt);
+
+  m_NativeFunctions.emplace_back("__NATIVE_INT_ABS", 1, &IntAbs);
+  m_NativeFunctions.emplace_back("__NATIVE_FLOAT_ABS", 1, &FloatAbs);
 
   // Time functions
   m_NativeFunctions.emplace_back("__NATIVE_TIME_H", 0, &TimeHours);
@@ -235,6 +241,30 @@ static Value SqrtInt(Args args)
   }
 
   return Value(std::sqrt(args[0].Get<std::int64_t>()));
+}
+
+static Value IntAbs(Args args)
+{
+  if (args[0].GetType() == Value::Type::Int) {
+    return Value(std::abs(args[0].Get<std::int64_t>()));
+  }
+
+  throw Grace::GraceException(
+    Grace::GraceException::Type::InvalidType,
+    fmt::format("Expected `Int` for `std::int::abs(i)` but got `{}`", args[0].GetTypeName())
+  );
+}
+
+static Value FloatAbs(Args args)
+{
+  if (args[0].GetType() == Value::Type::Double) {
+    return Value(std::abs(args[0].Get<double>()));
+  }
+
+  throw Grace::GraceException(
+    Grace::GraceException::Type::InvalidType,
+    fmt::format("Expected `Float` for `std::float::abs(i)` but got `{}`", args[0].GetTypeName())
+  );
 }
 
 static Value TimeHours(GRACE_MAYBE_UNUSED Args args)

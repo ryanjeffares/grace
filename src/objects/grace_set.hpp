@@ -70,7 +70,7 @@ namespace Grace
 
     protected:
       
-      void Rehash() override;
+      void GrowAndRehash() override;
   };
 } // namespace Grace
 
