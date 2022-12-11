@@ -35,40 +35,61 @@ Grace's only dependencies are [fmtlib](https://github.com/fmtlib/fmt) which is u
 ```bash
 git clone --recursive https://github.com/ryanjeffares/grace.git 
 cd grace 
-python3 build.py <Release/Debug/All>
+python3 build.py <exe/dll> <Release/Debug/All>
 ```
 
-This will build the `grace` executable, which you can add to your path or move somewhere that is on your path. Full installation process as well as documentation is WIP.
+This will build the `grace` executable in the build folder. To install to your system, run
 
-**NB: Grace will look for the standard library with the `GRACE_STD_PATH` environment variable. The CMake file doesn't currently do this, so you'll need to do it yourself to include any Grace standard library files in your Grace code. The standard library is in the std directory in this repo, so if your clone is located at "C:/Users/me/grace", set your `GRACE_STD_PATH` environment variable to be "C:/Users/me/grace/std"**
+```bash
+python3 install.py
+```
 
-## Alpha Release Roadmap
+**NB: To use Grace globally, you will need to add the `GRACE_STD_PATH` environment variable and may need to add Grace to your path.**
+
+##### Windows
+On Windows, by default Grace installs to `C:/Program Files (x86)/grace/bin/grace.exe` and the standard library will be copied to `C:/Program Files (x86)/grace/std/`.
+
+##### macOs/Linux
+On Mac and Linux, by default Grace installs to `/usr/local/bin/grace` and the standard library is coped to `/usr/local/share/grace/std/`
+
+
+## TODO
+
+#### STD
+* Expand standard library
+* Precompile to bytecode that can be loaded by the interpreter
+
+#### Core Language
+* Short circuiting
 * Prevent integer overflow by automatically promoting to a `BigInt` class
-* TEST THE CYCLE CLEANER
-  * There is a problem - see backup day 7 aoc solution
 * Lambdas 
 * Global const fields
   * Allow expressions
   * Improve error reporting
   * STD imports are broken?
+* Compound assignment to subscripts and object members
 * Allow importing files that require going higher up the folder tree
-* Expand standard library
+* Default function parameter values
 * Dynamic library loading
   * This is in, but need to handle pointer types for things that aren't strings
   * And also pointer return types for strings and others...
-* Ability to get relative path from a Grace file
-  * Path library in std?
-* Default function parameter values
+* Think about how `char`s should behave in binary operations
+
+#### Interpreter
+* TEST THE CYCLE CLEANER
+  * There is a problem - see backup day 7 aoc solution
+* Improve compiler errors and line numbering
+* Reduce code duplication in compiler, general clean up
+  * The parsing is a bit all over the place. Review grammar and stick strictly to recursive descent
+* Ensure use of backticks and quotes is consistent in error messages
+
+#### Business™
 * Install process 
 * Tests 
 * Documentation + comments 
-* Improve compiler errors and line numbering
-* Reduce code duplication in compiler, general clean up
-* Ensure use of backticks and quotes is consistent in error messages
-* Think about how `char`s should behave in binary operations
-* Should all file related functions in the std use `Path`?
-* Think about dict modification functions - should insert replace, or throw, or do nothing?
-* Compound assignment to subscripts
+* Dynamic library build
+* Can we avoid copying over `dyncall` static libs and headers during install? Maybe hack the CMake to just compile as source...
+
 
 ## Long Term Goals 
 * Optional type annotations for use by a static analyzer
