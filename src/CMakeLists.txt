@@ -8,6 +8,7 @@ if (GRACE_BUILD_TARGET MATCHES "dll")
             vm_register_natives.cpp
             objects/grace_dictionary.cpp
             objects/grace_exception.cpp
+            objects/grace_function.cpp
             objects/grace_instance.cpp
             objects/grace_iterator.cpp
             objects/grace_keyvaluepair.cpp
@@ -26,6 +27,7 @@ elseif (GRACE_BUILD_TARGET MATCHES "exe")
             vm_register_natives.cpp
             objects/grace_dictionary.cpp
             objects/grace_exception.cpp
+            objects/grace_function.cpp
             objects/grace_instance.cpp
             objects/grace_iterator.cpp
             objects/grace_keyvaluepair.cpp

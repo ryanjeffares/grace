@@ -33,13 +33,16 @@ namespace Grace
   namespace VM
   {
     template<class T>
-    concept DerivedGraceObject = std::is_base_of<GraceObject, T>::value;
+    concept DerivedGraceObject = std::is_base_of_v<GraceObject, T>;
 
     template<typename T>
     concept BuiltinGraceType = std::is_integral_v<T> || std::is_floating_point_v<T> || std::is_same_v<T, bool> || std::is_same_v<T, char> || std::is_same_v<T, std::string> || std::is_same_v<T, std::nullptr_t>;
 
     class Value final
     {
+      template<typename T>
+      static constexpr bool IsInteger = std::is_same_v<T, short> || std::is_same_v<T, unsigned short> || std::is_same_v<T, int> || std::is_same_v<T, unsigned int> || std::is_same_v<T, long> || std::is_same_v<T, unsigned long> || std::is_same_v<T, long long> || std::is_same_v<T, unsigned long long>;
+
     public:
       using NullValue = std::nullptr_t;
 
@@ -57,22 +60,22 @@ namespace Grace
       template<BuiltinGraceType T>
       GRACE_INLINE constexpr Value(T value)
       {
-        if constexpr (std::is_integral_v<T>) {
+        if constexpr (IsInteger<T>) {
           m_Type = Type::Int;
           m_Data.m_Int = static_cast<std::int64_t>(value);
         } else if constexpr (std::is_floating_point_v<T>) {
           m_Type = Type::Double;
           m_Data.m_Double = static_cast<double>(value);
-        } else if constexpr (std::is_same<T, bool>::value) {
+        } else if constexpr (std::is_same_v<T, bool>) {
           m_Type = Type::Bool;
-          m_Data.m_Bool = value;
-        } else if constexpr (std::is_same<T, char>::value) {
+          m_Data.m_Bool = value;          
+        } else if constexpr (std::is_same_v<T, char>) {
           m_Type = Type::Char;
           m_Data.m_Char = value;
-        } else if constexpr (std::is_same<T, std::string>::value) {
+        } else if constexpr (std::is_same_v<T, std::string>) {
           m_Type = Type::String;
-          m_Data.m_Str = new std::string(std::move(value));
-        } else if constexpr (std::is_same<T, NullValue>::value) {
+          m_Data.m_Str = new std::string { std::move(value) };
+        } else if constexpr (std::is_same_v<T, NullValue>) {
           m_Type = Type::Null;
           m_Data.m_Null = nullptr;
         }
@@ -153,7 +156,7 @@ namespace Grace
       }
 
       template<BuiltinGraceType T>
-      constexpr Value& operator=(const T& value)
+      constexpr Value& operator=(T value)
       {
         if (m_Type == Type::String) {
           delete m_Data.m_Str;
@@ -166,24 +169,22 @@ namespace Grace
           }
         }
 
-        if constexpr (std::is_integral_v<T>) {
+        if constexpr (IsInteger<T>) {
           m_Type = Type::Int;
           m_Data.m_Int = static_cast<std::int64_t>(value);
-        }
-
-        if constexpr (std::is_floating_point_v<T>) {
+        } else if constexpr (std::is_floating_point_v<T>) {
           m_Type = Type::Double;
           m_Data.m_Double = static_cast<double>(value);
-        } else if constexpr (std::is_same<T, bool>::value) {
+        } else if constexpr (std::is_same_v<T, bool>) {
           m_Type = Type::Bool;
           m_Data.m_Bool = value;
-        } else if constexpr (std::is_same<T, char>::value) {
+        } else if constexpr (std::is_same_v<T, char>) {
           m_Type = Type::Char;
           m_Data.m_Char = value;
-        } else if constexpr (std::is_same<T, std::string>::value) {
+        } else if constexpr (std::is_same_v<T, std::string>) {
           m_Type = Type::String;
-          m_Data.m_Str = new std::string(value);
-        } else if constexpr (std::is_same<T, NullValue>::value) {
+          m_Data.m_Str = new std::string { std::move(value) };
+        } else if constexpr (std::is_same_v<T, NullValue>) {
           m_Type = Type::Null;
           m_Data.m_Null = nullptr;
         }
@@ -239,15 +240,15 @@ namespace Grace
       {
         static_assert(!std::is_same_v<T, std::string> && "Use GetString() instead");
 
-        if constexpr (std::is_integral_v<T>) {
+        if constexpr (IsInteger<T>) {
           return static_cast<T>(m_Data.m_Int);
         } else if constexpr (std::is_floating_point_v<T>) {
           return static_cast<T>(m_Data.m_Double);
-        } else if constexpr (std::is_same<T, bool>::value) {
+        } else if constexpr (std::is_same_v<T, bool>) {
           return m_Data.m_Bool;
-        } else if constexpr (std::is_same<T, char>::value) {
+        } else if constexpr (std::is_same_v<T, char>) {
           return m_Data.m_Char;
-        } else if constexpr (std::is_same<T, NullValue>::value) {
+        } else if constexpr (std::is_same_v<T, NullValue>) {
           return nullptr;
         }
       }

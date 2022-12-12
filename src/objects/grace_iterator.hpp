@@ -117,7 +117,7 @@ namespace Grace
     using IteratorType = std::vector<VM::Value>::iterator;
 
     explicit GraceIterable(std::size_t initialSize, const VM::Value& defaultValue = VM::Value())
-        : m_Data {initialSize, defaultValue}
+        : m_Data(initialSize, defaultValue)
     {
     }
 

@@ -42,6 +42,7 @@ namespace Grace
         : GraceIterable {s_InitialCapacity, defaultValue}
         , m_CellStates {s_InitialCapacity, CellState::NeverUsed}
     {
+      
     }
 
     virtual void GrowAndRehash() = 0;

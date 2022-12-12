@@ -20,6 +20,8 @@
 #include <stdlib.h> // getenv_s
 #endif
 
+#include "vm.hpp"
+
 #include "grace.hpp"
 
 #include "objects/grace_dictionary.hpp"
@@ -29,21 +31,9 @@
 #include "objects/grace_range.hpp"
 #include "objects/grace_set.hpp"
 #include "scanner.hpp"
-#include "vm.hpp"
 
 namespace Grace::VM
 {
-  std::unordered_map<std::int64_t, std::unordered_map<std::int64_t, std::shared_ptr<VM::Function>>> VM::m_FunctionLookup;
-  std::unordered_map<std::size_t, std::vector<std::shared_ptr<VM::Function>>> VM::m_ExtensionMethodLookup;
-  std::unordered_map<std::int64_t, std::string> VM::m_FileNameLookup;
-  std::vector<Native::NativeFunction> VM::m_NativeFunctions;
-  std::unordered_map<std::int64_t, std::unordered_map<std::int64_t, std::string>> VM::m_ClassLookup;
-  std::vector<VM::OpLine> VM::m_FullOpList;
-  std::vector<Value> VM::m_FullConstantList;
-  std::int64_t VM::m_LastFileNameHash {};
-  std::int64_t VM::m_LastFunctionHash {};
-  std::hash<std::string> VM::m_Hasher;
-
   static std::pair<Value, Value> PopLastTwo(std::vector<Value>& stack)
   {
     auto c1 = std::move(stack[stack.size() - 2]);
@@ -84,15 +74,12 @@ namespace Grace::VM
   {
     for (const auto& [fileName, funcList] : m_FunctionLookup) {
       for (const auto& [name, func] : funcList) {
-        fmt::print("<function `{}`> in file {}\n", func->name, m_FileNameLookup.at(fileName));
-        for (const auto [op, line] : func->opList) {
-          fmt::print("{:>5} | {}\n", line, op);
-        }
+        func.GetObject()->GetAsFunction()->PrintOps();
       }
     }
   }
 
-  bool VM::AddFunction(std::string&& name, std::size_t arity, const std::string& fileName, bool exported, bool extension, std::size_t objectNameHash)
+  bool VM::AddFunction(std::string name, std::size_t arity, std::string fileName, bool exported, bool extension, std::size_t objectNameHash)
   {
     auto funcNameHash = static_cast<std::int64_t>(m_Hasher(name));
     auto fileNameHash = static_cast<std::int64_t>(m_Hasher(fileName));
@@ -102,7 +89,7 @@ namespace Grace::VM
       m_FileNameLookup.insert({ fileNameHash, fileName });
     }
 
-    auto func = std::make_shared<Function>(std::move(name), arity, fileName, exported);
+    auto func = Value::CreateObject<GraceFunction>(std::move(name), arity, std::move(fileName), exported);
 
     if (extension) {
       m_ExtensionMethodLookup[objectNameHash].push_back(func);
@@ -117,14 +104,14 @@ namespace Grace::VM
     return false;
   }
 
-  bool VM::AddClass(std::string&& name, const std::string& fileName)
+  bool VM::AddClass(std::string name, std::string fileName)
   {
     auto classNameHash = static_cast<std::int64_t>(m_Hasher(name));
     auto fileNameHash = static_cast<std::int64_t>(m_Hasher(fileName));
 
     if (m_ClassLookup.find(fileNameHash) == m_ClassLookup.end()) {
       m_ClassLookup.insert({ fileNameHash, {} });
-      m_FileNameLookup.insert({ fileNameHash, fileName });
+      m_FileNameLookup.insert({ fileNameHash, std::move(fileName) });
     }
 
     auto [it, res] = m_ClassLookup.at(fileNameHash).try_emplace(classNameHash, std::move(name));
@@ -148,23 +135,19 @@ namespace Grace::VM
       return false;
     }
 
-    m_FullOpList = it->second->opList;
-    m_FullConstantList = it->second->constantList;
+    auto mainFunc = it->second.GetObject()->GetAsFunction();
+    mainFunc->CombineOps(m_FullOpList);
+    mainFunc->CombineConstants(m_FullConstantList);
+    
     for (auto& [fileName, funcList] : m_FunctionLookup) {
       for (auto& [name, func] : funcList) {
         if (name == mainHash) {
           continue;
         }
 
-        auto& opList = func->opList;
-        func->opIndexStart = m_FullOpList.size();
-        m_FullOpList.reserve(opList.size());
-        m_FullOpList.insert(m_FullOpList.end(), opList.begin(), opList.end());
-
-        auto& constantList = func->constantList;
-        func->constantIndexStart = m_FullConstantList.size();
-        m_FullConstantList.reserve(constantList.size());
-        m_FullConstantList.insert(m_FullConstantList.end(), constantList.begin(), constantList.end());
+        auto funcObj = func.GetObject()->GetAsFunction();
+        funcObj->CombineOps(m_FullOpList);
+        funcObj->CombineConstants(m_FullConstantList);
       }
     }
 
@@ -208,15 +191,13 @@ namespace Grace::VM
 
   InterpretResult VM::Run(std::int64_t mainFileNameHash, GRACE_MAYBE_UNUSED bool verbose, const std::vector<std::string>& clArgs)
   {
-#define PRINT_LOCAL_MEMORY()                                                                          \
-  do {                                                                                                \
-    if (verbose) {                                                                                    \
-      PrintStack(valueStack, m_FunctionLookup.at(fileNameStack.top().first).at(funcNameHash)->name);  \
-      PrintLocals(localsList, m_FunctionLookup.at(fileNameStack.top().first).at(funcNameHash)->name); \
-    }                                                                                                 \
+#define PRINT_LOCAL_MEMORY()                                                                                                            \
+  do {                                                                                                                                  \
+    if (verbose) {                                                                                                                      \
+      PrintStack(valueStack, m_FunctionLookup.at(fileNameStack.top().first).at(funcNameHash).GetObject()->GetAsFunction()->GetName());  \
+      PrintLocals(localsList, m_FunctionLookup.at(fileNameStack.top().first).at(funcNameHash).GetObject()->GetAsFunction()->GetName()); \
+    }                                                                                                                                   \
   } while (false)
-
-    auto interpretResult = InterpretResult::RuntimeOk;
 
     auto funcNameHash = static_cast<std::int64_t>(m_Hasher("main"));
     std::vector<Value> valueStack, localsList;
@@ -231,20 +212,20 @@ namespace Grace::VM
 
     std::size_t opCurrent = 0, constantCurrent = 0;
 
-    auto& mainFunc = m_FunctionLookup.at(mainFileNameHash).at(funcNameHash);
+    auto mainFunc = m_FunctionLookup.at(mainFileNameHash).at(funcNameHash).GetObject()->GetAsFunction();
 
     std::vector<std::pair<std::size_t, std::size_t>> opConstOffsets;
     opConstOffsets.reserve(32);
-    opConstOffsets.emplace_back(mainFunc->opIndexStart, mainFunc->constantIndexStart);
+    opConstOffsets.emplace_back(mainFunc->GetOpIndexStart(), mainFunc->GetConstantIndexStart());
 
     std::stack<std::size_t> localsOffsets;
     localsOffsets.push(0); // [0] is args
 
     std::vector<CallStackEntry> callStack;
-    callStack.push_back({ static_cast<std::int64_t>(m_Hasher("file")), funcNameHash, 1, mainFunc->fileName, mainFunc->fileName, mainFunc->fileNameHash, mainFunc->fileNameHash });
+    callStack.push_back({ static_cast<std::int64_t>(m_Hasher("file")), funcNameHash, 1, mainFunc->GetFileName(), mainFunc->GetFileName(), mainFunc->GetFileNameHash(), mainFunc->GetFileNameHash() });
 
     std::stack<std::pair<std::int64_t, std::string>> fileNameStack;
-    fileNameStack.push({ mainFileNameHash, mainFunc->fileName });
+    fileNameStack.push({ mainFileNameHash, mainFunc->GetFileName()});
 
     // used to restore the "state" of the VM before entering a try block
     // if an exception is caught
@@ -474,7 +455,7 @@ namespace Grace::VM
             auto calleeNameHash = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
             auto numArgsGiven = m_FullConstantList[constantCurrent++].Get<std::size_t>();
 
-            Function* calleeFunc;
+            GraceFunction* calleeFunc;
 
             // need to verify the callee exists in the namespace prepended to the call
             const auto& namespaceToSearch = namespaceLookupStack.top();
@@ -490,7 +471,7 @@ namespace Grace::VM
                     m_FullConstantList[constantCurrent++].GetString()));
               }
 
-              calleeFunc = funcIt->second.get();
+              calleeFunc = funcIt->second.GetObject()->GetAsFunction();
             } else {
               // build out the file path to search...
               std::stringstream path;
@@ -518,7 +499,7 @@ namespace Grace::VM
               }
 
               auto funcIt = funcListIt->second.find(calleeNameHash);
-              if (funcIt == funcListIt->second.end() || !funcIt->second->exported) {
+              if (funcIt == funcListIt->second.end() || !funcIt->second.GetObject()->GetAsFunction()->IsExported()) {
                 std::string toDisplay;
                 for (std::size_t i = 0; i < namespaceToSearch.size(); ++i) {
                   toDisplay.append(namespaceToSearch[i].first);
@@ -534,7 +515,7 @@ namespace Grace::VM
                     toDisplay));
               }
 
-              calleeFunc = funcIt->second.get();
+              calleeFunc = funcIt->second.GetObject()->GetAsFunction();
             }
 
             // increment this here to get past the string function name
@@ -546,12 +527,13 @@ namespace Grace::VM
               namespaceLookupStack.pop();
             }
 
-            auto arity = calleeFunc->arity;
+            auto arity = calleeFunc->GetArity();
 
             if (numArgsGiven != arity) {
               throw GraceException(
                 GraceException::Type::IncorrectArgCount,
-                fmt::format("Incorrect number of arguments given to function '{}', expected {} but got {}", calleeFunc->name, arity, numArgsGiven));
+                fmt::format("Incorrect number of arguments given to function '{}', expected {} but got {}", calleeFunc->GetName(), arity, numArgsGiven)
+              );
             }
 
             localsOffsets.push(localsList.size());
@@ -560,16 +542,16 @@ namespace Grace::VM
               localsList[arity - i - 1 + localsOffsets.top()] = Pop(valueStack);
             }
 
-            callStack.push_back({ funcNameHash, calleeNameHash, line, fileNameStack.top().second, calleeFunc->fileName, fileNameStack.top().first, calleeFunc->fileNameHash });
+            callStack.push_back({ funcNameHash, calleeNameHash, line, fileNameStack.top().second, calleeFunc->GetFileName(), fileNameStack.top().first, calleeFunc->GetFileNameHash()});
 
             valueStack.emplace_back(static_cast<std::int64_t>(opCurrent));
             valueStack.emplace_back(static_cast<std::int64_t>(constantCurrent));
             valueStack.emplace_back(static_cast<std::int64_t>(heldIterators.size()));
 
-            fileNameStack.push({ calleeFunc->fileNameHash, calleeFunc->fileName });
+            fileNameStack.push({ calleeFunc->GetFileNameHash(), calleeFunc->GetFileName()});
 
-            opCurrent = calleeFunc->opIndexStart;
-            constantCurrent = calleeFunc->constantIndexStart;
+            opCurrent = calleeFunc->GetOpIndexStart();
+            constantCurrent = calleeFunc->GetConstantIndexStart();
             opConstOffsets.emplace_back(opCurrent, constantCurrent);
 
             funcNameHash = calleeNameHash;
@@ -614,21 +596,24 @@ namespace Grace::VM
               throw GraceException(GraceException::Type::FunctionNotFound, fmt::format("Member function `{}` for type `{}` not found, you might be missing an import", calleeFuncName, callerObject.GetTypeName()));
             }
 
-            auto funcIt = std::find_if(funcListIt->second.begin(), funcListIt->second.end(), [&calleeFuncName](const std::shared_ptr<Function>& func) {
-              return func->name == calleeFuncName;
+            auto funcIt = std::find_if(funcListIt->second.begin(), funcListIt->second.end(), [&calleeFuncName](const Value& value) {
+              auto func = value.GetObject()->GetAsFunction();
+              return func->GetName() == calleeFuncName;
             });
+
             if (funcIt == funcListIt->second.end()) {
               throw GraceException(GraceException::Type::FunctionNotFound, fmt::format("Member function `{}` for type `{}` not found, you might be missing an import", calleeFuncName, callerObject.GetTypeName()));
             }
 
-            auto calleeFunc = funcIt->get();
-            auto arity = calleeFunc->arity;
+            auto calleeFunc = funcIt->GetObject()->GetAsFunction();
+            auto arity = calleeFunc->GetArity();
 
             // first arg for the function will be the value we popped from the stack above...
             if (arity != numArgs + 1) {
               throw GraceException(
                 GraceException::Type::IncorrectArgCount,
-                fmt::format("Incorrect number of arguments given to function '{}', expected {} but got {}", calleeFunc->name, arity, numArgs));
+                fmt::format("Incorrect number of arguments given to function '{}', expected {} but got {}", calleeFunc->GetName(), arity, numArgs)
+              );
             }
 
             localsOffsets.push(localsList.size());
@@ -639,16 +624,16 @@ namespace Grace::VM
             }
             localsList[localsOffsets.top()] = std::move(callerObject);
 
-            callStack.push_back({ funcNameHash, calleeNameHash, line, fileNameStack.top().second, calleeFunc->fileName, fileNameStack.top().first, calleeFunc->fileNameHash });
+            callStack.push_back({ funcNameHash, calleeNameHash, line, fileNameStack.top().second, calleeFunc->GetFileName(), fileNameStack.top().first, calleeFunc->GetFileNameHash()});
 
             valueStack.emplace_back(static_cast<std::int64_t>(opCurrent));
             valueStack.emplace_back(static_cast<std::int64_t>(constantCurrent));
             valueStack.emplace_back(static_cast<std::int64_t>(heldIterators.size()));
 
-            fileNameStack.push({ calleeFunc->fileNameHash, calleeFunc->fileName });
+            fileNameStack.push({ calleeFunc->GetFileNameHash(), calleeFunc->GetFileName()});
 
-            opCurrent = calleeFunc->opIndexStart;
-            constantCurrent = calleeFunc->constantIndexStart;
+            opCurrent = calleeFunc->GetOpIndexStart();
+            constantCurrent = calleeFunc->GetConstantIndexStart();
             opConstOffsets.emplace_back(opCurrent, constantCurrent);
 
             funcNameHash = calleeNameHash;
@@ -1285,7 +1270,10 @@ namespace Grace::VM
         } else {
           // exception unhandled, report the error, clean up and quit
           RuntimeError(ge, line, callStack);
-          interpretResult = InterpretResult::RuntimeError;
+
+#ifdef GRACE_DEBUG
+          PRINT_LOCAL_MEMORY();
+#endif
 
           valueStack.clear();
           localsList.clear();
@@ -1293,20 +1281,26 @@ namespace Grace::VM
             heldIterators.pop();
           }
 
+          m_FunctionLookup.clear();
+          m_ExtensionMethodLookup.clear();
+
           ObjectTracker::Finalise();
-          return interpretResult;
+          return InterpretResult::RuntimeError;
         }
       }
     }
 
   exit:
 
-    valueStack.clear();
-    localsList.clear();
-
 #ifdef GRACE_DEBUG
     PRINT_LOCAL_MEMORY();
 #endif
+
+    valueStack.clear();
+    localsList.clear();
+
+    m_FunctionLookup.clear();
+    m_ExtensionMethodLookup.clear();
 
     ObjectTracker::Finalise();
 
@@ -1328,7 +1322,7 @@ namespace Grace::VM
     }
 #endif
 
-    return interpretResult;
+    return InterpretResult::RuntimeOk;
 
 #undef PRINT_LOCAL_MEMORY
   }
@@ -1349,8 +1343,8 @@ namespace Grace::VM
 #endif
         for (std::size_t i = 1; i < callStack.size(); i++) {
           const auto& [caller, callee, ln, fileName, calleeFileName, fileNameHash, calleeFileNameHash] = callStack[i];
-          const auto& callerFunc = m_FunctionLookup.at(fileNameHash).at(caller);
-          fmt::print(stderr, "in {}:{}:{}\n", fileName, callerFunc->name, ln);
+          auto callerFunc = m_FunctionLookup.at(fileNameHash).at(caller).GetObject()->GetAsFunction();
+          fmt::print(stderr, "in {}:{}:{}\n", fileName, callerFunc->GetName(), ln);
           auto absolute = std::filesystem::absolute(fileName).string();
           fmt::print(stderr, "{:>4}\n", Scanner::GetCodeAtLine(absolute, ln));
         }
@@ -1358,25 +1352,25 @@ namespace Grace::VM
         fmt::print(stderr, "{} more calls before - set environment variable `GRACE_SHOW_FULL_CALLSTACK` to see full callstack\n", callStackSize - 15);
         for (auto i = callStackSize - 15; i < callStackSize; i++) {
           const auto& [caller, callee, ln, fileName, calleeFileName, fileNameHash, calleeFileNameHash] = callStack[i];
-          const auto& callerFunc = m_FunctionLookup.at(fileNameHash).at(caller);
+          auto callerFunc = m_FunctionLookup.at(fileNameHash).at(caller).GetObject()->GetAsFunction();
           auto absolute = std::filesystem::absolute(fileName).string();
-          fmt::print(stderr, "in {}:{}:{}\n", fileName, callerFunc->name, ln);
+          fmt::print(stderr, "in {}:{}:{}\n", fileName, callerFunc->GetName(), ln);
           fmt::print(stderr, "{:>4}\n", Scanner::GetCodeAtLine(absolute, ln));
         }
       }
     } else {
       for (std::size_t i = 1; i < callStack.size(); i++) {
         const auto& [caller, callee, ln, fileName, calleeFileName, fileNameHash, calleeFileNameHash] = callStack[i];
-        const auto& callerFunc = m_FunctionLookup.at(fileNameHash).at(caller);
+        auto callerFunc = m_FunctionLookup.at(fileNameHash).at(caller).GetObject()->GetAsFunction();
         auto absolute = std::filesystem::absolute(fileName).string();
-        fmt::print(stderr, "in {}:{}:{}\n", fileName, callerFunc->name, ln);
+        fmt::print(stderr, "in {}:{}:{}\n", fileName, callerFunc->GetName(), ln);
         fmt::print(stderr, "{:>4}\n", Scanner::GetCodeAtLine(absolute, ln));
       }
     }
 
-    const auto& calleeFunc = m_FunctionLookup.at(callStack.back().calleeFileNameHash).at(callStack.back().calleeHash);
-    fmt::print(stderr, "in {}:{}:{}\n", calleeFunc->fileName, calleeFunc->name, line);
-    auto absolute = std::filesystem::absolute(calleeFunc->fileName).string();
+    auto calleeFunc = m_FunctionLookup.at(callStack.back().calleeFileNameHash).at(callStack.back().calleeHash).GetObject()->GetAsFunction();
+    fmt::print(stderr, "in {}:{}:{}\n", calleeFunc->GetFileName(), calleeFunc->GetName(), line);
+    auto absolute = std::filesystem::absolute(calleeFunc->GetFileName()).string();
     fmt::print(stderr, "{:>4}\n", Scanner::GetCodeAtLine(absolute, line));
 
     fmt::print(stderr, "\n");

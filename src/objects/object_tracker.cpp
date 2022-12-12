@@ -193,8 +193,8 @@ static void CleanCyclesInternal()
   std::vector<VM::Value> objectsToBeDeleted;
 
   for (auto root : s_TrackedObjects) {
-    auto type = root->ObjectType();
-    if (type == GraceObjectType::Exception || type == GraceObjectType::Iterator || type == GraceObjectType::Range) {
+    auto type = root->ObjectType();    
+    if (type == GraceObjectType::Exception || type == GraceObjectType::Iterator || type == GraceObjectType::Range || type == GraceObjectType::Function) {
       // these objects don't have members/elements
       continue;
     }
@@ -242,7 +242,7 @@ static void CleanCyclesInternal()
       continue;
 
     auto type = object->ObjectType();
-    if (type == GraceObjectType::Exception || type == GraceObjectType::Iterator || type == GraceObjectType::Range) {
+    if (type == GraceObjectType::Exception || type == GraceObjectType::Iterator || type == GraceObjectType::Range || type == GraceObjectType::Function) {
       // these objects don't have members/elements
       continue;
     }
@@ -253,7 +253,7 @@ static void CleanCyclesInternal()
         continue;
 
       auto memberType = member->ObjectType();
-      if (memberType == GraceObjectType::Exception || memberType == GraceObjectType::Iterator) {
+      if (memberType == GraceObjectType::Exception || memberType == GraceObjectType::Iterator || type == GraceObjectType::Range || type == GraceObjectType::Function) {
         // these objects don't have members/elements
         continue;
       }

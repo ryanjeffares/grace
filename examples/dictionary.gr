@@ -1,4 +1,5 @@
 import std::dict;
+import std::gc;
 
 func factorial(num):
   if num < 2:
@@ -8,19 +9,23 @@ func factorial(num):
 end
 
 func main():
+  std::gc::set_enabled(false);
+
   final people = ["Ryan", "Walt", "Jesse"];
 
   for person, index in people:
     println("Person #" + index + " is " + person);
   end
 
-  println();
+  println("HERE");
 
   final dict = {
     "Walter": "White",
     "Person List": people,
     factorial(10): factorial(20),
   };
+
+  println("HERE");
 
   for key, value in dict:
     println("The key is " + key + " and the value is " + value);
