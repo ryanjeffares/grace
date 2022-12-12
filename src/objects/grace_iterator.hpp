@@ -173,6 +173,6 @@ namespace Grace
     std::vector<VM::Value> m_Data;
     std::vector<GraceIterator*> m_ActiveIterators;
   };
-}// namespace Grace
+} // namespace Grace
 
-#endif// ifndef GRACE_ITERATOR_HPP
+#endif // ifndef GRACE_ITERATOR_HPP

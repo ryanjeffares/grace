@@ -165,6 +165,6 @@ namespace Grace
   protected:
     std::uint32_t m_RefCount = 0;
   };
-}// namespace Grace
+} // namespace Grace
 
-#endif// ifndef GRACE_OBJECT_HPP
+#endif // ifndef GRACE_OBJECT_HPP

@@ -66,6 +66,6 @@ namespace Grace
     VM::Value m_Current;
     VM::Value m_Min, m_Max, m_Increment;
   };
-}// namespace Grace
+} // namespace Grace
 
-#endif// ifndef GRACE_RANGE_HPP
+#endif // ifndef GRACE_RANGE_HPP

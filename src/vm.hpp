@@ -142,20 +142,20 @@ namespace Grace::VM
 
     GRACE_INLINE static void PushOp(Ops op, std::size_t line)
     {
-      m_FunctionLookup.at(m_LastFileNameHash).at(m_LastFunctionHash)->opList.push_back({op, line});
+      m_FunctionLookup.at(m_LastFileNameHash).at(m_LastFunctionHash)->opList.push_back({ op, line });
     }
 
     static void PrintOps();
 
     template<BuiltinGraceType T>
-    GRACE_INLINE static void PushConstant(const T& value)
+    GRACE_INLINE static void PushConstant(T value)
     {
-      m_FunctionLookup.at(m_LastFileNameHash).at(m_LastFunctionHash)->constantList.emplace_back(value);
+      m_FunctionLookup.at(m_LastFileNameHash).at(m_LastFunctionHash)->constantList.emplace_back(std::move(value));
     }
 
-    GRACE_INLINE static void PushConstant(const Value& value)
+    GRACE_INLINE static void PushConstant(Value value)
     {
-      m_FunctionLookup.at(m_LastFileNameHash).at(m_LastFunctionHash)->constantList.push_back(value);
+      m_FunctionLookup.at(m_LastFileNameHash).at(m_LastFunctionHash)->constantList.push_back(std::move(value));
     }
 
     GRACE_NODISCARD GRACE_INLINE static std::size_t GetNumConstants()
@@ -190,12 +190,11 @@ namespace Grace::VM
 
     GRACE_NODISCARD static std::tuple<bool, std::size_t> HasNativeFunction(const std::string& name)
     {
-      auto it = std::find_if(m_NativeFunctions.begin(), m_NativeFunctions.end(),
-        [&name](const Native::NativeFunction& fn) { return fn.GetName() == name; });
+      auto it = std::find_if(m_NativeFunctions.begin(), m_NativeFunctions.end(), [&name](const Native::NativeFunction& fn) { return fn.GetName() == name; });
       if (it == m_NativeFunctions.end()) {
-        return {false, 0};
+        return { false, 0 };
       }
-      return {true, it - m_NativeFunctions.begin()};
+      return { true, it - m_NativeFunctions.begin() };
     }
 
     GRACE_NODISCARD GRACE_INLINE static const Native::NativeFunction& GetNativeFunction(std::size_t index)
@@ -242,10 +241,10 @@ namespace Grace::VM
       bool exported {};
 
       Function(std::string&& name_, std::size_t arity_, const std::string& fileName_, bool exported_)
-          : name {std::move(name_)}
-          , arity {arity_}
-          , fileName {fileName_}
-          , exported {exported_}
+          : name { std::move(name_) }
+          , arity { arity_ }
+          , fileName { fileName_ }
+          , exported { exported_ }
       {
         static std::hash<std::string> hasher;
         fileNameHash = static_cast<std::int64_t>(hasher(fileName_));
@@ -276,7 +275,7 @@ namespace Grace::VM
     static std::int64_t m_LastFunctionHash;
     static std::hash<std::string> m_Hasher;
   };
-}// namespace Grace::VM
+} // namespace Grace::VM
 
 template<>
 struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
@@ -536,4 +535,4 @@ struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
   }
 };
 
-#endif// ifndef GRACE_VM_HPP
+#endif // ifndef GRACE_VM_HPP

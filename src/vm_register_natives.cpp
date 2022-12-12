@@ -342,7 +342,7 @@ static Value ListInsert(Args args)
         fmt::format("Expected `Int` for `std::list::insert(list, index, value)` but got `{}`", args[1].GetTypeName()));
     }
 
-    list->Insert(std::move(args[2]), static_cast<std::size_t>(args[1].Get<std::int64_t>()));
+    list->Insert(std::move(args[2]), args[1].Get<std::size_t>());
     return {};
   }
 
@@ -360,7 +360,7 @@ static Value ListRemove(Args args)
         fmt::format("Expected `Int` for `std::list::remove(list, index)` but got `{}`", args[1].GetTypeName()));
     }
 
-    return list->Remove(static_cast<std::size_t>(args[1].Get<std::int64_t>()));
+    return list->Remove(args[1].Get<std::size_t>());
   }
 
   throw Grace::GraceException(
@@ -426,7 +426,7 @@ static Value ListSetAtIndex(Args args)
         fmt::format("Expected `Int` for `std::list::set(list, index, value)` but got `{}`", args[1].GetTypeName()));
     }
 
-    (*list)[static_cast<std::size_t>(args[1].Get<std::int64_t>())] = std::move(args[2]);
+    (*list)[args[1].Get<std::size_t>()] = std::move(args[2]);
     return {};
   }
 
@@ -444,7 +444,7 @@ static Value ListGetAtIndex(Args args)
         fmt::format("Expected `Int` for `std::list::get(list, index)` but got `{}`", args[1].GetTypeName()));
     }
 
-    return (*list)[static_cast<std::size_t>(args[1].Get<std::int64_t>())];
+    return (*list)[args[1].Get<std::size_t>()];
   }
 
   throw Grace::GraceException(
@@ -770,13 +770,13 @@ static Value SystemExit(Args args)
       fmt::format("Expected `Int` for `std::system::exit(exit_code)` but got `{}`", args[0].GetTypeName()));
   }
 
-  std::exit(static_cast<int>(args[0].Get<std::int64_t>()));
+  std::exit(args[0].Get<int>());
 }
 
 static Value SystemRun(Args args)
 {
   if (args[0].GetType() == Value::Type::String) {
-    auto res = std::system(args[0].Get<std::string>().c_str());
+    auto res = std::system(args[0].GetString().c_str());
     return Value(std::int64_t(res));
   }
 
@@ -812,7 +812,7 @@ static Value DirectoryExists(Args args)
       fmt::format("Expected `String` for `std::directory::exists(path)` but got `{}`", args[0].GetTypeName()));
   }
 
-  const auto& path = args[0].Get<std::string>();
+  const auto& path = args[0].GetString();
   auto exists = std::filesystem::is_directory(path);
   return Value(exists);
 }
@@ -825,7 +825,7 @@ static Value DirectoryCreate(Args args)
       fmt::format("Expected `String` for `std::directory::create(path)` but got `{}`", args[0].GetTypeName()));
   }
 
-  const auto& path = args[0].Get<std::string>();
+  const auto& path = args[0].GetString();
   auto result = std::filesystem::create_directories(path);
   return Value(result);
 }
@@ -835,7 +835,7 @@ static Value DirectoryGetDirectories(Args args)
   namespace fs = std::filesystem;
 
   if (args[0].GetType() == Value::Type::String) {
-    fs::path path(args[0].Get<std::string>());
+    fs::path path(args[0].GetString());
 
     if (!fs::is_directory(path)) {
       throw Grace::GraceException(
@@ -867,7 +867,7 @@ static Value InteropLoadLibrary(Args args)
       fmt::format("Expected `String` for `std::interop::load_library(library_path)` but got `{}`", args[0].GetTypeName()));
   }
 
-  const auto& libName = args[0].Get<std::string>();
+  const auto& libName = args[0].GetString();
 
   auto handle = dlLoadLibrary(libName.c_str());
   if (handle == nullptr) {
@@ -915,7 +915,7 @@ static Value InteropDoCall(Args args)
       fmt::format("Expected `String` for `func_name` in `std::interop::do_call(handle, func_name, args, call_type)` but got `{}`", args[1].GetTypeName()));
   }
 
-  const auto& funcName = args[1].Get<std::string>();
+  const auto& funcName = args[1].GetString();
 
   auto argsObject = args[2].GetObject();
   if (argsObject == nullptr || argsObject->GetAsList() == nullptr) {
@@ -937,10 +937,10 @@ static Value InteropDoCall(Args args)
   if (funcPtr == nullptr) {
     throw Grace::GraceException(
       Grace::GraceException::Type::FunctionNotFound,
-      fmt::format("Failed to load function `{}` from dynamic library `{}`", funcName, handleInstance->LoadMember("library_name").Get<std::string>()));
+      fmt::format("Failed to load function `{}` from dynamic library `{}`", funcName, handleInstance->LoadMember("library_name").GetString()));
   }
 
-  auto stackSize = static_cast<std::size_t>(handleInstance->LoadMember("stack_size").Get<std::int64_t>());
+  auto stackSize = handleInstance->LoadMember("stack_size").Get<std::size_t>();
   DCCallVM* vm = dcNewCallVM(stackSize);
   dcMode(vm, DC_CALL_C_DEFAULT);
   dcReset(vm);
@@ -962,26 +962,26 @@ static Value InteropDoCall(Args args)
         dcArgChar(vm, pair->Value().Get<char>());
         break;
       case CDECL_ARG_SHORT:
-        dcArgShort(vm, static_cast<short>(pair->Value().Get<std::int64_t>()));
+        dcArgShort(vm, pair->Value().Get<DCshort>());
         break;
       case CDECL_ARG_INT:
-        dcArgInt(vm, static_cast<int>(pair->Value().Get<std::int64_t>()));
+        dcArgInt(vm, pair->Value().Get<DCint>());
         break;
       case CDECL_ARG_LONG:
-        dcArgLong(vm, static_cast<long>(pair->Value().Get<std::int64_t>()));
+        dcArgLong(vm, pair->Value().Get<DClong>());
         break;
       case CDECL_ARG_LONG_LONG:
-        dcArgLongLong(vm, static_cast<long long>(pair->Value().Get<std::int64_t>()));
+        dcArgLongLong(vm, pair->Value().Get<DClonglong>());
         break;
       case CDECL_ARG_FLOAT:
-        dcArgFloat(vm, static_cast<float>(pair->Value().Get<double>()));
+        dcArgFloat(vm, pair->Value().Get<DCfloat>());
         break;
       case CDECL_ARG_DOUBLE:
-        dcArgDouble(vm, pair->Value().Get<double>());
+        dcArgDouble(vm, pair->Value().Get<DCdouble>());
         break;
       case CDECL_ARG_POINTER: {
-        auto& str = pair->Value().Get<std::string>();
-        auto charArray = new char[str.size() + 1];// + 1 for null terminated char
+        auto& str = pair->Value().GetString();
+        auto charArray = new char[str.size() + 1]; // + 1 for null terminated char
         std::memcpy(charArray, str.data(), str.size());
         charArray[str.size()] = '\0';
         argsToDelete.push_back(charArray);
@@ -1067,7 +1067,7 @@ static Value StringLength(Args args)
       fmt::format("Expected `String` for `std::string::length(s)` but got `{}`", args[0].GetTypeName()));
   }
 
-  return Value(static_cast<std::int64_t>(s.Get<std::string>().length()));
+  return Value(static_cast<std::int64_t>(s.GetString().length()));
 }
 
 static Value StringSplit(Args args)
@@ -1084,7 +1084,7 @@ static Value StringSplit(Args args)
       fmt::format("Expected `String` or `Char` for `std::string::split(s, separator)` but got `{}`", args[1].GetTypeName()));
   }
 
-  const auto& s = args[0].Get<std::string>();
+  const auto& s = args[0].GetString();
   auto separator = args[1].AsString();
 
   if (separator.length() == 0) {
@@ -1128,7 +1128,7 @@ static Value StringSubstring(Args args)
         fmt::format("Expected `Int` for `length` in `std::string::substring(string, start, length)` but got `{}`", args[2].GetType()));
     }
 
-    return Value(args[0].Get<std::string>().substr(static_cast<std::size_t>(args[1].Get<std::int64_t>()), static_cast<std::size_t>(args[2].Get<std::int64_t>())));
+    return Value(args[0].GetString().substr(static_cast<std::size_t>(args[1].Get<std::int64_t>()), static_cast<std::size_t>(args[2].Get<std::int64_t>())));
   }
 
   throw Grace::GraceException(
@@ -1283,7 +1283,7 @@ static Value PathGetFileName(Args args)
       }
 
       try {
-        return Value(fs::path(path.Get<std::string>()).filename().string());
+        return Value(fs::path(path.GetString()).filename().string());
       } catch (const std::exception&) {
         throw Grace::GraceException(
           Grace::GraceException::Type::PathError,
@@ -1312,7 +1312,7 @@ static Value PathGetFileNameWithoutExtension(Args args)
       }
 
       try {
-        return Value(fs::path(path.Get<std::string>()).stem().string());
+        return Value(fs::path(path.GetString()).stem().string());
       } catch (const std::exception&) {
         throw Grace::GraceException(
           Grace::GraceException::Type::PathError,
@@ -1341,7 +1341,7 @@ static Value PathGetDirectory(Args args)
       }
 
       try {
-        return Value(fs::path(path.Get<std::string>()).parent_path().string());
+        return Value(fs::path(path.GetString()).parent_path().string());
       } catch (const std::exception&) {
         throw Grace::GraceException(
           Grace::GraceException::Type::PathError,
@@ -1370,10 +1370,10 @@ static Value PathCombine(Args args)
       }
 
       if (args[1].GetType() == Value::Type::String) {
-        return Value((fs::path(path.Get<std::string>()) / args[1].Get<std::string>()).string());
+        return Value((fs::path(path.GetString()) / args[1].GetString()).string());
       } else if (args[1].GetType() == Value::Type::Object) {
         if (auto list = args[1].GetObject()->GetAsList()) {
-          fs::path base(path.Get<std::string>());
+          fs::path base(path.GetString());
 
           for (std::size_t i = 0; i < list->Length(); i++) {
             const auto& p = (*list)[i];
@@ -1383,7 +1383,7 @@ static Value PathCombine(Args args)
                 fmt::format("Expected `String` or all elements of `additions` in `std::path::combine(path, additions)` but got `{}` at position {}", p.GetTypeName(), i));
             }
 
-            base /= p.Get<std::string>();
+            base /= p.GetString();
           }
 
           return Value(base.string());
@@ -1415,7 +1415,7 @@ static Value PathExists(Args args)
           fmt::format("Expected type of member `data` of `std::path::Path` to be `String` but got `{}`", path.GetTypeName()));
       }
 
-      return Value(fs::exists(path.Get<std::string>()));
+      return Value(fs::exists(path.GetString()));
     }
   }
 

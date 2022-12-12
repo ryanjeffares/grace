@@ -71,6 +71,6 @@ namespace Grace
   protected:
     void GrowAndRehash() override;
   };
-}// namespace Grace
+} // namespace Grace
 
-#endif// GRACE_SET_HPP
+#endif // GRACE_SET_HPP

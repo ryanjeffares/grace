@@ -115,7 +115,7 @@ namespace Grace
     std::string m_Message;
     static std::unordered_map<Type, const char*> s_ExceptionMessages;
   };
-}// namespace Grace
+} // namespace Grace
 
 template<>
 struct fmt::formatter<Grace::GraceException::Type> : fmt::formatter<std::string_view>
@@ -153,4 +153,4 @@ struct fmt::formatter<Grace::GraceException::Type> : fmt::formatter<std::string_
   }
 };
 
-#endif// ifndef GRACE_EXCEPTION_HPP
+#endif // ifndef GRACE_EXCEPTION_HPP

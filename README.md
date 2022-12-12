@@ -74,11 +74,14 @@ On Mac and Linux, by default Grace installs to `/usr/local/bin/grace` and the st
   * This is in, but need to handle pointer types for things that aren't strings
   * And also pointer return types for strings and others...
 * Think about how `char`s should behave in binary operations
+* Overload operators on classes
 
 #### Interpreter
 * TEST THE CYCLE CLEANER
   * There is a problem - see backup day 7 aoc solution
 * Improve compiler errors and line numbering
+* Use copy/move pattern for making string Values
+* Use `Get<Integral>()` instead of `static_casts` everywhere
 * Reduce code duplication in compiler, general clean up
   * The parsing is a bit all over the place. Review grammar and stick strictly to recursive descent
 * Ensure use of backticks and quotes is consistent in error messages

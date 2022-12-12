@@ -39,7 +39,7 @@ namespace Grace
 
     void SetThreshold(std::size_t state);
     std::size_t GetThreshold();
-  }// namespace ObjectTracker
-}// namespace Grace
+  } // namespace ObjectTracker
+} // namespace Grace
 
-#endif// ifndef GRACE_OBJECT_TRACKER_HPP
+#endif // ifndef GRACE_OBJECT_TRACKER_HPP

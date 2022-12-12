@@ -190,7 +190,7 @@ namespace Grace::Scanner
   GRACE_NODISCARD Token ScanToken();
   GRACE_NODISCARD bool HasFile(const std::string& fileName);
   GRACE_NODISCARD std::string GetCodeAtLine(const std::string& fileName, std::size_t line);
-}// namespace Grace::Scanner
+} // namespace Grace::Scanner
 
 template<>
 struct fmt::formatter<Grace::Scanner::TokenType> : fmt::formatter<std::string_view>
@@ -305,4 +305,4 @@ struct fmt::formatter<Grace::Scanner::TokenType> : fmt::formatter<std::string_vi
   }
 };
 
-#endif// ifndef GRACE_SCANNER_HPP
+#endif // ifndef GRACE_SCANNER_HPP

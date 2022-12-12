@@ -107,13 +107,13 @@ namespace Grace::VM
       case Type::String: {
         switch (other.m_Type) {
           case Type::String: {
-            return Value(Get<std::string>() + other.Get<std::string>());
+            return Value(GetString() + other.GetString());
           }
           case Type::Char: {
-            return Value(Get<std::string>() + other.m_Data.m_Char);
+            return Value(GetString() + other.m_Data.m_Char);
           }
           default: {
-            return Value(Get<std::string>() + other.AsString());
+            return Value(GetString() + other.AsString());
           }
         }
       }
@@ -230,7 +230,7 @@ namespace Grace::VM
           std::string res;
           res.reserve(m_Data.m_Str->size() * static_cast<std::size_t>(other.m_Data.m_Int));
           for (auto i = 0; i < other.m_Data.m_Int; i++) {
-            res += Get<std::string>();
+            res += GetString();
           }
           return Value(res);
         }
@@ -371,7 +371,7 @@ namespace Grace::VM
       case Type::Char: {
         switch (other.m_Type) {
           case Type::String: {
-            return other.Get<std::string>().length() == 1 && m_Data.m_Char == other.Get<std::string>()[0];
+            return other.GetString().length() == 1 && m_Data.m_Char == other.GetString()[0];
           }
           case Type::Char: {
             return m_Data.m_Char == other.m_Data.m_Char;
@@ -383,10 +383,10 @@ namespace Grace::VM
       case Type::String: {
         switch (other.m_Type) {
           case Type::String: {
-            return Get<std::string>() == other.Get<std::string>();
+            return GetString() == other.GetString();
           }
           case Type::Char: {
-            return Get<std::string>().length() == 1 && Get<std::string>()[0] == other.m_Data.m_Char;
+            return GetString().length() == 1 && GetString()[0] == other.m_Data.m_Char;
           }
           default: break;
         }
@@ -957,35 +957,35 @@ namespace Grace::VM
     switch (m_Type) {
       case Type::Int: {
         result = m_Data.m_Int;
-        return {true, {}};
+        return { true, {} };
       }
       case Type::Double: {
         result = static_cast<std::int64_t>(m_Data.m_Double);
-        return {true, {}};
+        return { true, {} };
       }
       case Type::Bool: {
         result = m_Data.m_Bool ? 1 : 0;
-        return {true, {}};
+        return { true, {} };
       }
       case Type::String: {
         try {
           result = std::stoll(*m_Data.m_Str);
-          return {true, {}};
+          return { true, {} };
         } catch (const std::invalid_argument& e) {
-          return {false, fmt::format("Could not convert '{}' to int: {}", *m_Data.m_Str, e.what())};
+          return { false, fmt::format("Could not convert '{}' to int: {}", *m_Data.m_Str, e.what()) };
         } catch (const std::out_of_range&) {
-          return {false, "Int represented by string was out of range"};
+          return { false, "Int represented by string was out of range" };
         }
       }
       case Type::Char: {
         result = static_cast<std::int64_t>(static_cast<unsigned char>(m_Data.m_Char));
-        return {true, {}};
+        return { true, {} };
       }
       case Type::Null: {
-        return {false, "Cannot convert `null` to int"};
+        return { false, "Cannot convert `null` to int" };
       }
       default:
-        return {false, "Cannot convert object to int"};
+        return { false, "Cannot convert object to int" };
     }
   }
 
@@ -994,35 +994,35 @@ namespace Grace::VM
     switch (m_Type) {
       case Type::Int: {
         result = static_cast<double>(m_Data.m_Int);
-        return {true, {}};
+        return { true, {} };
       }
       case Type::Double: {
         result = m_Data.m_Double;
-        return {true, {}};
+        return { true, {} };
       }
       case Type::Bool: {
         result = m_Data.m_Bool ? 1.0 : 0.0;
-        return {true, {}};
+        return { true, {} };
       }
       case Type::String: {
         try {
           result = std::stod(*m_Data.m_Str);
-          return {true, {}};
+          return { true, {} };
         } catch (const std::invalid_argument& e) {
-          return {false, fmt::format("Could not convert '{}' to float: {}", *m_Data.m_Str, e.what())};
+          return { false, fmt::format("Could not convert '{}' to float: {}", *m_Data.m_Str, e.what()) };
         } catch (const std::out_of_range&) {
-          return {false, "Float represented by string was out of range"};
+          return { false, "Float represented by string was out of range" };
         }
       }
       case Type::Char: {
         result = static_cast<double>(m_Data.m_Char);
-        return {true, {}};
+        return { true, {} };
       }
       case Type::Null: {
-        return {false, "Cannot convert `null` to float"};
+        return { false, "Cannot convert `null` to float" };
       }
       default:
-        return {false, "Cannot convert object to float"};
+        return { false, "Cannot convert object to float" };
     }
   }
 
@@ -1031,33 +1031,33 @@ namespace Grace::VM
     switch (m_Type) {
       case Type::Int: {
         result = static_cast<char>(m_Data.m_Int);
-        return {true, {}};
+        return { true, {} };
       }
       case Type::Double: {
         result = static_cast<char>(m_Data.m_Double);
-        return {true, {}};
+        return { true, {} };
       }
       case Type::Bool: {
         result = static_cast<char>(m_Data.m_Bool);
-        return {true, {}};
+        return { true, {} };
       }
       case Type::String: {
         if (m_Data.m_Str->length() == 1) {
           result = (*m_Data.m_Str)[0];
-          return {true, {}};
+          return { true, {} };
         } else {
-          return {false, fmt::format("Cannot convert {} to `char`, string must be 1 character long to convert to char", *m_Data.m_Str)};
+          return { false, fmt::format("Cannot convert {} to `char`, string must be 1 character long to convert to char", *m_Data.m_Str) };
         }
       }
       case Type::Char: {
         result = m_Data.m_Char;
-        return {true, {}};
+        return { true, {} };
       }
       case Type::Null: {
-        return {false, "Cannot convert `null` to char"};
+        return { false, "Cannot convert `null` to char" };
       }
       default:
-        return {false, "Cannot convert object to char"};
+        return { false, "Cannot convert object to char" };
     }
   }
 
@@ -1068,7 +1068,7 @@ namespace Grace::VM
     }
     return fmt::format("{}", m_Type);
   }
-}// namespace Grace::VM
+} // namespace Grace::VM
 
 namespace std
 {
@@ -1097,10 +1097,10 @@ namespace std
       case Grace::VM::Value::Type::Object:
         return s_ObjectHash(value.GetObject());
       case Grace::VM::Value::Type::String:
-        return s_StringHash(value.Get<std::string>());
+        return s_StringHash(value.GetString());
       default:
         GRACE_UNREACHABLE();
         return 0;
     }
   }
-}// namespace std
+} // namespace std

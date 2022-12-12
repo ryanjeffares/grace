@@ -17,7 +17,7 @@
 #include <utility>
 
 #ifdef GRACE_MSC
-#include <stdlib.h>// getenv_s
+#include <stdlib.h> // getenv_s
 #endif
 
 #include "grace.hpp"
@@ -50,7 +50,7 @@ namespace Grace::VM
     auto c2 = std::move(stack[stack.size() - 1]);
     stack.pop_back();
     stack.pop_back();
-    return {std::move(c1), std::move(c2)};
+    return { std::move(c1), std::move(c2) };
   }
 
   static Value Pop(std::vector<Value>& stack)
@@ -98,8 +98,8 @@ namespace Grace::VM
     auto fileNameHash = static_cast<std::int64_t>(m_Hasher(fileName));
 
     if (m_FunctionLookup.find(fileNameHash) == m_FunctionLookup.end()) {
-      m_FunctionLookup.insert({fileNameHash, {}});
-      m_FileNameLookup.insert({fileNameHash, fileName});
+      m_FunctionLookup.insert({ fileNameHash, {} });
+      m_FileNameLookup.insert({ fileNameHash, fileName });
     }
 
     auto func = std::make_shared<Function>(std::move(name), arity, fileName, exported);
@@ -123,8 +123,8 @@ namespace Grace::VM
     auto fileNameHash = static_cast<std::int64_t>(m_Hasher(fileName));
 
     if (m_ClassLookup.find(fileNameHash) == m_ClassLookup.end()) {
-      m_ClassLookup.insert({fileNameHash, {}});
-      m_FileNameLookup.insert({fileNameHash, fileName});
+      m_ClassLookup.insert({ fileNameHash, {} });
+      m_FileNameLookup.insert({ fileNameHash, fileName });
     }
 
     auto [it, res] = m_ClassLookup.at(fileNameHash).try_emplace(classNameHash, std::move(name));
@@ -238,13 +238,13 @@ namespace Grace::VM
     opConstOffsets.emplace_back(mainFunc->opIndexStart, mainFunc->constantIndexStart);
 
     std::stack<std::size_t> localsOffsets;
-    localsOffsets.push(0);// [0] is args
+    localsOffsets.push(0); // [0] is args
 
     std::vector<CallStackEntry> callStack;
-    callStack.push_back({static_cast<std::int64_t>(m_Hasher("file")), funcNameHash, 1, mainFunc->fileName, mainFunc->fileName, mainFunc->fileNameHash, mainFunc->fileNameHash});
+    callStack.push_back({ static_cast<std::int64_t>(m_Hasher("file")), funcNameHash, 1, mainFunc->fileName, mainFunc->fileName, mainFunc->fileNameHash, mainFunc->fileNameHash });
 
     std::stack<std::pair<std::int64_t, std::string>> fileNameStack;
-    fileNameStack.push({mainFileNameHash, mainFunc->fileName});
+    fileNameStack.push({ mainFileNameHash, mainFunc->fileName });
 
     // used to restore the "state" of the VM before entering a try block
     // if an exception is caught
@@ -258,7 +258,7 @@ namespace Grace::VM
 
     std::stack<VMState> vmStateStack;
     std::stack<Value> heldIterators;
-    std::stack<std::vector<std::pair<std::string, std::int64_t>>> namespaceLookupStack;// used to keep track of what namespace we look for a call in
+    std::stack<std::vector<std::pair<std::string, std::int64_t>>> namespaceLookupStack; // used to keep track of what namespace we look for a call in
     namespaceLookupStack.emplace();
 
     bool inTryBlock = false;
@@ -278,9 +278,9 @@ namespace Grace::VM
       steady_clock::time_point start;
 
       OpTimer(TimeList& list, Ops op_)
-          : timeList {list}
-          , op {op_}
-          , start {steady_clock::now()}
+          : timeList { list }
+          , op { op_ }
+          , start { steady_clock::now() }
       {
       }
 
@@ -289,10 +289,10 @@ namespace Grace::VM
         auto end = steady_clock::now();
         auto dur = duration_cast<nanoseconds>(end - start).count();
         if (timeList.find(op) == timeList.end()) {
-          timeList[op] = {1, dur};
+          timeList[op] = { 1, dur };
         } else {
           auto [count, time] = timeList[op];
-          timeList[op] = {count + 1, time + dur};
+          timeList[op] = { count + 1, time + dur };
         }
       }
     };
@@ -302,7 +302,7 @@ namespace Grace::VM
       auto [op, line] = m_FullOpList[opCurrent++];
 
 #ifdef GRACE_PROFILE_OPS
-      OpTimer p {opTimes, op};
+      OpTimer p { opTimes, op };
 #endif
       try {
 
@@ -421,7 +421,7 @@ namespace Grace::VM
             valueStack.push_back(m_FullConstantList[constantCurrent++]);
             break;
           case Ops::LoadLocal: {
-            auto id = static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>());
+            auto id = m_FullConstantList[constantCurrent++].Get<std::size_t>();
             auto& value = localsList[id + localsOffsets.top()];
             valueStack.push_back(value);
             break;
@@ -433,7 +433,7 @@ namespace Grace::VM
             localsList.pop_back();
             break;
           case Ops::PopLocals: {
-            auto targetNumLocals = static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>() + localsOffsets.top());
+            auto targetNumLocals = m_FullConstantList[constantCurrent++].Get<std::size_t>() + localsOffsets.top();
             localsList.resize(targetNumLocals);
             break;
           }
@@ -462,7 +462,7 @@ namespace Grace::VM
             fmt::print(stderr, "\t");
             break;
           case Ops::AppendNamespace: {
-            auto text = m_FullConstantList[constantCurrent++].Get<std::string>();
+            auto text = m_FullConstantList[constantCurrent++].GetString();
             auto hash = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
             namespaceLookupStack.top().emplace_back(std::move(text), hash);
             break;
@@ -472,7 +472,7 @@ namespace Grace::VM
             break;
           case Ops::Call: {
             auto calleeNameHash = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
-            auto numArgsGiven = static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>());
+            auto numArgsGiven = m_FullConstantList[constantCurrent++].Get<std::size_t>();
 
             Function* calleeFunc;
 
@@ -487,7 +487,7 @@ namespace Grace::VM
                   GraceException::Type::FunctionNotFound,
                   fmt::format(
                     "cannot find function `{}` in the current namespace",
-                    m_FullConstantList[constantCurrent++].Get<std::string>()));
+                    m_FullConstantList[constantCurrent++].GetString()));
               }
 
               calleeFunc = funcIt->second.get();
@@ -530,7 +530,7 @@ namespace Grace::VM
                   GraceException::Type::FunctionNotFound,
                   fmt::format(
                     "function `{}` is not a member of namespace `{}` or has not been marked `export`",
-                    m_FullConstantList[constantCurrent++].Get<std::string>(),
+                    m_FullConstantList[constantCurrent++].GetString(),
                     toDisplay));
               }
 
@@ -560,13 +560,13 @@ namespace Grace::VM
               localsList[arity - i - 1 + localsOffsets.top()] = Pop(valueStack);
             }
 
-            callStack.push_back({funcNameHash, calleeNameHash, line, fileNameStack.top().second, calleeFunc->fileName, fileNameStack.top().first, calleeFunc->fileNameHash});
+            callStack.push_back({ funcNameHash, calleeNameHash, line, fileNameStack.top().second, calleeFunc->fileName, fileNameStack.top().first, calleeFunc->fileNameHash });
 
             valueStack.emplace_back(static_cast<std::int64_t>(opCurrent));
             valueStack.emplace_back(static_cast<std::int64_t>(constantCurrent));
             valueStack.emplace_back(static_cast<std::int64_t>(heldIterators.size()));
 
-            fileNameStack.push({calleeFunc->fileNameHash, calleeFunc->fileName});
+            fileNameStack.push({ calleeFunc->fileNameHash, calleeFunc->fileName });
 
             opCurrent = calleeFunc->opIndexStart;
             constantCurrent = calleeFunc->constantIndexStart;
@@ -576,7 +576,7 @@ namespace Grace::VM
             break;
           }
           case Ops::NativeCall: {
-            auto calleeIndex = static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>());
+            auto calleeIndex = m_FullConstantList[constantCurrent++].Get<std::size_t>();
             auto& calleeFunc = m_NativeFunctions[calleeIndex];
             auto arity = calleeFunc.GetArity();
             auto numArgsGiven = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
@@ -597,9 +597,9 @@ namespace Grace::VM
             break;
           }
           case Ops::MemberCall: {
-            auto& calleeFuncName = m_FullConstantList[constantCurrent++].Get<std::string>();
+            auto& calleeFuncName = m_FullConstantList[constantCurrent++].GetString();
             auto calleeNameHash = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
-            auto numArgs = static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>());
+            auto numArgs = m_FullConstantList[constantCurrent++].Get<std::size_t>();
 
             std::vector<Value> argsGiven(numArgs);
             for (std::size_t i = 0; i < numArgs; i++) {
@@ -639,13 +639,13 @@ namespace Grace::VM
             }
             localsList[localsOffsets.top()] = std::move(callerObject);
 
-            callStack.push_back({funcNameHash, calleeNameHash, line, fileNameStack.top().second, calleeFunc->fileName, fileNameStack.top().first, calleeFunc->fileNameHash});
+            callStack.push_back({ funcNameHash, calleeNameHash, line, fileNameStack.top().second, calleeFunc->fileName, fileNameStack.top().first, calleeFunc->fileNameHash });
 
             valueStack.emplace_back(static_cast<std::int64_t>(opCurrent));
             valueStack.emplace_back(static_cast<std::int64_t>(constantCurrent));
             valueStack.emplace_back(static_cast<std::int64_t>(heldIterators.size()));
 
-            fileNameStack.push({calleeFunc->fileNameHash, calleeFunc->fileName});
+            fileNameStack.push({ calleeFunc->fileNameHash, calleeFunc->fileName });
 
             opCurrent = calleeFunc->opIndexStart;
             constantCurrent = calleeFunc->constantIndexStart;
@@ -672,7 +672,7 @@ namespace Grace::VM
                 fmt::format("`{}` has no members", parentValue.GetTypeName()));
             }
 
-            auto& memberName = m_FullConstantList[constantCurrent++].Get<std::string>();
+            auto& memberName = m_FullConstantList[constantCurrent++].GetString();
             instance->AssignMember(memberName, std::move(value));
             break;
           }
@@ -692,68 +692,68 @@ namespace Grace::VM
                 fmt::format("`{}` has no members", parentValue.GetTypeName()));
             }
 
-            auto& memberName = m_FullConstantList[constantCurrent++].Get<std::string>();
+            auto& memberName = m_FullConstantList[constantCurrent++].GetString();
             valueStack.push_back(instance->LoadMember(memberName));
             break;
           }
           case Ops::AssignLocal: {
             auto value = Pop(valueStack);
-            localsList[static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>()) + localsOffsets.top()] = std::move(value);
+            localsList[m_FullConstantList[constantCurrent++].Get<std::size_t>() + localsOffsets.top()] = std::move(value);
             break;
           }
           case Ops::AddAssign: {
             auto value = Pop(valueStack);
-            localsList[static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>()) + localsOffsets.top()] += value;
+            localsList[m_FullConstantList[constantCurrent++].Get<std::size_t>() + localsOffsets.top()] += value;
             break;
           }
           case Ops::DivideAssign: {
             auto value = Pop(valueStack);
-            localsList[static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>()) + localsOffsets.top()] /= value;
+            localsList[m_FullConstantList[constantCurrent++].Get<std::size_t>() + localsOffsets.top()] /= value;
             break;
           }
           case Ops::MultiplyAssign: {
             auto value = Pop(valueStack);
-            localsList[static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>()) + localsOffsets.top()] *= value;
+            localsList[m_FullConstantList[constantCurrent++].Get<std::size_t>() + localsOffsets.top()] *= value;
             break;
           }
           case Ops::SubtractAssign: {
             auto value = Pop(valueStack);
-            localsList[static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>()) + localsOffsets.top()] -= value;
+            localsList[m_FullConstantList[constantCurrent++].Get<std::size_t>() + localsOffsets.top()] -= value;
             break;
           }
           case Ops::BitwiseAndAssign: {
             auto value = Pop(valueStack);
-            localsList[static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>()) + localsOffsets.top()] &= value;
+            localsList[m_FullConstantList[constantCurrent++].Get<std::size_t>() + localsOffsets.top()] &= value;
             break;
           }
           case Ops::BitwiseOrAssign: {
             auto value = Pop(valueStack);
-            localsList[static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>()) + localsOffsets.top()] |= value;
+            localsList[m_FullConstantList[constantCurrent++].Get<std::size_t>() + localsOffsets.top()] |= value;
             break;
           }
           case Ops::BitwiseXOrAssign: {
             auto value = Pop(valueStack);
-            localsList[static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>()) + localsOffsets.top()] ^= value;
+            localsList[m_FullConstantList[constantCurrent++].Get<std::size_t>() + localsOffsets.top()] ^= value;
             break;
           }
           case Ops::ModAssign: {
             auto value = Pop(valueStack);
-            localsList[static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>()) + localsOffsets.top()] %= value;
+            localsList[m_FullConstantList[constantCurrent++].Get<std::size_t>() + localsOffsets.top()] %= value;
             break;
           }
           case Ops::ShiftLeftAssign: {
             auto value = Pop(valueStack);
-            localsList[static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>()) + localsOffsets.top()] <<= value;
+            localsList[m_FullConstantList[constantCurrent++].Get<std::size_t>() + localsOffsets.top()] <<= value;
             break;
           }
           case Ops::ShiftRightAssign: {
             auto value = Pop(valueStack);
-            localsList[static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>()) + localsOffsets.top()] >>= value;
+            localsList[m_FullConstantList[constantCurrent++].Get<std::size_t>() + localsOffsets.top()] >>= value;
             break;
           }
           case Ops::PowAssign: {
             auto value = Pop(valueStack);
-            auto& local = localsList[static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>()) + localsOffsets.top()];
+            auto& local = localsList[m_FullConstantList[constantCurrent++].Get<std::size_t>() + localsOffsets.top()];
             local = local.Pow(value);
             break;
           }
@@ -930,7 +930,7 @@ namespace Grace::VM
             auto value = Pop(valueStack);
             auto type = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
             switch (type) {
-              case 0: {// int
+              case 0: { // int
                 std::int64_t result;
                 auto [success, message] = value.AsInt(result);
                 if (success) {
@@ -942,7 +942,7 @@ namespace Grace::VM
                 }
                 break;
               }
-              case 1: {// float
+              case 1: { // float
                 double result;
                 auto [success, message] = value.AsDouble(result);
                 if (success) {
@@ -954,13 +954,13 @@ namespace Grace::VM
                 }
                 break;
               }
-              case 2:// bool
+              case 2: // bool
                 valueStack.emplace_back(value.AsBool());
                 break;
-              case 3:// string
+              case 3: // string
                 valueStack.emplace_back(value.AsString());
                 break;
-              case 4: {// char
+              case 4: { // char
                 char result;
                 auto [success, message] = value.AsChar(result);
                 if (success) {
@@ -972,15 +972,15 @@ namespace Grace::VM
                 }
                 break;
               }
-              case 5:// exception
+              case 5: // exception
                 valueStack.emplace_back(Value::CreateObject<GraceException>(value.AsString()));
                 break;
-              case 6: {// kvp
+              case 6: { // kvp
                 auto key = Pop(valueStack);
                 valueStack.emplace_back(Value::CreateObject<GraceKeyValuePair>(std::move(key), std::move(value)));
                 break;
               }
-              case 7: {// range
+              case 7: { // range
                 GRACE_NOT_IMPLEMENTED();
                 break;
               }
@@ -1000,7 +1000,7 @@ namespace Grace::VM
               valueStack.emplace_back(typeIdx - 6 == static_cast<std::int64_t>(object->ObjectType()));
             } else {
               auto object = value.GetObject();
-              auto& typeName = m_FullConstantList[constantCurrent++].Get<std::string>();
+              auto& typeName = m_FullConstantList[constantCurrent++].GetString();
               valueStack.emplace_back(typeName == object->ObjectName());
             }
             break;
@@ -1025,7 +1025,7 @@ namespace Grace::VM
             std::vector<GraceInstance::Member> memberList(numMembers);
             auto localsStartIndex = localsList.size() - numMembers;
             for (auto i = localsStartIndex; i < localsStartIndex + numMembers; i++) {
-              memberList[i - localsStartIndex] = {m_FullConstantList[constantCurrent++].Get<std::string>(), localsList[i]};
+              memberList[i - localsStartIndex] = { m_FullConstantList[constantCurrent++].GetString(), localsList[i] };
             }
 
             auto classNameHash = m_FullConstantList[constantCurrent++].Get<std::int64_t>();
@@ -1076,11 +1076,11 @@ namespace Grace::VM
             } else if (numItems == 1) {
               auto value = Pop(valueStack);
               if (value.GetType() == Value::Type::String) {
-                valueStack.push_back(GraceList::FromString(value.Get<std::string>()));
+                valueStack.push_back(GraceList::FromString(value.GetString()));
               } else if (value.GetType() == Value::Type::Object && value.GetObject()->GetAsDictionary() != nullptr) {
                 valueStack.push_back(GraceList::FromDict(value.GetObject()->GetAsDictionary()));
               } else {
-                std::vector<Value> items {value};
+                std::vector<Value> items { value };
                 valueStack.push_back(Value::CreateObject<GraceList>(std::move(items)));
               }
             } else {
@@ -1154,7 +1154,7 @@ namespace Grace::VM
 
             auto valueType = container.GetType();
             if (valueType == Value::Type::String) {
-              const auto& s = container.Get<std::string>();
+              const auto& s = container.GetString();
               if (subscript.GetType() != Value::Type::Int) {
                 throw GraceException(GraceException::Type::InvalidType, fmt::format("Expected `Int` for subscript index but got `{}`", subscript.GetTypeName()));
               }
@@ -1191,7 +1191,8 @@ namespace Grace::VM
             auto condition = Pop(valueStack);
             if (!condition.AsBool()) {
               RuntimeError(GraceException(
-                             GraceException::Type::AssertionFailed, "assertion failed"),
+                             GraceException::Type::AssertionFailed,
+                             "assertion failed"),
                 line,
                 callStack);
               goto exit;
@@ -1200,10 +1201,11 @@ namespace Grace::VM
           }
           case Ops::AssertWithMessage: {
             auto condition = Pop(valueStack);
-            auto& message = m_FullConstantList[constantCurrent++].Get<std::string>();
+            auto& message = m_FullConstantList[constantCurrent++].GetString();
             if (!condition.AsBool()) {
               RuntimeError(GraceException(
-                             GraceException::Type::AssertionFailed, fmt::format("assertion failed: {}", message)),
+                             GraceException::Type::AssertionFailed,
+                             fmt::format("assertion failed: {}", message)),
                 line,
                 callStack);
               goto exit;
@@ -1214,7 +1216,7 @@ namespace Grace::VM
             inTryBlock = true;
             auto opIdx = static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>());
             auto constIdx = static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>());
-            vmStateStack.push({valueStack.size(),
+            vmStateStack.push({ valueStack.size(),
               localsList.size(),
               callStack.size(),
               opConstOffsets.size(),
@@ -1223,7 +1225,7 @@ namespace Grace::VM
               namespaceLookupStack.size(),
               fileNameStack.size(),
               opIdx,
-              constIdx});
+              constIdx });
             break;
           }
           case Ops::ExitTry: {
@@ -1381,4 +1383,4 @@ namespace Grace::VM
     fmt::print(stderr, fmt::fg(fmt::color::red) | fmt::emphasis::bold, "ERROR: ");
     fmt::print(stderr, "[line {}] {}. Stopping execution.\n", line, exception.ToString());
   }
-}// namespace Grace::VM
+} // namespace Grace::VM

@@ -74,7 +74,7 @@ namespace Grace
   private:
     VM::Value m_Key, m_Value;
   };
-}// namespace Grace
+} // namespace Grace
 
 
-#endif// ifndef GRACE_KEYVALUEPAIR_HPP
+#endif // ifndef GRACE_KEYVALUEPAIR_HPP

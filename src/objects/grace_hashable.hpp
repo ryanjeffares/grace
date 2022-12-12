@@ -59,7 +59,7 @@ namespace Grace
     std::vector<CellState> m_CellStates;
     std::hash<VM::Value> m_Hasher;
   };
-}// namespace Grace
+} // namespace Grace
 
 
-#endif// ifndef GRACE_HASHABLE_HPP
+#endif // ifndef GRACE_HASHABLE_HPP

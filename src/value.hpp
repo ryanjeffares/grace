@@ -36,7 +36,7 @@ namespace Grace
     concept DerivedGraceObject = std::is_base_of<GraceObject, T>::value;
 
     template<typename T>
-    concept BuiltinGraceType = std::is_same<T, std::int64_t>::value || std::is_same<T, double>::value || std::is_same<T, bool>::value || std::is_same<T, char>::value || std::is_same<T, std::string>::value || std::is_same<T, std::nullptr_t>::value;
+    concept BuiltinGraceType = std::is_integral_v<T> || std::is_floating_point_v<T> || std::is_same_v<T, bool> || std::is_same_v<T, char> || std::is_same_v<T, std::string> || std::is_same_v<T, std::nullptr_t>;
 
     class Value final
     {
@@ -55,14 +55,14 @@ namespace Grace
       };
 
       template<BuiltinGraceType T>
-      GRACE_INLINE explicit constexpr Value(const T& value)
+      GRACE_INLINE constexpr Value(T value)
       {
-        if constexpr (std::is_same<T, std::int64_t>::value) {
+        if constexpr (std::is_integral_v<T>) {
           m_Type = Type::Int;
-          m_Data.m_Int = value;
-        } else if constexpr (std::is_same<T, double>::value) {
+          m_Data.m_Int = static_cast<std::int64_t>(value);
+        } else if constexpr (std::is_floating_point_v<T>) {
           m_Type = Type::Double;
-          m_Data.m_Double = value;
+          m_Data.m_Double = static_cast<double>(value);
         } else if constexpr (std::is_same<T, bool>::value) {
           m_Type = Type::Bool;
           m_Data.m_Bool = value;
@@ -71,7 +71,7 @@ namespace Grace
           m_Data.m_Char = value;
         } else if constexpr (std::is_same<T, std::string>::value) {
           m_Type = Type::String;
-          m_Data.m_Str = new std::string(value);
+          m_Data.m_Str = new std::string(std::move(value));
         } else if constexpr (std::is_same<T, NullValue>::value) {
           m_Type = Type::Null;
           m_Data.m_Null = nullptr;
@@ -166,12 +166,14 @@ namespace Grace
           }
         }
 
-        if constexpr (std::is_same<T, std::int64_t>::value) {
+        if constexpr (std::is_integral_v<T>) {
           m_Type = Type::Int;
-          m_Data.m_Int = value;
-        } else if constexpr (std::is_same<T, double>::value) {
+          m_Data.m_Int = static_cast<std::int64_t>(value);
+        }
+
+        if constexpr (std::is_floating_point_v<T>) {
           m_Type = Type::Double;
-          m_Data.m_Double = value;
+          m_Data.m_Double = static_cast<double>(value);
         } else if constexpr (std::is_same<T, bool>::value) {
           m_Type = Type::Bool;
           m_Data.m_Bool = value;
@@ -185,6 +187,7 @@ namespace Grace
           m_Type = Type::Null;
           m_Data.m_Null = nullptr;
         }
+
         return *this;
       }
 
@@ -232,21 +235,26 @@ namespace Grace
       GRACE_NODISCARD std::tuple<bool, std::optional<std::string>> AsChar(char& result) const;
 
       template<BuiltinGraceType T>
-      GRACE_NODISCARD constexpr GRACE_INLINE const T& Get() const
+      GRACE_NODISCARD constexpr GRACE_INLINE T Get() const
       {
-        if constexpr (std::is_same<T, std::int64_t>::value) {
-          return m_Data.m_Int;
-        } else if constexpr (std::is_same<T, double>::value) {
-          return m_Data.m_Double;
+        static_assert(!std::is_same_v<T, std::string> && "Use GetString() instead");
+
+        if constexpr (std::is_integral_v<T>) {
+          return static_cast<T>(m_Data.m_Int);
+        } else if constexpr (std::is_floating_point_v<T>) {
+          return static_cast<T>(m_Data.m_Double);
         } else if constexpr (std::is_same<T, bool>::value) {
           return m_Data.m_Bool;
         } else if constexpr (std::is_same<T, char>::value) {
           return m_Data.m_Char;
-        } else if constexpr (std::is_same<T, std::string>::value) {
-          return *m_Data.m_Str;
         } else if constexpr (std::is_same<T, NullValue>::value) {
           return nullptr;
         }
+      }
+
+      GRACE_NODISCARD GRACE_INLINE const std::string& GetString() const
+      {
+        return *m_Data.m_Str;
       }
 
       GRACE_NODISCARD constexpr GRACE_INLINE GraceObject* GetObject() const
@@ -265,7 +273,7 @@ namespace Grace
       GRACE_NODISCARD std::string GetTypeName() const;
 
     private:
-      Type m_Type {Type::Null};
+      Type m_Type { Type::Null };
 
       union
       {
@@ -278,8 +286,8 @@ namespace Grace
         std::string* m_Str;
       } m_Data {};
     };
-  }// namespace VM
-}// namespace Grace
+  } // namespace VM
+} // namespace Grace
 
 template<>
 struct fmt::formatter<Grace::VM::Value::Type> : fmt::formatter<std::string_view>
@@ -321,6 +329,6 @@ namespace std
   {
     std::size_t operator()(const Grace::VM::Value&) const;
   };
-}// namespace std
+} // namespace std
 
-#endif// ifndef GRACE_VALUE_HPP
+#endif // ifndef GRACE_VALUE_HPP

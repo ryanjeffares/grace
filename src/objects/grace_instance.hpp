@@ -80,6 +80,6 @@ namespace Grace
     std::string m_ClassName;
     std::vector<Member> m_Members;
   };
-}// namespace Grace
+} // namespace Grace
 
-#endif// ifndef GRACE_INSTANCE_HPP
+#endif // ifndef GRACE_INSTANCE_HPP

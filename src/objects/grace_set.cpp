@@ -33,7 +33,7 @@ namespace Grace
         Add(std::move(value));
         break;
       case VM::Value::Type::String:
-        for (auto c : value.Get<std::string>()) {
+        for (auto c : value.GetString()) {
           Add(VM::Value(c));
         }
         break;
@@ -168,7 +168,7 @@ namespace Grace
           break;
         case VM::Value::Type::String:
           res.push_back('"');
-          res.append(el.Get<std::string>());
+          res.append(el.GetString());
           res.push_back('"');
           break;
         case VM::Value::Type::Object: {
@@ -313,4 +313,4 @@ namespace Grace
 
     InvalidateIterators();
   }
-}// namespace Grace
+} // namespace Grace

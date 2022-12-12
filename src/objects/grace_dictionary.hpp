@@ -82,6 +82,6 @@ namespace Grace
   protected:
     void GrowAndRehash() override;
   };
-}// namespace Grace
+} // namespace Grace
 
-#endif// GRACE_DICTIONARY_HPP
+#endif // GRACE_DICTIONARY_HPP

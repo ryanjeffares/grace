@@ -61,7 +61,7 @@ struct Local
 struct CompilerContext
 {
   CompilerContext(std::string fileName_, const std::filesystem::path& parentPath_, std::string&& code)
-      : fileName {std::move(fileName_)}
+      : fileName { std::move(fileName_) }
   {
     parentPath = std::filesystem::absolute(parentPath_);
     fullPath = std::filesystem::absolute(parentPath / std::filesystem::path(fileName).filename());
@@ -117,14 +117,14 @@ static void EmitOp(VM::Ops op, std::size_t line)
 }
 
 template<VM::BuiltinGraceType T>
-static void EmitConstant(const T& value)
+static void EmitConstant(T value)
 {
-  VM::VM::PushConstant(value);
+  VM::VM::PushConstant(std::move(value));
 }
 
-static void EmitConstant(const VM::Value& value)
+static void EmitConstant(VM::Value value)
 {
-  VM::VM::PushConstant(value);
+  VM::VM::PushConstant(std::move(value));
 }
 
 // Advance to the next token
@@ -234,7 +234,7 @@ VM::InterpretResult Grace::Compiler::Compile(const std::string& fileName, bool v
   s_CompilerContextStack.emplace(fileName, std::filesystem::absolute(std::filesystem::path(fileName)).parent_path(), inFileStream.str());
 
   auto fullPath = s_CompilerContextStack.top().fullPath.string();
-  s_FileConstantsLookup[fullPath]["__FILE"] = {VM::Value(fullPath), false};
+  s_FileConstantsLookup[fullPath]["__FILE"] = { VM::Value(fullPath), false };
 
   Advance(s_CompilerContextStack.top());
 
@@ -491,7 +491,7 @@ static void Statement(CompilerContext& compiler)
   } else if (Check(Scanner::TokenType::Catch, compiler)) {
     if (compiler.codeContextStack.back() != CodeContext::Try) {
       MessageAtCurrent("`catch` block only allowed after `try` block", LogLevel::Error, compiler);
-      Advance(compiler);// consume illegal catch
+      Advance(compiler); // consume illegal catch
       return;
     }
   } else {
@@ -540,15 +540,15 @@ static bool IsValidTypeAnnotation(const Scanner::TokenType& token)
   });
 }
 
-static const char s_EscapeChars[] = {'t', 'b', 'n', 'r', '\'', '"', '\\'};
+static const char s_EscapeChars[] = { 't', 'b', 'n', 'r', '\'', '"', '\\' };
 static const std::unordered_map<char, char> s_EscapeCharsLookup = {
-  {'t', '\t'},
-  {'b', '\b'},
-  {'r', '\r'},
-  {'n', '\n'},
-  {'\'', '\''},
-  {'"', '\"'},
-  {'\\', '\\'},
+  { 't', '\t' },
+  { 'b', '\b' },
+  { 'r', '\r' },
+  { 'n', '\n' },
+  { '\'', '\'' },
+  { '"', '\"' },
+  { '\\', '\\' },
 };
 
 static bool IsEscapeChar(char c, char& result)
@@ -570,7 +570,8 @@ static bool IsLiteral(Scanner::TokenType token)
     Scanner::TokenType::Integer,
     Scanner::TokenType::Double,
     Scanner::TokenType::String,
-    Scanner::TokenType::Char};
+    Scanner::TokenType::Char
+  };
   return std::any_of(literalTypes.begin(), literalTypes.end(), [token](Scanner::TokenType t) {
     return t == token;
   });
@@ -744,7 +745,7 @@ static void ImportDeclaration(CompilerContext& compiler)
     stdPath = pathPtr;
 #endif
 
-    inPath = fs::path(stdPath) / fs::path(importPath.substr(4));// trim off 'std/' because that's contained within the path environment variable
+    inPath = fs::path(stdPath) / fs::path(importPath.substr(4)); // trim off 'std/' because that's contained within the path environment variable
   } else {
     inPath = std::filesystem::absolute(compiler.parentPath / importPath);
   }
@@ -774,7 +775,7 @@ static void ImportDeclaration(CompilerContext& compiler)
   s_CompilerContextStack.emplace(std::move(importPath), inPath.parent_path(), inFileStream.str());
 
   auto fullPath = s_CompilerContextStack.top().fullPath.string();
-  s_FileConstantsLookup[fullPath]["__FILE"] = {VM::Value(fullPath), false};
+  s_FileConstantsLookup[fullPath]["__FILE"] = { VM::Value(fullPath), false };
   Advance(s_CompilerContextStack.top());
 }
 
@@ -919,7 +920,7 @@ static void ClassDeclaration(CompilerContext& compiler)
       // make the class' members at the start of the constructor
       for (auto memberName : classMembers) {
         EmitOp(VM::Ops::DeclareLocal, compiler.previous->GetLine());
-        auto localId = static_cast<std::int64_t>(compiler.locals.size());
+        auto localId = compiler.locals.size();
         compiler.locals.emplace_back(std::move(memberName), false, false, localId);
       }
 
@@ -940,7 +941,7 @@ static void ClassDeclaration(CompilerContext& compiler)
 
       if (compiler.locals.size() > numLocalsStart) {
         // pop locals we made inside the constructor
-        EmitConstant(static_cast<std::int64_t>(parameters.size()));
+        EmitConstant(parameters.size());
         EmitOp(VM::Ops::PopLocals, compiler.previous->GetLine());
       }
 
@@ -961,7 +962,7 @@ static void ClassDeclaration(CompilerContext& compiler)
     for (auto memberName : classMembers) {
       // and declare the class' members as locals in this function that will be used by the VM to assign to the instance
       EmitOp(VM::Ops::DeclareLocal, compiler.previous->GetLine());
-      auto localId = static_cast<std::int64_t>(compiler.locals.size());
+      auto localId = compiler.locals.size();
       compiler.locals.emplace_back(std::move(memberName), false, false, localId);
     }
   }
@@ -979,18 +980,18 @@ static void ClassDeclaration(CompilerContext& compiler)
 
   // at this point, the class' members we need to assign to are on the top of the stack
   // with the constructor's parameters below them
-  EmitConstant(static_cast<std::int64_t>(classMembers.size()));
-  for (const auto& m : classMembers) {
-    EmitConstant(m);
+  EmitConstant(classMembers.size());
+  for (auto m : classMembers) {
+    EmitConstant(std::move(m));
   }
 
   static std::hash<std::string> hasher;
-  EmitConstant(static_cast<std::int64_t>(hasher(classNameToken.GetString())));
-  EmitConstant(static_cast<std::int64_t>(hasher(compiler.fileName)));
+  EmitConstant(hasher(classNameToken.GetString()));
+  EmitConstant(hasher(compiler.fileName));
 
   EmitOp(VM::Ops::CreateInstance, compiler.previous->GetLine());
 
-  EmitConstant(std::int64_t {0});
+  EmitConstant(std::int64_t { 0 });
   EmitOp(VM::Ops::PopLocals, compiler.previous->GetLine());
 
   EmitOp(VM::Ops::Return, compiler.previous->GetLine());
@@ -1167,7 +1168,7 @@ static void FuncDeclaration(CompilerContext& compiler)
   // functions with no return will implicitly return null, so setting a call equal to a variable is valid
   if (VM::VM::GetLastOp() != VM::Ops::Return) {
     if (!compiler.locals.empty()) {
-      EmitConstant(std::int64_t {0});
+      EmitConstant(std::int64_t { 0 });
       EmitOp(VM::Ops::PopLocals, compiler.previous->GetLine());
     }
 
@@ -1230,7 +1231,7 @@ static void VarDeclaration(CompilerContext& compiler, bool isFinal)
 
   auto line = nameToken.GetLine();
 
-  auto localId = static_cast<std::int64_t>(compiler.locals.size());
+  auto localId = compiler.locals.size();
   EmitOp(VM::Ops::DeclareLocal, line);
 
   if (Match(Scanner::TokenType::Equal, compiler)) {
@@ -1312,10 +1313,10 @@ static void ConstDeclaration(CompilerContext& compiler)
 
   switch (valueToken->GetType()) {
     case Scanner::TokenType::True:
-      s_FileConstantsLookup[fullFilePath][constantName] = {VM::Value(true), isExport};
+      s_FileConstantsLookup[fullFilePath][constantName] = { VM::Value(true), isExport };
       break;
     case Scanner::TokenType::False:
-      s_FileConstantsLookup[fullFilePath][constantName] = {VM::Value(false), isExport};
+      s_FileConstantsLookup[fullFilePath][constantName] = { VM::Value(false), isExport };
       break;
     case Scanner::TokenType::Integer: {
       std::int64_t value;
@@ -1324,7 +1325,7 @@ static void ConstDeclaration(CompilerContext& compiler)
         Message(*valueToken, fmt::format("Token could not be parsed as an int: {}", *result), LogLevel::Error, compiler);
         return;
       }
-      s_FileConstantsLookup[fullFilePath][constantName] = {VM::Value(value), isExport};
+      s_FileConstantsLookup[fullFilePath][constantName] = { VM::Value(value), isExport };
       break;
     }
     case Scanner::TokenType::Double: {
@@ -1334,7 +1335,7 @@ static void ConstDeclaration(CompilerContext& compiler)
         Message(*valueToken, fmt::format("Token could not be parsed as an float: {}", result->what()), LogLevel::Error, compiler);
         return;
       }
-      s_FileConstantsLookup[fullFilePath][constantName] = {VM::Value(value * static_cast<std::int64_t>(isNegativeNumber ? -1 : 1)), isExport};
+      s_FileConstantsLookup[fullFilePath][constantName] = { VM::Value(value * isNegativeNumber ? -1.0 : 1.0), isExport };
       break;
     }
     case Scanner::TokenType::String: {
@@ -1344,7 +1345,7 @@ static void ConstDeclaration(CompilerContext& compiler)
         Message(*valueToken, fmt::format("Token could not be parsed as string: {}", *err), LogLevel::Error, compiler);
         return;
       }
-      s_FileConstantsLookup[fullFilePath][constantName] = {VM::Value(res), isExport};
+      s_FileConstantsLookup[fullFilePath][constantName] = { VM::Value(res), isExport };
       break;
     }
     case Scanner::TokenType::Char: {
@@ -1354,7 +1355,7 @@ static void ConstDeclaration(CompilerContext& compiler)
         Message(*valueToken, fmt::format("Token could not be parsed as char: {}", *err), LogLevel::Error, compiler);
         return;
       }
-      s_FileConstantsLookup[fullFilePath][constantName] = {VM::Value(res), isExport};
+      s_FileConstantsLookup[fullFilePath][constantName] = { VM::Value(res), isExport };
       break;
     }
     default:
@@ -1397,7 +1398,7 @@ static std::size_t GetEditDistance(const std::string& first, const std::string& 
   for (std::size_t i = 1; i <= l1; i++) {
     for (std::size_t j = 1; j <= l2; j++) {
       std::size_t weight = first[i - 1] == second[j - 1] ? 0 : 1;
-      matrix[i][j] = std::min({matrix[i - 1][j] + 1, matrix[i][j - 1] + 1, matrix[i - 1][j - 1] + weight});
+      matrix[i][j] = std::min({ matrix[i - 1][j] + 1, matrix[i][j - 1] + 1, matrix[i - 1][j - 1] + weight });
     }
   }
 
@@ -1430,7 +1431,7 @@ static void ExpressionStatement(CompilerContext& compiler)
 {
   if (IsLiteral(compiler.current->GetType()) || IsOperator(compiler.current->GetType())) {
     MessageAtCurrent("Expected identifier or keyword at start of expression", LogLevel::Error, compiler);
-    Advance(compiler);// consume illegal token
+    Advance(compiler); // consume illegal token
     return;
   }
   Expression(true, compiler);
@@ -1560,7 +1561,7 @@ static void ForStatement(CompilerContext& compiler)
       return;
     }
 
-    iteratorId = static_cast<std::int64_t>(compiler.locals.size());
+    iteratorId = compiler.locals.size();
     compiler.locals.emplace_back(std::move(iteratorName), firstItIsFinal, true, iteratorId);
     EmitOp(VM::Ops::DeclareLocal, compiler.previous->GetLine());
     iteratorNeedsPop = true;
@@ -1579,7 +1580,8 @@ static void ForStatement(CompilerContext& compiler)
 
     if (s_Verbose || s_WarningsError) {
       MessageAtPrevious(fmt::format("There is already a local variable called '{}' in this scope which will be reassigned inside the `for` loop", iteratorName),
-        LogLevel::Warning, compiler);
+        LogLevel::Warning,
+        compiler);
       if (s_WarningsError) {
         return;
       }
@@ -1621,7 +1623,7 @@ static void ForStatement(CompilerContext& compiler)
         return;
       }
 
-      secondIteratorId = static_cast<std::int64_t>(compiler.locals.size());
+      secondIteratorId = compiler.locals.size();
       compiler.locals.emplace_back(std::move(secondIteratorName), secondItIsFinal, true, secondIteratorId);
       auto line = compiler.previous->GetLine();
       EmitOp(VM::Ops::DeclareLocal, line);
@@ -1641,7 +1643,8 @@ static void ForStatement(CompilerContext& compiler)
 
       if (s_Verbose || s_WarningsError) {
         MessageAtPrevious(fmt::format("There is already a local variable called '{}' in this scope which will be reassigned inside the `for` loop", secondIteratorName),
-          LogLevel::Warning, compiler);
+          LogLevel::Warning,
+          compiler);
         if (s_WarningsError) {
           return;
         }
@@ -1652,7 +1655,7 @@ static void ForStatement(CompilerContext& compiler)
 
   auto line = compiler.previous->GetLine();
 
-  auto numLocalsStart = static_cast<std::int64_t>(compiler.locals.size());
+  auto numLocalsStart = compiler.locals.size();
 
   Consume(Scanner::TokenType::In, "Expected `in` after identifier", compiler);
 
@@ -1671,8 +1674,8 @@ static void ForStatement(CompilerContext& compiler)
   EmitOp(VM::Ops::AssignIteratorBegin, line);
 
   // constant and op index to jump to after each iteration
-  auto startConstantIdx = static_cast<std::int64_t>(VM::VM::GetNumConstants());
-  auto startOpIdx = static_cast<std::int64_t>(VM::VM::GetNumOps());
+  auto startConstantIdx = VM::VM::GetNumConstants();
+  auto startOpIdx = VM::VM::GetNumOps();
 
   // evaluate the condition
   EmitOp(VM::Ops::CheckIteratorEnd, line);
@@ -1696,15 +1699,15 @@ static void ForStatement(CompilerContext& compiler)
   // 'continue' statements bring us here so the iterator is incremented and we hit the jump
   if (compiler.continueJumpNeedsIndexes) {
     for (auto& [constantIdx, opIdx] : compiler.continueIdxPairs.top()) {
-      VM::VM::SetConstantAtIndex(constantIdx, static_cast<std::int64_t>(VM::VM::GetNumConstants()));
-      VM::VM::SetConstantAtIndex(opIdx, static_cast<std::int64_t>(VM::VM::GetNumOps()));
+      VM::VM::SetConstantAtIndex(constantIdx, VM::VM::GetNumConstants());
+      VM::VM::SetConstantAtIndex(opIdx, VM::VM::GetNumOps());
     }
     compiler.continueIdxPairs.pop();
     compiler.continueJumpNeedsIndexes = !compiler.continueIdxPairs.empty();
   }
 
   // pop any locals created within the loop scope
-  if (compiler.locals.size() != static_cast<std::size_t>(numLocalsStart)) {
+  if (compiler.locals.size() != numLocalsStart) {
     EmitConstant(numLocalsStart);
     EmitOp(VM::Ops::PopLocals, line);
   }
@@ -1723,23 +1726,23 @@ static void ForStatement(CompilerContext& compiler)
   // set indexes for breaks and when the condition fails, the iterator variable will need to be popped (if it's a new variable)
   if (compiler.breakJumpNeedsIndexes) {
     for (auto& [constantIdx, opIdx] : compiler.breakIdxPairs.top()) {
-      VM::VM::SetConstantAtIndex(constantIdx, static_cast<std::int64_t>(VM::VM::GetNumConstants()));
-      VM::VM::SetConstantAtIndex(opIdx, static_cast<std::int64_t>(VM::VM::GetNumOps()));
+      VM::VM::SetConstantAtIndex(constantIdx, VM::VM::GetNumConstants());
+      VM::VM::SetConstantAtIndex(opIdx, VM::VM::GetNumOps());
     }
     compiler.breakIdxPairs.pop();
     compiler.breakJumpNeedsIndexes = !compiler.breakIdxPairs.empty();
   }
 
-  VM::VM::SetConstantAtIndex(endJumpConstantIndex, static_cast<std::int64_t>(VM::VM::GetNumConstants()));
-  VM::VM::SetConstantAtIndex(endJumpOpIndex, static_cast<std::int64_t>(VM::VM::GetNumOps()));
+  VM::VM::SetConstantAtIndex(endJumpConstantIndex, VM::VM::GetNumConstants());
+  VM::VM::SetConstantAtIndex(endJumpOpIndex, VM::VM::GetNumOps());
 
-  if (compiler.locals.size() != static_cast<std::size_t>(numLocalsStart)) {
+  if (compiler.locals.size() != numLocalsStart) {
     EmitConstant(numLocalsStart);
     EmitOp(VM::Ops::PopLocals, line);
   }
 
   // get rid of any variables made within the loop scope
-  while (compiler.locals.size() != static_cast<std::size_t>(numLocalsStart)) {
+  while (compiler.locals.size() != numLocalsStart) {
     compiler.locals.pop_back();
   }
 
@@ -1781,7 +1784,7 @@ static void IfStatement(CompilerContext& compiler)
   // constant index, op index
   std::vector<std::tuple<std::int64_t, std::int64_t>> endJumpIndexPairs;
 
-  auto numLocalsStart = static_cast<std::int64_t>(compiler.locals.size());
+  auto numLocalsStart = compiler.locals.size();
 
   bool topJumpSet = false;
   bool elseBlockFound = false;
@@ -1799,7 +1802,7 @@ static void IfStatement(CompilerContext& compiler)
         return;
       }
 
-      while (compiler.locals.size() != static_cast<std::size_t>(numLocalsStart)) {
+      while (compiler.locals.size() != numLocalsStart) {
         compiler.locals.pop_back();
       }
 
@@ -1817,15 +1820,15 @@ static void IfStatement(CompilerContext& compiler)
 
       // haven't told the 'if' where to jump to yet if its condition fails
       if (!topJumpSet) {
-        VM::VM::SetConstantAtIndex(topConstantIdxToJump, static_cast<std::int64_t>(numConstants));
-        VM::VM::SetConstantAtIndex(topOpIdxToJump, static_cast<std::int64_t>(numOps));
+        VM::VM::SetConstantAtIndex(topConstantIdxToJump, numConstants);
+        VM::VM::SetConstantAtIndex(topOpIdxToJump, numOps);
         topJumpSet = true;
       }
 
       if (Match(Scanner::TokenType::Colon, compiler)) {
         elseBlockFound = true;
         if (Match(Scanner::TokenType::End, compiler)) {
-          break;// Declaration() will fail if this block is empty
+          break; // Declaration() will fail if this block is empty
         }
       } else if (Check(Scanner::TokenType::If, compiler)) {
         elseIfBlockFound = true;
@@ -1849,12 +1852,12 @@ static void IfStatement(CompilerContext& compiler)
     }
   }
 
-  auto numConstants = static_cast<std::int64_t>(VM::VM::GetNumConstants());
-  auto numOps = static_cast<std::int64_t>(VM::VM::GetNumOps());
+  auto numConstants = VM::VM::GetNumConstants();
+  auto numOps = VM::VM::GetNumOps();
 
   for (auto [constIdx, opIdx] : endJumpIndexPairs) {
-    VM::VM::SetConstantAtIndex(static_cast<std::size_t>(constIdx), numConstants);
-    VM::VM::SetConstantAtIndex(static_cast<std::size_t>(opIdx), numOps);
+    VM::VM::SetConstantAtIndex(constIdx, numConstants);
+    VM::VM::SetConstantAtIndex(opIdx, numOps);
   }
 
   // if there was no else or elseif block, jump to here
@@ -1863,12 +1866,12 @@ static void IfStatement(CompilerContext& compiler)
     VM::VM::SetConstantAtIndex(topOpIdxToJump, numOps);
   }
 
-  if (compiler.locals.size() != static_cast<std::size_t>(numLocalsStart)) {
+  if (compiler.locals.size() != numLocalsStart) {
     auto line = compiler.previous->GetLine();
     EmitConstant(numLocalsStart);
     EmitOp(VM::Ops::PopLocals, line);
 
-    while (compiler.locals.size() != static_cast<std::size_t>(numLocalsStart)) {
+    while (compiler.locals.size() != numLocalsStart) {
       compiler.locals.pop_back();
     }
   }
@@ -1971,7 +1974,7 @@ static void ReturnStatement(CompilerContext& compiler)
   // emit this instruction here since a local may have been used in the return expression
   // the result of the expression will be living on the stack still after PopLocals for Return to use
   if (!compiler.locals.empty()) {
-    EmitConstant(std::int64_t {0});
+    EmitConstant(std::int64_t { 0 });
     EmitOp(VM::Ops::PopLocals, compiler.previous->GetLine());
   }
 
@@ -1985,7 +1988,7 @@ static void TryStatement(CompilerContext& compiler)
 
   Consume(Scanner::TokenType::Colon, "Expected `:` after `try`", compiler);
 
-  auto numLocalsStart = static_cast<std::int64_t>(compiler.locals.size());
+  auto numLocalsStart = compiler.locals.size();
 
   auto catchOpJumpIdx = VM::VM::GetNumConstants();
   EmitConstant(std::int64_t {});
@@ -2013,8 +2016,8 @@ static void TryStatement(CompilerContext& compiler)
   EmitOp(VM::Ops::Jump, compiler.previous->GetLine());
 
   // but if there was an exception, jump here, and also pop the locals but continue into the catch block
-  VM::VM::SetConstantAtIndex(catchOpJumpIdx, static_cast<std::int64_t>(VM::VM::GetNumOps()));
-  VM::VM::SetConstantAtIndex(catchConstJumpIdx, static_cast<std::int64_t>(VM::VM::GetNumConstants()));
+  VM::VM::SetConstantAtIndex(catchOpJumpIdx, VM::VM::GetNumOps());
+  VM::VM::SetConstantAtIndex(catchConstJumpIdx, VM::VM::GetNumConstants());
 
   EmitConstant(numLocalsStart);
   EmitOp(VM::Ops::ExitTry, compiler.previous->GetLine());
@@ -2025,7 +2028,7 @@ static void TryStatement(CompilerContext& compiler)
     return;
   }
 
-  while (compiler.locals.size() != static_cast<std::size_t>(numLocalsStart)) {
+  while (compiler.locals.size() != numLocalsStart) {
     compiler.locals.pop_back();
   }
   numLocalsStart = compiler.locals.size();
@@ -2039,7 +2042,7 @@ static void TryStatement(CompilerContext& compiler)
       return;
     }
 
-    exceptionVarId = static_cast<std::int64_t>(compiler.locals.size());
+    exceptionVarId = compiler.locals.size();
     compiler.locals.emplace_back(std::move(exceptionVarName), false, false, exceptionVarId);
     EmitOp(VM::Ops::DeclareLocal, compiler.previous->GetLine());
   } else {
@@ -2058,7 +2061,8 @@ static void TryStatement(CompilerContext& compiler)
     exceptionVarId = it->index;
     if (s_Verbose || s_WarningsError) {
       MessageAtPrevious(fmt::format("There is already a local variable called '{}' in this scope which will be reassigned inside the `catch` block", exceptionVarName),
-        LogLevel::Warning, compiler);
+        LogLevel::Warning,
+        compiler);
       if (s_WarningsError) {
         return;
       }
@@ -2081,17 +2085,17 @@ static void TryStatement(CompilerContext& compiler)
     }
   }
 
-  if (compiler.locals.size() != static_cast<std::size_t>(numLocalsStart)) {
+  if (compiler.locals.size() != numLocalsStart) {
     EmitConstant(numLocalsStart);
     EmitOp(VM::Ops::PopLocals, compiler.previous->GetLine());
 
-    while (compiler.locals.size() != static_cast<std::size_t>(numLocalsStart)) {
+    while (compiler.locals.size() != numLocalsStart) {
       compiler.locals.pop_back();
     }
   }
 
-  VM::VM::SetConstantAtIndex(skipCatchConstJumpIdx, static_cast<std::int64_t>(VM::VM::GetNumConstants()));
-  VM::VM::SetConstantAtIndex(skipCatchOpJumpIdx, static_cast<std::int64_t>(VM::VM::GetNumOps()));
+  VM::VM::SetConstantAtIndex(skipCatchConstJumpIdx, VM::VM::GetNumConstants());
+  VM::VM::SetConstantAtIndex(skipCatchOpJumpIdx, VM::VM::GetNumOps());
 
   compiler.codeContextStack.pop_back();
 }
@@ -2115,8 +2119,8 @@ static void WhileStatement(CompilerContext& compiler)
   compiler.breakIdxPairs.emplace();
   compiler.continueIdxPairs.emplace();
 
-  auto constantIdx = static_cast<std::int64_t>(VM::VM::GetNumConstants());
-  auto opIdx = static_cast<std::int64_t>(VM::VM::GetNumOps());
+  auto constantIdx = VM::VM::GetNumConstants();
+  auto opIdx = VM::VM::GetNumOps();
 
   auto prevUsing = compiler.usingExpressionResult;
   compiler.usingExpressionResult = true;
@@ -2134,7 +2138,7 @@ static void WhileStatement(CompilerContext& compiler)
 
   Consume(Scanner::TokenType::Colon, "Expected ':' after expression", compiler);
 
-  auto numLocalsStart = static_cast<std::int64_t>(compiler.locals.size());
+  auto numLocalsStart = compiler.locals.size();
 
   while (!Match(Scanner::TokenType::End, compiler)) {
     Declaration(compiler);
@@ -2144,8 +2148,8 @@ static void WhileStatement(CompilerContext& compiler)
     }
   }
 
-  auto numConstants = static_cast<std::int64_t>(VM::VM::GetNumConstants());
-  auto numOps = static_cast<std::int64_t>(VM::VM::GetNumOps());
+  auto numConstants = VM::VM::GetNumConstants();
+  auto numOps = VM::VM::GetNumOps();
 
   if (compiler.continueJumpNeedsIndexes) {
     for (auto& [c, o] : compiler.continueIdxPairs.top()) {
@@ -2156,7 +2160,7 @@ static void WhileStatement(CompilerContext& compiler)
     compiler.continueJumpNeedsIndexes = !compiler.continueIdxPairs.empty();
   }
 
-  if (compiler.locals.size() != static_cast<std::size_t>(numLocalsStart)) {
+  if (compiler.locals.size() != numLocalsStart) {
     EmitConstant(numLocalsStart);
     EmitOp(VM::Ops::PopLocals, line);
   }
@@ -2166,8 +2170,8 @@ static void WhileStatement(CompilerContext& compiler)
   EmitConstant(opIdx);
   EmitOp(VM::Ops::Jump, line);
 
-  numConstants = static_cast<std::int64_t>(VM::VM::GetNumConstants());
-  numOps = static_cast<std::int64_t>(VM::VM::GetNumOps());
+  numConstants = VM::VM::GetNumConstants();
+  numOps = VM::VM::GetNumOps();
 
   if (compiler.breakJumpNeedsIndexes) {
     for (auto& [c, o] : compiler.breakIdxPairs.top()) {
@@ -2179,18 +2183,18 @@ static void WhileStatement(CompilerContext& compiler)
 
     // if we broke, we missed the PopLocals instruction before the end of the loop
     // so tell the VM to still pop those locals IF we broke
-    if (compiler.locals.size() != static_cast<std::size_t>(numLocalsStart)) {
+    if (compiler.locals.size() != numLocalsStart) {
       EmitConstant(numLocalsStart);
       EmitOp(VM::Ops::PopLocals, line);
     }
   }
 
-  while (compiler.locals.size() != static_cast<std::size_t>(numLocalsStart)) {
+  while (compiler.locals.size() != numLocalsStart) {
     compiler.locals.pop_back();
   }
 
-  numConstants = static_cast<std::int64_t>(VM::VM::GetNumConstants());
-  numOps = static_cast<std::int64_t>(VM::VM::GetNumOps());
+  numConstants = VM::VM::GetNumConstants();
+  numOps = VM::VM::GetNumOps();
 
   VM::VM::SetConstantAtIndex(endConstantJumpIdx, numConstants);
   VM::VM::SetConstantAtIndex(endOpJumpIdx, numOps);
@@ -2232,7 +2236,7 @@ static void Expression(bool canAssign, CompilerContext& compiler)
   std::string kw;
   if (IsKeyword(compiler.current->GetType(), kw)) {
     MessageAtCurrent(fmt::format("'{}' is a keyword and not valid in this context", kw), LogLevel::Error, compiler);
-    Advance(compiler);//consume the illegal identifier
+    Advance(compiler); //consume the illegal identifier
     return;
   }
 
@@ -2275,12 +2279,12 @@ static void Expression(bool canAssign, CompilerContext& compiler)
         return;
       }
 
-      Advance(compiler);// consume the operator
+      Advance(compiler); // consume the operator
       auto opToken = compiler.previous->GetType();
 
       auto prevUsing = compiler.usingExpressionResult;
       compiler.usingExpressionResult = true;
-      Expression(false, compiler);// disallow x = y = z...
+      Expression(false, compiler); // disallow x = y = z...
       compiler.usingExpressionResult = prevUsing;
 
       EmitConstant(it->index);
@@ -2382,11 +2386,11 @@ static void Expression(bool canAssign, CompilerContext& compiler)
             shouldBreak = true;
             break;
           case Scanner::TokenType::Dot:
-            Advance(compiler);// consume the .
+            Advance(compiler); // consume the .
             Dot(canAssign, compiler);
             break;
           case Scanner::TokenType::LeftSquareParen:
-            Advance(compiler);// consume the [
+            Advance(compiler); // consume the [
             Subscript(canAssign, compiler);
             break;
           default:
@@ -2749,7 +2753,7 @@ static void DotFunctionCall(const Scanner::Token& funcNameToken, CompilerContext
   static std::hash<std::string> hasher;
   auto funcName = funcNameToken.GetString();
   EmitConstant(funcName);
-  EmitConstant(static_cast<std::int64_t>(hasher(funcName)));
+  EmitConstant(hasher(funcName));
   EmitConstant(numArgs);
   EmitOp(VM::Ops::MemberCall, funcNameToken.GetLine());
 
@@ -2765,7 +2769,7 @@ static void FreeFunctionCall(const Scanner::Token& funcNameToken, CompilerContex
 
   static std::hash<std::string> hasher;
   auto funcNameText = funcNameToken.GetString();
-  auto hash = static_cast<std::int64_t>(hasher(funcNameText));
+  auto hash = hasher(funcNameText);
   auto nativeCall = funcNameText.starts_with("__");
   std::size_t nativeIndex {};
   if (nativeCall) {
@@ -2798,12 +2802,12 @@ static void FreeFunctionCall(const Scanner::Token& funcNameToken, CompilerContex
     return;
   }
 
-  EmitConstant(nativeCall ? static_cast<std::int64_t>(nativeIndex) : hash);
+  EmitConstant(nativeCall ? nativeIndex : hash);
   EmitConstant(numArgs);
   if (nativeCall) {
     EmitOp(VM::Ops::NativeCall, compiler.previous->GetLine());
   } else {
-    EmitConstant(funcNameText);
+    EmitConstant(std::move(funcNameText));
     EmitOp(VM::Ops::Call, compiler.previous->GetLine());
   }
 
@@ -2843,7 +2847,7 @@ static void Identifier(bool canAssign, CompilerContext& compiler)
 
     static std::hash<std::string> hasher;
     EmitConstant(prevText);
-    EmitConstant(static_cast<std::int64_t>(hasher(prevText)));
+    EmitConstant(hasher(prevText));
     EmitOp(VM::Ops::AppendNamespace, prev.GetLine());
 
     compiler.currentNamespaceLookup += prevText;
@@ -2915,7 +2919,7 @@ static void String(CompilerContext& compiler)
     return;
   }
   EmitOp(VM::Ops::LoadConstant, compiler.previous->GetLine());
-  EmitConstant(res);
+  EmitConstant(std::move(res));
 }
 
 static void InstanceOf(CompilerContext& compiler)
@@ -2980,7 +2984,7 @@ static void InstanceOf(CompilerContext& compiler)
 
   EmitOp(VM::Ops::CheckType, compiler.current->GetLine());
 
-  Advance(compiler);// Consume the type ident
+  Advance(compiler); // Consume the type ident
   Consume(Scanner::TokenType::RightParen, "Expected ')'", compiler);
 
   if (Check(Scanner::TokenType::Semicolon, compiler) && !compiler.usingExpressionResult) {
@@ -3168,7 +3172,7 @@ static void List(CompilerContext& compiler)
         Expression(false, compiler);
         compiler.usingExpressionResult = prevUsing;
       } else {
-        EmitConstant(std::int64_t {1});
+        EmitConstant(std::int64_t { 1 });
         EmitOp(VM::Ops::LoadConstant, compiler.previous->GetLine());
       }
 
@@ -3286,7 +3290,7 @@ static void Message(const Scanner::Token& token, const std::string& message, Log
   }
 
   auto lineNo = static_cast<int>(token.GetLine());
-  auto column = token.GetColumn() - token.GetLength();// need the START of the token
+  auto column = token.GetColumn() - token.GetLength(); // need the START of the token
   auto filePath = compiler.fullPath.string();
   fmt::print(stderr, "       --> {}:{}:{}\n", filePath, lineNo, column + 1);
   fmt::print(stderr, "        |\n");

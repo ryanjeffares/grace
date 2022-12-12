@@ -165,4 +165,4 @@ namespace Grace
   {
     return m_Key.GetObject() == this && m_Value.GetObject() == this;
   }
-}// namespace Grace
+} // namespace Grace

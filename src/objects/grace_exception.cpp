@@ -65,4 +65,4 @@ namespace Grace
   {
     return true;
   }
-}// namespace Grace
+} // namespace Grace

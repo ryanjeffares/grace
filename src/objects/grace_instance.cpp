@@ -135,4 +135,4 @@ namespace Grace
       return member.value.GetObject() == this;
     })) == m_RefCount;
   }
-}// namespace Grace
+} // namespace Grace

@@ -159,6 +159,6 @@ namespace Grace
     void RemoveMember(GraceObject* object) override;
     GRACE_NODISCARD bool OnlyReferenceIsSelf() const override;
   };
-}// namespace Grace
+} // namespace Grace
 
-#endif// ifndef GRACE_LIST_HPP
+#endif // ifndef GRACE_LIST_HPP

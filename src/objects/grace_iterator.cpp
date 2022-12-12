@@ -73,4 +73,4 @@ namespace Grace
     }
     return Value().AsString();
   }
-}// namespace Grace
+} // namespace Grace

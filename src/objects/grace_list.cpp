@@ -19,12 +19,12 @@ namespace Grace
   using namespace VM;
 
   GraceList::GraceList(std::vector<Value>&& items)
-      : GraceIterable {std::move(items)}
+      : GraceIterable { std::move(items) }
   {
   }
 
   GraceList::GraceList(const GraceList& other, std::size_t multiple)
-      : GraceIterable {0}
+      : GraceIterable { 0 }
   {
     m_Data.reserve(other.m_Data.size() * multiple);
     for (std::size_t i = 0; i < multiple; i++) {
@@ -133,14 +133,14 @@ namespace Grace
 
   Value GraceList::Sorted() const
   {
-    auto data = m_Data;// copy
+    auto data = m_Data; // copy
     std::sort(data.begin(), data.end());
     return Value::CreateObject<GraceList>(std::move(data));
   }
 
   Value GraceList::SortedDescending() const
   {
-    auto data = m_Data;// copy
+    auto data = m_Data; // copy
     std::sort(data.begin(), data.end(), std::greater<>());
     return Value::CreateObject<GraceList>(std::move(data));
   }
@@ -198,7 +198,7 @@ namespace Grace
           break;
         case Value::Type::String:
           res.push_back('"');
-          res.append(el.Get<std::string>());
+          res.append(el.GetString());
           res.push_back('"');
           break;
         case Value::Type::Object: {
@@ -284,4 +284,4 @@ namespace Grace
       return value.GetObject() == this;
     })) == m_RefCount;
   }
-}// namespace Grace
+} // namespace Grace

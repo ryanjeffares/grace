@@ -482,4 +482,4 @@ namespace Grace::Scanner
     Advance();
     return MakeToken(TokenType::Char);
   }
-}// namespace Grace::Scanner
+} // namespace Grace::Scanner

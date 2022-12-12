@@ -28,4 +28,4 @@ extern "C"
   EXPORT Grace::VM::InterpretResult RunFile(const char* filePath, int interpreterArgc, const char* interpreterArgv[], int graceArgc, const char* graceArgv[]);
 }
 
-#endif// ifndef GRACE_DLLMAIN_HPP
+#endif // ifndef GRACE_DLLMAIN_HPP

@@ -319,4 +319,4 @@ namespace Grace
 
     InvalidateIterators();
   }
-}// namespace Grace
+} // namespace Grace

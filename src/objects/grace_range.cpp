@@ -109,4 +109,4 @@ namespace Grace
       toIncrement = m_Data.end();
     }
   }
-}// namespace Grace
+} // namespace Grace

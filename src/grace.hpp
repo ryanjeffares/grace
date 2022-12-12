@@ -29,7 +29,7 @@
 
 #include <cassert>
 
-#ifdef GRACE_MSC// __cplusplus isn't always set correctly on MSVC
+#ifdef GRACE_MSC // __cplusplus isn't always set correctly on MSVC
 #if (_MSVC_LANG < 202002L)
 #error "C++20 is required"
 #endif
@@ -97,4 +97,4 @@
 #define GRACE_ASSERT_FALSE() assert(false)
 #endif
 
-#endif// ifndef GRACE_GRACE_HPP
+#endif // ifndef GRACE_GRACE_HPP
