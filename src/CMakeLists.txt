@@ -68,7 +68,7 @@ if (MSVC)
             )
 else ()
     target_compile_definitions(grace PRIVATE GRACE_GCC_CLANG)
-    target_compile_options(grace PRIVATE -Wall -Wextra -Wpedantic -Werror)
+    target_compile_options(grace PRIVATE -Wall -Wextra -Wpedantic -Werror -Wconversion)
     target_link_libraries(grace
             PRIVATE pthread
             PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../build/dyncall_build/dyncall/libdyncall_s.a

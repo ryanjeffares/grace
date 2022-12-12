@@ -1335,7 +1335,7 @@ static void ConstDeclaration(CompilerContext& compiler)
         Message(*valueToken, fmt::format("Token could not be parsed as an float: {}", result->what()), LogLevel::Error, compiler);
         return;
       }
-      s_FileConstantsLookup[fullFilePath][constantName] = { VM::Value(value * isNegativeNumber ? -1.0 : 1.0), isExport };
+      s_FileConstantsLookup[fullFilePath][constantName] = { VM::Value(value * (isNegativeNumber ? -1.0 : 1.0)), isExport };
       break;
     }
     case Scanner::TokenType::String: {
