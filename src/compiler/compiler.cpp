@@ -180,8 +180,9 @@ static void Unary(bool canAssign, CompilerContext& compiler);
 static void Call(bool canAssign, CompilerContext& compiler);
 static void Primary(bool canAssign, CompilerContext& compiler);
 
-static void FreeFunctionCall(const Scanner::Token& funcNameToken, CompilerContext& compiler);
-static void DotFunctionCall(const Scanner::Token& funcNameToken, CompilerContext& compiler);
+static void FunctionCall(const Scanner::Token& funcNameToken, CompilerContext& compiler);
+static void MemberFunctionCall(const Scanner::Token& funcNameToken, CompilerContext& compiler);
+
 static bool ParseCallParameters(CompilerContext& compiler, int64_t& numArgs);
 static void Dot(bool canAssign, CompilerContext& compiler);
 static void Subscript(bool canAssign, CompilerContext& compiler);
@@ -210,6 +211,7 @@ GRACE_NODISCARD static VM::InterpretResult Finalise(std::string mainFileName, bo
 
 static bool s_Verbose, s_WarningsError;
 static std::stack<CompilerContext> s_CompilerContextStack;
+static std::optional<std::filesystem::path> s_StdPath {};
 
 struct Constant
 {
@@ -222,6 +224,31 @@ static std::unordered_map<std::string, std::unordered_map<std::string, Constant>
 VM::InterpretResult Grace::Compiler::Compile(std::string fileName, bool verbose, bool warningsError, std::vector<std::string> args)
 {
   using namespace std::chrono;
+
+#ifdef GRACE_MSC
+  // windows warns about std::getenv() with /W4 so do all this nonsense
+  std::size_t size;
+  getenv_s(&size, NULL, 0, "GRACE_STD_PATH");
+  if (size == 0) {
+    fmt::print(stderr, "The `GRACE_STD_PATH` environment variable has not been set, so std imports will not work.\n");
+  } else {
+    char* libPath = (char*)std::malloc(size * sizeof(char));
+    getenv_s(&size, libPath, size, "GRACE_STD_PATH");
+    if (libPath == NULL) {
+      fmt::print(stderr, "Failed to retrive the `GRACE_STD_PATH` environment variable, so std imports will not work.\n");
+    } else {
+      s_StdPath = libPath;
+      std::free(libPath);
+    }
+  }
+#else
+  char* pathPtr = std::getenv("GRACE_STD_PATH");
+  if (pathPtr == nullptr) {
+    fmt::print(stderr, "Failed to retrive the `GRACE_STD_PATH` environment variable, so std imports will not work.\n");
+  } else {
+    s_StdPath = pathPtr;
+  }
+#endif
 
   auto start = steady_clock::now();
 
@@ -497,34 +524,11 @@ static void ImportDeclaration(CompilerContext& compiler)
   fs::path inPath;
   // if it was an std import, get the std path env variable and look there
   if (isStdImport) {
-    std::string stdPath;
-
-#ifdef GRACE_MSC
-    // windows warns about std::getenv() with /W4 so do all this nonsense
-    std::size_t size;
-    getenv_s(&size, NULL, 0, "GRACE_STD_PATH");
-    if (size == 0) {
-      fmt::print(stderr, "The `GRACE_STD_PATH` environment variable has not been set, so cannot continue importing file {}\n", importPath);
+    if (!s_StdPath) {
+      Message(*lastPathToken, "Cannot import std library files after failing to retrive `GRACE_STD_PATH` environment variable.", LogLevel::Error, compiler);
       return;
     }
-    char* libPath = (char*)std::malloc(size * sizeof(char));
-    getenv_s(&size, libPath, size, "GRACE_STD_PATH");
-    if (libPath == NULL) {
-      fmt::print(stderr, "Failed to retrive the `GRACE_STD_PATH` environment variable, so cannot continue importing file {}\n", importPath);
-      return;
-    }
-    stdPath = libPath;
-    std::free(libPath);
-#else
-    char* pathPtr = std::getenv("GRACE_STD_PATH");
-    if (pathPtr == nullptr) {
-      fmt::print(stderr, "The `GRACE_STD_PATH` environment variable has not been set, so cannot continue importing file {}\n", importPath);
-      return;
-    }
-    stdPath = pathPtr;
-#endif
-
-    inPath = fs::path(stdPath) / fs::path(importPath.substr(4)); // trim off 'std/' because that's contained within the path environment variable
+    inPath = *s_StdPath / fs::path(importPath.substr(4)); // trim off 'std/' because that's contained within the path environment variable
   } else {
     inPath = std::filesystem::absolute(compiler.parentPath / importPath);
   }
@@ -1152,6 +1156,7 @@ static void ConstDeclaration(CompilerContext& compiler)
 // TODO: figure out what kind of range this thing produces and emit suggestions below a certain value
 // since right now if you only have 1 variable called "zebra" and you try and call on the value of "pancakes"
 // the compiler will eagerly ask you if you meant "zebra"
+// TODO: suggest similar constant names too, also from other files.
 static std::optional<std::string> FindMostSimilarVarName(const std::string& varName, const std::vector<Local>& localList)
 {
   std::optional<std::string> res = std::nullopt;
@@ -2119,7 +2124,7 @@ static void Expression(bool canAssign, CompilerContext& compiler)
             MessageAtCurrent("Invalid token found in expression", LogLevel::Error, compiler);
             Advance(compiler);
             return;
-        }
+        }        
       }
     }
   } else {
@@ -2295,6 +2300,20 @@ static void Unary(bool canAssign, CompilerContext& compiler)
 static void Call(bool canAssign, CompilerContext& compiler)
 {
   Primary(canAssign, compiler);
+
+  while (true) {
+    auto current = compiler.previous;
+
+    if (Match(Scanner::TokenType::Dot, compiler)) {
+      Dot(canAssign, compiler);
+    } else if (Match(Scanner::TokenType::LeftSquareParen, compiler)) {
+      Subscript(canAssign, compiler);
+    } else if (Match(Scanner::TokenType::LeftParen, compiler)) {
+      FunctionCall(*current, compiler);
+    } else {
+      break;
+    }
+  }
 }
 
 static void Primary(bool canAssign, CompilerContext& compiler)
@@ -2305,8 +2324,6 @@ static void Primary(bool canAssign, CompilerContext& compiler)
   } else if (Match(Scanner::TokenType::False, compiler)) {
     EmitOp(VM::Ops::LoadConstant, compiler.previous->GetLine());
     EmitConstant(false);
-  } else if (Match(Scanner::TokenType::This, compiler)) {
-    // TODO: this
   } else if (Match(Scanner::TokenType::Integer, compiler)) {
     std::int64_t value;
     auto result = TryParseInt(*compiler.previous, value);
@@ -2352,15 +2369,15 @@ static void Primary(bool canAssign, CompilerContext& compiler)
   } else if (Match(Scanner::TokenType::Null, compiler)) {
     EmitConstant(nullptr);
     EmitOp(VM::Ops::LoadConstant, compiler.previous->GetLine());
-  } else if (Match(Scanner::TokenType::LeftParen, compiler)) {
-    Expression(canAssign, compiler);
-    Consume(Scanner::TokenType::RightParen, "Expected ')'", compiler);
   } else if (Match(Scanner::TokenType::InstanceOf, compiler)) {
     InstanceOf(compiler);
   } else if (Match(Scanner::TokenType::IsObject, compiler)) {
     IsObject(compiler);
   } else if (IsTypeIdent(compiler.current->GetType())) {
     Cast(compiler);
+  } else if (Match(Scanner::TokenType::LeftParen, compiler)) {
+    Expression(false, compiler);
+    Consume(Scanner::TokenType::RightParen, "Expected ')' after grouping", compiler);
   } else if (Match(Scanner::TokenType::LeftSquareParen, compiler)) {
     List(compiler);
   } else if (Match(Scanner::TokenType::LeftCurlyParen, compiler)) {
@@ -2369,18 +2386,8 @@ static void Primary(bool canAssign, CompilerContext& compiler)
     Typename(compiler);
   } else {
     // Unreachable?
-    Expression(canAssign, compiler);
-  }
-
-  while (true) {
-    if (Match(Scanner::TokenType::Dot, compiler)) {
-      Dot(canAssign, compiler);
-    } else if (Match(Scanner::TokenType::LeftSquareParen, compiler)) {
-      Subscript(canAssign, compiler);
-    } else {
-      break;
-    }
-  }
+    GRACE_UNREACHABLE();
+  }  
 }
 
 static void Subscript(bool canAssign, CompilerContext& compiler)
@@ -2419,12 +2426,9 @@ static void Dot(bool canAssign, CompilerContext& compiler)
     return;
   }
 
-  auto memberNameToken = compiler.previous.value();
+  auto memberNameToken = *compiler.previous;
 
-  if (Match(Scanner::TokenType::LeftParen, compiler)) {
-    // object.function()
-    DotFunctionCall(memberNameToken, compiler);
-  } else if (Match(Scanner::TokenType::Equal, compiler)) {
+  if (Match(Scanner::TokenType::Equal, compiler)) {
     if (!canAssign) {
       MessageAtPrevious("Assignment is not valid here", LogLevel::Error, compiler);
       return;
@@ -2436,6 +2440,8 @@ static void Dot(bool canAssign, CompilerContext& compiler)
     compiler.usingExpressionResult = prevUsing;
     EmitConstant(memberNameToken.GetString());
     EmitOp(VM::Ops::AssignMember, compiler.previous.value().GetLine());
+  } else if (Match(Scanner::TokenType::LeftParen, compiler)) {
+    MemberFunctionCall(memberNameToken, compiler);
   } else {
     EmitConstant(memberNameToken.GetString());
     EmitOp(VM::Ops::LoadMember, memberNameToken.GetLine());
@@ -2464,30 +2470,10 @@ static bool ParseCallParameters(CompilerContext& compiler, int64_t& numArgs)
   return true;
 }
 
-static void DotFunctionCall(const Scanner::Token& funcNameToken, CompilerContext& compiler)
-{
-  // the last object on the stack is the object we are calling
-  std::int64_t numArgs = 0;
-  if (!ParseCallParameters(compiler, numArgs)) {
-    return;
-  }
-
-  static std::hash<std::string> hasher;
-  auto funcName = funcNameToken.GetString();
-  EmitConstant(funcName);
-  EmitConstant(hasher(funcName));
-  EmitConstant(numArgs);
-  EmitOp(VM::Ops::MemberCall, funcNameToken.GetLine());
-
-  if (Check(Scanner::TokenType::Semicolon, compiler) && !compiler.usingExpressionResult) {
-    // pop unused return value
-    EmitOp(VM::Ops::Pop, compiler.previous->GetLine());
-  }
-}
-
-static void FreeFunctionCall(const Scanner::Token& funcNameToken, CompilerContext& compiler)
+static void FunctionCall(const Scanner::Token& funcNameToken, CompilerContext& compiler)
 {
   compiler.namespaceQualifierUsed = true;
+  compiler.currentNamespaceLookup.clear();
 
   static std::hash<std::string> hasher;
   auto funcNameText = funcNameToken.GetString();
@@ -2504,6 +2490,9 @@ static void FreeFunctionCall(const Scanner::Token& funcNameToken, CompilerContex
     }
   }
 
+  // TODO: Should you be allowed to call the main function? If so, should we warn about it?
+  // If so, differentiate between main function of main file and some imported function called main
+
   std::int64_t numArgs = 0;
   if (!ParseCallParameters(compiler, numArgs)) {
     return;
@@ -2515,13 +2504,6 @@ static void FreeFunctionCall(const Scanner::Token& funcNameToken, CompilerContex
       MessageAtPrevious(fmt::format("Incorrect number of arguments given to native call - got {} but expected {}", numArgs, arity), LogLevel::Error, compiler);
       return;
     }
-  }
-
-  // TODO: in a script that is not being ran as the main script,
-  // there may be a function called 'main' that you should be allowed to call
-  if (funcNameText == "main") {
-    Message(funcNameToken, "Cannot call the `main` function", LogLevel::Error, compiler);
-    return;
   }
 
   EmitConstant(nativeCall ? nativeIndex : hash);
@@ -2539,14 +2521,31 @@ static void FreeFunctionCall(const Scanner::Token& funcNameToken, CompilerContex
   }
 }
 
+static void MemberFunctionCall(const Scanner::Token& funcNameToken, CompilerContext& compiler)
+{
+  std::int64_t numArgs { 0 };
+  if (!ParseCallParameters(compiler, numArgs)) {
+    return;
+  }
+
+  static std::hash<std::string> hasher;
+  EmitConstant(funcNameToken.GetString());
+  EmitConstant(hasher(funcNameToken.GetString()));
+  EmitConstant(numArgs);
+  EmitOp(VM::Ops::MemberCall, funcNameToken.GetLine());
+
+  if (Check(Scanner::TokenType::Semicolon, compiler) && !compiler.usingExpressionResult) {
+    // pop unused return value
+    EmitOp(VM::Ops::Pop, compiler.previous->GetLine());
+  }
+}
+
 static void Identifier(bool canAssign, CompilerContext& compiler)
 {
   auto prev = *compiler.previous;
   auto prevText = compiler.previous->GetString();
 
-  if (Match(Scanner::TokenType::LeftParen, compiler)) {
-    FreeFunctionCall(prev, compiler);
-  } else if (Match(Scanner::TokenType::ColonColon, compiler)) {
+  if (Match(Scanner::TokenType::ColonColon, compiler)) {
     if (!Check(Scanner::TokenType::Identifier, compiler)) {
       MessageAtCurrent("Expected identifier after `::`", LogLevel::Error, compiler);
       return;
@@ -2563,8 +2562,7 @@ static void Identifier(bool canAssign, CompilerContext& compiler)
 
     if (compiler.namespaceQualifierUsed) {
       EmitOp(VM::Ops::StartNewNamespace, prev.GetLine());
-      compiler.namespaceQualifierUsed = false;
-      compiler.currentNamespaceLookup.clear();
+      compiler.namespaceQualifierUsed = false;      
     }
 
     static std::hash<std::string> hasher;
@@ -2576,22 +2574,16 @@ static void Identifier(bool canAssign, CompilerContext& compiler)
 
     Expression(canAssign, compiler);
   } else {
-    // not a call or member access, so we are just trying to call on the value of the local
-    // or reassign it
-    // if it's not a reassignment, we are trying to load its value
-    // Primary() has already but the variable's id on the stack
-    if (!Check(Scanner::TokenType::Equal, compiler) && !IsCompoundAssignment(compiler.current->GetType())) {
-      auto localIt = std::find_if(compiler.locals.begin(), compiler.locals.end(), [&prevText](const Local& l) { return l.name == prevText; });
-      if (localIt == compiler.locals.end()) {
-        // now check for constants...
-        auto constantIt = s_FileConstantsLookup[compiler.fullPath.string()].find(prevText);
-
-        if (constantIt == s_FileConstantsLookup[compiler.fullPath.string()].end()) {
-          // might be in a namespace...
-          auto importPath = (compiler.parentPath / (compiler.currentNamespaceLookup + ".gr")).string();
-          auto importedConstantIt = s_FileConstantsLookup[importPath].find(prevText);
-
-          if (importedConstantIt == s_FileConstantsLookup[importPath].end()) {
+    // assignment will be handled by Expression()
+    // calls are handled by Call()
+    if (!Check(Scanner::TokenType::Equal, compiler) && !IsCompoundAssignment(compiler.current->GetType()) && !Check(Scanner::TokenType::LeftParen, compiler)) {
+      if (compiler.currentNamespaceLookup.empty()) {
+        // look for a local or constant in this file
+        auto localIt = std::find_if(compiler.locals.begin(), compiler.locals.end(), [&prevText](const Local& l) { return l.name == prevText; });
+        if (localIt == compiler.locals.end()) {
+          // now check for constants...
+          auto constantIt = s_FileConstantsLookup[compiler.fullPath.string()].find(prevText);
+          if (constantIt == s_FileConstantsLookup[compiler.fullPath.string()].end()) {
             auto mostSimilarVar = FindMostSimilarVarName(prevText, compiler.locals);
             if (mostSimilarVar) {
               MessageAtPrevious(fmt::format("Cannot find variable '{}' in this scope, did you mean '{}'?", prevText, *mostSimilarVar), LogLevel::Error, compiler);
@@ -2599,22 +2591,31 @@ static void Identifier(bool canAssign, CompilerContext& compiler)
               MessageAtPrevious(fmt::format("Cannot find variable '{}' in this scope", prevText), LogLevel::Error, compiler);
             }
           } else {
-            if (!importedConstantIt->second.isExported) {
-              MessageAtPrevious(fmt::format("Constant '{}' has not been exported", prevText), LogLevel::Error, compiler);
-              return;
-            }
-
-            compiler.namespaceQualifierUsed = true;
-            EmitConstant(importedConstantIt->second.value);
+            EmitConstant(constantIt->second.value);
             EmitOp(VM::Ops::LoadConstant, prev.GetLine());
           }
         } else {
-          EmitConstant(constantIt->second.value);
-          EmitOp(VM::Ops::LoadConstant, prev.GetLine());
-        }
+          EmitConstant(localIt->index);
+          EmitOp(VM::Ops::LoadLocal, prev.GetLine());
+        }     
       } else {
-        EmitConstant(localIt->index);
-        EmitOp(VM::Ops::LoadLocal, prev.GetLine());
+        auto importPath = std::filesystem::absolute(compiler.currentNamespaceLookup.starts_with("std/") ? *s_StdPath / (compiler.currentNamespaceLookup.substr(4) + ".gr") : (compiler.parentPath / (compiler.currentNamespaceLookup + ".gr"))).string();
+        auto importedConstantIt = s_FileConstantsLookup[importPath].find(prevText);
+
+        if (importedConstantIt == s_FileConstantsLookup[importPath].end()) {
+          MessageAtPrevious(fmt::format("{} has no exported constant `{}`", importPath, prevText), LogLevel::Error, compiler);
+        } else {
+          if (!importedConstantIt->second.isExported) {
+            MessageAtPrevious(fmt::format("Constant '{}' has not been exported", prevText), LogLevel::Error, compiler);
+            return;
+          }
+
+          compiler.namespaceQualifierUsed = true;
+          compiler.currentNamespaceLookup.clear();
+
+          EmitConstant(importedConstantIt->second.value);
+          EmitOp(VM::Ops::LoadConstant, prev.GetLine());
+        }      
       }
     }
   }

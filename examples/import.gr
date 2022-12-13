@@ -1,10 +1,14 @@
+import std::int;
 import std::time;
 import std::list;
 
-import lib::lib;
+import lib;
 
 func main():
   final list = [0];
   std::list::set(list, 0, std::time::time_ms());
   println(list);
+  println(lib::STATE);
+  var MAX = 0;
+  println(std::int::MIN);
 end
