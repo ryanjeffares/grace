@@ -2139,8 +2139,27 @@ static void Or(bool canAssign, bool skipFirst, CompilerContext& compiler)
     And(canAssign, false, compiler);
   }
   while (Match(Scanner::TokenType::Or, compiler)) {
+    // jump if true to short circuit
+    std::size_t constIdx {}, opIdx {};
+    if (!skipFirst) {
+      constIdx = VM::VM::Instance().GetNumConstants();
+      EmitConstant(std::int64_t {});
+      opIdx = VM::VM::Instance().GetNumConstants();
+      EmitConstant(std::int64_t {});
+      EmitOp(VM::Ops::JumpIfTrue, compiler.previous->GetLine());
+
+      // if we didn't jump, but the `false` back on the stack to use in the expression
+      EmitConstant(false);
+      EmitOp(VM::Ops::LoadConstant, compiler.previous->GetLine());
+    }
+
     And(canAssign, false, compiler);
     EmitOp(VM::Ops::Or, compiler.current->GetLine());
+
+    if (!skipFirst) {
+      VM::VM::Instance().SetConstantAtIndex(constIdx, VM::VM::Instance().GetNumConstants());
+      VM::VM::Instance().SetConstantAtIndex(opIdx, VM::VM::Instance().GetNumOps());
+    }
   }
 }
 
@@ -2150,8 +2169,27 @@ static void And(bool canAssign, bool skipFirst, CompilerContext& compiler)
     BitwiseOr(canAssign, false, compiler);
   }
   while (Match(Scanner::TokenType::And, compiler)) {
+    // jump if false to short circuit
+    std::size_t constIdx {}, opIdx {};
+    if (!skipFirst) {
+      constIdx = VM::VM::Instance().GetNumConstants();
+      EmitConstant(std::int64_t {});
+      opIdx = VM::VM::Instance().GetNumOps();
+      EmitConstant(std::int64_t {});
+      EmitOp(VM::Ops::JumpIfFalse, compiler.previous->GetLine());
+
+      // if we didn't jump, but the `true` back on the stack to use in the expression
+      EmitConstant(true);
+      EmitOp(VM::Ops::LoadConstant, compiler.previous->GetLine());
+    }
+
     BitwiseOr(canAssign, false, compiler);
     EmitOp(VM::Ops::And, compiler.current->GetLine());
+    
+    if (!skipFirst) {
+      VM::VM::Instance().SetConstantAtIndex(constIdx, VM::VM::Instance().GetNumConstants());
+      VM::VM::Instance().SetConstantAtIndex(opIdx, VM::VM::Instance().GetNumOps());
+    }
   }
 }
 

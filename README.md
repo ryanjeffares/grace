@@ -66,7 +66,6 @@ On Mac and Linux, by default Grace installs to `/usr/local/bin/grace` and the st
 * Global const fields
   * Allow expressions
   * Improve error reporting
-  * STD imports are broken?
 * Compound assignment to subscripts and object members
 * Allow importing files that require going higher up the folder tree
 * Default function parameter values

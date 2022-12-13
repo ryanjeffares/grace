@@ -1,5 +1,16 @@
-func main():
-  if true or true and false:
 
+func side_effect_1():
+  println("Side Effect 1");
+  return false;
+end
+
+func side_effect_2():
+  println("Side Effect 2");
+  return true;
+end
+
+func main():
+  if side_effect_1() and side_effect_2():
+    println("here");
   end
 end

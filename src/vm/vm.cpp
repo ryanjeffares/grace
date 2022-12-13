@@ -880,6 +880,17 @@ namespace Grace::VM
             }
             break;
           }
+          case Ops::JumpIfTrue: {
+            auto constIdx = static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>());
+            auto opIdx = static_cast<std::size_t>(m_FullConstantList[constantCurrent++].Get<std::int64_t>());
+            auto condition = Pop(valueStack);
+            if (condition.AsBool()) {
+              auto [opOffset, constOffset] = opConstOffsets.back();
+              opCurrent = opIdx + opOffset;
+              constantCurrent = constIdx + constOffset;
+            }
+            break;
+          }
           case Ops::Return: {
             auto returnValue = Pop(valueStack);
 

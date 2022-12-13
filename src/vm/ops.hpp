@@ -65,6 +65,7 @@ namespace Grace::VM
     IsObject,
     Jump,
     JumpIfFalse,
+    JumpIfTrue,
     Less,
     LessEqual,
     LoadConstant,
@@ -220,6 +221,9 @@ struct fmt::formatter<Grace::VM::Ops> : fmt::formatter<std::string_view>
         break;
       case Ops::JumpIfFalse:
         name = "Ops::JumpIfFalse";
+        break;
+      case Ops::JumpIfTrue:
+        name = "Ops::JumpIfTrue";
         break;
       case Ops::Less:
         name = "Ops::Less";
