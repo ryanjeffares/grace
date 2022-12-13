@@ -10,12 +10,11 @@
  *  For licensing information, see grace.hpp
  */
 
+#include "scanner.hpp"
+#include "../vm/value.hpp"
+
 #include <stack>
 #include <unordered_map>
-#include <utility>
-
-#include "scanner.hpp"
-#include "value.hpp"
 
 namespace Grace::Scanner
 {

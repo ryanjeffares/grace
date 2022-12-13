@@ -12,19 +12,18 @@
 #ifndef GRACE_VALUE_HPP
 #define GRACE_VALUE_HPP
 
+#include "../grace.hpp"
+#include "../objects/grace_exception.hpp"
+#include "../objects/object_tracker.hpp"
+
+#include <fmt/core.h>
+#include <fmt/format.h>
+
 #include <functional>
 #include <optional>
 #include <string>
 #include <type_traits>
 #include <vector>
-
-#include <fmt/core.h>
-#include <fmt/format.h>
-
-#include "grace.hpp"
-#include "objects/grace_exception.hpp"
-#include "objects/grace_object.hpp"
-#include "objects/object_tracker.hpp"
 
 namespace Grace
 {

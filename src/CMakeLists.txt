@@ -1,11 +1,12 @@
 if (GRACE_BUILD_TARGET MATCHES "dll")
     add_library(grace SHARED
             dllmain.cpp
-            compiler.cpp
-            scanner.cpp
-            value.cpp
-            vm.cpp
-            vm_register_natives.cpp
+            compiler/compiler.cpp
+            compiler/compiler_helpers.cpp
+            scanner/scanner.cpp
+            vm/value.cpp
+            vm/vm.cpp
+            vm/vm_register_natives.cpp
             objects/grace_dictionary.cpp
             objects/grace_exception.cpp
             objects/grace_function.cpp
@@ -20,11 +21,12 @@ if (GRACE_BUILD_TARGET MATCHES "dll")
 elseif (GRACE_BUILD_TARGET MATCHES "exe")
     add_executable(grace
             main.cpp
-            compiler.cpp
-            scanner.cpp
-            value.cpp
-            vm.cpp
-            vm_register_natives.cpp
+            compiler/compiler.cpp
+            compiler/compiler_helpers.cpp
+            scanner/scanner.cpp
+            vm/value.cpp
+            vm/vm.cpp
+            vm/vm_register_natives.cpp
             objects/grace_dictionary.cpp
             objects/grace_exception.cpp
             objects/grace_function.cpp

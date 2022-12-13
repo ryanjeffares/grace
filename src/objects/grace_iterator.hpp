@@ -12,15 +12,10 @@
 #ifndef GRACE_ITERATOR_HPP
 #define GRACE_ITERATOR_HPP
 
-#include <vector>
-
-#include <fmt/format.h>
-
-#include "../grace.hpp"
-#include "../value.hpp"
 #include "grace_exception.hpp"
-#include "grace_object.hpp"
-#include "object_tracker.hpp"
+#include "../vm/value.hpp"
+
+#include <vector>
 
 namespace Grace
 {
@@ -94,7 +89,8 @@ namespace Grace
       if (!m_IsValid) {
         throw GraceException(
           GraceException::Type::InvalidIterator,
-          "Iterator is no longer valid, due to either being incremented past the end of the collection or the collection being modified");
+          "Iterator is no longer valid, due to either being incremented past the end of the collection or the collection being modified"
+        );
       }
       return *m_Iterator;
     }

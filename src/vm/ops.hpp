@@ -12,7 +12,7 @@
 #ifndef GRACE_OPS_HPP
 #define GRACE_OPS_HPP
 
-#include "grace.hpp"
+#include "../grace.hpp"
 
 #include <fmt/format.h>
 

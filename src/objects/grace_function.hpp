@@ -15,8 +15,8 @@
 #include "../grace.hpp"
 
 #include "grace_object.hpp"
-#include "../ops.hpp"
-#include "../value.hpp"
+#include "../vm/ops.hpp"
+#include "../vm/value.hpp"
 
 namespace Grace
 {  

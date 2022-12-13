@@ -12,13 +12,13 @@
 #ifndef GRACE_EXCEPTION_HPP
 #define GRACE_EXCEPTION_HPP
 
-#include <exception>
-#include <string>
-#include <unordered_map>
+#include "grace_object.hpp"
 
 #include <fmt/format.h>
 
-#include "grace_object.hpp"
+#include <exception>
+#include <string>
+#include <unordered_map>
 
 namespace Grace
 {

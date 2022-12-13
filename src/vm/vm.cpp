@@ -9,28 +9,25 @@
  *  For licensing information, see grace.hpp
  */
 
+#include "vm.hpp"
+
+#include "../scanner/scanner.hpp"
+#include "../objects/grace_dictionary.hpp"
+#include "../objects/grace_instance.hpp"
+#include "../objects/grace_keyvaluepair.hpp"
+#include "../objects/grace_list.hpp"
+#include "../objects/grace_range.hpp"
+#include "../objects/grace_set.hpp"
+
 #include <chrono>
-#include <cstdlib>
 #include <filesystem>
-#include <iterator>
 #include <stack>
 #include <utility>
 
+#include <cstdlib>
 #ifdef GRACE_MSC
 #include <stdlib.h> // getenv_s
 #endif
-
-#include "vm.hpp"
-
-#include "grace.hpp"
-
-#include "objects/grace_dictionary.hpp"
-#include "objects/grace_instance.hpp"
-#include "objects/grace_iterator.hpp"
-#include "objects/grace_list.hpp"
-#include "objects/grace_range.hpp"
-#include "objects/grace_set.hpp"
-#include "scanner.hpp"
 
 namespace Grace::VM
 {

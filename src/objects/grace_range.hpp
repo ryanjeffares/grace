@@ -12,8 +12,8 @@
 #ifndef GRACE_RANGE_HPP
 #define GRACE_RANGE_HPP
 
-#include "../value.hpp"
 #include "grace_iterator.hpp"
+#include "../vm/value.hpp"
 
 namespace Grace
 {

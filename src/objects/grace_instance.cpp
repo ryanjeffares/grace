@@ -11,8 +11,8 @@
 
 #include <fmt/core.h>
 
-#include "grace_exception.hpp"
 #include "grace_instance.hpp"
+#include "grace_exception.hpp"
 
 namespace Grace
 {

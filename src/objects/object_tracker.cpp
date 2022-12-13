@@ -9,13 +9,14 @@
  *  For licensing information, see grace.hpp
  */
 
-#include <fmt/core.h>
+
+#include "object_tracker.hpp"
 
 #include "grace_dictionary.hpp"
 #include "grace_instance.hpp"
 #include "grace_list.hpp"
-#include "grace_object.hpp"
-#include "object_tracker.hpp"
+
+#include <fmt/core.h>
 
 using namespace Grace;
 

@@ -9,11 +9,8 @@
  *  For licensing information, see grace.hpp
  */
 
-#include <type_traits>
-
-#include "grace.hpp"
-#include "objects/grace_list.hpp"
 #include "value.hpp"
+#include "../objects/grace_list.hpp"
 
 namespace Grace::VM
 {

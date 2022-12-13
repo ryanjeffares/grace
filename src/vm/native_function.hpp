@@ -17,7 +17,7 @@
 #include <string>
 #include <vector>
 
-#include "grace.hpp"
+#include "../grace.hpp"
 #include "value.hpp"
 
 namespace Grace::Native

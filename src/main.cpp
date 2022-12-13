@@ -9,15 +9,14 @@
  *  For licensing information, see grace.hpp
  */
 
-#include <filesystem>
-#include <fstream>
-#include <vector>
+#include "compiler/compiler.hpp"
 
 #include <fmt/color.h>
 #include <fmt/core.h>
 
-#include "compiler.hpp"
-#include "grace.hpp"
+#include <filesystem>
+#include <fstream>
+#include <vector>
 
 static void Error(const std::string& message)
 {
@@ -114,5 +113,5 @@ int main(int argc, const char* argv[])
     return 1;
   }
 
-  return static_cast<int>(Grace::Compiler::Compile(filePath.string(), verbose, warningsError, graceMainArgs));
+  return static_cast<int>(Grace::Compiler::Compile(filePath.string(), verbose, warningsError, std::move(graceMainArgs)));
 }

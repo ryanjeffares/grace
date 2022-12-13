@@ -12,12 +12,9 @@
 #ifndef GRACE_LIST_HPP
 #define GRACE_LIST_HPP
 
-#include <mutex>
-#include <vector>
-
-#include "../value.hpp"
 #include "grace_exception.hpp"
 #include "grace_iterator.hpp"
+#include "../vm/value.hpp"
 
 namespace Grace
 {
@@ -115,7 +112,8 @@ namespace Grace
       if (index >= m_Data.size()) {
         throw GraceException(
           GraceException::Type::IndexOutOfRange,
-          fmt::format("Given index is {} but the length of the List is {}", index, m_Data.size()));
+          fmt::format("Given index is {} but the length of the List is {}", index, m_Data.size())
+        );
       }
 
       return m_Data[index];
@@ -126,7 +124,8 @@ namespace Grace
       if (index >= m_Data.size()) {
         throw GraceException(
           GraceException::Type::IndexOutOfRange,
-          fmt::format("Given index is {} but the length of the List is {}", index, m_Data.size()));
+          fmt::format("Given index is {} but the length of the List is {}", index, m_Data.size())
+        );
       }
 
       return m_Data[index];
@@ -137,7 +136,8 @@ namespace Grace
       if (m_Data.empty()) {
         throw GraceException(
           GraceException::Type::InvalidCollectionOperation,
-          "Collection is empty");
+          "Collection is empty"
+        );
       }
 
       return m_Data.front();
@@ -148,7 +148,8 @@ namespace Grace
       if (m_Data.empty()) {
         throw GraceException(
           GraceException::Type::InvalidCollectionOperation,
-          "Collection is empty");
+          "Collection is empty"
+        );
       }
 
       return m_Data.back();

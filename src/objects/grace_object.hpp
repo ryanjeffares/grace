@@ -12,13 +12,13 @@
 #ifndef GRACE_OBJECT_HPP
 #define GRACE_OBJECT_HPP
 
-#include <cstdint>
-#include <mutex>
+#include "../grace.hpp"
+
 #include <string>
 #include <string_view>
 #include <vector>
 
-#include "../grace.hpp"
+#include <cstdint>
 
 namespace Grace
 {

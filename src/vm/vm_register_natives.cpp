@@ -9,22 +9,22 @@
  *  For licensing information, see grace.hpp
  */
 
+#include "vm.hpp"
+#include "../objects/grace_dictionary.hpp"
+#include "../objects/grace_instance.hpp"
+#include "../objects/grace_keyvaluepair.hpp"
+#include "../objects/grace_list.hpp"
+#include "../objects/grace_set.hpp"
+
+#include <dyncall.h>
+#include <dynload.h>
+
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <thread>
-
-#include <dyncall.h>
-#include <dynload.h>
-
-#include "grace.hpp"
-#include "objects/grace_dictionary.hpp"
-#include "objects/grace_instance.hpp"
-#include "objects/grace_list.hpp"
-#include "objects/grace_set.hpp"
-#include "vm.hpp"
 
 using namespace Grace::VM;
 

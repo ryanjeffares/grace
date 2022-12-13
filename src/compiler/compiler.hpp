@@ -1,7 +1,7 @@
 /*
  *  The Grace Programming Language.
  *
- *  This file contains the Compiler class, which outputs Grace bytecode based on Tokens provided by the Scanner. 
+ *  This file contains the Grace Compiler, which outputs Grace bytecode based on Tokens provided by the Scanner.
  *  
  *  Copyright (c) 2022 - Present, Ryan Jeffares.
  *  All rights reserved.
@@ -12,11 +12,11 @@
 #ifndef GRACE_COMPILER_HPP
 #define GRACE_COMPILER_HPP
 
+#include "../grace.hpp"
+#include "../vm/vm.hpp"
+
 #include <string>
 #include <vector>
-
-#include "grace.hpp"
-#include "vm.hpp"
 
 namespace Grace::Compiler
 {
@@ -28,7 +28,7 @@ namespace Grace::Compiler
    *  @param verbose          Verbose mode (display compilation time and compiler warnings).
    *  @param warningsError    Display compiler warnings, warnings result in errors
    */
-  GRACE_NODISCARD VM::InterpretResult Compile(const std::string& fileName, bool verbose, bool warningsError, const std::vector<std::string>& args);
+  GRACE_NODISCARD VM::InterpretResult Compile(std::string fileName, bool verbose, bool warningsError, std::vector<std::string> args);
 } // namespace Grace::Compiler
 
 #endif // ifndef GRACE_COMPILER_HPP

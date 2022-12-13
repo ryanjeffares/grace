@@ -9,10 +9,10 @@
  *  For licensing information, see grace.hpp
  */
 
-#include <fmt/core.h>
-
-#include "grace_dictionary.hpp"
 #include "grace_list.hpp"
+#include "grace_dictionary.hpp"
+
+#include <fmt/core.h>
 
 namespace Grace
 {

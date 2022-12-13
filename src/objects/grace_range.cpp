@@ -11,8 +11,6 @@
 
 #include "grace_range.hpp"
 
-#include <cinttypes>
-
 static constexpr std::size_t s_BaseCapacity = 8;
 
 namespace Grace

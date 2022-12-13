@@ -12,6 +12,15 @@
 #ifndef GRACE_VM_HPP
 #define GRACE_VM_HPP
 
+#include "../grace.hpp"
+#include "native_function.hpp"
+#include "../objects/grace_function.hpp"
+#include "ops.hpp"
+#include "value.hpp"
+
+#include <fmt/color.h>
+#include <fmt/core.h>
+
 #include <cstdint>
 #include <exception>
 #include <memory>
@@ -20,16 +29,6 @@
 #include <tuple>
 #include <unordered_map>
 #include <vector>
-
-#include <fmt/color.h>
-#include <fmt/core.h>
-
-#include "grace.hpp"
-#include "native_function.hpp"
-#include "objects/grace_exception.hpp"
-#include "objects/grace_function.hpp"
-#include "value.hpp"
-#include "ops.hpp"
 
 namespace Grace::VM
 {

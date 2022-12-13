@@ -12,13 +12,13 @@
 #ifndef GRACE_SCANNER_HPP
 #define GRACE_SCANNER_HPP
 
-#include <string>
-#include <string_view>
-#include <vector>
+#include "../grace.hpp"
 
 #include <fmt/format.h>
 
-#include "grace.hpp"
+#include <string>
+#include <string_view>
+#include <vector>
 
 namespace Grace::Scanner
 {

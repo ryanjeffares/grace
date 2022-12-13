@@ -12,13 +12,7 @@
 #ifndef GRACE_DICTIONARY_HPP
 #define GRACE_DICTIONARY_HPP
 
-#include <functional>
-#include <mutex>
-#include <vector>
-
-#include "../value.hpp"
 #include "grace_hashable.hpp"
-#include "grace_keyvaluepair.hpp"
 
 namespace Grace
 {

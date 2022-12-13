@@ -12,12 +12,9 @@
 #ifndef GRACE_KEYVALUEPAIR_HPP
 #define GRACE_KEYVALUEPAIR_HPP
 
-#include <utility>
-
 #include "../grace.hpp"
-#include "../value.hpp"
-#include "grace_exception.hpp"
 #include "grace_object.hpp"
+#include "../vm/value.hpp"
 
 namespace Grace
 {

@@ -12,9 +12,9 @@
 #ifndef GRACE_OBJECT_TRACKER_HPP
 #define GRACE_OBJECT_TRACKER_HPP
 
-#include <vector>
-
 #include "../grace.hpp"
+
+#include <vector>
 
 namespace Grace
 {

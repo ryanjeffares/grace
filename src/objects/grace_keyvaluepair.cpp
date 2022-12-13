@@ -9,9 +9,9 @@
  *  For licensing information, see grace.hpp
  */
 
-#include <fmt/core.h>
-
 #include "grace_keyvaluepair.hpp"
+
+#include <fmt/core.h>
 
 namespace Grace
 {

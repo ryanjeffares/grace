@@ -12,14 +12,11 @@
 #ifndef GRACE_INSTANCE_HPP
 #define GRACE_INSTANCE_HPP
 
-#include <mutex>
+#include "../vm/value.hpp"
+#include "grace_object.hpp"
+
 #include <tuple>
 #include <vector>
-
-#include "../grace.hpp"
-
-#include "../value.hpp"
-#include "grace_object.hpp"
 
 namespace Grace
 {
